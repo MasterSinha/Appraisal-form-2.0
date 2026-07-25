@@ -92,6 +92,56 @@ const displayExperience = (info = {}, form = {}) => {
   return splitValue ? displayWithOptionalYears(splitValue) : "&nbsp;";
 };
 
+const PRINT_REPORT_CSS = `
+    @page{size:A4;margin:12mm}
+    *{box-sizing:border-box}
+    body{font-family:"Times New Roman",Times,serif;font-size:10.8px;line-height:1.34;color:#111;background:#fff;margin:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    h1{text-align:center;font-size:14px;line-height:1.18;letter-spacing:.45px;margin:0 0 4px;text-transform:uppercase;color:#111;font-weight:700}
+    h2{text-align:center;font-size:11px;line-height:1.25;margin:2px 0;color:#111;font-weight:700}
+    h3{font-size:11px;line-height:1.25;margin:10px 0 5px;color:#111;break-after:avoid;font-weight:700}
+    h3 span{color:#444;font-size:10px;font-weight:400}
+    h3[style*="background"]{background:#f1f3f5!important;border:none!important;border-top:1.6px solid #111!important;border-bottom:1.2px solid #111!important;border-radius:0!important;padding:6px 0!important;margin:14px 0 8px!important;color:#111!important;text-align:center!important;text-transform:uppercase;letter-spacing:.25px}
+    table{width:100%;border-collapse:collapse!important;margin-bottom:10px;table-layout:fixed;border:1.15px solid #6b7280!important;background:#fff;page-break-inside:auto}
+    thead{display:table-header-group}
+    tfoot{display:table-footer-group}
+    tr{page-break-inside:avoid;page-break-after:auto}
+    th,td{border:1px solid #aeb6c2!important;padding:4.8px 6px;vertical-align:top;word-wrap:break-word;overflow-wrap:anywhere}
+    th{background:#eef0f3!important;text-align:center;font-weight:700;color:#111}
+    td[style*="background:#d9d9d9"]{background:#eef0f3!important;color:#111!important;text-transform:uppercase;letter-spacing:.2px}
+    tr[style*="background:#bfbfbf"] td{background:#d9dde3!important;color:#111!important}
+    a{color:#0645ad;text-decoration:none}
+    .c{text-align:center}.b{font-weight:bold}
+    .page-break,.pb{page-break-before:always}
+    .tr{background:#f6f7f9!important;font-weight:bold}
+    .ht{width:100%;border:none!important;border-bottom:2px solid #111!important;margin-bottom:9px;padding-bottom:5px;background:transparent}
+    .ht td{border:none!important;padding:0 4px;vertical-align:middle}
+    .logo{width:17mm;max-height:22mm;object-fit:contain;height:auto;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .ht + table{border-color:#6b7280!important;margin-bottom:11px}
+    .ht + table td:first-child{background:#f6f7f9!important;font-weight:700;width:35%}
+    .st{border:1.35px solid #4b5563!important}
+    .st th{background:#dfe3e8!important;color:#111}
+    .st .tr, .st tr[style*="background:#bfbfbf"]{background:#dfe3e8!important;font-weight:bold}
+    .remarks{white-space:pre-wrap;border:1px solid #6b7280!important;padding:8px;min-height:34px;background:#fff}
+    .declaration-table{border:none!important;margin-bottom:14px!important}
+    .declaration-table td{border:none!important;background:#fff!important}
+  `;
+
+const PRINT_SCRIPT = `<script>
+window.addEventListener('load', function(){
+  const images = Array.from(document.images || []);
+  Promise.all(images.map(function(img){
+    if (img.complete) return Promise.resolve();
+    return new Promise(function(resolve){
+      img.onload = resolve;
+      img.onerror = resolve;
+      setTimeout(resolve, 800);
+    });
+  })).then(function(){
+    setTimeout(function(){ window.focus(); window.print(); }, 120);
+  });
+});
+</script>`;
+
 export const buildReviewRemarks = ({
   source = {},
   currentRole = "",
@@ -282,11 +332,11 @@ const buildSignaturePage = ({
         .join("")
     : "";
   return `
-  <h3 style="text-align:center;font-size:14px;background:#d9d9d9;padding:6px;margin-top:16px">DECLARATION BY FACULTY</h3>
-  <table style="border:none;margin-bottom:14px">
+  <h3 style="text-align:center;font-size:16px;background:#d9d9d9;padding:8px;margin-top:18px">DECLARATION BY FACULTY</h3>
+  <table class="declaration-table" style="border:none;margin-bottom:14px">
     <tr>
-      <td style="border:none;vertical-align:top;width:32px;font-size:18px">&#10003;</td>
-      <td style="border:none;line-height:1.7;font-size:11px">
+      <td style="border:none;vertical-align:top;width:36px;font-size:22px">&#10003;</td>
+      <td style="border:none;line-height:1.75;font-size:13px">
         I, <strong>${safeHtml(facultyName) || "________________________"}</strong>, hereby declare that all the
         information furnished in this Self-Appraisal Report is true, complete, and correct to the best of my
         knowledge and belief. I understand that in the event of any information being found false or incorrect,
@@ -295,9 +345,9 @@ const buildSignaturePage = ({
       </td>
     </tr>
   </table>
-  <table style="border:none;margin-bottom:20px">
+  <table class="declaration-table" style="border:none;margin-bottom:20px">
     <tr>
-      <td style="border:none;width:50%">
+      <td style="border:none;width:50%;font-size:12px;line-height:1.45">
         <div style="border-bottom:1px solid #000;min-height:36px;margin-bottom:4px">&nbsp;</div>
         <div><strong>Signature of Faculty</strong></div>
         <div style="margin-top:6px"><strong>Name:</strong> ${safeHtml(facultyName) || "&nbsp;"}</div>
@@ -484,23 +534,7 @@ export const openFullFormReport = async ({
 <head>
   <title>${safeHtml(title)}</title>
   <style>
-    @page{size:A4;margin:15mm}
-    body{font-family:"Times New Roman",serif;font-size:11px;color:#000}
-    h1{text-align:center;font-size:15px;margin:4px 0}
-    h2{text-align:center;font-size:13px;margin:3px 0}
-    h3{font-size:12px;margin:10px 0 4px}
-    h3 span{color:#555;font-size:10px;font-weight:400}
-    table{width:100%;border-collapse:collapse;margin-bottom:10px;table-layout:fixed}
-    th,td{border:1px solid #000;padding:4px 6px;vertical-align:top;word-wrap:break-word}
-    th{background:#d9d9d9;text-align:center;font-weight:700}
-    a{color:#1d4ed8}
-    .c{text-align:center}.b{font-weight:bold}
-    .page-break{page-break-before:always}
-    .tr{background:#f2f2f2;font-weight:bold}
-    .ht{width:100%;border:none;margin-bottom:6px}.ht td{border:none;padding:2px}
-    .logo{width:22mm;height:auto;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    .st th{background:#bfbfbf}
-    .remarks{white-space:pre-wrap;border:1px solid #000;padding:8px;min-height:40px}
+${PRINT_REPORT_CSS}
   </style>
 </head>
 <body>
@@ -564,7 +598,7 @@ export const openFullFormReport = async ({
     submittedAt: declaration?.submitted_at || "",
     reviewChain,
   })}
-<script>window.addEventListener('load', function(){ window.focus(); window.print(); });</script>
+${PRINT_SCRIPT}
 </body>
 </html>`;
 
@@ -628,23 +662,7 @@ export const generateMediaCommReport = async ({
 <head>
   <title>${safeHtml(title)}</title>
   <style>
-    @page{size:A4;margin:15mm}
-    body{font-family:"Times New Roman",serif;font-size:11px;color:#000}
-    h1{text-align:center;font-size:15px;margin:4px 0}
-    h2{text-align:center;font-size:13px;margin:3px 0}
-    h3{font-size:12px;margin:10px 0 4px}
-    table{width:100%;border-collapse:collapse;margin-bottom:10px;table-layout:fixed}
-    th,td{border:1px solid #000;padding:4px 6px;vertical-align:top;word-wrap:break-word}
-    th{background:#d9d9d9;text-align:center;font-weight:700}
-    a{color:#1d4ed8}
-    .c{text-align:center}.b{font-weight:bold}
-    .pb{page-break-before:always}
-    .tr{background:#f2f2f2;font-weight:bold}
-    .ht{width:100%;border:none;margin-bottom:6px}.ht td{border:none;padding:2px}
-    .logo{width:22mm;height:auto;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    .st th{background:#bfbfbf}
-    .remarks{white-space:pre-wrap;border:1px solid #000;padding:8px;min-height:40px}
-    h3 span{color:#555;font-size:10px;font-weight:400}
+${PRINT_REPORT_CSS}
   </style>
 </head>
 <body>
@@ -747,7 +765,7 @@ export const generateMediaCommReport = async ({
     submittedAt: declaration?.submitted_at || "",
     reviewChain,
   })}
-<script>window.addEventListener('load', function(){ window.focus(); window.print(); });</script>
+${PRINT_SCRIPT}
 </body>
 </html>`;
   win.document.write(html);
@@ -842,20 +860,7 @@ export const generateStandardReport = async ({
     /* use URL fallback */
   }
   const html = `<html><head><title>Faculty Appraisal</title><style>
-    @page{size:A4;margin:15mm}
-    body{font-family:"Times New Roman",serif;font-size:11px;color:#000}
-    h1{text-align:center;font-size:15px;margin:4px 0}
-    h2{text-align:center;font-size:13px;margin:3px 0}
-    h3{font-size:12px;margin:10px 0 4px}
-    table{width:100%;border-collapse:collapse;margin-bottom:10px}
-    th,td{border:1px solid #000;padding:4px 6px;word-wrap:break-word;vertical-align:top}
-    th{background:#d9d9d9;text-align:center;font-weight:bold}
-    .c{text-align:center}.b{font-weight:bold}
-    .pb{page-break-before:always}
-    .tr{background:#f2f2f2;font-weight:bold}
-    .ht{width:100%;border:none;margin-bottom:6px}.ht td{border:none;padding:2px}
-    .logo{width:22mm;height:auto;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    .st th{background:#bfbfbf}
+${PRINT_REPORT_CSS}
   </style></head><body>
   <table class="ht"><tr>
     <td style="width:20%;text-align:left"><img class="logo" src="${logoSrc}" alt="DYPIU"/></td>
@@ -1017,7 +1022,7 @@ export const generateStandardReport = async ({
     submittedAt: declaration?.submitted_at || "",
     reviewChain,
   })}
-  <script>window.addEventListener('load', function(){ window.focus(); window.print(); });</script>
+  ${PRINT_SCRIPT}
   </body></html>`;
   win.document.write(html);
   win.document.close();
