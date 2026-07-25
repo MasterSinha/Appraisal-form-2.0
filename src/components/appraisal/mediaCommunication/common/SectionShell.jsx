@@ -5,8 +5,8 @@ export default function SectionShell({ title, children, accent = "#4f46e5" }) {
   const displayTitle = stripMaxMarksFromTitle(title);
 
   return (
-    <section className="fa-section-card appraisal-section-card" style={{ background: "#fff", borderRadius: 14, boxShadow: "0 10px 28px rgba(17,24,39,0.06)", marginBottom: 20, overflow: "hidden", border: "1px solid #e5e7eb" }}>
-      <div className="appraisal-part-header" style={{ padding: "14px 20px", borderBottom: "1px solid #f3f4f6", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, background: "linear-gradient(180deg,#ffffff 0%,#fbfbff 100%)" }}>
+    <section className="media-section-shell" style={{ marginBottom: 24, overflow: "visible", borderRadius: 4 }}>
+      <div className="appraisal-part-header" style={{ padding: "0 0 12px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, background: "transparent" }}>
         <div style={{ minWidth: 0, display: "flex", alignItems: "center", gap: 10 }}>
           <span className="appraisal-part-icon" style={{ width: 32, height: 32, borderRadius: 8, background: "#e0e7ff", color: "#4338ca", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -21,7 +21,7 @@ export default function SectionShell({ title, children, accent = "#4f46e5" }) {
           </div>
         </div>
       </div>
-      <div style={{ padding: "16px 20px" }}>{children}</div>
+      <div>{children}</div>
     </section>
   );
 }

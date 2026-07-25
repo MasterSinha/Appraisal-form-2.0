@@ -8,6 +8,7 @@
  * Import from here instead of redefining in each dashboard file.
  */
 import { useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { StatusBadge } from "../../../components/dashboard/dashboardPrimitives";
 import {
   getReviewChain,
@@ -19,22 +20,97 @@ import {
 } from "../../../utils/hierarchy";
 import { clampScore } from "../../../utils/appraisalFormUtils";
 
+function HoverPreviewCard({ value, position }) {
+  if (!value) return null;
+
+  return createPortal(
+    <div
+      role="tooltip"
+      style={{
+        position: "fixed",
+        zIndex: 99999,
+        top: position.top,
+        left: Math.max(12, position.left),
+        width: "max-content",
+        maxWidth: "min(320px, calc(100vw - 24px))",
+        minWidth: 160,
+        height: "auto",
+        maxHeight: "min(320px, calc(100vh - 24px))",
+        overflowY: "auto",
+        background: "#fff",
+        color: "#111827",
+        border: "1px solid #e5e7eb",
+        borderRadius: 12,
+        padding: "10px 12px",
+        fontSize: 12.5,
+        fontWeight: 500,
+        lineHeight: 1.38,
+        textAlign: "left",
+        whiteSpace: "normal",
+        overflowWrap: "break-word",
+        wordBreak: "normal",
+        pointerEvents: "none",
+        boxShadow: "0 12px 30px rgba(17,24,39,0.16), 0 1px 2px rgba(17,24,39,0.08)",
+      }}
+    >
+      {value}
+    </div>,
+    document.body
+  );
+}
+
+function hasHiddenOverflow(element) {
+  if (!element) return false;
+  return (
+    element.scrollWidth > element.clientWidth + 1 ||
+    element.scrollHeight > element.clientHeight + 1
+  );
+}
+
 // ---------------------------------------------------------------------------
 // RO — read-only display cell
 // ---------------------------------------------------------------------------
 export function RO({ val, value, center, placeholder }) {
   const actualVal = val !== undefined ? val : value;
+  const ref = useRef(null);
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewPosition, setPreviewPosition] = useState({ top: 0, left: 0 });
+  const displayValue = String(actualVal || "");
+  const canShowPreview = displayValue.trim().length > 0;
+
+  const openPreview = () => {
+    if (!canShowPreview || !hasHiddenOverflow(ref.current)) return;
+    const rect = ref.current.getBoundingClientRect();
+    setPreviewPosition({
+      top: rect.bottom + 8,
+      left: Math.min(rect.left, window.innerWidth - 430),
+    });
+    setShowPreview(true);
+  };
+
   return (
     <span
+      ref={ref}
+      onMouseEnter={openPreview}
+      onMouseLeave={() => setShowPreview(false)}
+      onFocus={openPreview}
+      onBlur={() => setShowPreview(false)}
+      tabIndex={canShowPreview ? 0 : -1}
       style={{
         fontSize: 11,
         fontFamily: "inherit",
         color: actualVal ? "#1e293b" : "#94a3b8",
-        display: "block",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: center ? "center" : "flex-start",
+        width: "100%",
+        minHeight: 34,
         textAlign: center ? "center" : "left",
+        cursor: canShowPreview ? "default" : "inherit",
       }}
     >
       {actualVal || (placeholder ? <span style={{ color: "#94a3b8" }}>{placeholder}</span> : <span style={{ color: "#cbd5e1" }}>-</span>)}
+      {showPreview && <HoverPreviewCard value={displayValue} position={previewPosition} />}
     </span>
   );
 }
@@ -65,10 +141,10 @@ export function TI({
   const [previewPosition, setPreviewPosition] = useState({ top: 0, left: 0 });
   const inputRef = useRef(null);
   const displayValue = String(actualVal ?? "");
-  const canShowFullValue = displayValue.trim().length > 35;
+  const canShowFullValue = displayValue.trim().length > 0;
 
   const openFullValuePreview = () => {
-    if (!canShowFullValue || !inputRef.current) return;
+    if (!canShowFullValue || !hasHiddenOverflow(inputRef.current)) return;
     const rect = inputRef.current.getBoundingClientRect();
     setPreviewPosition({
       top: rect.bottom + 8,
@@ -133,7 +209,7 @@ export function TI({
   return (
     <div
       className="appraisal-input-preview-wrap"
-      style={{ position: "relative", width: "100%" }}
+      style={{ position: "relative", width: "100%", minHeight: 38, display: "flex", alignItems: "center" }}
       onMouseEnter={openFullValuePreview}
       onMouseLeave={() => setShowFullValue(false)}
     >
@@ -146,37 +222,11 @@ export function TI({
         onFocus={openFullValuePreview}
         onBlurCapture={() => setShowFullValue(false)}
         placeholder={placeholder || ""}
-        title={displayValue}
+        aria-label={displayValue || placeholder || "Appraisal field"}
         inputMode={isInteger ? "numeric" : isNumeric ? "decimal" : undefined}
         style={center ? { ...baseStyle, textAlign: "center" } : baseStyle}
       />
-      {showFullValue && (
-        <div
-          role="tooltip"
-          style={{
-            position: "fixed",
-            zIndex: 9999,
-            top: previewPosition.top,
-            left: Math.max(12, previewPosition.left),
-            transform: "none",
-            width: "max-content",
-            maxWidth: 340,
-            minWidth: 220,
-            background: "#fff",
-            color: "#111827",
-            border: "1px solid #dbe3ff",
-            borderRadius: 8,
-            padding: "9px 11px",
-            fontSize: 12,
-            lineHeight: 1.45,
-            whiteSpace: "pre-wrap",
-            overflowWrap: "anywhere",
-            boxShadow: "0 16px 38px rgba(17,24,39,0.14)",
-          }}
-        >
-          {displayValue}
-        </div>
-      )}
+      {showFullValue && <HoverPreviewCard value={displayValue} position={previewPosition} />}
       {textErr && (
         <span
           style={{

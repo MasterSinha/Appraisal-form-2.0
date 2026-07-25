@@ -1,3 +1,13 @@
+export const tableStyle = {
+  width: "100%",
+  borderCollapse: "separate",
+  borderSpacing: 0,
+  fontSize: 11,
+  border: "1px solid #e0e7ff",
+  borderRadius: 8,
+  overflow: "hidden",
+};
+
 export const thStyle = {
   border: "1px solid #e0e7ff",
   padding: "10px 12px",

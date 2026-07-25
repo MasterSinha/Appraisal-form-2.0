@@ -1,6 +1,8 @@
 export const tableStyles = {
   T: {
     width: "100%",
+    minWidth: 1080,
+    tableLayout: "fixed",
     borderCollapse: "separate",
     borderSpacing: 0,
     fontSize: 13,
@@ -20,7 +22,10 @@ export const tableStyles = {
     textAlign: "center",
     fontSize: 12,
     letterSpacing: 0,
+    lineHeight: 1.25,
     height: 44,
+    whiteSpace: "normal",
+    wordBreak: "normal",
   },
   TH_HOD: {
     border: "none",
@@ -32,26 +37,32 @@ export const tableStyles = {
     textAlign: "center",
     fontSize: 12,
     letterSpacing: 0,
+    lineHeight: 1.25,
     height: 44,
+    whiteSpace: "normal",
+    wordBreak: "normal",
   },
   TD: {
     border: "none",
     borderBottom: "1px solid #e8ecf7",
     padding: "7px 10px",
     verticalAlign: "middle",
-    minHeight: 50,
+    height: 56,
+    lineHeight: 1.35,
     background: "#fff",
     color: "#111827",
+    overflowWrap: "anywhere",
+    wordBreak: "normal",
   },
 };
 
-tableStyles.TDC = { ...tableStyles.TD, textAlign: "center" };
+tableStyles.TDC = { ...tableStyles.TD, textAlign: "center", overflowWrap: "normal" };
 tableStyles.TDS = { ...tableStyles.TD, textAlign: "center", background: "#f8fafc", minWidth: 68, fontWeight: 800, color: "#4338ca" };
 tableStyles.TDS_HOD = { ...tableStyles.TDS, background: "#eef2ff" };
 tableStyles.TH_DIR = { ...tableStyles.TH, background: "#ecfdf5", color: "#047857" };
 tableStyles.TDS_DIR = { ...tableStyles.TDS, background: "#f0fdf4", minWidth: 76, color: "#047857" };
 tableStyles.TH_DEAN = { ...tableStyles.TH, background: "#f5f3ff", color: "#6d28d9" };
 tableStyles.TDS_DEAN = { ...tableStyles.TDS, background: "#faf5ff", minWidth: 76, color: "#6d28d9" };
-tableStyles.TDV = { ...tableStyles.TD, background: "#fafbff", minWidth: 128 };
+tableStyles.TDV = { ...tableStyles.TD, background: "#fafbff", width: 104, minWidth: 104, maxWidth: 112, padding: "7px 10px", textAlign: "center", overflowWrap: "normal" };
 
 export const { T, TH, TH_HOD, TH_DIR, TH_DEAN, TD, TDC, TDS, TDS_HOD, TDS_DIR, TDS_DEAN, TDV } = tableStyles;

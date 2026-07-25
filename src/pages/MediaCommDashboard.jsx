@@ -457,7 +457,7 @@ export default function MediaCommDashboard({ fixedRole }) {
       showLogoutModal={showLogoutModal}
       onCancelLogout={() => setShowLogoutModal(false)}
       containerStyle={{ display: "flex", minHeight: "100vh", fontFamily: "inherit", background: "#f8fafc", color: "#111827" }}
-      mainStyle={{ flex: 1, padding: "40px", display: "flex", flexDirection: "column", gap: 24, overflowX: "auto", maxWidth: 1600, margin: "0 auto", width: "100%" }}
+      mainStyle={{ flex: 1, padding: "40px", display: "flex", flexDirection: "column", gap: 16, overflowX: "auto", maxWidth: 1600, margin: "0 auto", width: "100%" }}
       sidebar={(
         <DashboardSidebar
           appInfo={APP_INFO}
@@ -475,7 +475,7 @@ export default function MediaCommDashboard({ fixedRole }) {
         />
       )}
     >
-      <div style={{ marginBottom: 16, display: "flex", flexDirection: "column", gap: 14 }}>
+      <div style={{ marginBottom: 0, display: "flex", flexDirection: "column", gap: 0 }}>
         <div style={{ background: "#fff", borderRadius: 14, padding: "18px 24px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 20 }}>
           <div>
             <h2 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: "#111827", letterSpacing: 0, lineHeight: 1.1 }}>School of Media & Communication Studies — My Appraisal Form</h2>

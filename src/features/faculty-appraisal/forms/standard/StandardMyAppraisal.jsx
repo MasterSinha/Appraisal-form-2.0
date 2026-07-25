@@ -1155,17 +1155,17 @@ export default function StandardMyAppraisal({
       </div>
       )}
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div className="appraisal-page-header" style={{ background: "#fff", borderRadius: 14, padding: "18px 28px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 20 }}>
+            <div className="appraisal-page-header" style={{ background: "#fff", borderRadius: 14, padding: "12px 22px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 18 }}>
               <div>
-                <h2 style={{ margin: 0, fontSize: 30, fontWeight: 800, color: "#111827", letterSpacing: 0, lineHeight: 1.1 }}>My Appraisal Form</h2>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6, fontSize: 14, color: "#6b7280", fontWeight: 600, flexWrap: "wrap" }}>
+                <h2 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: "#111827", letterSpacing: 0, lineHeight: 1.05 }}>My Appraisal Form</h2>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4, fontSize: 13, color: "#6b7280", fontWeight: 600, flexWrap: "wrap" }}>
                   <span>{info.name || titleNameFallback}</span>
                   <span>{subtitleSeparator}</span>
                   <span>Academic Year:</span>
                   <select
                     value={info.ay}
                     onChange={(event) => handleAcademicYearChange(event.target.value)}
-                    style={{ height: 32, border: "1px solid #d1d5db", borderRadius: 8, padding: "0 10px", fontSize: 13, fontFamily: "inherit", color: "#374151", background: "#fff", outline: "none", fontWeight: 700 }}
+                    style={{ height: 28, border: "1px solid #d1d5db", borderRadius: 8, padding: "0 10px", fontSize: 13, fontFamily: "inherit", color: "#374151", background: "#fff", outline: "none", fontWeight: 700 }}
                   >
                     {academicYearOptions.map((cycle) => (
                       <option key={cycle.academic_year} value={cycle.academic_year}>
@@ -1175,7 +1175,7 @@ export default function StandardMyAppraisal({
                   </select>
                 </div>
               </div>
-              <AppraisalHeaderImage height={58} />
+              <AppraisalHeaderImage height={44} />
             </div>
             <div className="appraisal-status-grid" style={{ display: "grid", gridTemplateColumns: isSelectedCycleClosed ? "1fr" : "minmax(0, 1fr) 344px", gap: 14, alignItems: "stretch" }}>
               <WorkflowStatusTracker

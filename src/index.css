@@ -591,6 +591,8 @@ tbody tr { transition: background-color 0.12s ease; }
   box-shadow: 0 8px 24px rgba(17, 24, 39, 0.04);
   border-radius: 4px !important;
   overflow: hidden;
+  table-layout: fixed;
+  min-width: max(100%, 1080px);
 }
 
 .appraisal-form-shell table th:first-child {
@@ -612,10 +614,15 @@ tbody tr { transition: background-color 0.12s ease; }
 .appraisal-form-shell table th,
 .appraisal-form-shell table td {
   border-right: 1px solid #e2e8f0 !important;
+  vertical-align: middle;
 }
 
 .appraisal-form-shell table th {
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.65);
+  white-space: normal !important;
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: auto;
 }
 
 .appraisal-form-shell table th:last-child,
@@ -631,6 +638,59 @@ tbody tr { transition: background-color 0.12s ease; }
   background: #f1efff !important;
   color: #4338ca !important;
   font-weight: 900 !important;
+}
+
+.appraisal-section-card > div:last-child {
+  overflow-x: auto;
+}
+
+.appraisal-section-card > div:last-child::-webkit-scrollbar {
+  height: 6px;
+}
+
+.appraisal-form-shell table td {
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.appraisal-form-shell table th:first-child,
+.appraisal-form-shell table td:first-child {
+  width: 58px;
+  min-width: 58px;
+  max-width: 58px;
+  white-space: nowrap;
+}
+
+.appraisal-form-shell table th:last-child,
+.appraisal-form-shell table td:last-child,
+.appraisal-form-shell table th:nth-last-child(2),
+.appraisal-form-shell table td:nth-last-child(2) {
+  width: 96px;
+  min-width: 96px;
+  max-width: 112px;
+}
+
+.appraisal-form-shell table th:nth-last-child(3),
+.appraisal-form-shell table td:nth-last-child(3) {
+  width: 108px;
+  min-width: 108px;
+  max-width: 116px;
+}
+
+.appraisal-form-shell table td input,
+.appraisal-form-shell table td select,
+.appraisal-form-shell table td textarea {
+  max-width: 100%;
+}
+
+.appraisal-form-shell table td a,
+.appraisal-form-shell table td button {
+  max-width: 100%;
+}
+
+.appraisal-form-shell table td a {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .appraisal-subsection-title {
