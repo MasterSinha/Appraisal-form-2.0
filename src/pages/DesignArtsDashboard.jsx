@@ -68,6 +68,51 @@ import { n, pct, RO, TI } from "../features/faculty-appraisal/shared";
 import { emptyDesignArtsForm, ALL_ARRAY_KEYS, titleCase, calculateDesignArtsTotals, getDesignArtsEffectiveMaxScores, validateDesignArtsBeforeSubmit, mergeForm, preserveSavedReviewScores, designArtsSchoolName, PART_A_SECTIONS, PART_B_SECTIONS, DesignArtsForm, DesignArtsAuthorityReviewPanel, SectionSelector, AccuracyCheckbox, CompactAuthoritySummaryCard, isReviewerReviewComplete, normalizeScoresForSubmit, summaryRow, b8summaryRow, SECTION_OPTIONS, SummaryBox, WorkflowTracker, ACCENT, ACCENT2, PART_A_MAX, PART_B_MAX, GRAND_MAX, userInitials } from "../components/appraisal/designArts/DesignArtsAppraisalForm";
 import { loadClosedAppraisal } from "../services/appraisalPersistence";
 
+function InlineSvgIcon({ paths, size = 16, strokeWidth = 2.2 }) {
+ return (
+   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+     {paths.map((path) => <path key={path} d={path} />)}
+   </svg>
+ );
+}
+
+const SUMMARY_ICONS = {
+ book: ["M4 19.5V5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-1.5Z", "M8 7h6M8 11h8M8 15h5"],
+ flask: ["M9 3h6", "M10 3v6l-4 8a3 3 0 0 0 2.7 4.3h6.6A3 3 0 0 0 18 17l-4-8V3", "M8 16h8"],
+ building: ["M4 21V7a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v14", "M20 21v-9a2 2 0 0 0-2-2h-2", "M8 9h4M8 13h4M8 17h4"],
+ document: ["M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z", "M14 2v6h6", "M8 13h8M8 17h6"],
+ sigma: ["M18 4H7l6 8-6 8h11"],
+ report: ["M6 2h9l5 5v15H6z", "M14 2v6h6", "M9 13h6M9 17h6"],
+ send: ["M22 2 11 13", "M22 2 15 22l-4-9-9-4 20-7Z"],
+ cap: ["M12 3 3 7l9 4 9-4-9-4Z", "M5 10v5c2 2 12 2 14 0v-5", "M12 11v8"],
+};
+
+function ScoreBadge({ score, max, color, tone }) {
+ return (
+   <span style={{ display: "inline-flex", justifyContent: "center", minWidth: 92, borderRadius: 999, padding: "6px 12px", background: tone, color, fontSize: 13, fontWeight: 900, lineHeight: 1, whiteSpace: "nowrap" }}>
+     {score.toFixed(1)}/{max}
+   </span>
+ );
+}
+
+function SummaryRow({ label, score, max, color, tone, iconTone, icon }) {
+ return (
+   <tr className="appraisal-summary-row">
+     <td style={{ padding: 0, border: 0 }}>
+       <div style={{ display: "flex", alignItems: "center", gap: 14, minHeight: 52, padding: "10px 12px" }}>
+         <span style={{ width: 32, height: 32, borderRadius: 9, background: iconTone, color, border: `1px solid ${color}20`, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+           <InlineSvgIcon paths={SUMMARY_ICONS[icon]} size={17} />
+         </span>
+         <span style={{ color: "#1f2937", fontSize: 13, fontWeight: 850, lineHeight: 1.35 }}>{label}</span>
+       </div>
+     </td>
+     <td style={{ width: 150, padding: "10px 12px", border: 0, textAlign: "right", verticalAlign: "middle" }}>
+       <ScoreBadge score={score} max={max} color={color} tone={tone} />
+     </td>
+   </tr>
+ );
+}
+
 export default function DesignArtsDashboard({ fixedRole }) {
  const navigate = useNavigate();
  const role = fixedRole || sessionStorage.getItem("role") || "faculty";
@@ -463,7 +508,7 @@ export default function DesignArtsDashboard({ fixedRole }) {
       )}
     >
       <div style={{ marginBottom: 16, display: "flex", flexDirection: "column", gap: 14 }}>
-        <div style={{ background: "#fff", borderRadius: 14, padding: "18px 24px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 20 }}>
+        <div className="appraisal-page-header" style={{ background: "#fff", borderRadius: 14, padding: "16px 24px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 20, flexWrap: "wrap" }}>
           <div>
             <h2 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: "#111827", letterSpacing: 0, lineHeight: 1.1 }}>{schoolDisplayName} — My Appraisal Form</h2>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6, fontSize: 13, color: "#6b7280", fontWeight: 600, flexWrap: "wrap" }}>
@@ -491,15 +536,15 @@ export default function DesignArtsDashboard({ fixedRole }) {
 
  {activeTab === "my" && canSelfSubmit && (
 <div style={{ display: "grid", gap: 16 }}>
-<div className="appraisal-status-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 344px", gap: 14, alignItems: "stretch" }}>
+<div className="appraisal-status-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 316px", gap: 12, alignItems: "stretch" }}>
   <WorkflowTracker declaration={declaration} reviews={reviews} profile={{ ...profile, school: currentSchoolValue, appraisal_role: role }} />
   <div className="appraisal-progress-card" style={{ background: "#fff", borderRadius: 14, padding: "18px 22px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb", display: "flex", flexDirection: "column", justifyContent: "center", gap: 10 }}>
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
       <div style={{ fontSize: 14, color: "#374151", fontWeight: 800 }}>Overall Progress</div>
-      <div style={{ fontSize: 18, color: "#111827", fontWeight: 900 }}>{Math.round((totals.total / (totals.maxScores?.grand || 700)) * 100)}%</div>
+      <div style={{ fontSize: 22, color: "#111827", fontWeight: 950, lineHeight: 1 }}>{Math.round((totals.total / (totals.maxScores?.grand || 700)) * 100)}%</div>
     </div>
-    <div style={{ height: 10, borderRadius: 999, background: "#e5e7eb", overflow: "hidden" }}>
-      <div style={{ width: `${Math.round((totals.total / (totals.maxScores?.grand || 700)) * 100)}%`, height: "100%", borderRadius: 999, background: "linear-gradient(90deg,#5b5ceb,#7c3aed)", transition: "width 300ms ease" }} />
+    <div style={{ height: 8, borderRadius: 999, background: "#e5e7eb", overflow: "hidden" }}>
+      <div style={{ width: `${Math.round((totals.total / (totals.maxScores?.grand || 700)) * 100)}%`, height: "100%", borderRadius: 999, background: "linear-gradient(90deg,#06b6d4,#10b981)", transition: "width 300ms ease" }} />
     </div>
     <div style={{ fontSize: 14, color: "#6b7280", fontWeight: 600 }}>{totals.total.toFixed(1)} / {totals.maxScores?.grand || 700} Marks</div>
   </div>
@@ -589,22 +634,51 @@ export default function DesignArtsDashboard({ fixedRole }) {
  )}
   {selfSectionView === "summary" && (
 <div style={{ display: "grid", gap: 16 }}>
+<div className="fa-section-card appraisal-section-card" style={{ background: "#fff", borderRadius: 14, boxShadow: "0 18px 50px rgba(17,24,39,0.08)", overflow: "hidden", border: "1px solid #e5e7eb", borderTop: "3px solid #10b981" }}>
+  <div className="appraisal-part-header" style={{ padding: "18px 24px", borderBottom: "1px solid #f3f4f6", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, background: "linear-gradient(180deg,#ffffff 0%,#fbfffd 100%)" }}>
+    <div style={{ minWidth: 0, display: "flex", alignItems: "center", gap: 12 }}>
+      <span style={{ width: 36, height: 36, borderRadius: 12, background: "#10b98114", color: "#10b981", border: "1px solid #10b9812e", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+        <InlineSvgIcon paths={SUMMARY_ICONS.cap} size={19} />
+      </span>
+      <div style={{ fontWeight: 900, fontSize: 18, color: "#10b981", letterSpacing: 0 }}>Appraisal Summary & Submission</div>
+    </div>
+  </div>
+  <div style={{ padding: "24px 28px 28px", display: "grid", gap: 20 }}>
+    <table className="appraisal-summary-table" style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, marginBottom: 0, border: "1px solid #e5e7eb", borderRadius: 12, overflow: "hidden", boxShadow: "0 12px 26px rgba(15,23,42,0.04)" }}>
+      <tbody>
+        <SummaryRow label="Part A - Teaching & Learning" score={totals.partA} max={totals.maxScores?.partA || PART_A_MAX} color="#4f46e5" tone="#eef2ff" iconTone="#eef2ff" icon="book" />
+        <SummaryRow label="Part B - Research & Innovation" score={totals.partB} max={totals.maxScores?.partB || PART_B_MAX} color="#7c3aed" tone="#f3e8ff" iconTone="#f5f3ff" icon="flask" />
+        <SummaryRow label="Part C - Administrative Contribution" score={totals.partC} max={totals.maxScores?.partC || 150} color="#0f766e" tone="#ccfbf1" iconTone="#ccfbf1" icon="building" />
+        <SummaryRow label="Part D - Annual Confidential Report" score={totals.partD} max={totals.maxScores?.partD || 50} color="#c2410c" tone="#ffedd5" iconTone="#ffedd5" icon="document" />
+        <SummaryRow label="Grand Total" score={totals.total} max={totals.maxScores?.grand || GRAND_MAX} color="#e11d48" tone="#ffe4e6" iconTone="#f1f5f9" icon="sigma" />
+      </tbody>
+    </table>
+<SummaryOtherInfoField
+ value={form.summaryOtherInfo}
+ onChange={(value) =>setForm((prev) =>({ ...prev, summaryOtherInfo: value }))}
+ readOnly={locked}
+ rows={5}
+/>
  {locked ?<StatusBadge status={declaration?.status || "Submitted"} />: (
 <>
 <AccuracyCheckbox checked={confirmed} onChange={setConfirmed} />
-<label style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 12, color: "#334155", lineHeight: 1.5, padding: "12px 14px", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 8, cursor: "pointer" }}>
-<input type="checkbox" checked={attachmentsConfirmed} onChange={(e) =>setAttachmentsConfirmed(e.target.checked)} style={{ marginTop: 3 }} />
+<label className={attachmentsConfirmed ? "appraisal-declaration-card is-checked" : "appraisal-declaration-card"} style={{ display: "flex", gap: 14, alignItems: "flex-start", fontSize: 13, color: "#334155", lineHeight: 1.5, padding: "14px 18px", background: attachmentsConfirmed ? "#dcfce7" : "#ecfdf5", border: `1px solid ${attachmentsConfirmed ? "#86efac" : "#bbf7d0"}`, borderRadius: 12, cursor: "pointer", transition: "background 180ms ease, border-color 180ms ease, box-shadow 180ms ease", boxShadow: attachmentsConfirmed ? "0 10px 24px rgba(16,185,129,0.10)" : "none" }}>
+<input type="checkbox" checked={attachmentsConfirmed} onChange={(e) =>setAttachmentsConfirmed(e.target.checked)} style={{ marginTop: 2, width: 18, height: 18, accentColor: "#10b981", flexShrink: 0 }} />
 <span>I confirm that <strong>all required supporting documents and attachments have been uploaded</strong> against the respective entries. I understand that any <strong>missing or false attachment is my sole responsibility</strong> and may result in the rejection or revision of my appraisal.</span>
 </label>
 </>
  )}
-<div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-<button onClick={generateSelfReport} style={smallButton("#4c1d95")}>
+<div className="appraisal-summary-actions" style={{ display: "flex", justifyContent: "center", gap: 14, flexWrap: "wrap" }}>
+<button type="button" onClick={generateSelfReport} className="appraisal-report-button" style={{ minWidth: 172, minHeight: 42, padding: "10px 24px", background: "linear-gradient(180deg,#6d28d9 0%,#4c1d95 100%)", color: "#fff", border: "none", borderRadius: 9, cursor: "pointer", fontWeight: 800, fontSize: 13, fontFamily: "inherit", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 9, boxShadow: "0 10px 20px rgba(76,29,149,0.22)" }}>
+ <InlineSvgIcon paths={SUMMARY_ICONS.report} size={16} />
  Generate Report
 </button>
-<button onClick={handleSubmitAppraisal} disabled={submitting || locked || !confirmed || !attachmentsConfirmed} style={smallButton((locked || !confirmed || !attachmentsConfirmed) ? "#94a3b8" : "#059669")}>
+<button type="button" onClick={handleSubmitAppraisal} disabled={submitting || locked || !confirmed || !attachmentsConfirmed} className="appraisal-submit-button" style={{ minWidth: 172, minHeight: 42, padding: "10px 24px", background: (locked || !confirmed || !attachmentsConfirmed) ? "#64748b" : "linear-gradient(180deg,#334155 0%,#1e293b 100%)", color: "#fff", border: "none", borderRadius: 9, cursor: (locked || !confirmed || !attachmentsConfirmed) ? "not-allowed" : "pointer", fontWeight: 800, fontSize: 13, fontFamily: "inherit", opacity: submitting ? 0.76 : 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 9, boxShadow: (locked || !confirmed || !attachmentsConfirmed) ? "none" : "0 10px 20px rgba(30,41,59,0.18)" }}>
+ {submitting ? <span className="appraisal-button-spinner" aria-hidden="true" /> : <InlineSvgIcon paths={SUMMARY_ICONS.send} size={16} />}
  {locked ? "Submitted & Locked" : submitting ? "Submitting..." : "Submit Appraisal"}
 </button>
+</div>
+  </div>
 </div>
 </div>
       )}

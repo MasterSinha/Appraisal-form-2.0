@@ -1267,8 +1267,8 @@ export function MediaForm({ form, setForm, docs, setDocs, mode = "self", locked 
 
 export function AccuracyCheckbox({ checked, onChange, disabled = false }) {
   return (
-    <label style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 12, color: "#334155", lineHeight: 1.5, padding: "12px 14px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8 }}>
-      <input type="checkbox" checked={checked} disabled={disabled} onChange={(event) => onChange(event.target.checked)} style={{ marginTop: 3 }} />
+    <label style={{ display: "flex", gap: 14, alignItems: "flex-start", fontSize: 13, color: "#334155", lineHeight: 1.5, padding: "14px 18px", background: "#f8fafc", border: "1px solid #dbe3ef", borderRadius: 12, cursor: disabled ? "not-allowed" : "pointer" }}>
+      <input type="checkbox" checked={checked} disabled={disabled} onChange={(event) => onChange(event.target.checked)} style={{ marginTop: 2, width: 18, height: 18, accentColor: "#2563eb", flexShrink: 0 }} />
       <span>{VERIFY_TEXT}</span>
     </label>
   );
