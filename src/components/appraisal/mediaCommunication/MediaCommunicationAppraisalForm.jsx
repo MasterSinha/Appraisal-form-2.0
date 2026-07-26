@@ -63,7 +63,7 @@ import {
 import { canReviewerRejectProfile, getReviewChain, pendingStatusFor, profileFromsessionStorage, reviewedStatusFor, roleLabel, visiblePreviousReviewRoles, workflowValidationError, isAppraisalFinalisedByVc, isRejectedStatus, isPendingReviewStatusFor, hasActiveRejection, reviewListFrom } from "../../../utils/hierarchy";
 import { n, pct, RO, TI } from "../../../features/faculty-appraisal/shared";
 import SectionShell from "./common/SectionShell";
-import { thStyle, tdStyle, tdCenter } from "./common/TableStyles";
+import { tableStyle, thStyle, tdStyle, tdCenter } from "./common/TableStyles";
 
 export const ACCENT = "#b45309";
 export const ACCENT2 = "#0f766e";
@@ -376,7 +376,7 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
 return (
 <SectionShell title="(xi) Annual Confidential Report (ACR) - Max 25 marks" max={section.max} earned={acrTotal} accent="#ef4444" showScoreSummary={false}>
 <div style={{ overflowX: "auto" }}>
-<table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+<table style={tableStyle}>
 <thead>
 <tr>
 <th style={thStyle}>SN</th>
@@ -462,7 +462,7 @@ return (
 <SectionShell title={section.title} max={section.max} earned={earned} accent={section.key === "acr" ? "#ef4444" : section.key === "society" ? "#10b981" : section.doc?.startsWith("j") || section.doc?.startsWith("p") || section.doc?.startsWith("b") || section.doc?.startsWith("i") || section.doc?.startsWith("e") ? ACCENT2 : ACCENT}>
  <>
 <div style={{ overflowX: "auto" }}>
-<table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+<table style={tableStyle}>
 <thead>
 <tr>
 <th style={thStyle}>SN</th>
@@ -621,7 +621,7 @@ function B8SectionTable({ section, form, setForm, docs, setDocs, mode, locked, r
  return (
 <SectionShell title={section.title} max={section.max} earned={scoreSectionRows(section.key, rows, section.max)} accent={ACCENT2} showScoreSummary={false}>
 <div style={{ overflowX: "auto" }}>
-<table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+<table style={tableStyle}>
 <thead>
 <tr>
 <th style={{ ...thStyle, width: 60 }}>SN</th>
@@ -785,7 +785,7 @@ function InnovativeSection({ form, setForm, docs, setDocs, mode, locked, reviewe
 
   return (
     <SectionShell title="A3. Innovative Teaching-Learning Methodologies - Max 10 marks" max={10} earned={facultyScore}>
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+      <table style={tableStyle}>
         <thead>
           <tr>
             <th style={{ ...thStyle, width: 42 }}>SN</th>
@@ -854,7 +854,7 @@ function InnovativeSection({ form, setForm, docs, setDocs, mode, locked, reviewe
 
 function PartCardContainer({ title, subtitle, max, score, accent = "#4f46e5", children }) {
   return (
-    <div className="fa-section-card appraisal-section-card" style={{ background: "#fff", borderRadius: 14, boxShadow: "0 18px 50px rgba(17,24,39,0.08)", marginBottom: 24, overflow: "hidden", border: "1px solid #e5e7eb", borderTop: `3px solid ${accent}` }}>
+    <div className="fa-section-card appraisal-section-card" style={{ background: "#fff", borderRadius: 8, boxShadow: "0 18px 50px rgba(17,24,39,0.08)", marginBottom: 24, overflow: "hidden", border: "1px solid #e5e7eb", borderTop: `3px solid ${accent}` }}>
       <div className="appraisal-part-header" style={{ padding: "18px 24px", borderBottom: "1px solid #f3f4f6", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, background: "linear-gradient(180deg,#ffffff 0%,#fbfbff 100%)" }}>
         <div style={{ minWidth: 0, display: "flex", alignItems: "center", gap: 12 }}>
           <span className="appraisal-part-icon" style={{ width: 36, height: 36, borderRadius: 10, background: `${accent}14`, color: accent, border: `1px solid ${accent}2e`, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -948,7 +948,7 @@ function ObeSection({ form, setForm, docs, setDocs, mode, locked, reviewerRole, 
       <div style={{ fontSize: 11, fontStyle: "italic", color: "#475569", marginBottom: 8 }}>
         CO-PO mapping — 5 marks; attainment computation — 10 marks; corrective action taken — 5 marks.
       </div>
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+      <table style={tableStyle}>
         <thead>
           <tr>
             <th style={{ ...thStyle, width: 42 }}>SN</th>
@@ -1073,7 +1073,7 @@ function MentoringSection({ form, setForm, docs, setDocs, mode, locked, reviewer
       <div style={{ fontSize: 11, fontStyle: "italic", color: "#475569", marginBottom: 8 }}>
         Regular mentoring meetings (min. 2/semester) — 4 marks; mentoring register maintained — 3 marks; documented counselling outcomes — 3 marks.
       </div>
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+      <table style={tableStyle}>
         <thead>
           <tr>
             <th style={{ ...thStyle, width: 42 }}>SN</th>
@@ -1205,7 +1205,7 @@ export function PartDRubricInfoCard() {
   return (
     <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: 14, marginTop: 10 }}>
       <h4 style={{ margin: "0 0 10px", fontSize: 13, color: "#0f172a" }}>Suggested Rubric Scale for Part D Evaluation</h4>
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+      <table style={tableStyle}>
         <thead>
           <tr style={{ background: "#f1f5f9", color: "#334155" }}>
             <th style={{ border: "1px solid #cbd5e1", padding: "6px 8px", textAlign: "center", width: 60 }}>Rating</th>
@@ -1267,8 +1267,8 @@ export function MediaForm({ form, setForm, docs, setDocs, mode = "self", locked 
 
 export function AccuracyCheckbox({ checked, onChange, disabled = false }) {
   return (
-    <label style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 12, color: "#334155", lineHeight: 1.5, padding: "12px 14px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8 }}>
-      <input type="checkbox" checked={checked} disabled={disabled} onChange={(event) => onChange(event.target.checked)} style={{ marginTop: 3 }} />
+    <label style={{ display: "flex", gap: 14, alignItems: "flex-start", fontSize: 13, color: "#334155", lineHeight: 1.5, padding: "14px 18px", background: "#f8fafc", border: "1px solid #dbe3ef", borderRadius: 12, cursor: disabled ? "not-allowed" : "pointer" }}>
+      <input type="checkbox" checked={checked} disabled={disabled} onChange={(event) => onChange(event.target.checked)} style={{ marginTop: 2, width: 18, height: 18, accentColor: "#2563eb", flexShrink: 0 }} />
       <span>{VERIFY_TEXT}</span>
     </label>
   );
