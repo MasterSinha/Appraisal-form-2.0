@@ -85,10 +85,13 @@ export function downloadDocumentFile(file) {
   document.body.removeChild(a);
 }
 
-function PaperclipIcon() {
+function DocumentIcon() {
   return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="m21.4 11.6-8.5 8.5a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5" />
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7Z" />
+      <path d="M14 2v5h5" />
+      <path d="M9 13h6" />
+      <path d="M9 17h4" />
     </svg>
   );
 }
@@ -405,11 +408,18 @@ export function SectionInfoButton({ titleText, customGuideline }) {
   if (!data) return null;
 
   return (
-    <div style={{ display: "inline-flex", position: "relative", marginLeft: 8, verticalAlign: "middle" }}>
+    <div
+      style={{ display: "inline-flex", position: "relative", marginLeft: 8, verticalAlign: "middle" }}
+      onMouseEnter={() => setIsOpen(true)}
+      onMouseLeave={() => setIsOpen(false)}
+      onFocus={() => setIsOpen(true)}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) setIsOpen(false);
+      }}
+    >
       <button
         type="button"
-        onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}
-        title="Click to view instructions & guidelines for filling this table"
+        onClick={(e) => e.stopPropagation()}
         aria-label="Guidelines info"
         style={{
           width: 22,
@@ -637,17 +647,15 @@ export function DocCell({ id, docs, setDocs, readOnly = false }) {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 110 }}>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, width: "100%", minWidth: 0 }}>
       {files.map((file, idx) => (
-        <div key={idx} style={{ display: "flex", alignItems: "center", gap: 6, background: "#ecfdf5", border: "1px solid #bbf7d0", borderRadius: 999, padding: "5px 8px" }}>
-          <span aria-hidden="true" style={{ color: "#22c55e", fontSize: 10, fontWeight: 900 }}>OK</span>
-          <span style={{ fontSize: 11, color: "#14532d", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 700 }} title={file.name}>{file.name}</span>
-          {!readOnly && <button type="button" onClick={() => removeFile(idx)} style={{ background: "none", border: "none", color: "#dc2626", fontSize: 11, cursor: "pointer", fontWeight: 800 }}>Remove</button>}
+        <div key={idx} style={{ display: "grid", gridTemplateColumns: readOnly ? "1fr" : "minmax(0, 1fr) 18px", alignItems: "center", gap: 4, width: "100%", maxWidth: 88, background: "#ecfdf5", border: "1px solid #bbf7d0", borderRadius: 999, padding: "4px 6px" }}>
+          <span style={{ minWidth: 0, fontSize: 10, color: "#14532d", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 800 }}>{file.name}</span>
+          {!readOnly && <button type="button" aria-label={`Remove ${file.name || "attachment"}`} onClick={() => removeFile(idx)} style={{ width: 18, height: 18, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#fff", border: "1px solid #fecaca", borderRadius: "50%", color: "#dc2626", fontSize: 12, lineHeight: 1, cursor: "pointer", fontWeight: 900, padding: 0 }}>×</button>}
         </div>
       ))}
-      <div role="button" tabIndex={readOnly ? -1 : 0} aria-label="Attach supporting document" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, cursor: uploading || readOnly ? "not-allowed" : "pointer", minHeight: 40, padding: "8px 12px", border: "1px dashed #d1d5db", borderRadius: 10, background: "#fff", opacity: uploading || readOnly ? 0.7 : 1, color: "#4b5563", fontWeight: 800 }} onClick={() => !uploading && !readOnly && ref.current?.click()} onKeyDown={(event) => { if ((event.key === "Enter" || event.key === " ") && !uploading && !readOnly) ref.current?.click(); }}>
-        <PaperclipIcon />
-        <span style={{ fontSize: 13 }}>{uploading ? "Uploading..." : "Attach"}</span>
+      <div role="button" tabIndex={readOnly ? -1 : 0} aria-label="Attach supporting document" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: uploading || readOnly ? "not-allowed" : "pointer", width: 38, height: 38, padding: 0, border: "1px dashed #d1d5db", borderRadius: 10, background: "#fff", opacity: uploading || readOnly ? 0.7 : 1, color: "#4b5563", fontWeight: 800, boxShadow: "0 1px 2px rgba(17,24,39,0.04)" }} onClick={() => !uploading && !readOnly && ref.current?.click()} onKeyDown={(event) => { if ((event.key === "Enter" || event.key === " ") && !uploading && !readOnly) ref.current?.click(); }}>
+        <DocumentIcon />
         <input ref={ref} type="file" multiple style={{ display: "none" }} disabled={uploading || readOnly} onChange={(event) => handleFiles(event.target.files)} />
       </div>
       {uploadError && <span role="alert" style={{ color: "#dc2626", fontSize: 11, fontWeight: 700 }}>{uploadError}</span>}
@@ -679,7 +687,6 @@ export function ViewDocsCell({ docKey, docs, emptyText = "No docs", compact = fa
             }}
             aria-label={`View ${file.name || "document"}`}
             style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, color: "#4338ca", fontSize: compact ? 0 : 12, textDecoration: "none", background: "#eef2ff", border: "1px solid #c7d2fe", borderRadius: compact ? "50%" : 999, padding: compact ? 0 : "7px 10px", width: compact ? 34 : "auto", height: compact ? 34 : "auto", whiteSpace: "nowrap", fontWeight: 800, cursor: "pointer" }}
-            title={`View ${file.name || "document"}`}
           >
             {file.type?.startsWith("image/") && file.url && <img src={file.url} alt="" style={{ width: 22, height: 22, objectFit: "cover", borderRadius: 3 }} />}
             <EyeIcon />
@@ -693,7 +700,6 @@ export function ViewDocsCell({ docKey, docs, emptyText = "No docs", compact = fa
             }}
             aria-label={`Download ${file.name || "document"}`}
             style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, color: "#047857", fontSize: compact ? 0 : 12, textDecoration: "none", background: "#ecfdf5", border: "1px solid #a7f3d0", borderRadius: compact ? "50%" : 999, padding: compact ? 0 : "7px 10px", width: compact ? 34 : "auto", height: compact ? 34 : "auto", whiteSpace: "nowrap", fontWeight: 800, cursor: "pointer" }}
-            title={`Download ${file.name || "document"}`}
           >
             <DownloadIcon />
             {!compact && <>Download</>}

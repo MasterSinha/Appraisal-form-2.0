@@ -204,6 +204,51 @@ function SubsectionTitle({ icon, children }) {
   );
 }
 
+function InlineSvgIcon({ paths, size = 16, strokeWidth = 2.2 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {paths.map((path) => <path key={path} d={path} />)}
+    </svg>
+  );
+}
+
+const SUMMARY_ICONS = {
+  book: ["M4 19.5V5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-1.5Z", "M8 7h6M8 11h8M8 15h5"],
+  flask: ["M9 3h6", "M10 3v6l-4 8a3 3 0 0 0 2.7 4.3h6.6A3 3 0 0 0 18 17l-4-8V3", "M8 16h8"],
+  building: ["M4 21V7a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v14", "M20 21v-9a2 2 0 0 0-2-2h-2", "M8 9h4M8 13h4M8 17h4"],
+  document: ["M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z", "M14 2v6h6", "M8 13h8M8 17h6"],
+  sigma: ["M18 4H7l6 8-6 8h11"],
+  report: ["M6 2h9l5 5v15H6z", "M14 2v6h6", "M9 13h6M9 17h6"],
+  send: ["M22 2 11 13", "M22 2 15 22l-4-9-9-4 20-7Z"],
+  user: ["M20 21a8 8 0 0 0-16 0", "M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"],
+};
+
+function ScoreBadge({ score, max, color, tone = "#eef2ff" }) {
+  return (
+    <span style={{ display: "inline-flex", justifyContent: "center", minWidth: 92, borderRadius: 999, padding: "6px 12px", background: tone, color, fontSize: 13, fontWeight: 900, lineHeight: 1, whiteSpace: "nowrap" }}>
+      {score.toFixed(1)}/{max}
+    </span>
+  );
+}
+
+function SummaryRow({ label, score, max, color, tone, iconTone, icon }) {
+  return (
+    <tr className="appraisal-summary-row">
+      <td style={{ padding: 0, border: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 14, minHeight: 52, padding: "10px 12px" }}>
+          <span style={{ width: 32, height: 32, borderRadius: 9, background: iconTone, color, border: `1px solid ${color}20`, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <InlineSvgIcon paths={SUMMARY_ICONS[icon]} size={17} />
+          </span>
+          <span style={{ color: "#1f2937", fontSize: 13, fontWeight: 850, lineHeight: 1.35 }}>{label}</span>
+        </div>
+      </td>
+      <td style={{ width: 150, padding: "10px 12px", border: 0, textAlign: "right", verticalAlign: "middle" }}>
+        <ScoreBadge score={score} max={max} color={color} tone={tone} />
+      </td>
+    </tr>
+  );
+}
+
 const partDParameters = [
   { parameter: "Self-motivation & Proactiveness", description: "List of activities/initiatives other than regular load/duties.", max: 10 },
   { parameter: "Knowledge & Competence", description: "Domain/technical expertise relevant to role, Understanding of policies, procedures, and compliance requirements", max: 10 },
@@ -539,6 +584,7 @@ export default function StandardMyAppraisal({
   const overallProgress = pct(grandTotal, effectiveGrandMax);
   const [submitting, setSubmitting] = useState(false);
   const [declarationConfirmed, setDeclarationConfirmed] = useState(false);
+  const [attachmentsConfirmed, setAttachmentsConfirmed] = useState(false);
 
   const validateSelfAppraisalRows = () => {
     const sections = [
@@ -681,6 +727,10 @@ export default function StandardMyAppraisal({
       alert("Please tick the declaration checkbox before submitting.");
       return;
     }
+    if (!attachmentsConfirmed) {
+      alert("Please confirm that all required supporting documents and attachments have been uploaded.");
+      return;
+    }
     if (!validateSelfAppraisalRows()) return;
 
     // 1. Basic Validation
@@ -757,22 +807,36 @@ export default function StandardMyAppraisal({
     <title>Faculty Appraisal</title>
 
     <style>
-      @page { size: A4; margin: 15mm; }
-      body { font-family: "Times New Roman", serif; font-size: 11px; color: #000; }
-      h1 { text-align: center; font-size: 15px; margin: 4px 0; }
-      h2 { text-align: center; font-size: 13px; margin: 3px 0; }
-      h3 { font-size: 12px; margin: 10px 0 4px; }
-      table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-      th, td { border: 1px solid #000; padding: 4px 6px; word-wrap: break-word; vertical-align: top; }
-      th { background: #d9d9d9; text-align: center; font-weight: bold; }
+      @page { size: A4; margin: 12mm; }
+      * { box-sizing: border-box; }
+      body { font-family: "Times New Roman", Times, serif; font-size: 10.8px; line-height: 1.34; color: #111; background: #fff; margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      h1 { text-align: center; font-size: 14px; line-height: 1.18; letter-spacing: .45px; margin: 0 0 4px; text-transform: uppercase; color: #111; font-weight: 700; }
+      h2 { text-align: center; font-size: 11px; line-height: 1.25; margin: 2px 0; color: #111; font-weight: 700; }
+      h3 { font-size: 11px; line-height: 1.25; margin: 10px 0 5px; color: #111; break-after: avoid; font-weight: 700; }
+      h3[style*="background"] { background: #f1f3f5 !important; border: none !important; border-top: 1.6px solid #111 !important; border-bottom: 1.2px solid #111 !important; border-radius: 0 !important; padding: 6px 0 !important; margin: 14px 0 8px !important; color: #111 !important; text-align: center !important; text-transform: uppercase; letter-spacing: .25px; }
+      table { width: 100%; border-collapse: collapse !important; margin-bottom: 10px; table-layout: fixed; border: 1.15px solid #6b7280 !important; background: #fff; page-break-inside: auto; }
+      thead { display: table-header-group; }
+      tfoot { display: table-footer-group; }
+      tr { page-break-inside: avoid; page-break-after: auto; }
+      th, td { border: 1px solid #aeb6c2 !important; padding: 4.8px 6px; word-wrap: break-word; overflow-wrap: anywhere; vertical-align: top; }
+      th { background: #eef0f3 !important; text-align: center; font-weight: bold; color: #111; }
+      td[style*="background:#d9d9d9"] { background: #eef0f3 !important; color: #111 !important; text-transform: uppercase; letter-spacing: .2px; }
+      tr[style*="background:#bfbfbf"] td { background: #d9dde3 !important; color: #111 !important; }
       .c { text-align: center; }
       .b { font-weight: bold; }
       .pb { page-break-before: always; }
-      .tr { background: #f2f2f2; font-weight: bold; }
-      .ht { width: 100%; border: none; margin-bottom: 6px; }
-      .ht td { border: none; padding: 2px; }
-      .logo { width: 22mm; height: auto; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      .st th { background: #bfbfbf; }
+      .tr { background: #f6f7f9 !important; font-weight: bold; }
+      .ht { width: 100%; border: none !important; border-bottom: 2px solid #111 !important; margin-bottom: 9px; padding-bottom: 5px; background: transparent; }
+      .ht td { border: none !important; padding: 0 4px; vertical-align: middle; }
+      .logo { width: 17mm; max-height: 22mm; object-fit: contain; height: auto; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .ht + table { border-color: #6b7280 !important; margin-bottom: 11px; }
+      .ht + table td:first-child { background: #f6f7f9 !important; font-weight: 700; width: 35%; }
+      .st { border: 1.35px solid #4b5563 !important; }
+      .st th { background: #dfe3e8 !important; color: #111; }
+      .st .tr, .st tr[style*="background:#bfbfbf"] { background: #dfe3e8 !important; font-weight: bold; }
+      .remarks { white-space: pre-wrap; border: 1px solid #6b7280 !important; padding: 8px; min-height: 34px; margin-bottom: 10px; background: #fff; }
+      .declaration-table { border: none !important; margin-bottom: 14px !important; }
+      .declaration-table td { border: none !important; background: #fff !important; }
     </style>
   </head>
 
@@ -1042,14 +1106,14 @@ export default function StandardMyAppraisal({
 
     ${String(summaryOtherInfo ?? "").trim() ? `
     <h3>Any other information not covered above</h3>
-    <div style="white-space:pre-wrap;border:1px solid #000;padding:8px;min-height:40px;margin-bottom:10px">${reportTextValue(summaryOtherInfo)}</div>
+    <div class="remarks">${reportTextValue(summaryOtherInfo)}</div>
     ` : ""}
 
-    <h3 style="text-align:center;font-size:14px;background:#d9d9d9;padding:6px;margin:16px 0 10px">DECLARATION BY FACULTY</h3>
-    <table style="border:none;margin-bottom:14px">
+    <h3 style="text-align:center;font-size:16px;background:#d9d9d9;padding:8px;margin:18px 0 10px">DECLARATION BY FACULTY</h3>
+    <table class="declaration-table" style="border:none;margin-bottom:14px">
       <tr>
-        <td style="border:none;vertical-align:top;width:32px;font-size:18px">&#10003;</td>
-        <td style="border:none;line-height:1.7;font-size:11px">
+        <td style="border:none;vertical-align:top;width:36px;font-size:22px">&#10003;</td>
+        <td style="border:none;line-height:1.75;font-size:13px">
           I, <strong>${info.name || "________________________"}</strong>, hereby declare that all the information
           furnished in this Self-Appraisal Report is true, complete, and correct to the best of my knowledge and belief.
           I understand that in the event of any information being found false or incorrect, I shall be solely responsible
@@ -1057,9 +1121,9 @@ export default function StandardMyAppraisal({
         </td>
       </tr>
     </table>
-    <table style="border:none;margin-bottom:20px">
+    <table class="declaration-table" style="border:none;margin-bottom:20px">
       <tr>
-        <td style="border:none;width:50%">
+        <td style="border:none;width:50%;font-size:12px;line-height:1.45">
           <div style="border-bottom:1px solid #000;min-height:36px;margin-bottom:4px">&nbsp;</div>
           <div><strong>Signature of Faculty</strong></div>
           <div style="margin-top:6px"><strong>Name:</strong> ${info.name || "&nbsp;"}</div>
@@ -1083,7 +1147,21 @@ export default function StandardMyAppraisal({
       </tbody>
     </table>` : ""}
 
-  <script>window.addEventListener('load', function(){ window.focus(); window.print(); });</script>
+  <script>
+    window.addEventListener('load', function(){
+      const images = Array.from(document.images || []);
+      Promise.all(images.map(function(img){
+        if (img.complete) return Promise.resolve();
+        return new Promise(function(resolve){
+          img.onload = resolve;
+          img.onerror = resolve;
+          setTimeout(resolve, 800);
+        });
+      })).then(function(){
+        setTimeout(function(){ window.focus(); window.print(); }, 120);
+      });
+    });
+  </script>
   </body>
   </html>`;
 
@@ -1160,17 +1238,23 @@ export default function StandardMyAppraisal({
       </div>
       )}
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div className="appraisal-page-header" style={{ background: "#fff", borderRadius: 14, padding: "18px 28px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 20 }}>
-              <div>
-                <h2 style={{ margin: 0, fontSize: 30, fontWeight: 800, color: "#111827", letterSpacing: 0, lineHeight: 1.1 }}>My Appraisal Form</h2>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6, fontSize: 14, color: "#6b7280", fontWeight: 600, flexWrap: "wrap" }}>
-                  <span>{info.name || titleNameFallback}</span>
-                  <span>{subtitleSeparator}</span>
+            <div className="appraisal-page-header" style={{ background: "#fff", borderRadius: 14, padding: "16px 24px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 18, flexWrap: "wrap" }}>
+              <div style={{ minWidth: 260 }}>
+                <h2 style={{ margin: 0, fontSize: 26, fontWeight: 900, color: "#111827", letterSpacing: 0, lineHeight: 1.05 }}>My Appraisal Form</h2>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 10, fontSize: 13, color: "#6b7280", fontWeight: 700, flexWrap: "wrap" }}>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 8, color: "#111827", fontWeight: 800 }}>
+                    <span style={{ width: 24, height: 24, borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#ede9fe", color: "#6d28d9", border: "1px solid #ddd6fe" }}>
+                      <InlineSvgIcon paths={SUMMARY_ICONS.user} size={14} />
+                    </span>
+                    <span>{info.name || titleNameFallback}</span>
+                  </span>
+                  <span aria-hidden="true" style={{ width: 1, height: 20, background: "#cbd5e1", display: "inline-block" }} />
                   <span>Academic Year:</span>
                   <select
                     value={info.ay}
                     onChange={(event) => handleAcademicYearChange(event.target.value)}
-                    style={{ height: 32, border: "1px solid #d1d5db", borderRadius: 8, padding: "0 10px", fontSize: 13, fontFamily: "inherit", color: "#374151", background: "#fff", outline: "none", fontWeight: 700 }}
+                    className="appraisal-year-select"
+                    style={{ height: 36, minWidth: 176, border: "1px solid #d1d5db", borderRadius: 9, padding: "0 12px", fontSize: 13, fontFamily: "inherit", color: "#111827", background: "#fff", outline: "none", fontWeight: 800, boxShadow: "0 1px 2px rgba(15,23,42,0.04)" }}
                   >
                     {academicYearOptions.map((cycle) => (
                       <option key={cycle.academic_year} value={cycle.academic_year}>
@@ -1180,9 +1264,9 @@ export default function StandardMyAppraisal({
                   </select>
                 </div>
               </div>
-              <AppraisalHeaderImage height={58} />
+              <AppraisalHeaderImage height={54} />
             </div>
-            <div className="appraisal-status-grid" style={{ display: "grid", gridTemplateColumns: isSelectedCycleClosed ? "1fr" : "minmax(0, 1fr) 344px", gap: 14, alignItems: "stretch" }}>
+            <div className="appraisal-status-grid" style={{ display: "grid", gridTemplateColumns: isSelectedCycleClosed ? "1fr" : "minmax(0, 1fr) 316px", gap: 12, alignItems: "stretch" }}>
               <WorkflowStatusTracker
                 declaration={workflowDeclaration}
                 reviews={workflowReviews}
@@ -1192,10 +1276,10 @@ export default function StandardMyAppraisal({
                 <div className="appraisal-progress-card" style={{ background: "#fff", borderRadius: 14, padding: "18px 22px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb", display: "flex", flexDirection: "column", justifyContent: "center", gap: 10 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
                     <div style={{ fontSize: 14, color: "#374151", fontWeight: 800 }}>Overall Progress</div>
-                    <div style={{ fontSize: 18, color: "#111827", fontWeight: 900 }}>{overallProgress}%</div>
+                    <div style={{ fontSize: 22, color: "#111827", fontWeight: 950, lineHeight: 1 }}>{overallProgress}%</div>
                   </div>
-                  <div aria-label={`Overall progress ${overallProgress}%`} style={{ height: 10, borderRadius: 999, background: "#e5e7eb", overflow: "hidden" }}>
-                    <div style={{ width: `${overallProgress}%`, height: "100%", borderRadius: 999, background: "linear-gradient(90deg,#5b5ceb,#7c3aed)", transition: "width 300ms ease" }} />
+                  <div aria-label={`Overall progress ${overallProgress}%`} style={{ height: 8, borderRadius: 999, background: "#e5e7eb", overflow: "hidden" }}>
+                    <div style={{ width: `${overallProgress}%`, height: "100%", borderRadius: 999, background: "linear-gradient(90deg,#06b6d4,#10b981)", transition: "width 300ms ease" }} />
                   </div>
                   <div style={{ fontSize: 14, color: "#6b7280", fontWeight: 600 }}>{grandTotal.toFixed(1)} / {effectiveGrandMax} Marks</div>
                 </div>
@@ -2427,22 +2511,13 @@ export default function StandardMyAppraisal({
                 {/* Summary Tab */}
                 {hodAppraisalTab === "summary" && (
                   <SC title="Appraisal Summary & Submission" accent="#10b981">
-                    <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 14 }}>
+                    <table className="appraisal-summary-table" style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, marginBottom: 0, border: "1px solid #e5e7eb", borderRadius: 12, overflow: "hidden", boxShadow: "0 12px 26px rgba(15,23,42,0.04)" }}>
                       <tbody>
-                        {[
-                          ["Part A - Teaching & Learning", partATotal, effectivePartAMax, "#6366f1"],
-                          ["Part B - Research & Innovation", partBTotal, effectivePartBMax, "#7c3aed"],
-                          ["Part C - Administrative Contribution", partCTotal, PART_C_MAX, "#0f766e"],
-                          ["Part D - Annual Confidential Report", partDTotal, PART_D_MAX, "#b45309"],
-                          ["Grand Total", grandTotal, effectiveGrandMax, g.color],
-                        ].map(([label, score, max, color]) => (
-                          <tr key={label}>
-                            <td style={{ padding: "10px", background: "#f8fafc", fontWeight: 600, border: "1px solid #e2e8f0", width: "50%" }}>{label}</td>
-                            <td style={{ padding: "10px", textAlign: "center", border: "1px solid #e2e8f0", color, fontWeight: 700, fontSize: 14 }}>
-                              {score.toFixed(1)}/{max}
-                            </td>
-                          </tr>
-                        ))}
+                        <SummaryRow label="Part A - Teaching & Learning" score={partATotal} max={effectivePartAMax} color="#4f46e5" tone="#eef2ff" iconTone="#eef2ff" icon="book" />
+                        <SummaryRow label="Part B - Research & Innovation" score={partBTotal} max={effectivePartBMax} color="#7c3aed" tone="#f3e8ff" iconTone="#f5f3ff" icon="flask" />
+                        <SummaryRow label="Part C - Administrative Contribution" score={partCTotal} max={PART_C_MAX} color="#0f766e" tone="#ccfbf1" iconTone="#ccfbf1" icon="building" />
+                        <SummaryRow label="Part D - Annual Confidential Report" score={partDTotal} max={PART_D_MAX} color="#c2410c" tone="#ffedd5" iconTone="#ffedd5" icon="document" />
+                        <SummaryRow label="Grand Total" score={grandTotal} max={effectiveGrandMax} color={g.color} tone="#ffe4e6" iconTone="#f1f5f9" icon="sigma" />
                       </tbody>
                     </table>
 
@@ -2450,31 +2525,49 @@ export default function StandardMyAppraisal({
                       value={summaryOtherInfo}
                       onChange={setSummaryOtherInfo}
                       readOnly={appraisalLocked}
+                      rows={5}
                     />
 
-                    <label style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 14px", background: "#ddf9d1", border: "1px solid #344d34", borderRadius: 8, marginBottom: 14, color: "#334155", fontSize: 12, lineHeight: 1.5, cursor: appraisalLocked ? "not-allowed" : "pointer" }}>
+                    <label className={declarationConfirmed ? "appraisal-declaration-card is-checked" : "appraisal-declaration-card"} style={{ display: "flex", alignItems: "flex-start", gap: 14, padding: "14px 18px", background: "#f8fafc", border: "1px solid #dbe3ef", borderRadius: 12, marginBottom: 0, color: "#334155", fontSize: 13, lineHeight: 1.5, cursor: appraisalLocked ? "not-allowed" : "pointer", transition: "background 180ms ease, border-color 180ms ease, box-shadow 180ms ease" }}>
                       <input
                         type="checkbox"
                         checked={declarationConfirmed}
                         onChange={(e) => setDeclarationConfirmed(e.target.checked)}
                         disabled={submitting || appraisalLocked}
-                        style={{ marginTop: 3 }}
+                        style={{ marginTop: 2, width: 18, height: 18, accentColor: "#2563eb", flexShrink: 0 }}
                       />
                       <span>I hereby declare that the information furnished above is true and correct to the best of my knowledge and belief, and is supported by documentary evidence enclosed with this form. I understand that any false claim, if detected at any stage, may render this appraisal liable to cancellation and may attract disciplinary action as per university policy.</span>
                     </label>
 
-                    <div style={{ display: "flex", justifyContent: "center", gap: 12 }}>
+                    <label className={attachmentsConfirmed ? "appraisal-declaration-card is-checked" : "appraisal-declaration-card"} style={{ display: "flex", alignItems: "flex-start", gap: 14, padding: "14px 18px", background: attachmentsConfirmed ? "#dcfce7" : "#ecfdf5", border: `1px solid ${attachmentsConfirmed ? "#86efac" : "#bbf7d0"}`, borderRadius: 12, marginBottom: 0, color: "#334155", fontSize: 13, lineHeight: 1.5, cursor: appraisalLocked ? "not-allowed" : "pointer", transition: "background 180ms ease, border-color 180ms ease, box-shadow 180ms ease", boxShadow: attachmentsConfirmed ? "0 10px 24px rgba(16,185,129,0.10)" : "none" }}>
+                      <input
+                        type="checkbox"
+                        checked={attachmentsConfirmed}
+                        onChange={(e) => setAttachmentsConfirmed(e.target.checked)}
+                        disabled={submitting || appraisalLocked}
+                        style={{ marginTop: 2, width: 18, height: 18, accentColor: "#10b981", flexShrink: 0 }}
+                      />
+                      <span>I confirm that <strong>all required supporting documents and attachments have been uploaded</strong> against the respective entries. I understand that any <strong>missing or false attachment is my sole responsibility</strong> and may result in the rejection or revision of my appraisal.</span>
+                    </label>
+
+                    <div className="appraisal-summary-actions" style={{ display: "flex", justifyContent: "center", gap: 14, flexWrap: "wrap" }}>
                       <button
+                        type="button"
                         onClick={generateReport}
-                        style={{ padding: "10px 28px", background: "#4c1d95", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 700, fontSize: 13, fontFamily: "inherit" }}
+                        className="appraisal-report-button"
+                        style={{ minWidth: 172, minHeight: 42, padding: "10px 24px", background: "linear-gradient(180deg,#6d28d9 0%,#4c1d95 100%)", color: "#fff", border: "none", borderRadius: 9, cursor: "pointer", fontWeight: 800, fontSize: 13, fontFamily: "inherit", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 9, boxShadow: "0 10px 20px rgba(76,29,149,0.22)" }}
                       >
+                        <InlineSvgIcon paths={SUMMARY_ICONS.report} size={16} />
                         Generate Report
                       </button>
                       <button
+                        type="button"
                         onClick={handleSubmitAppraisal}
-                        disabled={submitting || appraisalLocked || !declarationConfirmed}
-                        style={{ padding: "10px 28px", background: (appraisalLocked || !declarationConfirmed) ? "#64748b" : "#059669", color: "#fff", border: "none", borderRadius: 7, cursor: (appraisalLocked || !declarationConfirmed) ? "not-allowed" : "pointer", fontWeight: 700, fontSize: 13, fontFamily: "inherit", opacity: submitting ? 0.7 : 1 }}
+                        disabled={submitting || appraisalLocked || !declarationConfirmed || !attachmentsConfirmed}
+                        className="appraisal-submit-button"
+                        style={{ minWidth: 172, minHeight: 42, padding: "10px 24px", background: (appraisalLocked || !declarationConfirmed || !attachmentsConfirmed) ? "#64748b" : "linear-gradient(180deg,#334155 0%,#1e293b 100%)", color: "#fff", border: "none", borderRadius: 9, cursor: (appraisalLocked || !declarationConfirmed || !attachmentsConfirmed) ? "not-allowed" : "pointer", fontWeight: 800, fontSize: 13, fontFamily: "inherit", opacity: submitting ? 0.76 : 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 9, boxShadow: (appraisalLocked || !declarationConfirmed || !attachmentsConfirmed) ? "none" : "0 10px 20px rgba(30,41,59,0.18)" }}
                       >
+                        {submitting ? <span className="appraisal-button-spinner" aria-hidden="true" /> : <InlineSvgIcon paths={SUMMARY_ICONS.send} size={16} />}
                         {appraisalLocked ? "Submitted & Locked" : submitting ? "Submitting..." : "Submit Appraisal"}
                       </button>
                     </div>
