@@ -130,8 +130,7 @@ export const SECTION_GUIDELINES = {
   A2: {
     title: "A2. Course File & Curriculum Documentation (Max 20)",
     rules: [
-      "As per IQAC-approved index.",
-      "Score = 20 for 100% completion (Yes with proof).",
+      "As per IQAC-approved index. Score = 20 for 100% completion, scaled down per slab (90%→18, 80%→16, 70%→14, 60%→12, below 60%→0).",
       "Upload authentic IQAC index compliance document in Attachment column."
     ]
   },
