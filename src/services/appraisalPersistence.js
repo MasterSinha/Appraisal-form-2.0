@@ -47,6 +47,7 @@ acr: "setAcr",
  products: "setProducts",
  fdps: "setFdps",
  training: "setTraining",
+ exhibitions: "setExhibitions",
  summaryOtherInfo: "setSummaryOtherInfo",
  sectionSaveStatus: "setSectionSaveStatus",
 };
@@ -199,6 +200,7 @@ const resetSnapshotSetters = (academicYear, setters) =>{
  setters.setProducts?.([{ details: "", usage: "", score: "", hod: "", director: "" }]);
  setters.setFdps?.([{ program: "", duration: "", org: "", score: "", hod: "", director: "" }]);
  setters.setTraining?.([{ company: "", duration: "", nature: "", score: "", hod: "", director: "" }]);
+ setters.setExhibitions?.([{ title: "", type: "", venueLevel: "", date: "", score: "", hod: "", director: "" }]);
  setters.setDocs?.({});
  setters.setSummaryOtherInfo?.("");
  setters.setSectionSaveStatus?.({ partA: false, partB: false, partC: false, partD: false });

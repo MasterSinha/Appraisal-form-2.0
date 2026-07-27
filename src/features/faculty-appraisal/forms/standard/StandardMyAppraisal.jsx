@@ -414,6 +414,11 @@ export default function StandardMyAppraisal({
   ]);
   const setTrain = (i, k, v) => setTraining((p) => p.map((r, j) => j === i ? { ...r, [k]: v } : r));
 
+  const [exhibitions, setExhibitions] = useState([
+    { title: "", type: "", venueLevel: "", date: "", score: "", hod: "", director: "" },
+  ]);
+  const setExh = (i, k, v) => setExhibitions((p) => p.map((r, j) => j === i ? { ...r, [k]: v } : r));
+
   const [docs, setDocs] = useState({});
   const [appraisalLocked, setAppraisalLocked] = useState(false);
   const [sectionSaveStatus, setSectionSaveStatus] = useState({ partA: false, partB: false, partC: false, partD: false });
@@ -429,7 +434,7 @@ export default function StandardMyAppraisal({
     setProjects, setObeRows, setMentoringRows, setQuals, setFeedback, setDeptActs, setUniActs,
     setEventRows, setSociety, setIndustry, setAlumniRows, setPlacementRows, setAcr, setJournals, setBooks, setIct,
     setResearch, setProjects2, setExternalProjects, setPatents, setAwards,
-    setConfs, setProposals, setProducts, setFdps, setTraining, setDocs,
+    setConfs, setProposals, setProducts, setFdps, setTraining, setExhibitions, setDocs,
     setSummaryOtherInfo, setSectionSaveStatus,
   };
 
