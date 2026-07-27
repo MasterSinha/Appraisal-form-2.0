@@ -77,9 +77,27 @@ export const GRAND_MAX = 700;
 
 export const titleCase = (value) => String(value || "").charAt(0).toUpperCase() + String(value || "").slice(1);
 
-export const designArtsSchoolName = (schoolValue = "") => {
-  const schoolObj = getSchoolByValue(schoolValue);
-  return schoolObj ? schoolObj.label : "School of Design & Applied Arts";
+export const designArtsSchoolName = (...sources) => {
+  const candidates = sources.flatMap((source) => {
+    if (!source) return [];
+    if (typeof source === "string") return [source];
+    if (typeof source !== "object") return [];
+
+    return [
+      source.school,
+      source.school_name,
+      source.schoolName,
+      source.info?.school,
+      source.profile?.school,
+    ];
+  });
+
+  for (const candidate of candidates) {
+    const schoolObj = getSchoolByValue(candidate);
+    if (schoolObj) return schoolObj.name;
+  }
+
+  return "School of Design & Applied Arts";
 };
 
 export const isReviewerReviewComplete = (item = {}, reviewerRole = "") => {
