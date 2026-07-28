@@ -274,19 +274,19 @@ export const canAuthorityReviewProfile = (reviewerProfile = {}, subjectProfile =
   return false;
 };
 
+const getItem = (k) => (typeof window !== "undefined" ? sessionStorage.getItem(k) || localStorage.getItem(k) || "" : "");
+
 export const profileFromsessionStorage = () => ({
-  email: sessionStorage.getItem("username") || "",
-  full_name: sessionStorage.getItem("name") || "",
-  appraisal_role: sessionStorage.getItem("role") || "",
-  school: sessionStorage.getItem("school") || "",
-  department: sessionStorage.getItem("department") || "",
-  designation: sessionStorage.getItem("designation") || "",
-  qualification: sessionStorage.getItem("qualification") || "",
-  teaching_experience: sessionStorage.getItem("experience") || "",
-  experience: sessionStorage.getItem("experience") || "",
-  employee_id: sessionStorage.getItem("employeeId") || "",
-  reports_to_registrar: sessionStorage.getItem("reports_to_registrar") === "true" ||
-    sessionStorage.getItem("reportsToRegistrar") === "true",
-  reportsToRegistrar: sessionStorage.getItem("reports_to_registrar") === "true" ||
-    sessionStorage.getItem("reportsToRegistrar") === "true",
+  email: getItem("username") || getItem("email") || getItem("userEmail") || "",
+  full_name: getItem("name") || "",
+  appraisal_role: getItem("role") || "",
+  school: getItem("school") || "",
+  department: getItem("department") || "",
+  designation: getItem("designation") || "",
+  qualification: getItem("qualification") || "",
+  teaching_experience: getItem("experience") || "",
+  experience: getItem("experience") || "",
+  employee_id: getItem("employeeId") || "",
+  reports_to_registrar: getItem("reports_to_registrar") === "true" || getItem("reportsToRegistrar") === "true",
+  reportsToRegistrar: getItem("reports_to_registrar") === "true" || getItem("reportsToRegistrar") === "true",
 });

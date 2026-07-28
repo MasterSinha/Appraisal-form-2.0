@@ -25,20 +25,30 @@ const readAcademicYearOptions = () => {
 
   try {
     const parsedCycles = JSON.parse(sessionStorage.getItem("availableCycles") || "[]");
-    if (Array.isArray(parsedCycles)) {
+    if (Array.isArray(parsedCycles) && parsedCycles.length > 0) {
       parsedCycles.forEach((cycle) => {
-        addOption(normalizeCycleValue(cycle));
+        const val = normalizeCycleValue(cycle);
+        if (val) addOption(val);
       });
     }
   } catch {
-    // Ignore invalid stored cycles and fall back to the current selection.
+    // Ignore invalid stored cycles
   }
 
-  addOption(storedAcademicYear);
+  if (options.length === 0) {
+    addOption(storedAcademicYear);
+    const startYearNum = parseInt(storedAcademicYear.split("-")[0], 10) || 2026;
+    for (let i = 1; i < 3; i++) {
+      addOption(`${startYearNum - i}-${startYearNum - i + 1}`);
+    }
+  } else if (!options.includes(storedAcademicYear)) {
+    addOption(storedAcademicYear);
+  }
 
-  const selectedAcademicYear = options.includes(storedAcademicYear) ? storedAcademicYear : APP_INFO.DEFAULT_AY;
+  const sortedOptions = options.sort((a, b) => b.localeCompare(a));
+  const selectedAcademicYear = sortedOptions.includes(storedAcademicYear) ? storedAcademicYear : (sortedOptions[0] || APP_INFO.DEFAULT_AY);
 
-  return { selectedAcademicYear, options };
+  return { selectedAcademicYear, options: sortedOptions };
 };
 
 export default function DashboardLayout({

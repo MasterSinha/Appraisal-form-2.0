@@ -367,12 +367,61 @@ export const SECTION_GUIDELINES = {
         { rating: "0 – Unsatisfactory", descriptor: "Consistently below expectations; requires intervention" }
       ]
     }
+  },
+  PART_A: {
+    title: "Part A - Teaching & Academic Activities (Max 250)",
+    rules: [
+      "A1. Course Delivery & Lectures: Max 50 marks",
+      "A2. Course File & LMS: Max 20 marks",
+      "A3. Innovative Teaching Methods: Max 30 marks",
+      "A4. Student Feedback: Max 30 marks",
+      "A5. OBE Attainment & Assessment: Max 30 marks",
+      "A6. Project Guidance & Capstone: Max 30 marks",
+      "A7. Mentoring & Student Support: Max 30 marks",
+      "A8. Academic Qualification Enhancement: Max 20 marks"
+    ]
+  },
+  PART_B: {
+    title: "Part B - Research & Innovation / Academic Contributions (Max 350)",
+    rules: [
+      "B1. Research Papers & Publications: Max 60 marks",
+      "B2. Books & Book Chapters: Max 30 marks",
+      "B3. Patents, IP & Copyrights: Max 40 marks",
+      "B4. Funded Research Projects: Max 40 marks",
+      "B5. Research Guidance (PhD): Max 20 marks",
+      "B6. Consultancy, Testing & Training: Max 20 marks",
+      "B7. Conferences / FDPs Organised: Max 20 marks",
+      "B8. Conferences / FDPs Attended: Max 20 marks",
+      "B9. Research Awards & Fellowships: Max 20 marks",
+      "B10. Innovation, Start-ups & Tech Transfer: Max 20 marks",
+      "B11. ICT & MOOCs: Max 20 marks",
+      "B12. Exhibitions & Creative Work: Max 30 marks"
+    ]
+  },
+  PART_C: {
+    title: "Part C - Governance, Institutional Development & Extension (Max 150)",
+    rules: [
+      "C1. University Level Governance: Max 50 marks",
+      "C2. School / Dept Level Governance: Max 30 marks",
+      "C3. Event Organisation & Visibility: Max 20 marks",
+      "C4. Student Clubs, Outreach & Extension: Max 10 marks",
+      "C5. Industry Linkages & MOUs: Max 10 marks",
+      "C6. Alumni Engagement: Max 10 marks",
+      "C7. Placement Mentoring: Max 20 marks"
+    ]
   }
 };
 
 export function getGuidelineForTitle(titleText) {
   if (!titleText) return null;
   const str = typeof titleText === "string" ? titleText : String(titleText);
+
+  // Check section overviews first
+  if (/^part b\b/i.test(str)) return SECTION_GUIDELINES.PART_B;
+  if (/^part a\b/i.test(str)) return SECTION_GUIDELINES.PART_A;
+  if (/^part c\b/i.test(str)) return SECTION_GUIDELINES.PART_C;
+  if (/^part d\b/i.test(str)) return SECTION_GUIDELINES.D;
+
   const match = str.match(/\b([A-D]\d{1,2})\b/i);
   if (match) {
     const key = match[1].toUpperCase();
@@ -395,7 +444,7 @@ export function getGuidelineForTitle(titleText) {
   if (/organised|organized/i.test(str)) return SECTION_GUIDELINES.B7;
   if (/attended/i.test(str)) return SECTION_GUIDELINES.B8;
   if (/award|citation|fellowship/i.test(str)) return SECTION_GUIDELINES.B9;
-  if (/startup|start-up|innovation|technology transfer/i.test(str)) return SECTION_GUIDELINES.B10;
+  if (/startup|start-up|\binnovation\b|technology transfer/i.test(str)) return SECTION_GUIDELINES.B10;
   if (/ict|mooc|e-learning/i.test(str)) return SECTION_GUIDELINES.B11;
   if (/exhibition|photography|audio-visual/i.test(str)) return SECTION_GUIDELINES.B12;
   if (/part d|acr|annual confidential/i.test(str)) return SECTION_GUIDELINES.D;
@@ -599,7 +648,7 @@ export function DocCell({ id, docs, setDocs, readOnly = false }) {
           const formData = new FormData();
           formData.append("file", file);
           formData.append("folder", `faculty-appraisal/${id}`);
-          const res = await api.post("/upload", formData, { headers: { "Content-Type": "multipart/form-data" } });
+          const res = await api.post("/upload", formData, { suppressAuthRedirect: true });
           if (res) {
             uploaded = typeof res === "string" ? { url: res, name: file.name, type: file.type } : {
               url: res.url || res.fileUrl || res.path || res.location || res.data?.url,

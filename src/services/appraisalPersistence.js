@@ -227,8 +227,9 @@ export const saveAppraisalDraftSection = async ({
  submitterProfile,
  sectionSaveStatus = {},
 }) =>{
- if (!facultyEmail) throw new Error("Please login again before saving. Your email was not found in this session.");
- if (!academicYear) throw new Error("Academic year is required before saving.");
+  const email = facultyEmail || (typeof window !== "undefined" ? sessionStorage.getItem("username") || sessionStorage.getItem("email") || localStorage.getItem("username") || localStorage.getItem("email") : "");
+  if (!email) throw new Error("Please login again before saving. Your email was not found in this session.");
+  if (!academicYear) throw new Error("Academic year is required before saving.");
 
  return api.put("/appraisal/snapshot", {
  academic_year: academicYear,

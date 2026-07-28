@@ -24,6 +24,11 @@ export const UNIVERSITY_SCHOOLS = [
       "school of computer science",
       "school of computer science engineering applications",
       "school of computer science, engineering and applications",
+      "school of computer science & engineering",
+      "computer science & engineering",
+      "computer science and engineering",
+      "cse",
+      "cs",
     ],
   },
   {
@@ -32,7 +37,16 @@ export const UNIVERSITY_SCHOOLS = [
     label: "SoBB - School of Bio-Engineering & Bio Science",
     deanTrack: DEAN_TRACKS.ENGINEERING,
     hodDepartments: [],
-    aliases: ["sobb", "bio-engineering", "bio engineering", "bio science"],
+    aliases: [
+      "sobb",
+      "bio-engineering",
+      "bio engineering",
+      "bio science",
+      "bioscience",
+      "biotechnology",
+      "school of bio engineering and bio science",
+      "school of bio engineering & bio science",
+    ],
   },
   {
     code: "SoCE",
@@ -40,7 +54,7 @@ export const UNIVERSITY_SCHOOLS = [
     label: "SoCE - School of Continual Education",
     deanTrack: DEAN_TRACKS.ENGINEERING,
     hodDepartments: [],
-    aliases: ["soce", "continual education"],
+    aliases: ["soce", "continual education", "continual", "school of continual education"],
   },
   {
     code: "SoEMR",
@@ -48,7 +62,14 @@ export const UNIVERSITY_SCHOOLS = [
     label: "SoEMR - School of Engineering Management & Research",
     deanTrack: DEAN_TRACKS.ENGINEERING,
     hodDepartments: SOEMR_DEPARTMENTS,
-    aliases: ["soemr", "engineering management", "engineering management research"],
+    aliases: [
+      "soemr",
+      "engineering management",
+      "engineering management research",
+      "school of engineering management & research",
+      "school of engineering management and research",
+      "engineering",
+    ],
   },
   {
     code: "SoCM",
@@ -56,7 +77,17 @@ export const UNIVERSITY_SCHOOLS = [
     label: "SoCM - School of Commerce & Management",
     deanTrack: DEAN_TRACKS.NON_ENGINEERING,
     hodDepartments: [],
-    aliases: ["socm", "soc", "commerce", "commerce management", "management"],
+    aliases: [
+      "socm",
+      "soc",
+      "commerce",
+      "commerce management",
+      "management",
+      "school of commerce & management",
+      "school of commerce and management",
+      "school of commerce",
+      "business",
+    ],
   },
   {
     code: "SoMCS",
@@ -64,7 +95,15 @@ export const UNIVERSITY_SCHOOLS = [
     label: "SoMCS - School of Media & Communication Studies",
     deanTrack: DEAN_TRACKS.NON_ENGINEERING,
     hodDepartments: [],
-    aliases: ["somcs", "media", "communication studies"],
+    aliases: [
+      "somcs",
+      "media",
+      "communication studies",
+      "media & communication",
+      "media and communication",
+      "school of media & communication studies",
+      "school of media and communication studies",
+    ],
   },
   {
     code: "SoD",
@@ -80,7 +119,7 @@ export const UNIVERSITY_SCHOOLS = [
     label: "SoAA - School of Applied Arts",
     deanTrack: DEAN_TRACKS.NON_ENGINEERING,
     hodDepartments: [],
-    aliases: ["soaa", "applied arts"],
+    aliases: ["soaa", "applied arts", "school of applied arts", "arts"],
   },
   {
     code: "CISR",
@@ -92,7 +131,10 @@ export const UNIVERSITY_SCHOOLS = [
       "cisr",
       "center for interdisciplinary studies and research",
       "centre for interdisciplinary studies and research",
+      "center for interdisciplinary studies & research",
+      "centre for interdisciplinary studies & research",
       "interdisciplinary studies and research",
+      "interdisciplinary studies",
     ],
   },
 ];
@@ -126,7 +168,7 @@ export const getSchoolByValue = (value) => {
   const normalized = normalizeHierarchyText(value);
   if (!normalized) return null;
 
-  return UNIVERSITY_SCHOOLS.find((school) => {
+  const exactOrPrefixMatch = UNIVERSITY_SCHOOLS.find((school) => {
     const candidates = [
       school.code,
       school.name,
@@ -138,6 +180,22 @@ export const getSchoolByValue = (value) => {
       normalized === candidate ||
       normalized.startsWith(`${candidate} `) ||
       candidate.startsWith(`${normalized} `)
+    );
+  });
+
+  if (exactOrPrefixMatch) return exactOrPrefixMatch;
+
+  // Fallback substring matching
+  return UNIVERSITY_SCHOOLS.find((school) => {
+    const candidates = [
+      school.code,
+      school.name,
+      school.label,
+      ...(school.aliases || []),
+    ].map(normalizeHierarchyText);
+
+    return candidates.some((candidate) =>
+      candidate && (normalized.includes(candidate) || candidate.includes(normalized))
     );
   }) || null;
 };

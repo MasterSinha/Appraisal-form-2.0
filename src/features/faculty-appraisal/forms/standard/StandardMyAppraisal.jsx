@@ -484,7 +484,7 @@ export default function StandardMyAppraisal({
   };
 
   useEffect(() => {
-    const userEmail = sessionStorage.getItem("username");
+    const userEmail = sessionStorage.getItem("username") || sessionStorage.getItem("email") || localStorage.getItem("username") || localStorage.getItem("email");
     if (!userEmail || !info.ay) return;
 
     const loadOwnAppraisal = async () => {
@@ -690,8 +690,9 @@ export default function StandardMyAppraisal({
 
   const handleSaveCurrentSection = async (section) => {
     if (appraisalLocked) return;
-    const userEmail = sessionStorage.getItem("username");
+    const userEmail = sessionStorage.getItem("username") || sessionStorage.getItem("email") || localStorage.getItem("username") || localStorage.getItem("email");
     if (!userEmail) {
+      alert("Please login again before saving. Your session email was not found.");
       navigate("/login", { replace: true });
       return;
     }
@@ -740,7 +741,7 @@ export default function StandardMyAppraisal({
       return;
     }
 
-    const userEmail = sessionStorage.getItem("username");
+    const userEmail = sessionStorage.getItem("username") || sessionStorage.getItem("email") || localStorage.getItem("username") || localStorage.getItem("email");
     if (!userEmail) {
       alert("Please login again before submitting. Your email was not found in this session.");
       navigate("/login", { replace: true });
@@ -1173,31 +1174,42 @@ export default function StandardMyAppraisal({
     const normalizeCycle = (cycle) => {
       if (!cycle) return null;
       if (typeof cycle === "string") {
-        return { academic_year: cycle, is_open: true };
+        return { academic_year: cycle, is_open: cycle === APP_INFO.DEFAULT_AY };
       }
       const academicYear = cycle.academic_year || cycle.academicYear || cycle.year || cycle.year_label || "";
       if (!academicYear) return null;
       return {
         academic_year: String(academicYear),
-        is_open: cycle.is_open ?? cycle.isOpen ?? cycle.active ?? cycle.open ?? false,
+        is_open: cycle.is_open ?? cycle.isOpen ?? cycle.active ?? cycle.open ?? (String(academicYear) === APP_INFO.DEFAULT_AY),
       };
     };
 
+    let list = [];
     if (Array.isArray(cyclesData)) {
-      return cyclesData
-        .map(normalizeCycle)
-        .filter(Boolean)
-        .reduce((acc, cycle) => {
-          if (!acc.some((existing) => existing.academic_year === cycle.academic_year)) {
-            acc.push(cycle);
-          }
-          return acc;
-        }, [])
-        .sort((a, b) => a.academic_year.localeCompare(b.academic_year));
+      list = cyclesData.map(normalizeCycle).filter(Boolean);
+    } else if (Array.isArray(cyclesData?.cycles)) {
+      list = cyclesData.cycles.map(normalizeCycle).filter(Boolean);
+    } else if (Array.isArray(cyclesData?.data)) {
+      list = cyclesData.data.map(normalizeCycle).filter(Boolean);
     }
-    if (Array.isArray(cyclesData?.cycles)) return normalizeAcademicYearCycles(cyclesData.cycles);
-    if (Array.isArray(cyclesData?.data)) return normalizeAcademicYearCycles(cyclesData.data);
-    return [];
+
+    if (list.length === 0) {
+      const openYear = APP_INFO.DEFAULT_AY || "2026-2027";
+      const startYearNum = parseInt(openYear.split("-")[0], 10) || 2026;
+      for (let i = 0; i < 3; i++) {
+        const pastYear = `${startYearNum - i}-${startYearNum - i + 1}`;
+        list.push({ academic_year: pastYear, is_open: i === 0 });
+      }
+    }
+
+    return list
+      .reduce((acc, cycle) => {
+        if (!acc.some((existing) => existing.academic_year === cycle.academic_year)) {
+          acc.push(cycle);
+        }
+        return acc;
+      }, [])
+      .sort((a, b) => b.academic_year.localeCompare(a.academic_year));
   }
 
   const academicYearOptions = availableCyclesState.length
@@ -1289,7 +1301,7 @@ export default function StandardMyAppraisal({
               declaration={workflowDeclaration}
               reviews={workflowReviews}
               status={workflowDeclaration?.status}
-              alertOnceKey={`${sessionStorage.getItem("username") || ""}:${info.ay || ""}:${workflowDeclaration?.status || ""}`}
+              alertOnceKey={`${sessionStorage.getItem("username") || localStorage.getItem("username") || ""}:${info.ay || ""}:${workflowDeclaration?.status || ""}`}
             />
             {appraisalLocked && (
               <div style={{ background: workflowRejected ? "#fef2f2" : "#ecfdf5", border: `1px solid ${workflowRejected ? "#fecaca" : "#bbf7d0"}`, color: workflowRejected ? "#991b1b" : "#166534", borderRadius: 9, padding: "10px 14px", fontSize: 12, fontWeight: 700 }}>

@@ -11,7 +11,7 @@ const normalizeAcademicYearCycles = (cyclesData) => {
   const normalizeCycle = (cycle) => {
     if (!cycle) return null;
     if (typeof cycle === "string") {
-      return { academic_year: cycle, is_open: true };
+      return { academic_year: cycle, is_open: cycle === APP_INFO.DEFAULT_AY };
     }
 
     const academicYear = cycle.academic_year || cycle.academicYear || cycle.year || cycle.year_label || "";
@@ -19,17 +19,37 @@ const normalizeAcademicYearCycles = (cyclesData) => {
 
     return {
       academic_year: String(academicYear),
-      is_open: cycle.is_open ?? cycle.isOpen ?? cycle.active ?? cycle.open ?? false,
+      is_open: cycle.is_open ?? cycle.isOpen ?? cycle.active ?? cycle.open ?? (String(academicYear) === APP_INFO.DEFAULT_AY),
     };
   };
 
+  let list = [];
   if (Array.isArray(cyclesData)) {
-    return cyclesData.map(normalizeCycle).filter(Boolean);
+    list = cyclesData.map(normalizeCycle).filter(Boolean);
+  } else if (Array.isArray(cyclesData?.cycles)) {
+    list = cyclesData.cycles.map(normalizeCycle).filter(Boolean);
+  } else if (Array.isArray(cyclesData?.data)) {
+    list = cyclesData.data.map(normalizeCycle).filter(Boolean);
   }
 
-  if (Array.isArray(cyclesData?.cycles)) return normalizeAcademicYearCycles(cyclesData.cycles);
-  if (Array.isArray(cyclesData?.data)) return normalizeAcademicYearCycles(cyclesData.data);
-  return [];
+  // If backend provided no cycles (e.g. offline / fallback), generate default 3 academic years
+  if (list.length === 0) {
+    const openYear = APP_INFO.DEFAULT_AY || "2026-2027";
+    const startYearNum = parseInt(openYear.split("-")[0], 10) || 2026;
+    for (let i = 0; i < 3; i++) {
+      const pastYear = `${startYearNum - i}-${startYearNum - i + 1}`;
+      list.push({ academic_year: pastYear, is_open: i === 0 });
+    }
+  }
+
+  return list
+    .reduce((acc, cycle) => {
+      if (!acc.some((existing) => existing.academic_year === cycle.academic_year)) {
+        acc.push(cycle);
+      }
+      return acc;
+    }, [])
+    .sort((a, b) => b.academic_year.localeCompare(a.academic_year));
 };
 
 const Login        = lazy(() => import("./pages/Login"));
@@ -56,12 +76,6 @@ function ProfileLoader() {
 
   useEffect(() => {
     let cancelled = false;
-    const normalizeAcademicYearCycles = (cyclesData) => {
-      if (Array.isArray(cyclesData)) return cyclesData;
-      if (cyclesData?.cycles && Array.isArray(cyclesData.cycles)) return cyclesData.cycles;
-      if (Array.isArray(cyclesData?.data)) return cyclesData.data;
-      return [];
-    };
 
     const load = async () => {
       try {
@@ -79,7 +93,8 @@ function ProfileLoader() {
           if (cycles.length) {
             const matchingCycle = storedAcademicYear ? cycles.find((c) => c.academic_year === storedAcademicYear) : null;
             const openCycle = cycles.find((c) => c.is_open);
-            const defaultCycle = matchingCycle || openCycle || cycles[0];
+            const defaultYearCycle = cycles.find((c) => c.academic_year === APP_INFO.DEFAULT_AY);
+            const defaultCycle = matchingCycle || openCycle || defaultYearCycle || cycles[0];
             if (defaultCycle) {
               ay = defaultCycle.academic_year;
             }
@@ -178,7 +193,8 @@ export default function App() {
         const storedAcademicYear = sessionStorage.getItem("academicYear");
         const matchingCycle = cycles.find((cycle) => cycle.academic_year === storedAcademicYear);
         const openCycle = cycles.find((cycle) => cycle.is_open);
-        const fallbackCycle = matchingCycle || openCycle || cycles[0];
+        const defaultYearCycle = cycles.find((cycle) => cycle.academic_year === APP_INFO.DEFAULT_AY);
+        const fallbackCycle = matchingCycle || openCycle || defaultYearCycle || cycles[0];
         const ay = fallbackCycle?.academic_year || APP_INFO.DEFAULT_AY;
 
         sessionStorage.setItem("availableCycles", JSON.stringify(cycles));

@@ -185,7 +185,7 @@ function DocCell({ id, docs, setDocs, readOnly = false }) {
           const fd = new FormData();
           fd.append("file", file);
           fd.append("folder", `non-teaching-appraisal/${id}`);
-          const res = await api.post("/upload", fd, { headers: { "Content-Type": "multipart/form-data" } });
+          const res = await api.post("/upload", fd, { suppressAuthRedirect: true });
           if (res) {
             uploaded = typeof res === "string" ? { url: res, name: file.name, type: file.type } : {
               url: res.url || res.fileUrl || res.path || res.location || res.data?.url,
