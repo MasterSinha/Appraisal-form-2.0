@@ -1,6 +1,6 @@
 import axios from "axios";
 // Default API URL fallback. For production or custom configurations, specify VITE_API_BASE_URL in your .env file.
-const DEFAULT_API_BASE_URL = "/api/v1";
+const DEFAULT_API_BASE_URL = "/api/v2";
 
 let baseRawUrl = (
   import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL
@@ -8,7 +8,7 @@ let baseRawUrl = (
 
 if (baseRawUrl.startsWith("/") && typeof window !== "undefined" && window.location) {
   const { hostname, port, protocol } = window.location;
-  if (port === "3000" || port === "5173" || port === "5174") {
+  if (port && port !== "8000" && port !== "80" && port !== "443") {
     baseRawUrl = `${protocol}//${hostname}:8000${baseRawUrl}`;
   }
 }
