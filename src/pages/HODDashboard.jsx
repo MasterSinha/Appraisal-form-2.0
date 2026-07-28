@@ -11,8 +11,8 @@ import { n, pct, grade, reportValue, reportTextValue, reportQualification, repor
 
 // - Helpers - (n, pct, grade, reportValue, reportTextValue, reportQualification, reportExperience, RO, TI → imported from shared)
 
-const REVIEW_ARRAY_KEYS = ["lectures", "courseFile", "projects", "quals", "feedback", "deptActs", "uniActs", "society", "industry", "acr", "journals", "books", "ict", "research", "projects2", "externalProjects", "patents", "awards", "confs", "proposals", "products", "fdps", "training"];
-const REVIEW_SECTION_MAX = { lectures: 50, courseFile: 20, projects: 10, quals: 10, feedback: 10, deptActs: 20, uniActs: 30, society: 10, industry: 5, acr: 25, journals: 120, books: 50, ict: 20, research: 30, projects2: SCORE_LIMITS.researchInternalProjects, externalProjects: SCORE_LIMITS.researchExternalProjects, patents: 40, awards: 10, confs: 30, proposals: 10, products: 10, fdps: 10, training: 10 };
+const REVIEW_ARRAY_KEYS = ["lectures", "courseFile", "obeRows", "projects", "mentoringRows", "quals", "feedback", "deptActs", "uniActs", "eventRows", "society", "industry", "alumniRows", "placementRows", "acr", "journals", "books", "ict", "research", "projects2", "patents", "awards", "confs", "proposals", "products", "fdps"];
+const REVIEW_SECTION_MAX = { lectures: 40, courseFile: 20, obeRows: 20, projects: 20, mentoringRows: 10, quals: 10, feedback: 10, deptActs: 30, uniActs: 50, eventRows: 20, society: 20, industry: 8, alumniRows: 10, placementRows: 20, acr: 50, journals: 100, books: 30, ict: 20, research: 20, projects2: 40, patents: 40, awards: 20, confs: 20, proposals: 20, products: 20, fdps: 20 };
 const REVIEW_SCORE_FIELDS = ["hod", "director", "dean", "vc"];
 const preserveSavedReviewScores = (form = {}, source = {}) =>{
  const merged = { ...form };
@@ -89,11 +89,13 @@ function ReviewPanel({ faculty, onBack, onSubmit, readOnly = false, reviewerLabe
  const subjectEmail = faculty.email || faculty.faculty_email || faculty.facultyEmail;
  const academicYear = faculty.academicYear || faculty.academic_year || faculty.info?.ay || APP_INFO.DEFAULT_AY || "2026-2027";
  const reviewerMaxScores = {
- partA: effectiveMaxScore(200),
- partB: effectiveMaxScore(375),
+ partA: effectiveMaxScore(150),
+ partB: effectiveMaxScore(350),
+ partC: 150,
+ partD: 50,
  grand: 0,
  };
- reviewerMaxScores.grand = reviewerMaxScores.partA + reviewerMaxScores.partB;
+ reviewerMaxScores.grand = reviewerMaxScores.partA + reviewerMaxScores.partB + reviewerMaxScores.partC + reviewerMaxScores.partD;
 
  // Compute HOD total from hodData
  const calcHodScore = () =>{
@@ -132,51 +134,59 @@ function ReviewPanel({ faculty, onBack, onSubmit, readOnly = false, reviewerLabe
  hod: hodData.feedback?.[index]?.hod ?? row.hod ?? "",
  }));
 
- const lec = reviewSectionScore("lectures", lectureReviewRows, 50, "hod");
+ const lec = reviewSectionScore("lectures", lectureReviewRows, 40, "hod");
  const cf = reviewSectionScore("courseFile", courseFileReviewRows, 20, "hod");
  const innov = innovReviewRows.length ? reviewSectionScore("innovRows", innovReviewRows, 10, "hod") : clampScore(getS("innovHod"), 10);
- const proj = sumReviewRows("projects", "hod", 10, projectGuidanceRowMax);
+ const obe = sumReviewRows("obeRows", "hod", 20, (row) =>row.max || 20);
+ const proj = sumReviewRows("projects", "hod", 20, projectGuidanceRowMax);
+ const mentoring = sumReviewRows("mentoringRows", "hod", 10, (row) =>row.max || 10);
  const qual = sumReviewRows("quals", "hod", 10, SCORE_LIMITS.qualificationRow);
  const fb = reviewSectionScore("feedback", feedbackReviewRows, 10, "hod");
- const dept = sumReviewRows("deptActs", "hod", 20);
- const uni = sumReviewRows("uniActs", "hod", 30);
- const soc = sumReviewRows("society", "hod", 10, SCORE_LIMITS.societyRow);
- const ind = sumReviewRows("industry", "hod", 5);
- const acrT = sumReviewRows("acr", "hod", 25, SCORE_LIMITS.acrRow);
- const partA = clampScore(lec + cf + innov + proj + qual + fb + dept + uni + soc + ind + acrT, reviewerMaxScores.partA);
+ const partA = clampScore(lec + cf + innov + fb + obe + proj + mentoring + qual, reviewerMaxScores.partA);
 
- const jour = sumReviewRows("journals", "hod", 120);
- const bk = sumReviewRows("books", "hod", 50);
+ const jour = sumReviewRows("journals", "hod", 100);
+ const bk = sumReviewRows("books", "hod", 30);
  const ictT = sumReviewRows("ict", "hod", 20);
- const res = sumReviewRows("research", "hod", 30, researchGuidanceRowMax);
- const resProjects = sumReviewRows("projects2", "hod", SCORE_LIMITS.researchInternalProjects);
- const externalResProjects = sumReviewRows("externalProjects", "hod", SCORE_LIMITS.researchExternalProjects);
+ const res = sumReviewRows("research", "hod", 20, researchGuidanceRowMax);
+ const resProjects = sumReviewRows("projects2", "hod", 40);
  const pat = sumReviewRows("patents", "hod", 40);
- const awd = sumReviewRows("awards", "hod", 10);
- const conf = sumReviewRows("confs", "hod", 30);
- const prop = sumReviewRows("proposals", "hod", 10);
- const prod = sumReviewRows("products", "hod", 10);
- const fdp = sumReviewRows("fdps", "hod", 10, SCORE_LIMITS.fdpRow);
- const train = sumReviewRows("training", "hod", 10, SCORE_LIMITS.fdpRow);
- const b8 = clampScore(fdp + train, 10);
- const partB = clampScore(jour + bk + ictT + res + resProjects + externalResProjects + pat + awd + conf + prop + prod + b8, reviewerMaxScores.partB);
+ const awd = sumReviewRows("awards", "hod", 20);
+ const conf = sumReviewRows("confs", "hod", 20);
+ const prop = sumReviewRows("proposals", "hod", 20);
+ const prod = sumReviewRows("products", "hod", 20);
+ const b8 = sumReviewRows("fdps", "hod", 20, SCORE_LIMITS.fdpRow);
+ const partB = clampScore(jour + bk + pat + resProjects + res + prop + conf + b8 + awd + prod + ictT, reviewerMaxScores.partB);
 
- return { partA, partB, total: clampScore(partA + partB, reviewerMaxScores.grand) };
+ const uni = sumReviewRows("uniActs", "hod", 50);
+ const dept = sumReviewRows("deptActs", "hod", 30);
+ const events = sumReviewRows("eventRows", "hod", 20);
+ const soc = sumReviewRows("society", "hod", 20, SCORE_LIMITS.societyRow);
+ const ind = sumReviewRows("industry", "hod", 8);
+ const alumni = sumReviewRows("alumniRows", "hod", 10);
+ const placement = sumReviewRows("placementRows", "hod", 20);
+ const partC = clampScore(uni + dept + events + soc + ind + alumni + placement, reviewerMaxScores.partC);
+ const partD = clampScore(sumReviewRows("acr", "hod", 50, SCORE_LIMITS.acrRow), reviewerMaxScores.partD);
+
+ return { partA, partB, partC, partD, total: clampScore(partA + partB + partC + partD, reviewerMaxScores.grand) };
  };
 
  const calculatedScores = calcHodScore();
- const hasSavedReviewerScores = ["hodPartA", "hodPartB", "hodTotal"].some((key) =>String(faculty?.[key] ?? "").trim() !== "");
+ const hasSavedReviewerScores = ["hodPartA", "hodPartB", "hodPartC", "hodPartD", "hodTotal"].some((key) =>String(faculty?.[key] ?? "").trim() !== "");
  const rawDisplayedScores = reviewLocked && hasSavedReviewerScores ? {
  partA: String(faculty?.hodPartA ?? "").trim() !== "" ? n(faculty.hodPartA) : calculatedScores.partA,
  partB: String(faculty?.hodPartB ?? "").trim() !== "" ? n(faculty.hodPartB) : calculatedScores.partB,
+ partC: String(faculty?.hodPartC ?? "").trim() !== "" ? n(faculty.hodPartC) : calculatedScores.partC,
+ partD: String(faculty?.hodPartD ?? "").trim() !== "" ? n(faculty.hodPartD) : calculatedScores.partD,
  total: String(faculty?.hodTotal ?? "").trim() !== "" ? n(faculty.hodTotal) : calculatedScores.total,
  } : calculatedScores;
  const displayedScores = {
  partA: clampScore(rawDisplayedScores.partA, reviewerMaxScores.partA),
  partB: clampScore(rawDisplayedScores.partB, reviewerMaxScores.partB),
- total: clampScore(rawDisplayedScores.total || rawDisplayedScores.partA + rawDisplayedScores.partB, reviewerMaxScores.grand),
+ partC: clampScore(rawDisplayedScores.partC, reviewerMaxScores.partC),
+ partD: clampScore(rawDisplayedScores.partD, reviewerMaxScores.partD),
+ total: clampScore(rawDisplayedScores.total || rawDisplayedScores.partA + rawDisplayedScores.partB + rawDisplayedScores.partC + rawDisplayedScores.partD, reviewerMaxScores.grand),
  };
- const { partA, partB, total } = displayedScores;
+ const { partA, partB, partC, partD, total } = displayedScores;
  const g = grade(total, reviewerMaxScores.grand);
  useEffect(() =>{
  let active = true;
@@ -205,6 +215,8 @@ function ReviewPanel({ faculty, onBack, onSubmit, readOnly = false, reviewerLabe
  reviewerRole,
  partAScore: partA,
  partBScore: partB,
+ partCScore: partC,
+ partDScore: partD,
  totalScore: total,
  remarks,
  sectionScores: buildHodSectionScores(faculty, hodData),
@@ -225,25 +237,33 @@ function ReviewPanel({ faculty, onBack, onSubmit, readOnly = false, reviewerLabe
  return (
 <div style={{ display: "flex", flexDirection: "column", gap: 0, minHeight: "100%" }}>
  {/* Header */}
-<div style={{ background: "#0f172a", padding: "14px 20px", display: "flex", alignItems: "center", gap: 14, marginBottom: 16, borderRadius: 10 }}>
-<button onClick={onBack} style={{ background: "#1e293b", border: "none", color: "#94a3b8", cursor: "pointer", borderRadius: 6, padding: "6px 12px", fontSize: 12, fontFamily: "inherit" }}> Back</button>
+<div style={{ background: "linear-gradient(135deg,#0f172a 0%,#111827 58%,#1e1b4b 100%)", padding: "16px 18px", display: "flex", alignItems: "center", gap: 14, marginBottom: 16, borderRadius: 14, boxShadow: "0 18px 42px rgba(15,23,42,0.20)", border: "1px solid rgba(255,255,255,0.08)", flexWrap: "wrap" }}>
+<button onClick={onBack} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.08)", color: "#cbd5e1", cursor: "pointer", borderRadius: 8, padding: "8px 14px", fontSize: 12, fontFamily: "inherit", fontWeight: 700 }}>Back</button>
 <Avatar initials={faculty.avatar} color={faculty.avatarColor} size={40} />
 <div style={{ flex: 1 }}>
 <div style={{ color: "#f1f5f9", fontWeight: 700, fontSize: 15 }}>{faculty.name}</div>
 <div style={{ color: "#64748b", fontSize: 11 }}>{faculty.designation} - {faculty.employeeId}</div>
 </div>
-<div style={{ display: "flex", gap: 10 }}>
-<div style={{ background: "#1e293b", borderRadius: 8, padding: "8px 14px", textAlign: "center" }}>
+<div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
+<div style={{ background: "rgba(30,41,59,0.92)", border: "1px solid rgba(148,163,184,0.13)", borderRadius: 10, padding: "8px 14px", textAlign: "center", minWidth: 92 }}>
 <div style={{ color: "#94a3b8", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.6 }}>{reviewerLabel} Part A</div>
 <div style={{ color: "#818cf8", fontWeight: 800, fontSize: 16 }}>{partA.toFixed(1)}</div>
 </div>
-<div style={{ background: "#1e293b", borderRadius: 8, padding: "8px 14px", textAlign: "center" }}>
+<div style={{ background: "rgba(30,41,59,0.92)", border: "1px solid rgba(148,163,184,0.13)", borderRadius: 10, padding: "8px 14px", textAlign: "center", minWidth: 92 }}>
 <div style={{ color: "#94a3b8", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.6 }}>{reviewerLabel} Part B</div>
 <div style={{ color: "#38bdf8", fontWeight: 800, fontSize: 16 }}>{partB.toFixed(1)}</div>
 </div>
-<div style={{ background: g.bg, border: `2px solid ${g.color}40`, borderRadius: 8, padding: "8px 14px", textAlign: "center" }}>
+<div style={{ background: "rgba(30,41,59,0.92)", border: "1px solid rgba(148,163,184,0.13)", borderRadius: 10, padding: "8px 14px", textAlign: "center", minWidth: 92 }}>
+<div style={{ color: "#94a3b8", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.6 }}>{reviewerLabel} Part C</div>
+<div style={{ color: "#2dd4bf", fontWeight: 800, fontSize: 16 }}>{partC.toFixed(1)}</div>
+</div>
+<div style={{ background: "rgba(30,41,59,0.92)", border: "1px solid rgba(148,163,184,0.13)", borderRadius: 10, padding: "8px 14px", textAlign: "center", minWidth: 92 }}>
+<div style={{ color: "#94a3b8", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.6 }}>{reviewerLabel} Part D</div>
+<div style={{ color: "#f59e0b", fontWeight: 800, fontSize: 16 }}>{partD.toFixed(1)}</div>
+</div>
+<div style={{ background: g.bg, border: `2px solid ${g.color}40`, borderRadius: 10, padding: "8px 14px", textAlign: "center", minWidth: 100 }}>
 <div style={{ color: g.color, fontSize: 9, textTransform: "uppercase", letterSpacing: 0.6, fontWeight: 700 }}>{reviewerLabel} Total</div>
-<div style={{ color: g.color, fontWeight: 800, fontSize: 16 }}>{total.toFixed(1)}<span style={{ fontSize: 10, color: "#94a3b8" }}>/575</span></div>
+<div style={{ color: g.color, fontWeight: 800, fontSize: 16 }}>{total.toFixed(1)}<span style={{ fontSize: 10, color: "#94a3b8" }}>/{reviewerMaxScores.grand}</span></div>
 </div>
 </div>
 </div>
@@ -254,26 +274,26 @@ function ReviewPanel({ faculty, onBack, onSubmit, readOnly = false, reviewerLabe
  )}
 
  {/* Section switcher */}
-<div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
- {[["partA", "Part A"], ["partB", "Part B"], ["summary", "Summary"]].map(([id, label]) =>(
+<div style={{ display: "inline-flex", gap: 6, marginBottom: 16, padding: 4, background: "#eef2ff", border: "1px solid #dbe3ff", borderRadius: 12, width: "fit-content", flexWrap: "wrap" }}>
+ {[["partA", "Part A"], ["partB", "Part B"], ["partC", "Part C"], ["partD", "Part D"], ["summary", "Summary"]].map(([id, label]) =>(
 <button key={id} onClick={() =>{
  setSectionView(id);
  requestAnimationFrame(() =>{
  window.scrollTo({ top: 0, left: 0, behavior: "auto" });
  });
  }}
- style={{ padding: "7px 18px", border: "none", borderRadius: 6, cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 700, background: sectionView === id ? "#312e81" : "#e2e8f0", color: sectionView === id ? "#e0e7ff" : "#475569" }}>
+ style={{ padding: "8px 18px", border: "none", borderRadius: 9, cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 800, background: sectionView === id ? "#312e81" : "transparent", color: sectionView === id ? "#e0e7ff" : "#475569", boxShadow: sectionView === id ? "0 8px 18px rgba(49,46,129,0.22)" : "none" }}>
  {label}
 </button>
  ))}
 </div>
 
- {(sectionView === "partA" || sectionView === "partB") && (
+ {["partA", "partB", "partC", "partD"].includes(sectionView) && (
 <fieldset disabled={reviewLocked} style={{ border: "none", padding: 0, margin: 0 }}>
 <MyAppraisalForm faculty={faculty} hodData={hodData} setHodData={setHodData} reviewerLabel={reviewerLabel} sectionView={sectionView} />
 </fieldset>
  )}
- {(sectionView === "partA" || sectionView === "partB") && !reviewLocked && (
+ {["partA", "partB", "partC", "partD"].includes(sectionView) && !reviewLocked && (
 <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, margin: "12px 0 14px", flexWrap: "wrap" }}>
 <span style={{ color: "#64748b", fontSize: 11, fontWeight: 700 }}>{draftStatus}</span>
 <button
@@ -291,15 +311,15 @@ function ReviewPanel({ faculty, onBack, onSubmit, readOnly = false, reviewerLabe
 <CompactSummaryCard
  title="Faculty Score"
  subtitle="Faculty submitted score for the engineering appraisal form."
- totals={{ partA: facultySummary.partA, partB: facultySummary.partB, total: facultySummary.total }}
- maxScores={{ partA: facultySummary.partAMax, partB: facultySummary.partBMax, grand: facultySummary.grandMax }}
+ totals={{ partA: facultySummary.partA, partB: facultySummary.partB, partC: facultySummary.partC, partD: facultySummary.partD, total: facultySummary.total }}
+ maxScores={{ partA: facultySummary.partAMax, partB: facultySummary.partBMax, partC: facultySummary.partCMax, partD: facultySummary.partDMax, grand: facultySummary.grandMax }}
  accent="#0ea5e9"
 />
 <SummaryOtherInfoField value={summaryOtherInfoValueFrom(faculty)} readOnly rows={4} />
 <CompactSummaryCard
  title={`${reviewerLabel} Score`}
  subtitle={`${reviewerLabel} score for the engineering appraisal form.`}
- totals={{ partA, partB, total }}
+ totals={{ partA, partB, partC, partD, total }}
  maxScores={reviewerMaxScores}
  accent="#312e81"
  remarksTitle={`${reviewerLabel} Remarks`}
@@ -339,7 +359,7 @@ function ReviewPanel({ faculty, onBack, onSubmit, readOnly = false, reviewerLabe
 <button
  onClick={() =>{
  if (window.confirm("Reject this appraisal and send it back to the user for editing?")) {
- onSubmit(faculty.id, { partA, partB, total }, remarks, buildHodSectionScores(faculty, hodData), reviewConfirmed, "rejected");
+ onSubmit(faculty.id, { partA, partB, partC, partD, total }, remarks, buildHodSectionScores(faculty, hodData), reviewConfirmed, "rejected");
  }
  }}
  disabled={!reviewConfirmed || !remarks.trim()}
@@ -348,7 +368,7 @@ function ReviewPanel({ faculty, onBack, onSubmit, readOnly = false, reviewerLabe
  Reject Form
 </button>
 )}
-<button onClick={() =>onSubmit(faculty.id, { partA, partB, total }, remarks, buildHodSectionScores(faculty, hodData), reviewConfirmed)}
+<button onClick={() =>onSubmit(faculty.id, { partA, partB, partC, partD, total }, remarks, buildHodSectionScores(faculty, hodData), reviewConfirmed)}
  disabled={!reviewConfirmed || !remarks.trim()}
  style={{ padding: "10px 28px", background: (reviewConfirmed && remarks.trim()) ? "#059669" : "#64748b", color: "#fff", border: "none", borderRadius: 7, cursor: (reviewConfirmed && remarks.trim()) ? "pointer" : "not-allowed", fontWeight: 700, fontSize: 13, fontFamily: "inherit" }}>
  Submit {reviewerLabel} Review
@@ -439,6 +459,8 @@ export default function HODDashboard({
  reviewerRole,
  partAScore: scores.partA,
  partBScore: scores.partB,
+ partCScore: scores.partC,
+ partDScore: scores.partD,
  totalScore: scores.total,
  remarks,
  sectionScores,
@@ -447,7 +469,7 @@ export default function HODDashboard({
  });
 
  const status = decision === "rejected" ? rejectedStatusFor(reviewerRole) : reviewedStatusFor(reviewerRole);
- setFacultyList(prev =>prev.map(f =>f.id === id ? { ...f, ...sectionScores, innovHod: sectionScores?.innovativeTeaching?.hod ?? f.innovHod, status, workflowStatus: status, hodPartA: scores.partA, hodPartB: scores.partB, hodTotal: scores.total, hodRemarks: remarks } : f));
+ setFacultyList(prev =>prev.map(f =>f.id === id ? { ...f, ...sectionScores, innovHod: sectionScores?.innovativeTeaching?.hod ?? f.innovHod, status, workflowStatus: status, hodPartA: scores.partA, hodPartB: scores.partB, hodPartC: scores.partC, hodPartD: scores.partD, hodTotal: scores.total, hodRemarks: remarks } : f));
  setReviewingFaculty(null);
  alert(decision === "rejected" ? "Appraisal rejected and sent back for editing." : `${reviewerLabel} review approved and forwarded to ${forwardedToLabel}.`);
  } catch (err) {

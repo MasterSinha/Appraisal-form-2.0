@@ -28,11 +28,11 @@ export default function DirectorProjects({ ctx }) {
  const { faculty, docs, lectures, courseFile, projects, quals, feedback, deptActs, uniActs, society, industry, acr, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, rows, getDir, setDir, getInnovDir, setInnovDir, innovativeRows } = ctx;
  return (
 <>
-{/* A6: Guided Students Project */}
- <SC title="A6. Guided Students Project (Max 10/20)" accent="#8b5cf6">
+{/* A6: Student Project Guidance */}
+ <SC title="A6. Student Project Guidance (Max 20)" accent="#8b5cf6">
 <table style={T}>
 <thead><tr>
-<th style={TH}>SN</th><th style={TH}>Project Type</th>
+<th style={TH}>SN</th><th style={TH}>Project Title / Batch</th><th style={TH}>No. of Students</th><th style={TH}>Industry Collab (Y/N)</th><th style={TH}>Award (Y/N)</th><th style={TH}>Student Pub (Y/N)</th>
 <th style={TH}>View Docs</th><th style={TH}>Faculty Score</th><th style={TH_DIR}>Director Score</th>
 </tr></thead>
 <tbody>
@@ -40,6 +40,10 @@ export default function DirectorProjects({ ctx }) {
 <tr key={i} style={i % 2 ? { background: "#f8fafc" } : {}}>
 <td style={TDC}>{i + 1}</td>
 <td style={TD}><RO val={r.label} /></td>
+<td style={TDC}><RO val={r.studentsCount} center /></td>
+<td style={TDC}><RO val={r.industryCollab} center /></td>
+<td style={TDC}><RO val={r.awardReceived} center /></td>
+<td style={TDC}><RO val={r.studentPub} center /></td>
 <td style={TDV}><ViewDocsCell docKey={`proj-${i}`} docs={docs} /></td>
 <td style={TDS}><RO val={String(r.score ?? "").trim() ? clampScore(r.score, projectGuidanceRowMax(r)) : ""} center /></td>
 <td style={TDS_DIR}><DirInput val={getDir("projects", i, "dir")} max={projectGuidanceRowMax(r)} onChange={v =>setDir("projects", i, "dir", v)} /></td>

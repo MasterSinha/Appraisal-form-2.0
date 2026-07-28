@@ -1,32 +1,25 @@
 ﻿import LecturesTable from "./LecturesTable";
 import CourseFileTable from "./CourseFileTable";
+import EvidenceScoreTable from "./EvidenceScoreTable";
 import InnovativeTeaching from "./InnovativeTeaching";
 import Projects from "./Projects";
 import Qualification from "./Qualification";
 import StudentFeedback from "./StudentFeedback";
-import DepartmentActivities from "./DepartmentActivities";
-import UniversityActivities from "./UniversityActivities";
-import SocietyContribution from "./SocietyContribution";
-import IndustryConnect from "./IndustryConnect";
-import ACR from "./ACR";
 
 export default function PartA({ ctx }) {
  return (
-<>
+<div className="review-part-stack">
  {/* - PART A - */}
-<div style={{ fontWeight: 800, fontSize: 13, color: "#1e293b", background: "#dbeafe", padding: "8px 14px", borderRadius: 6, marginBottom: 10, letterSpacing: 0.3 }}>PART A - Teaching & Academic Activities</div>
+<div className="review-part-stack__title">PART A - Teaching & Academic Activities</div>
 <LecturesTable ctx={ctx} />
 <CourseFileTable ctx={ctx} />
 <InnovativeTeaching ctx={ctx} />
-<Projects ctx={ctx} />
-<Qualification ctx={ctx} />
 <StudentFeedback ctx={ctx} />
-<DepartmentActivities ctx={ctx} />
-<UniversityActivities ctx={ctx} />
-<SocietyContribution ctx={ctx} />
-<IndustryConnect ctx={ctx} />
-<ACR ctx={ctx} />
-</>
+<EvidenceScoreTable ctx={ctx} title="A5. Learning Outcomes Attainment & OBE Practice (Max 20)" accent="#2563eb" sectionKey="obeRows" docPrefix="obe" labelKey="component" labelHeader="Component" max={20} />
+<Projects ctx={ctx} />
+<EvidenceScoreTable ctx={ctx} title="A7. Student Mentoring & Counselling (Max 10)" accent="#8b5cf6" sectionKey="mentoringRows" docPrefix="mentor" labelKey="activity" labelHeader="Activity" max={10} />
+<Qualification ctx={ctx} />
+</div>
  );
 }
 

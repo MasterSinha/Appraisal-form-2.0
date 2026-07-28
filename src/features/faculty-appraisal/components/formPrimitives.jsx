@@ -568,8 +568,8 @@ export function SectionCard({ title, subtitle, accent = "#6366f1", scoreBadge, c
   const displayTitle = stripMaxMarksFromTitle(title);
 
   return (
-    <div className="fa-section-card appraisal-section-card" style={{ background: "#fff", borderRadius: 14, boxShadow: "0 18px 50px rgba(17,24,39,0.08)", marginBottom: 24, overflow: "hidden", border: "1px solid #e5e7eb", borderTop: `3px solid ${accent}` }}>
-      <div className="appraisal-part-header" style={{ padding: "18px 24px", borderBottom: "1px solid #f3f4f6", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, background: "linear-gradient(180deg,#ffffff 0%,#fbfbff 100%)" }}>
+    <div className="fa-section-card appraisal-section-card" style={{ background: "rgba(255,255,255,0.96)", borderRadius: 16, boxShadow: "0 18px 45px rgba(15,23,42,0.07)", marginBottom: 18, overflow: "hidden", border: "1px solid #e7eaf3", borderTop: `3px solid ${accent}` }}>
+      <div className="appraisal-part-header" style={{ padding: "18px 22px", borderBottom: "1px solid #eef2f7", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, background: "linear-gradient(180deg,#ffffff 0%,#fbfbff 100%)" }}>
         <div style={{ minWidth: 0, display: "flex", alignItems: "center", gap: 12 }}>
           <span className="appraisal-part-icon" style={{ width: 36, height: 36, borderRadius: 12, background: `${accent}14`, color: accent, border: `1px solid ${accent}2e`, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -579,7 +579,7 @@ export function SectionCard({ title, subtitle, accent = "#6366f1", scoreBadge, c
             </svg>
           </span>
           <div>
-            <div className="appraisal-part-title" style={{ fontWeight: 800, fontSize: 18, color: accent, letterSpacing: 0, display: "flex", alignItems: "center" }}>
+            <div className="appraisal-part-title" style={{ fontWeight: 900, fontSize: 18, color: accent, letterSpacing: 0, display: "flex", alignItems: "center" }}>
               <span>{displayTitle}</span>
               <SectionInfoButton titleText={title} />
             </div>
@@ -593,7 +593,7 @@ export function SectionCard({ title, subtitle, accent = "#6366f1", scoreBadge, c
           </div>
         )}
       </div>
-      <div style={{ padding: "24px 28px 28px", display: "flex", flexDirection: "column", gap: 20 }}>{children}</div>
+      <div style={{ padding: "22px 24px 24px", display: "flex", flexDirection: "column", gap: 18 }}>{children}</div>
     </div>
   );
 }
@@ -726,9 +726,9 @@ export function ViewDocsCell({ docKey, docs, emptyText = "No docs", compact = fa
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: compact ? "row" : "column", gap: compact ? 5 : 6, alignItems: compact ? "center" : "flex-start", justifyContent: "center", flexWrap: "wrap" }}>
+    <div style={{ display: "flex", flexDirection: compact ? "row" : "column", gap: compact ? 5 : 6, alignItems: "center", justifyContent: "center", flexWrap: "wrap", width: "100%", maxWidth: "100%", minWidth: 0, overflow: "hidden" }}>
       {files.map((file, idx) => (
-        <div key={`${file.url || file.name || "doc"}-${idx}`} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+        <div key={`${file.url || file.name || "doc"}-${idx}`} style={{ display: "flex", flexDirection: compact ? "row" : "column", alignItems: "center", justifyContent: "center", gap: 5, width: "100%", maxWidth: "100%", minWidth: 0, overflow: "hidden" }}>
           <button
             type="button"
             onClick={(e) => {
@@ -736,23 +736,12 @@ export function ViewDocsCell({ docKey, docs, emptyText = "No docs", compact = fa
               openDocumentFile(file);
             }}
             aria-label={`View ${file.name || "document"}`}
-            style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, color: "#4338ca", fontSize: compact ? 0 : 12, textDecoration: "none", background: "#eef2ff", border: "1px solid #c7d2fe", borderRadius: compact ? "50%" : 999, padding: compact ? 0 : "7px 10px", width: compact ? 34 : "auto", height: compact ? 34 : "auto", whiteSpace: "nowrap", fontWeight: 800, cursor: "pointer" }}
+            title={file.name || "Document"}
+            style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, color: "#4f46e5", fontSize: compact ? 0 : 12, textDecoration: "none", background: "#f5f3ff", border: "1px solid #ddd6fe", borderRadius: compact ? "50%" : 10, padding: compact ? 0 : "8px 11px", width: compact ? 34 : "auto", maxWidth: compact ? 34 : 142, minWidth: compact ? 34 : 118, height: compact ? 34 : 34, whiteSpace: "nowrap", fontWeight: 900, cursor: "pointer", overflow: "hidden", boxShadow: "0 8px 18px rgba(79,70,229,0.08)", transition: "background 180ms ease, border-color 180ms ease, box-shadow 180ms ease" }}
           >
             {file.type?.startsWith("image/") && file.url && <img src={file.url} alt="" style={{ width: 22, height: 22, objectFit: "cover", borderRadius: 3 }} />}
-            <EyeIcon />
-            {!compact && <>View {file.name?.length > 16 ? `${file.name.slice(0, 16)}...` : file.name || "Document"}</>}
-          </button>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              downloadDocumentFile(file);
-            }}
-            aria-label={`Download ${file.name || "document"}`}
-            style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, color: "#047857", fontSize: compact ? 0 : 12, textDecoration: "none", background: "#ecfdf5", border: "1px solid #a7f3d0", borderRadius: compact ? "50%" : 999, padding: compact ? 0 : "7px 10px", width: compact ? 34 : "auto", height: compact ? 34 : "auto", whiteSpace: "nowrap", fontWeight: 800, cursor: "pointer" }}
-          >
-            <DownloadIcon />
-            {!compact && <>Download</>}
+            <DocumentIcon />
+            {!compact && <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>View Docs</span>}
           </button>
         </div>
       ))}

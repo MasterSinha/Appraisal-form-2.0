@@ -28,8 +28,8 @@ export default function DirectorStudentFeedback({ ctx }) {
  const { faculty, docs, lectures, courseFile, projects, quals, feedback, deptActs, uniActs, society, industry, acr, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, rows, getDir, setDir, getInnovDir, setInnovDir, innovativeRows } = ctx;
  return (
 <>
-{/* B: Student Feedback */}
-<SC title="B. Student Feedback (Max 10)" accent="#0ea5e9">
+{/* A4: Student Feedback */}
+<SC title="A4. Student Feedback Score (Max 10)" accent="#0ea5e9">
 <table style={T}>
 <thead><tr>
 <th style={TH}>SN</th><th style={TH}>Course</th><th style={TH}>First Feedback(%)</th>

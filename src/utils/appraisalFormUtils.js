@@ -24,7 +24,7 @@ export const SCORE_LIMITS = {
  courseFileRow: 20,
  innovativeRow: 2,
  qualificationRow: 5,
- acrRow: 5,
+ acrRow: 10,
  feedbackAverage: 100,
  societyRow: 5,
  fdpRow: 10,
@@ -181,6 +181,7 @@ export const feedbackSectionScore = (rows = [], maxScore = 10) =>{
 
 export const rowMaxForSection = (sectionKey, row = {}, sectionMax = 0) =>{
  if (sectionKey === "courseFile") return SCORE_LIMITS.courseFileRow;
+ if (sectionKey === "obeRows" || sectionKey === "mentoringRows") return row.max || sectionMax;
  if (sectionKey === "projects") return projectGuidanceRowMax(row);
  if (sectionKey === "quals") return SCORE_LIMITS.qualificationRow;
  if (sectionKey === "feedback") return 10;
@@ -294,7 +295,9 @@ export const rowHasAnyValue = (row = {}, keys = []) =>
 export const REVIEW_ROW_VALUE_KEYS = {
  lectures: ["sem", "code", "planned", "conducted"],
  courseFile: ["course", "title", "details"],
+ obeRows: ["component", "evidence"],
  projects: ["label"],
+ mentoringRows: ["activity", "evidence"],
  quals: ["label"],
  feedback: ["code", "fb1", "fb2"],
  deptActs: ["activity", "nature", "period"],

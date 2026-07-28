@@ -837,7 +837,7 @@ export const generateStandardReport = async ({
   const teachingMax = 100;
   const researchGuidanceProjectMax = 75;
   const selfAcrExcluded = hideAcr;
-  const acrSummaryMax = selfAcrExcluded ? "N/A" : "25";
+  const acrSummaryMax = selfAcrExcluded ? "N/A" : "50";
   const acrSummaryScore = selfAcrExcluded ? 0 : acrScore;
   const partAPercentage = percentOf(partATotal, effectivePartAMax);
   const partBPercentage = percentOf(partBTotal, effectivePartBMax);
@@ -917,10 +917,10 @@ ${PRINT_REPORT_CSS}
   <table><tr><th>SN</th><th>Name of Industry</th><th>Details of Activity</th><th>API Score</th></tr>
   ${industry.map((ind, i) => `<tr><td class="c">${i + 1}</td><td>${ind.name || "&nbsp;"}</td><td>${ind.details || "&nbsp;"}</td><td class="c">${ind.score || "&nbsp;"}</td></tr>`).join("")}
   <tr class="tr"><td colspan="3" class="c b">Total (Max 5)</td><td class="c">${industryScore.toFixed(1)}</td></tr></table>
-  <h3>G. Annual Confidential Report (${selfAcrExcluded ? "Not counted in self score" : "Max 25"})</h3>
+  <h3>G. Annual Confidential Report (${selfAcrExcluded ? "Not counted in self score" : "Max 50"})</h3>
   <table><tr><th>SN</th><th>Parameter</th><th>API Score</th></tr>
   ${acr.map((a, i) => `<tr><td class="c">${i + 1}</td><td>${a.label || "&nbsp;"}</td><td class="c">${a.score || "&nbsp;"}</td></tr>`).join("")}
-  <tr class="tr"><td colspan="2" class="c b">Total (${selfAcrExcluded ? "Not counted in self score" : "Max 25"})</td><td class="c">${acrSummaryScore.toFixed(1)}</td></tr></table>
+  <tr class="tr"><td colspan="2" class="c b">Total (${selfAcrExcluded ? "Not counted in self score" : "Max 50"})</td><td class="c">${acrSummaryScore.toFixed(1)}</td></tr></table>
   <table class="st">
     <tr><th>Part A Summary</th><th>Max</th><th>Faculty Score</th></tr>
     <tr><td>Teaching Process (i+ii+iii+iv+v)</td><td class="c">${teachingMax}</td><td class="c">${teachingRaw.toFixed(1)}</td></tr>

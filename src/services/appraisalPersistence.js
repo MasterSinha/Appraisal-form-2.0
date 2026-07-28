@@ -82,7 +82,7 @@ const submittedFormFromResponse = (response) =>
  response?.payload?.form || response?.form || null;
 
 const submittedDocsFromResponse = (response) =>
- response?.payload?.docs || response?.docs || null;
+ response?.payload?.docs || response?.docs || response?.payload?.form?.docs || response?.form?.docs || null;
 
 const applySubmittedAppraisalToSetters = (submittedAppraisal, setters) =>{
  if (!submittedAppraisal || !setters) return false;
@@ -113,6 +113,23 @@ const normalizeDocsMap = (docs = {}) =>
  Object.fromEntries(
  Object.entries(docs || {}).map(([key, files]) =>[key, filesForDocValue(files)]),
  );
+
+const docsHaveFiles = (docs = {}) =>
+ Object.values(docs || {}).some((files) =>filesForDocValue(files).length >0);
+
+const normalizeTotalsForSubmit = (totals = {}) =>({
+ ...totals,
+ part_a_total: totals.part_a_total ?? totals.partATotal,
+ part_b_total: totals.part_b_total ?? totals.partBTotal,
+ part_c_total: totals.part_c_total ?? totals.partCTotal,
+ part_d_total: totals.part_d_total ?? totals.partDTotal,
+ grand_total: totals.grand_total ?? totals.grandTotal,
+ effective_part_a_max: totals.effective_part_a_max ?? totals.effectivePartAMax,
+ effective_part_b_max: totals.effective_part_b_max ?? totals.effectivePartBMax,
+ effective_part_c_max: totals.effective_part_c_max ?? totals.effectivePartCMax,
+ effective_part_d_max: totals.effective_part_d_max ?? totals.effectivePartDMax,
+ effective_grand_max: totals.effective_grand_max ?? totals.effectiveGrandMax,
+});
 
 const defaultAcrRows = () =>[
  { label: "Self-motivation & Proactiveness" },
@@ -254,11 +271,18 @@ export const loadAppraisalDocuments = async ({ facultyEmail, academicYear, setDo
 
  try {
  const data = await api.get("/appraisal-documents", {
- params: { academic_year: academicYear },
+ params: { academic_year: academicYear, faculty_email: facultyEmail },
  });
 
+ setDocs(docsRowsToMap(data));
+ } catch {
+ // non-fatal
+ }
+};
+
+const docsRowsToMap = (rows = []) =>{
  const groupedDocs = {};
- (data || []).forEach((row) =>{
+ (rows || []).forEach((row) =>{
  const key = row.doc_key || `${row.section}-${Math.max((row.row_no || 1) - 1, 0)}`;
  if (!groupedDocs[key]) groupedDocs[key] = [];
  groupedDocs[key].push({
@@ -268,10 +292,18 @@ export const loadAppraisalDocuments = async ({ facultyEmail, academicYear, setDo
  publicId: row.storage_path,
  });
  });
+ return groupedDocs;
+};
 
- setDocs(groupedDocs);
+const fetchSubmittedDocsMap = async ({ facultyEmail, academicYear }) =>{
+ if (!facultyEmail || !academicYear) return {};
+ try {
+ const rows = await api.get("/appraisal-documents", {
+ params: { academic_year: academicYear, faculty_email: facultyEmail },
+ });
+ return docsRowsToMap(rows);
  } catch {
- // non-fatal
+ return {};
  }
 };
 
@@ -317,7 +349,7 @@ export const fetchSavedAppraisal = async ({ facultyEmail, academicYear }) =>{
  `/dashboard/faculty/${encodeURIComponent(facultyEmail)}`,
  { params: { academic_year: academicYear } }
  );
- return readSubmittedAppraisalResponse(data, facultyEmail, academicYear);
+ return await readSubmittedAppraisalResponse(data, facultyEmail, academicYear);
  } catch (err) {
  if (err?.statusCode === 403) {
  const repaired = await repairDeanDivisionProfile();
@@ -327,7 +359,7 @@ export const fetchSavedAppraisal = async ({ facultyEmail, academicYear }) =>{
  `/dashboard/faculty/${encodeURIComponent(facultyEmail)}`,
  { params: { academic_year: academicYear } }
  );
- return readSubmittedAppraisalResponse(data, facultyEmail, academicYear);
+ return await readSubmittedAppraisalResponse(data, facultyEmail, academicYear);
  } catch {
  // Fall through to the explicit authority message below.
  }
@@ -338,7 +370,7 @@ export const fetchSavedAppraisal = async ({ facultyEmail, academicYear }) =>{
  }
 };
 
-const readSubmittedAppraisalResponse = (data, facultyEmail, academicYear) =>{
+const readSubmittedAppraisalResponse = async (data, facultyEmail, academicYear) =>{
  if (!data) {
  throw new Error(`No saved appraisal snapshot was found for ${facultyEmail} in academic year ${academicYear}. Check that the academic year matches the submitted record.`);
  }
@@ -347,7 +379,18 @@ const readSubmittedAppraisalResponse = (data, facultyEmail, academicYear) =>{
  if (!hasSubmittedFormData(form)) {
  throw new Error(`The saved appraisal snapshot for ${facultyEmail} does not contain submitted form section data. The user may need to resubmit the appraisal for academic year ${academicYear}.`);
  }
- return normalized;
+ const currentDocs = submittedDocsFromResponse(normalized) || {};
+ if (docsHaveFiles(currentDocs)) return normalized;
+
+ const fallbackDocs = await fetchSubmittedDocsMap({ facultyEmail, academicYear });
+ if (!docsHaveFiles(fallbackDocs)) return normalized;
+
+ return {
+ ...normalized,
+ docs: fallbackDocs,
+ ...(normalized.payload ? { payload: { ...normalized.payload, docs: fallbackDocs } } : {}),
+ ...(normalized.form ? { form: { ...normalized.form, docs: fallbackDocs } } : {}),
+ };
 };
 
 const repairDeanDivisionProfile = async () =>{
@@ -495,6 +538,8 @@ const syntheticReviewFromRoleFields = (source = {}) =>
  section_scores: sectionScores,
  part_a_score: source[`${role}_part_a`] || source[`${camel}PartA`],
  part_b_score: source[`${role}_part_b`] || source[`${camel}PartB`],
+ part_c_score: source[`${role}_part_c`] || source[`${camel}PartC`],
+ part_d_score: source[`${role}_part_d`] || source[`${camel}PartD`],
  total_score: source[`${role}_total`] || source[`${camel}Total`],
  remarks: source[`${role}_remarks`] || source[`${camel}Remarks`],
  }];
@@ -1260,6 +1305,7 @@ const normalizeFetchedAppraisal = (data = {}) =>{
  const reviews = reviewsFromAppraisalResponse(data);
  const payload = data.payload ? { ...data.payload } : null;
  const declaration = data.declaration || payload?.declaration || null;
+ const docs = normalizeDocsMap(submittedDocsFromResponse(data) || {});
  const withResponseInfo = (form = {}, ...sources) =>({
  ...form,
  info: normalizeInfo(form.info || {}, form, ...sources),
@@ -1285,11 +1331,12 @@ const normalizeFetchedAppraisal = (data = {}) =>{
 
  return {
  ...directData,
+ docs,
  declaration,
  status: declaration?.status || data.status || directData.status,
  workflowStatus: declaration?.status || data.workflowStatus || data.workflow_status || directData.workflowStatus,
- ...(directForm ? { form: directForm } : {}),
- ...(payload ? { payload: { ...payload, ...(payloadForm ? { form: payloadForm } : {}) } } : {}),
+ ...(directForm ? { form: { ...directForm, docs } } : {}),
+ ...(payload ? { payload: { ...payload, docs, ...(payloadForm ? { form: { ...payloadForm, docs } } : {}) } } : {}),
  };
 };
 
@@ -1373,7 +1420,7 @@ export const submitAppraisal = async ({
  const basePayload = {
  academic_year: academicYear,
  form: mapFormForSubmit(form),
- totals,
+ totals: normalizeTotalsForSubmit(totals),
  docs: normalizeDocsMap(docs),
  submitter_profile: submitterProfile || activeProfile,
  };

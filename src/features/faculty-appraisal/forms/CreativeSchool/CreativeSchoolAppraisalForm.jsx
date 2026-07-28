@@ -394,7 +394,13 @@ export const normalizeScoresForSubmit = (form) => normalizeAutoScores(form);
 
 export const validateCreativeSchoolBeforeSubmit = (form, docs = {}, sectionView = "all") => {
   const partBSections = getPartBSectionsForSchool(form?.info?.school || form);
-  const sectionsToValidate = sectionView === "partA" ? PART_A_SECTIONS : sectionView === "partB" ? partBSections : [...PART_A_SECTIONS, ...partBSections];
+  const sectionsToValidate = sectionView === "partA"
+    ? PART_A_SECTIONS
+    : sectionView === "partB"
+    ? partBSections
+    : sectionView === "partC"
+    ? PART_C_SECTIONS
+    : [...PART_A_SECTIONS, ...partBSections, ...PART_C_SECTIONS];
   const rowSections = sectionsToValidate.map((section) => ({
     label: section.title,
     rows: form[section.key] || [],
@@ -554,7 +560,7 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
     const acrRows = createAcrRows(rows);
     const acrTotal = scoreSectionRows(section.key, acrRows, section.max);
     return (
-      <SectionShell title="(xi) Annual Confidential Report (ACR) - Max 25 marks" max={section.max} earned={acrTotal} accent="#ef4444" showScoreSummary={false}>
+      <SectionShell title="(xi) Annual Confidential Report (ACR) - Max 50 marks" max={section.max} earned={acrTotal} accent="#ef4444" showScoreSummary={false}>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
             <thead>
@@ -1692,9 +1698,11 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
   const averageSummaryTotals = averageSourceTotals.length ? {
     partA: averageSourceTotals.reduce((sum, item) => sum + n(item.partA), 0) / averageSourceTotals.length,
     partB: averageSourceTotals.reduce((sum, item) => sum + n(item.partB), 0) / averageSourceTotals.length,
+    partC: averageSourceTotals.reduce((sum, item) => sum + n(item.partC), 0) / averageSourceTotals.length,
+    partD: averageSourceTotals.reduce((sum, item) => sum + n(item.partD), 0) / averageSourceTotals.length,
     total: averageSourceTotals.reduce((sum, item) => sum + n(item.total), 0) / averageSourceTotals.length,
     maxScores: totals.maxScores,
-  } : { partA: 0, partB: 0, total: 0, maxScores: totals.maxScores };
+  } : { partA: 0, partB: 0, partC: 0, partD: 0, total: 0, maxScores: totals.maxScores };
   useEffect(() => {
     let active = true;
     if (panelReadOnly || !subjectEmail) return undefined;
@@ -1722,6 +1730,8 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
         reviewerRole,
         partAScore: totals.partA,
         partBScore: totals.partB,
+        partCScore: totals.partC,
+        partDScore: totals.partD,
         totalScore: totals.total,
         remarks,
         sectionScores: buildCreativeSchoolSectionScores(form, reviewData, reviewerRole),
@@ -1775,7 +1785,7 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
         ...summaryRow(applicability, "uniActs", { id: "A(viii)", label: "University Level Activities", max: 30, score: rowSum("uniActs", 30) }),
         ...summaryRow(applicability, "society", { id: "A(ix)", label: "Contribution to Society", max: 10, score: rowSum("society", 10) }),
         ...summaryRow(applicability, "industry", { id: "A(x)", label: "Industry Connect", max: 5, score: rowSum("industry", 5) }),
-        ...summaryRow(applicability, "acr", { id: "A(xi)", label: "Annual Confidential Report (ACR)", max: 25, score: rowSum("acr", 25) }),
+        ...summaryRow(applicability, "acr", { id: "A(xi)", label: "Annual Confidential Report (ACR)", max: 50, score: rowSum("acr", 50) }),
         { isTotal: true, label: "Part A Total", max: maxScores.partA, score: partATotal },
         { isHeader: true, label: "Part B - Research & Academic Contributions" },
         ...summaryRow(applicability, "journals", { id: "B1(i)", label: "Published Papers in Journals", max: 80, score: rowSum("journals", 80) }),
@@ -1889,7 +1899,7 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
                     <button
                       onClick={() => {
                         if (window.confirm("Reject this appraisal and send it back to the user for editing?")) {
-                          onSubmit(person.id, { partA: totals.partA, partB: totals.partB, total: totals.total }, remarks, buildCreativeSchoolSectionScores(form, reviewData, reviewerRole), confirmed, "rejected");
+                          onSubmit(person.id, { partA: totals.partA, partB: totals.partB, partC: totals.partC, partD: totals.partD, total: totals.total }, remarks, buildCreativeSchoolSectionScores(form, reviewData, reviewerRole), confirmed, "rejected");
                         }
                       }}
                       disabled={!confirmed || !remarks.trim()}
@@ -1899,7 +1909,7 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
                     </button>
                   )}
                   <button
-                    onClick={() => onSubmit(person.id, { partA: totals.partA, partB: totals.partB, total: totals.total }, remarks, buildCreativeSchoolSectionScores(form, reviewData, reviewerRole), confirmed)}
+                    onClick={() => onSubmit(person.id, { partA: totals.partA, partB: totals.partB, partC: totals.partC, partD: totals.partD, total: totals.total }, remarks, buildCreativeSchoolSectionScores(form, reviewData, reviewerRole), confirmed)}
                     disabled={!confirmed || !remarks.trim()}
                     style={smallButton((confirmed && remarks.trim()) ? "#059669" : "#94a3b8")}
                   >

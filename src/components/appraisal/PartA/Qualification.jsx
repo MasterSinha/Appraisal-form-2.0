@@ -29,7 +29,7 @@ export default function Qualification({ ctx }) {
  return (
 <>
 {/* A8: Qualification */}
-<SC title="A8. Qualification Enhancement (Max 10)" accent="#8b5cf6">
+<SC title="A8. Professional Development & Qualification Enhancement (Max 10)" accent="#8b5cf6">
 <table style={T}>
 <thead><tr>
 <th style={TH}>SN</th><th style={TH}>Description</th>

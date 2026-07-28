@@ -10,18 +10,25 @@ import PartA from "./PartA/PartA";
 import DirectorPartA from "./PartA/DirectorPartA";
 import PartB from "./PartB/PartB";
 import DirectorPartB from "./PartB/DirectorPartB";
+import PartC from "./PartC/PartC";
+import PartD from "./PartD/PartD";
 
 const REVIEW_SECTION_MAX = {
   lectures: 50,
   courseFile: 20,
-  projects: 10,
+  obeRows: 20,
+  projects: 20,
+  mentoringRows: 10,
   quals: 10,
   feedback: 10,
   deptActs: 20,
   uniActs: 30,
+  eventRows: 20,
   society: 10,
   industry: 5,
-  acr: 25,
+  alumniRows: 10,
+  placementRows: 20,
+  acr: 50,
   journals: 120,
   books: 50,
   ict: 20,
@@ -36,6 +43,7 @@ const REVIEW_SECTION_MAX = {
   fdps: 10,
   training: 10,
 };
+const DIRECTOR_ACR_DEFAULT_SCORE = 5;
 
 // - Faculty Form in HOD Review Mode -
 export default function MyAppraisalForm({ faculty, hodData, setHodData, reviewerLabel = "HOD", sectionView = "partA" }) {
@@ -71,7 +79,7 @@ export default function MyAppraisalForm({ faculty, hodData, setHodData, reviewer
  };
 
  const info = mergeFacultyInfo(faculty.info, faculty);
- const { lectures, courseFile, projects, quals, feedback, deptActs, uniActs, society, industry, acr, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, docs } = faculty;
+ const { lectures, courseFile, obeRows, projects, mentoringRows, quals, feedback, deptActs, uniActs, eventRows, society, industry, alumniRows, placementRows, acr, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, docs } = faculty;
  const rows = (arr) =>arr && arr.length >0 ? arr : [{}];
  const reviewerScoreLabel = `${reviewerLabel} Score`;
  const innovativeRows = Array.isArray(faculty.innovRows) && faculty.innovRows.length
@@ -88,19 +96,21 @@ export default function MyAppraisalForm({ faculty, hodData, setHodData, reviewer
  return { ...prev, innovRows: nextRows, innovHod: total ? String(total) : "" };
  });
  };
- const ctx = { faculty, docs, lectures, courseFile, projects, quals, feedback, deptActs, uniActs, society, industry, acr, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, rows, get, set, reviewerLabel, reviewerScoreLabel, innovativeRows, getInnovHod, setInnovHod };
+ const ctx = { faculty, docs, lectures, courseFile, obeRows, projects, mentoringRows, quals, feedback, deptActs, uniActs, eventRows, society, industry, alumniRows, placementRows, acr, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, rows, get, set, reviewerLabel, reviewerScoreLabel, innovativeRows, getInnovHod, setInnovHod };
 
  return (
 <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-<div style={{ background: "linear-gradient(90deg,#312e81,#4338ca)", color: "#e0e7ff", borderRadius: 8, padding: "10px 16px", marginBottom: 14, display: "flex", alignItems: "center", gap: 10, fontSize: 12 }}>
-<span style={{ fontSize: 18 }}></span>
-<div>
-<strong>{reviewerLabel} Review Mode</strong>- Faculty self-scores are read-only. Only<span style={{ color: "#c7d2fe", fontWeight: 700 }}>{reviewerScoreLabel}</span>columns are editable. Click<span style={{ color: "#c7d2fe" }}>View Doc</span>links to open uploaded files.
+<div style={{ background: "linear-gradient(180deg,#f8f7ff 0%,#eef2ff 100%)", color: "#334155", borderRadius: 12, padding: "11px 14px", marginBottom: 14, display: "flex", alignItems: "center", gap: 10, fontSize: 12, boxShadow: "0 10px 24px rgba(79,70,229,0.08)", border: "1px solid #c7d2fe" }}>
+<span style={{ width: 28, height: 28, borderRadius: 999, background: "#ffffff", color: "#4f46e5", border: "1px solid #c7d2fe", display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: 900, flexShrink: 0 }}>i</span>
+<div style={{ lineHeight: 1.55 }}>
+<strong style={{ color: "#312e81" }}>{reviewerLabel} Review Mode</strong> - Faculty self-scores are read-only. Only <span style={{ color: "#4f46e5", fontWeight: 900 }}>{reviewerScoreLabel}</span> columns are editable. Click <span style={{ color: "#4f46e5", fontWeight: 900 }}>View Docs</span> to open uploaded files.
 </div>
 </div>
 <FacultyInfoSection info={info} />
 {sectionView === "partA" && <PartA ctx={ctx} />}
 {sectionView === "partB" && <PartB ctx={ctx} />}
+{sectionView === "partC" && <PartC ctx={ctx} />}
+{sectionView === "partD" && <PartD ctx={ctx} />}
 </div>
  );
 }
@@ -139,19 +149,22 @@ export function DirectorFacultyReviewForm({ faculty, hodData, setHodData, dirDat
  };
 
  const getDir = (section, idx, field) =>{
+ let value = "";
  if (dirData[section]) {
  const s = dirData[section];
- return idx === null ? (Array.isArray(s) ? (s[0]?.[field] ?? "") : (s[field] ?? "")) : (s[idx]?.[field] ?? "");
- }
- if (idx === null) {
+ value = idx === null ? (Array.isArray(s) ? (s[0]?.[field] ?? "") : (s[field] ?? "")) : (s[idx]?.[field] ?? "");
+ } else if (idx === null) {
  const source = faculty[section];
- return Array.isArray(source) ? (source[0]?.director ?? "") : (source?.director ?? "");
+ value = Array.isArray(source) ? (source[0]?.director ?? "") : (source?.director ?? "");
+ } else {
+ value = faculty[section]?.[idx]?.director ?? "";
  }
- return faculty[section]?.[idx]?.director ?? "";
+ if (section === "acr" && String(value ?? "").trim() === "") return DIRECTOR_ACR_DEFAULT_SCORE;
+ return value;
  };
 
  const info = mergeFacultyInfo(faculty.info, faculty);
- const { lectures, courseFile, projects, quals, feedback, deptActs, uniActs, society, industry, acr, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, docs } = faculty;
+ const { lectures, courseFile, obeRows, projects, mentoringRows, quals, feedback, deptActs, uniActs, eventRows, society, industry, alumniRows, placementRows, acr, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, docs } = faculty;
  const rows = (arr) =>arr && arr.length >0 ? arr : [{}];
  const innovativeRows = Array.isArray(faculty.innovRows) && faculty.innovRows.length
  ? faculty.innovRows
@@ -167,19 +180,22 @@ export function DirectorFacultyReviewForm({ faculty, hodData, setHodData, dirDat
  return { ...prev, innovRows: nextRows, innovDir: total ? String(total) : "" };
  });
  };
- const ctx = { faculty, docs, lectures, courseFile, projects, quals, feedback, deptActs, uniActs, society, industry, acr, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, rows, set, getDir, setDir, getInnovDir, setInnovDir, innovativeRows };
+ const setDirector = (section, idx, _field, val) => setDir(section, idx, "dir", val);
+ const ctx = { faculty, docs, lectures, courseFile, obeRows, projects, mentoringRows, quals, feedback, deptActs, uniActs, eventRows, society, industry, alumniRows, placementRows, acr, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, rows, get: getDir, set: setDirector, getDir, setDir, getInnovDir, setInnovDir, innovativeRows, reviewerScoreLabel: "Director Score", reviewerLabel: "Director", acrDefaultScore: DIRECTOR_ACR_DEFAULT_SCORE };
 
  return (
 <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-<div style={{ background: "linear-gradient(90deg,#065f46,#059669)", color: "#d1fae5", borderRadius: 8, padding: "10px 16px", marginBottom: 14, display: "flex", alignItems: "center", gap: 10, fontSize: 12 }}>
-<span style={{ fontSize: 18 }}></span>
-<div>
-<strong>Director Review Mode</strong>- Faculty self-scores are read-only. Only<span style={{ color: "#6ee7b7", fontWeight: 700 }}>Director Score</span>columns are editable. Click<span style={{ color: "#6ee7b7" }}>View Doc</span>links to open uploaded files.
+<div style={{ background: "linear-gradient(180deg,#f0fdfa 0%,#ecfdf5 100%)", color: "#334155", borderRadius: 12, padding: "11px 14px", marginBottom: 14, display: "flex", alignItems: "center", gap: 10, fontSize: 12, boxShadow: "0 10px 24px rgba(5,150,105,0.08)", border: "1px solid #a7f3d0" }}>
+<span style={{ width: 28, height: 28, borderRadius: 999, background: "#ffffff", color: "#059669", border: "1px solid #a7f3d0", display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: 900, flexShrink: 0 }}>i</span>
+<div style={{ lineHeight: 1.55 }}>
+<strong style={{ color: "#065f46" }}>Director Review Mode</strong> - Faculty self-scores are read-only. Only <span style={{ color: "#047857", fontWeight: 900 }}>Director Score</span> columns are editable. Click <span style={{ color: "#047857", fontWeight: 900 }}>View Docs</span> to open uploaded files.
 </div>
 </div>
 <FacultyInfoSection info={info} />
 {sectionView === "partA" && <DirectorPartA ctx={ctx} />}
 {sectionView === "partB" && <DirectorPartB ctx={ctx} />}
+{sectionView === "partC" && <PartC ctx={ctx} />}
+{sectionView === "partD" && <PartD ctx={ctx} />}
 </div>
  );
 }

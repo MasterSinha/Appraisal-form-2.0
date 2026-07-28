@@ -20,25 +20,27 @@ export function CompactSummaryCard({ title, subtitle, totals, maxScores, accent 
   const rows = [
     ["Part A", totals.partA, maxScores.partA, "#6366f1"],
     ["Part B", totals.partB, maxScores.partB, "#0ea5e9"],
+    ...(maxScores.partC !== undefined ? [["Part C", totals.partC, maxScores.partC, "#0f766e"]] : []),
+    ...(maxScores.partD !== undefined ? [["Part D", totals.partD, maxScores.partD, "#f59e0b"]] : []),
     ["Total", totals.total, maxScores.grand, "#059669"],
   ];
   const hasRemarks = Boolean(remarksContent);
 
   return (
-    <div style={{ background: "#fff", border: "1px solid #dbe3ef", borderRadius: 8, padding: 12, display: "grid", gridTemplateColumns: hasRemarks ? "minmax(300px, 0.95fr) minmax(280px, 1.05fr)" : "1fr", gap: 12, alignItems: "stretch", boxShadow: "0 1px 2px rgba(15,23,42,0.04)" }}>
+    <div style={{ background: "rgba(255,255,255,0.96)", border: "1px solid #e7eaf3", borderRadius: 16, padding: 14, display: "grid", gridTemplateColumns: hasRemarks ? "minmax(300px, 0.95fr) minmax(280px, 1.05fr)" : "1fr", gap: 12, alignItems: "stretch", boxShadow: "0 16px 38px rgba(15,23,42,0.07)" }}>
       <div style={{ display: "grid", gap: 9, minWidth: 0 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
           <div>
             <div style={{ fontSize: 13, fontWeight: 900, color: "#0f172a" }}>{title}</div>
             <div style={{ fontSize: 10, color: "#64748b", marginTop: 2 }}>{subtitle}</div>
           </div>
-          <div style={{ background: `${accent}14`, color: accent, border: `1px solid ${accent}33`, borderRadius: 999, padding: "4px 10px", fontSize: 12, fontWeight: 900, whiteSpace: "nowrap" }}>
+          <div style={{ background: `${accent}14`, color: accent, border: `1px solid ${accent}33`, borderRadius: 12, padding: "7px 12px", fontSize: 13, fontWeight: 900, whiteSpace: "nowrap", boxShadow: "0 8px 18px rgba(15,23,42,0.05)" }}>
             {(parseFloat(totals.total) || 0).toFixed(1)} / {maxScores.grand}
           </div>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
+        <div style={{ display: "grid", gridTemplateColumns: `repeat(${rows.length}, minmax(0, 1fr))`, gap: 8 }}>
           {rows.map(([label, value, max, color]) => (
-            <div key={label} style={{ background: "#f8fafc", border: "1px solid #eef2f7", borderRadius: 7, padding: "8px 9px", minWidth: 0 }}>
+            <div key={label} style={{ background: "linear-gradient(180deg,#ffffff 0%,#f8fafc 100%)", border: "1px solid #eef2f7", borderRadius: 10, padding: "9px 10px", minWidth: 0 }}>
               <div style={{ display: "flex", justifyContent: "space-between", gap: 6, alignItems: "baseline", marginBottom: 5 }}>
                 <span style={{ fontSize: 10, color: "#64748b", fontWeight: 800, textTransform: "uppercase" }}>{label}</span>
                 <span style={{ fontSize: 11, color, fontWeight: 900, whiteSpace: "nowrap" }}>{(parseFloat(value) || 0).toFixed(1)} / {max}</span>
@@ -49,7 +51,7 @@ export function CompactSummaryCard({ title, subtitle, totals, maxScores, accent 
         </div>
       </div>
       {hasRemarks && (
-        <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 7, padding: "9px 10px", minWidth: 0 }}>
+        <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 12, padding: "11px 12px", minWidth: 0 }}>
           <div style={{ fontWeight: 900, color: accent, fontSize: 12, marginBottom: 5 }}>{remarksTitle}</div>
           {remarksContent}
         </div>
