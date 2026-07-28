@@ -2067,8 +2067,30 @@ export default function StandardMyAppraisal({
                               <td style={TDC}>{i + 1}</td>
                               <td style={TD}><TI val={r.title} onChange={(v) => setBook(i, "title", v)} textOnly /></td>
                               <td style={TD}><TI val={r.book || r.publisherIsbn} onChange={(v) => setBook(i, "book", v)} placeholder="Publisher & ISBN" /></td>
-                              <td style={TD}><TI val={r.pub || r.type} onChange={(v) => setBook(i, "pub", v)} placeholder="Book / Chapter / Editor / Translation" /></td>
-                              <td style={TD}><TI val={r.level} onChange={(v) => setBook(i, "level", v)} placeholder="Intl. / National / Local" /></td>
+                              <td style={TD}>
+                                <select
+                                  value={r.pub || r.type || ""}
+                                  onChange={(e) => setBook(i, "pub", e.target.value)}
+                                  style={{ width: "100%", height: 30, border: "1px solid #cbd5e1", borderRadius: 4, background: "#fff", fontSize: 11, fontFamily: "inherit" }}
+                                >
+                                  <option value="">Select Type</option>
+                                  {["Book", "Chapter", "Editor", "Translation"].map((opt) => (
+                                    <option key={opt} value={opt}>{opt}</option>
+                                  ))}
+                                </select>
+                              </td>
+                              <td style={TD}>
+                                <select
+                                  value={r.level || ""}
+                                  onChange={(e) => setBook(i, "level", e.target.value)}
+                                  style={{ width: "100%", height: 30, border: "1px solid #cbd5e1", borderRadius: 4, background: "#fff", fontSize: 11, fontFamily: "inherit" }}
+                                >
+                                  <option value="">Select Level</option>
+                                  {["International", "National", "Local"].map((opt) => (
+                                    <option key={opt} value={opt}>{opt}</option>
+                                  ))}
+                                </select>
+                              </td>
                               <td style={TD}><TI val={r.coauth} onChange={(v) => setBook(i, "coauth", v)} placeholder="Co-authors from DYPIU" /></td>
                               <td style={TD}><DocCell id={`book-${i}`} docs={docs} setDocs={setDocs} /></td>
                               <td style={TD}><ViewCell id={`book-${i}`} docs={docs} /></td>
@@ -2196,8 +2218,30 @@ export default function StandardMyAppraisal({
                               <td style={TD}><TI val={r.agency} onChange={(v) => setPrj2(i, "agency", v)} textOnly /></td>
                               <td style={TD}><TI val={r.date} onChange={(v) => setPrj2(i, "date", maskDateDDMMYYYY(v))} placeholder="DD/MM/YYYY" /></td>
                               <td style={TD}><TI val={r.amount} onChange={(v) => setPrj2(i, "amount", v)} numeric /></td>
-                              <td style={TD}><TI val={r.role} onChange={(v) => setPrj2(i, "role", v)} placeholder="PI / Co-PI" /></td>
-                              <td style={TD}><TI val={r.status} onChange={(v) => setPrj2(i, "status", v)} placeholder="Completed / Ongoing / Submitted" /></td>
+                              <td style={TD}>
+                                <select
+                                  value={r.role || ""}
+                                  onChange={(e) => setPrj2(i, "role", e.target.value)}
+                                  style={{ width: "100%", height: 30, border: "1px solid #cbd5e1", borderRadius: 4, background: "#fff", fontSize: 11, fontFamily: "inherit" }}
+                                >
+                                  <option value="">Select Role</option>
+                                  {["PI", "Co-PI", "Consultant", "Project Director"].map((opt) => (
+                                    <option key={opt} value={opt}>{opt}</option>
+                                  ))}
+                                </select>
+                              </td>
+                              <td style={TD}>
+                                <select
+                                  value={r.status || ""}
+                                  onChange={(e) => setPrj2(i, "status", e.target.value)}
+                                  style={{ width: "100%", height: 30, border: "1px solid #cbd5e1", borderRadius: 4, background: "#fff", fontSize: 11, fontFamily: "inherit" }}
+                                >
+                                  <option value="">Select Status</option>
+                                  {["Ongoing", "Completed", "Sanctioned", "Submitted"].map((opt) => (
+                                    <option key={opt} value={opt}>{opt}</option>
+                                  ))}
+                                </select>
+                              </td>
                               <td style={TD}><DocCell id={`project2-${i}`} docs={docs} setDocs={setDocs} /></td>
                               <td style={TD}><ViewCell id={`project2-${i}`} docs={docs} /></td>
                               <td style={TDS}><TI val={r.score} onChange={(v) => setPrj2(i, "score", v)} center numeric max={B4_PROJECT_MAX} /></td>
@@ -2275,8 +2319,30 @@ export default function StandardMyAppraisal({
                             <tr key={i} style={i % 2 === 1 ? { background: "#f8fafc" } : {}}>
                               <td style={TDC}>{i + 1}</td>
                               <td style={TD}><TI val={r.title} onChange={(v) => setPat(i, "title", v)} textOnly /></td>
-                              <td style={TD}><TI val={r.type || r.level} onChange={(v) => setPat(i, "type", v)} placeholder="National / International" /></td>
-                              <td style={TD}><TI val={r.status} onChange={(v) => setPat(i, "status", v)} placeholder="Published / Granted" /></td>
+                              <td style={TD}>
+                                <select
+                                  value={r.type || r.level || r.scope || ""}
+                                  onChange={(e) => setPat(i, "type", e.target.value)}
+                                  style={{ width: "100%", height: 30, border: "1px solid #cbd5e1", borderRadius: 4, background: "#fff", fontSize: 11, fontFamily: "inherit" }}
+                                >
+                                  <option value="">Select Scope</option>
+                                  {["National", "International"].map((opt) => (
+                                    <option key={opt} value={opt}>{opt}</option>
+                                  ))}
+                                </select>
+                              </td>
+                              <td style={TD}>
+                                <select
+                                  value={r.status || ""}
+                                  onChange={(e) => setPat(i, "status", e.target.value)}
+                                  style={{ width: "100%", height: 30, border: "1px solid #cbd5e1", borderRadius: 4, background: "#fff", fontSize: 11, fontFamily: "inherit" }}
+                                >
+                                  <option value="">Select Status</option>
+                                  {["Published", "Granted"].map((opt) => (
+                                    <option key={opt} value={opt}>{opt}</option>
+                                  ))}
+                                </select>
+                              </td>
                               <td style={TD}><TI val={r.fileNo || r.date} onChange={(v) => setPat(i, "fileNo", v)} placeholder="No. & Date" /></td>
                               <td style={TD}><DocCell id={`pat-${i}`} docs={docs} setDocs={setDocs} /></td>
                               <td style={TD}><ViewCell id={`pat-${i}`} docs={docs} /></td>
