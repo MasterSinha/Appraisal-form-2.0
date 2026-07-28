@@ -60,6 +60,7 @@ import {
   ViewCell,
   SectionSaveFooter,
   RowButtons as RowBtns,
+  SectionCard as SC,
 } from "../../index";
 import { canReviewerRejectProfile, getReviewChain, pendingStatusFor, profileFromsessionStorage, reviewedStatusFor, roleLabel, visiblePreviousReviewRoles, workflowValidationError, isAppraisalFinalisedByVc, isRejectedStatus, isPendingReviewStatusFor, hasActiveRejection, reviewListFrom } from "../../../../utils/hierarchy";
 import { n, pct, RO, TI } from "../../shared";
@@ -196,7 +197,7 @@ export const emptyCreativeSchoolForm = (defaultSchool = "SoD - School of Design"
   obeRows: defaultObeRows(),
   mentoringRows: defaultMentoringRows(),
   projects: [{ label: "", score: "" }],
-  quals: [{ label: "", score: "" }],
+  quals: [{ title: "", body: "", date: "", score: "" }],
   feedback: [{ code: "", fb1: "", fb2: "", score: "" }],
   uniActs: [{ activity: "", durationCat: "", period: "", score: "" }],
   deptActs: [{ activity: "", durationCat: "", period: "", score: "" }],
@@ -240,7 +241,7 @@ export const PART_A_SECTIONS = [
   { key: "courseFile", title: "A2. Course File & Curriculum Documentation", max: 20, doc: "cf", rowMax: SCORE_LIMITS.courseFileRow, fields: [["course", "Course / Paper"], ["title", "Title"], ["details", "IQAC Index Compliance (Yes/No, with proof)"]] },
   { key: "feedback", title: "A4. Student Feedback Score", max: 10, doc: "fb", fields: [["code", "Course Code / Name"], ["fb1", "First Feedback(%)"], ["fb2", "Second Feedback(%)"]] },
   { key: "projects", title: "A6. Student Project Guidance", max: 20, doc: "proj", rowMax: projectGuidanceRowMax, fields: [["label", "Project Category"]] },
-  { key: "quals", title: "A8. Qualification Enhancement", max: 10, doc: "qual", rowMax: SCORE_LIMITS.qualificationRow, fields: [["label", "Category"]] },
+  { key: "quals", title: "A8. Qualification Enhancement", max: 10, doc: "qual", rowMax: SCORE_LIMITS.qualificationRow, fields: [["title", "Qualification / Certification Title"], ["body", "Awarding Body"], ["date", "Date"]] },
 ];
 
 export const PART_B_SECTIONS = [
@@ -435,7 +436,7 @@ export const validateDesignArtsBeforeSubmit = validateCreativeSchoolBeforeSubmit
 export const validateMediaBeforeSubmit = validateCreativeSchoolBeforeSubmit;
 
 const NUMERIC_KEYS = new Set(["planned", "conducted", "fb1", "fb2", "amount"]);
-const TEXT_ONLY_KEYS = new Set(["title", "course", "name", "degree", "thesis", "agency", "role", "status", "type", "level", "activity", "nature", "journal", "book", "publisher", "org", "program", "company", "desc", "coAuthors", "media", "film", "client", "platform"]);
+const TEXT_ONLY_KEYS = new Set(["title", "body", "course", "name", "degree", "thesis", "agency", "role", "status", "type", "level", "activity", "nature", "journal", "book", "publisher", "org", "program", "company", "desc", "coAuthors", "media", "film", "client", "platform"]);
 
 const DROPDOWN_FIELD_OPTIONS = {
   // Part A
@@ -444,9 +445,6 @@ const DROPDOWN_FIELD_OPTIONS = {
   },
   projects: {
     label: ["B.Tech / UG Major Project", "M.Tech / PG Dissertation", "UG Design / Media Capstone", "PG Thesis Guidance", "Mini Project / Internship"],
-  },
-  quals: {
-    label: ["PhD Completed during AY", "PhD Pursuing / Coursework", "Post-Doc Completed", "Certifications / Online Courses"],
   },
 
   // Part B
@@ -944,35 +942,11 @@ function InnovativeSection({ form, setForm, docs, setDocs, mode, locked, reviewe
 }
 
 function PartCardContainer({ title, subtitle, max, score, accent = "#4f46e5", children }) {
+  const scoreBadge = score !== undefined ? `${Number(score).toFixed(1)} / ${max}` : max ? `${max}` : undefined;
   return (
-    <div className="fa-section-card appraisal-section-card" style={{ background: "#fff", borderRadius: 14, boxShadow: "0 18px 50px rgba(17,24,39,0.08)", marginBottom: 24, overflow: "hidden", border: "1px solid #e5e7eb", borderTop: `3px solid ${accent}` }}>
-      <div className="appraisal-part-header" style={{ padding: "18px 24px", borderBottom: "1px solid #f3f4f6", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, background: "linear-gradient(180deg,#ffffff 0%,#fbfbff 100%)" }}>
-        <div style={{ minWidth: 0, display: "flex", alignItems: "center", gap: 12 }}>
-          <span className="appraisal-part-icon" style={{ width: 36, height: 36, borderRadius: 10, background: `${accent}14`, color: accent, border: `1px solid ${accent}2e`, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M12 3 3 7l9 4 9-4-9-4Z" />
-              <path d="M5 10v5c2 2 12 2 14 0v-5" />
-              <path d="M12 11v8" />
-            </svg>
-          </span>
-          <div className="appraisal-part-title" style={{ fontWeight: 800, fontSize: 18, color: accent, letterSpacing: 0 }}>
-            {title}
-          </div>
-        </div>
-        {score !== undefined && (
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "5px 12px", borderRadius: 999, background: "#fff", border: "1px solid #e5e7eb", fontSize: 13, fontWeight: 700, color: "#475569" }}>
-            <span>Total Score</span>
-            <span style={{ color: accent, fontWeight: 900 }}>{n(score).toFixed(1)} / {max}</span>
-          </div>
-        )}
-      </div>
-      <div style={{ padding: "20px 24px" }}>
-        {subtitle && (
-          <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 18, fontWeight: 600 }}>{subtitle}</div>
-        )}
-        {children}
-      </div>
-    </div>
+    <SC title={title} subtitle={subtitle} accent={accent} scoreBadge={scoreBadge}>
+      {children}
+    </SC>
   );
 }
 
@@ -1226,13 +1200,17 @@ function MentoringSection({ form, setForm, docs, setDocs, mode, locked, reviewer
   );
 }
 
+
+
 function PartA({ sections, SectionTable, InnovativeSection, ObeSection, MentoringSection, sectionTableProps }) {
+  const totals = calculateCreativeSchoolTotals(sectionTableProps.form || {});
   return (
     <PartCardContainer
       title={`Part A - Teaching & Academic Activities (Max ${PART_A_MAX})`}
       subtitle="Fill in your teaching and academic activities for the appraisal period. Enter scores for each item."
       max={PART_A_MAX}
-      accent="#4f46e5"
+      score={totals.partA}
+      accent="#6b21a8"
     >
       <SectionTable key={sections[0].key} section={sections[0]} {...sectionTableProps} />
       <SectionTable key={sections[1].key} section={sections[1]} {...sectionTableProps} />
@@ -1247,12 +1225,14 @@ function PartA({ sections, SectionTable, InnovativeSection, ObeSection, Mentorin
 }
 
 function PartB({ sections, SectionTable, sectionTableProps }) {
+  const totals = calculateCreativeSchoolTotals(sectionTableProps.form || {});
   return (
     <PartCardContainer
       title={`Part B - Research, Publications & Creative Output (Max ${PART_B_MAX})`}
       subtitle="Fill in your research papers, books, creative projects, consultancy, and patents. Enter scores for each item."
       max={PART_B_MAX}
-      accent="#4f46e5"
+      score={totals.partB}
+      accent="#047857"
     >
       {sections.map((section) => (
         <SectionTable key={section.key} section={section} {...sectionTableProps} />
@@ -1262,12 +1242,14 @@ function PartB({ sections, SectionTable, sectionTableProps }) {
 }
 
 function PartC({ sections, SectionTable, sectionTableProps }) {
+  const totals = calculateCreativeSchoolTotals(sectionTableProps.form || {});
   return (
     <PartCardContainer
       title={`Part C - Administrative Role & University Development (Max ${PART_C_MAX})`}
       subtitle="Fill in your university/school administrative roles, event organization, student mentoring, and placement activities."
       max={PART_C_MAX}
-      accent="#4f46e5"
+      score={totals.partC}
+      accent="#0f766e"
     >
       {sections.map((section) => (
         <SectionTable key={section.key} section={section} {...sectionTableProps} />
