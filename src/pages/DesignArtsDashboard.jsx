@@ -65,7 +65,7 @@ import {
 import { canReviewerRejectProfile, getReviewChain, pendingStatusFor, profileFromsessionStorage, reviewedStatusFor, roleLabel, visiblePreviousReviewRoles, workflowValidationError, isAppraisalFinalisedByVc, isRejectedStatus, isPendingReviewStatusFor, hasActiveRejection, reviewListFrom } from "../utils/hierarchy";
 import { n, pct, RO, TI } from "../features/faculty-appraisal/shared";
 
-import { emptyDesignArtsForm, ALL_ARRAY_KEYS, titleCase, calculateDesignArtsTotals, getDesignArtsEffectiveMaxScores, validateDesignArtsBeforeSubmit, mergeForm, preserveSavedReviewScores, designArtsSchoolName, PART_A_SECTIONS, PART_B_SECTIONS, DesignArtsForm, DesignArtsAuthorityReviewPanel, SectionSelector, AccuracyCheckbox, CompactAuthoritySummaryCard, isReviewerReviewComplete, normalizeScoresForSubmit, summaryRow, b8summaryRow, SECTION_OPTIONS, SummaryBox, WorkflowTracker, ACCENT, ACCENT2, PART_A_MAX, PART_B_MAX, GRAND_MAX, userInitials } from "../components/appraisal/designArts/DesignArtsAppraisalForm";
+import { emptyDesignArtsForm, ALL_ARRAY_KEYS, titleCase, calculateDesignArtsTotals, getDesignArtsEffectiveMaxScores, validateDesignArtsBeforeSubmit, mergeForm, preserveSavedReviewScores, designArtsSchoolName, PART_A_SECTIONS, PART_B_SECTIONS, DesignArtsForm, DesignArtsAuthorityReviewPanel, SectionSelector, AccuracyCheckbox, CompactAuthoritySummaryCard, isReviewerReviewComplete, normalizeScoresForSubmit, summaryRow, b8summaryRow, SECTION_OPTIONS, SummaryBox, WorkflowTracker, ACCENT, ACCENT2, PART_A_MAX, PART_B_MAX, GRAND_MAX, userInitials } from "../features/faculty-appraisal";
 import { loadClosedAppraisal } from "../services/appraisalPersistence";
 
 function InlineSvgIcon({ paths, size = 16, strokeWidth = 2.2 }) {
