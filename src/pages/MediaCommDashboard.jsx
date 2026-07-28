@@ -64,7 +64,7 @@ import {
 import { canReviewerRejectProfile, getReviewChain, pendingStatusFor, profileFromsessionStorage, reviewedStatusFor, roleLabel, visiblePreviousReviewRoles, workflowValidationError, isAppraisalFinalisedByVc, isRejectedStatus, isPendingReviewStatusFor, hasActiveRejection, reviewListFrom } from "../utils/hierarchy";
 import { n, pct, RO, TI } from "../features/faculty-appraisal/shared";
 
-import { emptyMediaForm, ALL_ARRAY_KEYS, titleCase, calculateMediaTotals, getMediaEffectiveMaxScores, validateMediaBeforeSubmit, mergeForm, preserveSavedReviewScores, PART_A_SECTIONS, PART_B_SECTIONS, MediaForm, MediaCommAuthorityReviewPanel, SectionSelector, AccuracyCheckbox, CompactAuthoritySummaryCard, isReviewerReviewComplete, normalizeScoresForSubmit, summaryRow, b8summaryRow, SECTION_OPTIONS, SummaryBox, WorkflowTracker, ACCENT, ACCENT2, userInitials } from "../components/appraisal/mediaCommunication/MediaCommunicationAppraisalForm";
+import { emptyMediaForm, ALL_ARRAY_KEYS, titleCase, calculateMediaTotals, getMediaEffectiveMaxScores, validateMediaBeforeSubmit, mergeForm, preserveSavedReviewScores, PART_A_SECTIONS, PART_B_SECTIONS, MediaForm, MediaCommAuthorityReviewPanel, SectionSelector, AccuracyCheckbox, CompactAuthoritySummaryCard, isReviewerReviewComplete, normalizeScoresForSubmit, summaryRow, b8summaryRow, SECTION_OPTIONS, SummaryBox, WorkflowTracker, ACCENT, ACCENT2, userInitials } from "../features/faculty-appraisal";
 import { loadClosedAppraisal } from "../services/appraisalPersistence";
 
 function InlineSvgIcon({ paths, size = 16, strokeWidth = 2.2 }) {
