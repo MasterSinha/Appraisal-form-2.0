@@ -2,7 +2,7 @@ import { lazy, Suspense } from "react";
 import { Navigate } from "react-router-dom";
 import { normalizeRole } from "../auth/session";
 import { departmentHasHod, getDeanTrack } from "../utils/hierarchy";
-import { DEAN_TRACKS, getSchoolKey, isCisrSchool, normalizeHierarchyText } from "../constants/universityHierarchy";
+import { DEAN_TRACKS, getSchoolKey, isCisrSchool } from "../constants/universityHierarchy";
 import { FORM_TYPES, formTypeForSchool } from "../constants/formRouting";
 
 // Each dashboard is its own async chunk - only the one matching the user's role
@@ -25,19 +25,6 @@ function DashboardLoader() {
   return (
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "inherit", color: "#64748b", fontSize: 14 }} className="fa-fade-in">
       Loading dashboard...
-    </div>
-  );
-}
-
-function UnknownSchoolDashboard() {
-  return (
-    <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", background: "#f8fafc", fontFamily: "Georgia, serif", padding: 24 }}>
-      <div style={{ maxWidth: 520, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 24, color: "#0f172a" }}>
-        <h2 style={{ margin: "0 0 8px", fontSize: 20 }}>School not recognized</h2>
-        <p style={{ margin: 0, color: "#64748b", lineHeight: 1.6 }}>
-          Your profile does not have a valid school assigned. Please update your profile with one of the university schools before opening the appraisal workflow.
-        </p>
-      </div>
     </div>
   );
 }

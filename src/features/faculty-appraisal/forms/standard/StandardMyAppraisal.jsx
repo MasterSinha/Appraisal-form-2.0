@@ -1,4 +1,4 @@
-/* eslint-disable no-unused-vars */
+/* eslint-disable no-unused-vars, react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../../../services/api";
@@ -257,6 +257,48 @@ const partDParameters = [
   { parameter: "Adaptability & Learning", description: "Openness to change, new tools, or new processes, Response to feedback and coaching, Handling of unexpected/crisis situations", max: 10 },
 ];
 
+function normalizeAcademicYearCycles(cyclesData) {
+  const normalizeCycle = (cycle) => {
+    if (!cycle) return null;
+    if (typeof cycle === "string") {
+      return { academic_year: cycle, is_open: cycle === APP_INFO.DEFAULT_AY };
+    }
+    const academicYear = cycle.academic_year || cycle.academicYear || cycle.year || cycle.year_label || "";
+    if (!academicYear) return null;
+    return {
+      academic_year: String(academicYear),
+      is_open: cycle.is_open ?? cycle.isOpen ?? cycle.active ?? cycle.open ?? (String(academicYear) === APP_INFO.DEFAULT_AY),
+    };
+  };
+
+  let list = [];
+  if (Array.isArray(cyclesData)) {
+    list = cyclesData.map(normalizeCycle).filter(Boolean);
+  } else if (Array.isArray(cyclesData?.cycles)) {
+    list = cyclesData.cycles.map(normalizeCycle).filter(Boolean);
+  } else if (Array.isArray(cyclesData?.data)) {
+    list = cyclesData.data.map(normalizeCycle).filter(Boolean);
+  }
+
+  if (list.length === 0) {
+    const openYear = APP_INFO.DEFAULT_AY || "2026-2027";
+    const startYearNum = parseInt(openYear.split("-")[0], 10) || 2026;
+    for (let i = 0; i < 3; i++) {
+      const pastYear = `${startYearNum - i}-${startYearNum - i + 1}`;
+      list.push({ academic_year: pastYear, is_open: i === 0 });
+    }
+  }
+
+  return list
+    .reduce((acc, cycle) => {
+      if (!acc.some((existing) => existing.academic_year === cycle.academic_year)) {
+        acc.push(cycle);
+      }
+      return acc;
+    }, [])
+    .sort((a, b) => b.academic_year.localeCompare(a.academic_year));
+}
+
 export default function StandardMyAppraisal({
   sectionTab,
   onSectionTabChange,
@@ -271,6 +313,19 @@ export default function StandardMyAppraisal({
   const hodAppraisalTab = sectionTab || localAppraisalTab;
   const setHodAppraisalTab = onSectionTabChange || setLocalAppraisalTab;
   const resolvedAcademicYear = defaultAcademicYear || sessionStorage.getItem("academicYear") || APP_INFO.DEFAULT_AY;
+
+  // -- HOD's own appraisal form state --
+  const [info, setInfo] = useState({
+    name: sessionStorage.getItem("name") || "",
+    qual: sessionStorage.getItem("qualification") || "",
+    desig: defaultDesignation,
+    school: sessionStorage.getItem("school") || sessionStorage.getItem("department") || "",
+    experience: sessionStorage.getItem("experience") || "",
+    expDyp: "",
+    expPrev: "",
+    expTotal: "",
+    ay: resolvedAcademicYear
+  });
 
   useEffect(() => {
     const syncAcademicYear = (event) => {
@@ -295,19 +350,6 @@ export default function StandardMyAppraisal({
     window.addEventListener("academicYearChanged", syncAvailableCycles);
     return () => window.removeEventListener("academicYearChanged", syncAvailableCycles);
   }, []);
-
-  // -- HOD's own appraisal form state --
-  const [info, setInfo] = useState({
-    name: sessionStorage.getItem("name") || "",
-    qual: sessionStorage.getItem("qualification") || "",
-    desig: defaultDesignation,
-    school: sessionStorage.getItem("school") || sessionStorage.getItem("department") || "",
-    experience: sessionStorage.getItem("experience") || "",
-    expDyp: "",
-    expPrev: "",
-    expTotal: "",
-    ay: resolvedAcademicYear
-  });
   const inf = (k) => (v) => setInfo((p) => ({ ...p, [k]: v }));
 
   const [lectures, setLectures] = useState([
@@ -1170,47 +1212,6 @@ export default function StandardMyAppraisal({
     win.document.close();
   };
   const workflowRejected = hasActiveRejection(workflowDeclaration, workflowReviews);
-  function normalizeAcademicYearCycles(cyclesData) {
-    const normalizeCycle = (cycle) => {
-      if (!cycle) return null;
-      if (typeof cycle === "string") {
-        return { academic_year: cycle, is_open: cycle === APP_INFO.DEFAULT_AY };
-      }
-      const academicYear = cycle.academic_year || cycle.academicYear || cycle.year || cycle.year_label || "";
-      if (!academicYear) return null;
-      return {
-        academic_year: String(academicYear),
-        is_open: cycle.is_open ?? cycle.isOpen ?? cycle.active ?? cycle.open ?? (String(academicYear) === APP_INFO.DEFAULT_AY),
-      };
-    };
-
-    let list = [];
-    if (Array.isArray(cyclesData)) {
-      list = cyclesData.map(normalizeCycle).filter(Boolean);
-    } else if (Array.isArray(cyclesData?.cycles)) {
-      list = cyclesData.cycles.map(normalizeCycle).filter(Boolean);
-    } else if (Array.isArray(cyclesData?.data)) {
-      list = cyclesData.data.map(normalizeCycle).filter(Boolean);
-    }
-
-    if (list.length === 0) {
-      const openYear = APP_INFO.DEFAULT_AY || "2026-2027";
-      const startYearNum = parseInt(openYear.split("-")[0], 10) || 2026;
-      for (let i = 0; i < 3; i++) {
-        const pastYear = `${startYearNum - i}-${startYearNum - i + 1}`;
-        list.push({ academic_year: pastYear, is_open: i === 0 });
-      }
-    }
-
-    return list
-      .reduce((acc, cycle) => {
-        if (!acc.some((existing) => existing.academic_year === cycle.academic_year)) {
-          acc.push(cycle);
-        }
-        return acc;
-      }, [])
-      .sort((a, b) => b.academic_year.localeCompare(a.academic_year));
-  }
 
   const academicYearOptions = availableCyclesState.length
     ? availableCyclesState

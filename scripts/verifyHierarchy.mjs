@@ -26,17 +26,32 @@ assert.equal(SCHOOL_OPTIONS.length, 9, "Signup must expose exactly 8 schools plu
 assert.deepEqual(
   SCHOOL_OPTIONS.map((school) => school.value),
   [
-    "SoCSEA — School of Computer Science, Engineering & Applications",
-    "SoBB — School of Bio-Engineering & Bio Science",
-    "SoCE — School of Continual Education",
-    "SoEMR — School of Engineering Management & Research",
-    "SoC — School of Commerce & Management",
-    "SoMCS — School of Media & Communication Studies",
-    "SoD — School of Design",
-    "SoAA — School of Applied Arts",
-    "CISR — Center for Interdisciplinary Studies and Research",
+    "SoCSEA",
+    "SoBB",
+    "SoCE",
+    "SoEMR",
+    "SoCM",
+    "SoMCS",
+    "SoD",
+    "SoAA",
+    "CISR",
   ],
-  "School/center dropdown values must match the approved list exactly"
+  "School/center dropdown values must match the codes exactly"
+);
+assert.deepEqual(
+  SCHOOL_OPTIONS.map((school) => school.label),
+  [
+    "SoCSEA - School of Computer Science, Engineering & Applications",
+    "SoBB - School of Bio-Engineering & Bio Science",
+    "SoCE - School of Continual Education",
+    "SoEMR - School of Engineering Management & Research",
+    "SoCM - School of Commerce & Management",
+    "SoMCS - School of Media & Communication Studies",
+    "SoD - School of Design",
+    "SoAA - School of Applied Arts",
+    "CISR - Center for Interdisciplinary Studies and Research",
+  ],
+  "School/center dropdown labels must match the labels exactly"
 );
 
 for (const school of UNIVERSITY_SCHOOLS.filter((item) => item.code !== "SoEMR" && item.code !== "CISR")) {

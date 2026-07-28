@@ -433,7 +433,7 @@ const docPrefixForSectionLabel = (label = "") =>{
  return "";
 };
 
-const isAverageScoredSectionLabel = (labelText = "") => false;
+const isAverageScoredSectionLabel = () => false;
 
 export const validateCompleteRows = (sections = [], defaultDocs) =>{
  const errors = [];
