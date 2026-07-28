@@ -1,4 +1,4 @@
-/* eslint-disable no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, react-hooks/set-state-in-effect */
+/* eslint-disable no-unused-vars, react-hooks/exhaustive-deps, react-hooks/set-state-in-effect */
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
@@ -487,6 +487,8 @@ export default function DesignArtsDashboard({ fixedRole }) {
   ],
   });
   };
+
+  const pendingCount = queue.filter((item) => !isReviewerReviewComplete(item, role)).length;
 
   const navItems = [
     ...(canSelfSubmit ? [{ id: "myAppraisal", label: "My Appraisal", sub: "View your self-appraisal form" }] : []),

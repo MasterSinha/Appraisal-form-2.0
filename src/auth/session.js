@@ -163,7 +163,7 @@ export const getSessionItem = (key) => {
   if (typeof window === "undefined") return null;
   const val = sessionStorage.getItem(key) || localStorage.getItem(key);
   if (val && !sessionStorage.getItem(key)) {
-    try { sessionStorage.setItem(key, val); } catch {}
+    try { sessionStorage.setItem(key, val); } catch { /* ignore */ }
   }
   return val;
 };

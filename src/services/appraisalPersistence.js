@@ -114,24 +114,6 @@ const normalizeDocsMap = (docs = {}) =>
  Object.entries(docs || {}).map(([key, files]) =>[key, filesForDocValue(files)]),
  );
 
-const mergeDocsMap = (baseDocs = {}, nextDocs = {}) =>{
- const merged = { ...normalizeDocsMap(baseDocs) };
- Object.entries(normalizeDocsMap(nextDocs)).forEach(([key, files]) =>{
- const existing = merged[key] || [];
- const seen = new Set(existing.map((file) =>file?.url || file?.name).filter(Boolean));
- merged[key] = [
- ...existing,
- ...files.filter((file) =>{
- const identity = file?.url || file?.name;
- if (!identity || seen.has(identity)) return false;
- seen.add(identity);
- return true;
- }),
- ];
- });
- return merged;
-};
-
 const defaultAcrRows = () =>[
  { label: "Self-motivation & Proactiveness" },
  { label: "Punctuality" },

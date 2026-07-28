@@ -309,6 +309,9 @@ export const summaryRow = (applicability = {}, key, row) =>
 export const b8summaryRow = (applicability = {}, row) =>
  [row];
 
+const uid = () => Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
+const cloneRows = (rows) => (rows || []).map((row) => ({ ...row, _id: row._id || uid() }));
+
 const ensureIds = (rows) =>Array.isArray(rows) ? rows.map((row) =>(row._id ? row : { ...row, _id: uid() })) : rows;
 
 export const mergeForm = (base, incoming = {}) =>{

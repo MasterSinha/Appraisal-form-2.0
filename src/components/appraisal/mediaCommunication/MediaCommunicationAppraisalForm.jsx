@@ -292,6 +292,9 @@ export const summaryRow = (applicability = {}, key, row) =>
 export const b8summaryRow = (applicability = {}, row) =>
  [row];
 
+const uid = () => Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
+const cloneRows = (rows) => (rows || []).map((row) => ({ ...row, _id: row._id || uid() }));
+
 export const mergeForm = (base, incoming = {}) =>{
  const merged = {
   ...base,

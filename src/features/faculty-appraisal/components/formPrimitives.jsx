@@ -1,6 +1,7 @@
+/* eslint-disable react-refresh/only-export-components */
 import { useRef, useState } from "react";
 import { api, API_BASE_URL } from "../../../services/api";
-import { isAllowedAttachmentFile, stripMaxMarksFromTitle } from "../../../utils/appraisalFormUtils";
+import { stripMaxMarksFromTitle } from "../../../utils/appraisalFormUtils";
 
 export function openDocumentFile(file) {
   if (!file) return;

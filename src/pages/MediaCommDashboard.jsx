@@ -23,7 +23,9 @@ import {
  saveReviewerDraft,
  submitWorkflowReview,
  buildReviewRemarks,
+ openFullFormReport,
  generateMediaCommReport,
+
  INNOVATIVE_METHODS,
  SCORE_LIMITS,
  averageSectionScore,
@@ -501,6 +503,8 @@ export default function MediaCommDashboard({ fixedRole }) {
  ],
  });
  };
+
+  const pendingCount = queue.filter((item) => !isReviewerReviewComplete(item, role)).length;
 
   const navItems = [
     ...(canSelfSubmit ? [{ id: "myAppraisal", label: "My Appraisal", sub: "View your self-appraisal form" }] : []),
