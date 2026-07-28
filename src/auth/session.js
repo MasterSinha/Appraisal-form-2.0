@@ -126,25 +126,56 @@ export const storeUserSession = ({ token, profile = {}, fallbackEmail = "" }) =>
 
   if (token) {
     sessionStorage.setItem("accessToken", token);
+    localStorage.setItem("accessToken", token);
   }
 
-  sessionStorage.setItem("role", role);
-  sessionStorage.setItem("username", email);
-  sessionStorage.setItem("name", name);
-  sessionStorage.setItem("department", normalizedDepartment);
-  sessionStorage.setItem("school", school);
-  sessionStorage.setItem("employeeId", firstValue(safeProfile.employee_id));
-  sessionStorage.setItem("designation", firstValue(safeProfile.designation));
-  sessionStorage.setItem("qualification", firstValue(safeProfile.qualification));
-  sessionStorage.setItem("experience", firstValue(safeProfile.teaching_experience));
-  sessionStorage.setItem("phone", firstValue(safeProfile.phone));
-  sessionStorage.setItem("reports_to_registrar", reportsToRegistrar ? "true" : "false");
-  sessionStorage.setItem("reportsToRegistrar", reportsToRegistrar ? "true" : "false");
+  const items = {
+    role,
+    username: email,
+    email,
+    name,
+    department: normalizedDepartment,
+    school,
+    employeeId: firstValue(safeProfile.employee_id),
+    designation: firstValue(safeProfile.designation),
+    qualification: firstValue(safeProfile.qualification),
+    experience: firstValue(safeProfile.teaching_experience),
+    phone: firstValue(safeProfile.phone),
+    reports_to_registrar: reportsToRegistrar ? "true" : "false",
+    reportsToRegistrar: reportsToRegistrar ? "true" : "false",
+  };
+
+  Object.entries(items).forEach(([k, v]) => {
+    sessionStorage.setItem(k, v);
+    localStorage.setItem(k, v);
+  });
 
   const hasHod = departmentHasHod(school, normalizedDepartment);
   sessionStorage.setItem("hasHod", hasHod ? "true" : "false");
+  localStorage.setItem("hasHod", hasHod ? "true" : "false");
   sessionStorage.setItem("hasHOD", hasHod ? "true" : "false");
+  localStorage.setItem("hasHOD", hasHod ? "true" : "false");
 
   return { email, role, school, department: normalizedDepartment, reports_to_registrar: reportsToRegistrar };
 };
+
+export const getSessionItem = (key) => {
+  if (typeof window === "undefined") return null;
+  const val = sessionStorage.getItem(key) || localStorage.getItem(key);
+  if (val && !sessionStorage.getItem(key)) {
+    try { sessionStorage.setItem(key, val); } catch {}
+  }
+  return val;
+};
+
+export const getUserEmail = () => {
+  return getSessionItem("username") || getSessionItem("email") || getSessionItem("userEmail") || "";
+};
+
+export const clearUserSession = () => {
+  if (typeof window === "undefined") return;
+  sessionStorage.clear();
+  localStorage.clear();
+};
+
 

@@ -135,7 +135,7 @@ export default function MediaCommDashboard({ fixedRole }) {
  const [declaration, setDeclaration] = useState(null);
  const [reviews, setReviews] = useState([]);
  const [availableCycles, setAvailableCycles] = useState([]);
- const userEmail = sessionStorage.getItem("username") || "";
+ const userEmail = sessionStorage.getItem("username") || sessionStorage.getItem("email") || localStorage.getItem("username") || localStorage.getItem("email") || "";
  const academicYear = form.info?.ay || sessionStorage.getItem("academicYear") || "2026-2027";
  const currentSchoolValue = form.info?.school || profile.school || sessionStorage.getItem("school") || sessionStorage.getItem("schoolName") || "SoMCS";
 
@@ -145,11 +145,18 @@ export default function MediaCommDashboard({ fixedRole }) {
        const res = await api.get("/academic-years/available");
        const cycles = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
        if (cycles.length > 0) {
-         const formatted = cycles.map((c) => ({
-           academic_year: c.academic_year || c.academicYear || c.year || String(c),
-           is_open: c.is_open !== undefined ? Boolean(c.is_open) : true,
-         }));
-         setAvailableCycles(formatted);
+          const currentStartYear = parseInt(academicYear.split("-")[0], 10) || 2026;
+          const minYear = currentStartYear - 4;
+          const formatted = cycles
+            .map((c) => ({
+              academic_year: c.academic_year || c.academicYear || c.year || String(c),
+              is_open: c.is_open !== undefined ? Boolean(c.is_open) : true,
+            }))
+            .filter((c) => {
+              const yStart = parseInt(c.academic_year.split("-")[0], 10);
+              return !isNaN(yStart) && yStart >= minYear;
+            });
+          setAvailableCycles(formatted);
        }
      } catch (err) {
        console.warn("Could not fetch available cycles:", err);
@@ -158,12 +165,13 @@ export default function MediaCommDashboard({ fixedRole }) {
    fetchCycles();
  }, []);
 
- const academicYearOptions = availableCycles.length > 0
-   ? availableCycles
-   : [
-       { academic_year: "2026-2027", is_open: true },
-       { academic_year: "2025-2026", is_open: false },
-     ];
+  const academicYearOptions = availableCycles.length > 0
+    ? availableCycles
+    : [
+        { academic_year: "2026-2027", is_open: true },
+        { academic_year: "2025-2026", is_open: false },
+        { academic_year: "2024-2025", is_open: false },
+      ];
 
  const selectedCycle = academicYearOptions.find((c) => c.academic_year === academicYear);
  const isSelectedCycleClosed = selectedCycle ? !selectedCycle.is_open : false;
@@ -262,6 +270,7 @@ export default function MediaCommDashboard({ fixedRole }) {
  const handleSaveSelfSection = async (section) =>{
  if (locked) return;
  if (!userEmail) {
+ alert("Please login again before saving. Your session email was not found.");
  navigate("/login", { replace: true });
  return;
  }
@@ -306,6 +315,7 @@ export default function MediaCommDashboard({ fixedRole }) {
  return;
  }
  if (!userEmail) {
+ alert("Please login again before submitting. Your session email was not found.");
  navigate("/login", { replace: true });
  return;
  }

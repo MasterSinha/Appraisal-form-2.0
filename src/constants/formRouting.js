@@ -32,6 +32,6 @@ export const FORM_SCHOOL_CODES = {
 export const formTypeForSchool = (schoolCode) => {
   const code = String(schoolCode || "").trim();
   return (
-    Object.entries(FORM_SCHOOL_CODES).find(([, codes]) => codes.includes(code))?.[0] || ""
+    Object.entries(FORM_SCHOOL_CODES).find(([, codes]) => codes.includes(code))?.[0] || FORM_TYPES.DEFAULT
   );
 };

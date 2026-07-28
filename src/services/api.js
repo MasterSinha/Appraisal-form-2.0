@@ -33,11 +33,18 @@ export const apiClient = axios.create({
 
 apiClient.interceptors.request.use((config) => {
   const token =
-    sessionStorage.getItem("accessToken") || sessionStorage.getItem("token");
+    sessionStorage.getItem("accessToken") ||
+    sessionStorage.getItem("token") ||
+    localStorage.getItem("accessToken") ||
+    localStorage.getItem("token");
 
   if (token) {
     config.headers = config.headers || {};
-    config.headers.Authorization = `Bearer ${token}`;
+    if (typeof config.headers.set === "function") {
+      config.headers.set("Authorization", `Bearer ${token}`);
+    } else {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
   }
 
   return config;
@@ -101,7 +108,7 @@ export const resolveRelativeUrls = (data) => {
 // Normalize every API error so err.message is always a user-safe string.
 // Backend detail fields are developer-facing; show user_message when present.
 // 401 clears the session and redirects to /login automatically, except while
-// the user is already using an auth form.
+// the user is already using an auth form or on file uploads with fallback.
 apiClient.interceptors.response.use(
   (response) => {
     if (response.data) {
@@ -125,9 +132,16 @@ apiClient.interceptors.response.use(
     error.userMessage = userMessage;
     error.statusCode = status;
 
-    if (status === 401 && !isAuthFormRequest(error?.config?.url)) {
+    const isUpload = error?.config?.url?.includes("/upload");
+    const suppressRedirect = Boolean(error?.config?.suppressAuthRedirect);
+
+    if (status === 401 && !isAuthFormRequest(error?.config?.url) && !isUpload && !suppressRedirect) {
       sessionStorage.clear();
-      window.location.href = "/login";
+      localStorage.clear();
+      if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+        alert("Your session has expired. Please log in again.");
+        window.location.href = "/login";
+      }
     }
 
     return Promise.reject(error);

@@ -47,30 +47,24 @@ function DashboardSwitch({ role, school, department, formType }) {
   switch (role) {
     case "faculty":
       if (isCisrSchool(school)) return <CISRFacultyDashboard />;
-      if (!formType) return <UnknownSchoolDashboard />;
       if (formType === FORM_TYPES.MEDIA_COMM) return <MediaCommDashboard />;
       if (formType === FORM_TYPES.DESIGN_ARTS) return <DesignArtsDashboard />;
       return <Dashboard />;
 
     case "center_head":
-      if (!isCisrSchool(school)) return <UnknownSchoolDashboard />;
       return <CISRCenterHeadDashboard />;
 
     case "hod": {
-      if (!formType) return <UnknownSchoolDashboard />;
       const hasHod = departmentHasHod(school, department);
       if (!hasHod) return <DirectorDashboard />;
       return <HODDashboard />;
     }
 
     case "director":
-      if (!formType) return <UnknownSchoolDashboard />;
       return <DirectorDashboard />;
 
     case "dean": {
       const deanTrack = getDeanTrack({ school, department, designation: sessionStorage.getItem("designation") || "" });
-      const deanDivisionSchool = ["engineering", "non engineering", "nonengineering"].includes(normalizeHierarchyText(school));
-      if (!formType && !deanDivisionSchool) return <UnknownSchoolDashboard />;
       if (deanTrack === DEAN_TRACKS.NON_ENGINEERING) return <NonEngineeringDeanDashboard />;
       return <DeanDashboard />;
     }
