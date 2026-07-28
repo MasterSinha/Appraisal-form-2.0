@@ -1,3 +1,4 @@
+/* @refresh skip */
 /* eslint-disable no-unused-vars, react-hooks/preserve-manual-memoization, react-refresh/only-export-components */
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
@@ -66,6 +67,8 @@ import { canReviewerRejectProfile, getReviewChain, pendingStatusFor, profileFrom
 import { n, pct, RO, TI } from "../../shared";
 import SectionShell from "./common/SectionShell";
 import { tableStyle, thStyle, tdStyle, tdCenter } from "./common/TableStyles";
+import FacultyInfoSection from "../../../../components/appraisal/common/FacultyInfoSection";
+import { ALL_ARRAY_KEYS } from "./arrayKeys";
 
 export const ACCENT = "#9d174d";
 export const ACCENT2 = "#4338ca";
@@ -274,7 +277,6 @@ export const PART_D_SECTIONS = [
   { key: "acr", title: "Part D — Annual Confidential Report (ACR) - Max 50 marks", max: 50, doc: "acr", rowMax: SCORE_LIMITS.acrRow, fields: [["label", "Attribute", true]], selfReadOnlyScore: true },
 ];
 
-export const ALL_ARRAY_KEYS = [...PART_A_SECTIONS, ...PART_B_SECTIONS, ...PART_C_SECTIONS, ...PART_D_SECTIONS, { key: "obeRows" }, { key: "mentoringRows" }, { key: "training" }].map((section) => section.key);
 const SECTION_MAX_BY_KEY = Object.fromEntries([...PART_A_SECTIONS, ...PART_B_SECTIONS, ...PART_C_SECTIONS, ...PART_D_SECTIONS, { key: "obeRows", max: 20 }, { key: "mentoringRows", max: 10 }].map((section) => [section.key, section.max]));
 const REVIEW_SCORE_FIELDS = ["hod", "director", "dean", "vc"];
 
@@ -444,6 +446,60 @@ export const validateMediaBeforeSubmit = validateCreativeSchoolBeforeSubmit;
 
 const NUMERIC_KEYS = new Set(["planned", "conducted", "fb1", "fb2", "amount"]);
 const TEXT_ONLY_KEYS = new Set(["title", "body", "course", "name", "degree", "thesis", "agency", "role", "status", "type", "level", "activity", "nature", "journal", "book", "publisher", "org", "program", "company", "desc", "coAuthors", "media", "film", "client", "platform"]);
+
+const FIELD_PLACEHOLDERS = {
+  sem: "e.g. Sem-II / 2026-27 Sem-I",
+  code: "e.g. CS201 - Data Structures",
+  planned: "Total classes planned",
+  conducted: "Classes conducted",
+  course: "e.g. CS201 - Data Structures",
+  title: "Enter exact title",
+  details: "Enter brief verifiable details",
+  fb1: "First feedback %",
+  fb2: "Second feedback %",
+  label: "Select or enter category",
+  body: "Awarding body / institute",
+  date: "DD/MM/YYYY",
+  journal: "Journal name, volume, issue",
+  doi: "DOI / URL",
+  index: "Q1/Q2/Scopus/WoS",
+  impact: "Impact factor",
+  coAuthors: "Names of co-authors",
+  firstAuthor: "Yes / No",
+  publisher: "Publisher and ISBN",
+  pubName: "Publication name and date",
+  circulation: "Local / National / International",
+  scope: "National / International",
+  status: "Ongoing / Completed / Published",
+  fileNo: "Application / filing no. and date",
+  agency: "Funding agency / organisation",
+  amount: "Amount in INR",
+  role: "PI / Co-PI / Coordinator",
+  degree: "PhD / PG",
+  name: "Student / scholar / company name",
+  client: "Client / organisation",
+  nature: "Nature of work / responsibility",
+  program: "Programme / event name",
+  duration: "Duration category",
+  org: "Organised by",
+  platform: "Platform / type",
+  reach: "Reach / views",
+  activity: "Activity / responsibility",
+  durationCat: "Full year / semester / event",
+  period: "e.g. Jan 2026 - Mar 2026",
+  event: "Event / contribution name",
+  partner: "Industry / alumni partner",
+  type: "Type / category",
+  venueLevel: "Venue and level",
+};
+
+const placeholderForField = (sectionKey, fieldKey) => {
+  if (sectionKey === "feedback" && fieldKey === "code") return "Course code / name";
+  if (sectionKey === "events" && fieldKey === "level") return "University / National / International";
+  if (sectionKey === "industry" && fieldKey === "activity") return "MOU / CoE / guest lecture";
+  if (sectionKey === "placements" && fieldKey === "type") return "Placement / mentoring activity";
+  return FIELD_PLACEHOLDERS[fieldKey] || "Enter accurate information";
+};
 
 const DROPDOWN_FIELD_OPTIONS = {
   // Part A
@@ -740,7 +796,7 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
                           <RO value={row.pctConducted || (Number(row.planned) > 0 && Number(row.conducted) >= 0 ? `${((Number(row.conducted) / Number(row.planned)) * 100).toFixed(1)}%` : "")} placeholder="%" center />
                         ) : (
                           <>
-                            <TI value={row[key]} type={NUMERIC_KEYS.has(key) ? "number" : "text"} center={section.key === "courseFile" && key === "title"} max={key === "fb1" || key === "fb2" ? SCORE_LIMITS.feedbackAverage : undefined} deferClampWhileTyping={key === "fb1" || key === "fb2"} textOnly={TEXT_ONLY_KEYS.has(key) && !(section.key === "courseFile" && key === "title")} readOnly={!editableSelf || readOnlyField || selfLocked || socRowLocked} onChange={(value) => updateRow(index, key, value)} />
+                            <TI value={row[key]} type={NUMERIC_KEYS.has(key) ? "number" : "text"} center={section.key === "courseFile" && key === "title"} placeholder={placeholderForField(section.key, key)} max={key === "fb1" || key === "fb2" ? SCORE_LIMITS.feedbackAverage : undefined} deferClampWhileTyping={key === "fb1" || key === "fb2"} textOnly={TEXT_ONLY_KEYS.has(key) && !(section.key === "courseFile" && key === "title")} readOnly={!editableSelf || readOnlyField || selfLocked || socRowLocked} onChange={(value) => updateRow(index, key, value)} />
                             {section.key === "acr" && key === "label" && ACR_DETAIL_POINTS[row[key]] && (
                               <ul style={{ margin: "5px 0 0 16px", padding: 0, color: "#64748b", fontSize: 10, lineHeight: 1.5 }}>
                                 {ACR_DETAIL_POINTS[row[key]].map((point) => <li key={point}>{point}</li>)}
@@ -762,7 +818,7 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
                           ? <RO value={row.fb1 || row.fb2 ? feedbackRowScore(row, section.max).toFixed(1) : ""} center />
                           : section.autoScore
                             ? <RO value={rowSelfScore(row) ? rowSelfScore(row).toFixed(1) : ""} center />
-                            : <TI value={row.score} type="number" center max={section.rowMax ? (typeof section.rowMax === "function" ? section.rowMax(row) : section.rowMax) : section.max} readOnly={!editableSelf || section.selfReadOnlyScore || selfLocked || socRowLocked} onChange={(value) => updateRow(index, "score", value)} />
+                            : <TI value={row.score} type="number" center placeholder="Marks" max={section.rowMax ? (typeof section.rowMax === "function" ? section.rowMax(row) : section.rowMax) : section.max} readOnly={!editableSelf || section.selfReadOnlyScore || selfLocked || socRowLocked} onChange={(value) => updateRow(index, "score", value)} />
                         : <RO value={rowSelfScore(row) ? rowSelfScore(row).toFixed(1) : ""} center />}
                     </td>
                     {mode === "review" && previousRoles.map((role) => <td key={role} style={tdCenter}><RO value={socRowLocked ? "0" : displayScore(row[role])} center /></td>)}
@@ -1570,23 +1626,94 @@ export function WorkflowTracker({ declaration, reviews, profile }) {
   const reviewList = reviewListFrom(reviews);
   const reviewed = new Map(reviewList.map((review) => [review.reviewer_role, review]));
   const next = chain.find((role) => !reviewed.has(role));
+  const stateStyle = {
+    Done: { emoji: "📤", bg: "#eff6ff", color: "#1d4ed8", border: "#93c5fd", chip: "#dbeafe" },
+    Reviewed: { emoji: "✅", bg: "#ecfdf5", color: "#166534", border: "#86efac", chip: "#dcfce7" },
+    Pending: { emoji: "⏳", bg: "#fffbeb", color: "#92400e", border: "#fcd34d", chip: "#fef3c7" },
+    Waiting: { emoji: "🕒", bg: "#f8fafc", color: "#64748b", border: "#e2e8f0", chip: "#f1f5f9" },
+  };
   return (
-    <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: 14 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginBottom: 10 }}>
-        <strong style={{ fontSize: 13 }}>Approval Status Tracker</strong>
+    <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 14, padding: "20px 24px", boxShadow: "0 12px 34px rgba(17,24,39,0.07)" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", marginBottom: 12 }}>
+        <div>
+          <div style={{ fontSize: 16, fontWeight: 800, color: "#111827" }}>Approval Status Tracker</div>
+          <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>
+            {next ? `Next: ${roleLabel(next)}` : "All approval stages are complete."}
+          </div>
+        </div>
         <StatusBadge status={next ? pendingStatusFor(next) : "VC Reviewed"} />
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: `repeat(${chain.length + 1}, minmax(130px, 1fr))`, gap: 8, overflowX: "auto" }}>
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(${chain.length + 1}, minmax(0, 1fr))`, gap: 16, overflowX: "visible", paddingBottom: 4 }}>
         {[{ label: "Submitted", state: "Done", time: declaration.submitted_at }, ...chain.map((role) => {
           const review = reviewed.get(role);
           return { label: roleLabel(role), state: review ? "Reviewed" : next === role ? "Pending" : "Waiting", time: review?.reviewed_at };
-        })].map((step) => (
-          <div key={step.label} style={{ border: "1px solid #e2e8f0", borderRadius: 7, padding: 9, background: step.state === "Reviewed" || step.state === "Done" ? "#ecfdf5" : step.state === "Pending" ? "#fffbeb" : "#f8fafc" }}>
-            <div style={{ fontSize: 10, fontWeight: 900, color: "#64748b", textTransform: "uppercase" }}>{step.state}</div>
-            <div style={{ fontSize: 12, fontWeight: 800, marginTop: 4 }}>{step.label}</div>
-            <div style={{ fontSize: 10, color: "#64748b", marginTop: 4 }}>{step.time ? new Date(step.time).toLocaleString() : "No timestamp yet"}</div>
-          </div>
-        ))}
+        })].map((step, index, steps) => {
+          const colors = stateStyle[step.state] || stateStyle.Waiting;
+          const isLast = index === steps.length - 1;
+          return (
+            <div
+              key={step.label}
+              style={{
+                border: `1px solid ${colors.border}`,
+                borderRadius: 18,
+                padding: "10px 12px",
+                minHeight: 84,
+                background: `linear-gradient(180deg, ${colors.bg} 0%, #ffffff 100%)`,
+                boxShadow: "0 10px 24px rgba(15,23,42,0.07)",
+                position: "relative",
+                overflow: "visible",
+              }}
+            >
+              {!isLast && (
+                <span
+                  aria-hidden="true"
+                  style={{
+                    position: "absolute",
+                    right: -17,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    width: 18,
+                    height: 18,
+                    borderRadius: "50%",
+                    background: "#ffffff",
+                    border: "1px solid #e2e8f0",
+                    color: "#64748b",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 11,
+                    fontWeight: 900,
+                    zIndex: 3,
+                    boxShadow: "0 6px 14px rgba(15,23,42,0.08)",
+                  }}
+                >
+                  →
+                </span>
+              )}
+              <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 10, fontWeight: 900, color: colors.color, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                <span
+                  aria-hidden="true"
+                  style={{
+                    width: 22,
+                    height: 22,
+                    borderRadius: "50%",
+                    background: colors.chip,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 12,
+                    boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.65)",
+                  }}
+                >
+                  {colors.emoji}
+                </span>
+                <span>{step.state}</span>
+              </div>
+              <div style={{ fontSize: 12, fontWeight: 850, marginTop: 6, color: "#0f172a", lineHeight: 1.18 }}>{step.label}</div>
+              <div style={{ fontSize: 10, color: "#64748b", marginTop: 4, lineHeight: 1.25 }}>{step.time ? new Date(step.time).toLocaleString() : "No timestamp yet"}</div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -1817,6 +1944,7 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
         </div>
         <StatusBadge status={person?.status} />
       </div>
+      <FacultyInfoSection info={form.info} />
       <div style={{ display: "flex", justifyContent: "flex-end" }}>
         <SectionSelector value={sectionView} onChange={setSectionView} label="Review Section" />
       </div>

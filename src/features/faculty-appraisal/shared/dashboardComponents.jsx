@@ -264,12 +264,12 @@ export function WorkflowStatusTracker({ declaration, reviews, profile }) {
   };
 
   const stateStyle = {
-    Submitted: { bg: "#dbeafe", color: "#1d4ed8", border: "#93c5fd" },
-    Pending:   { bg: "#fef3c7", color: "#92400e", border: "#fcd34d" },
-    Approved:  { bg: "#dcfce7", color: "#166534", border: "#86efac" },
-    Rejected:  { bg: "#fee2e2", color: "#991b1b", border: "#fca5a5" },
-    Waiting:   { bg: "#f8fafc", color: "#64748b", border: "#e2e8f0" },
-    Stopped:   { bg: "#f1f5f9", color: "#94a3b8", border: "#e2e8f0" },
+    Submitted: { emoji: "📤", bg: "#eff6ff", color: "#1d4ed8", border: "#93c5fd", chip: "#dbeafe" },
+    Pending:   { emoji: "⏳", bg: "#fffbeb", color: "#92400e", border: "#fcd34d", chip: "#fef3c7" },
+    Approved:  { emoji: "✅", bg: "#ecfdf5", color: "#166534", border: "#86efac", chip: "#dcfce7" },
+    Rejected:  { emoji: "⚠️", bg: "#fef2f2", color: "#991b1b", border: "#fca5a5", chip: "#fee2e2" },
+    Waiting:   { emoji: "🕒", bg: "#f8fafc", color: "#64748b", border: "#e2e8f0", chip: "#f1f5f9" },
+    Stopped:   { emoji: "⛔", bg: "#f8fafc", color: "#94a3b8", border: "#e2e8f0", chip: "#f1f5f9" },
   };
 
   if (!declaration) {
@@ -347,39 +347,89 @@ export function WorkflowStatusTracker({ declaration, reviews, profile }) {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: `repeat(${authoritySteps.length + 1}, minmax(160px, 1fr))`,
-          gap: 12,
-          overflowX: "auto",
+          gridTemplateColumns: `repeat(${authoritySteps.length + 1}, minmax(0, 1fr))`,
+          gap: 16,
+          overflowX: "visible",
+          paddingBottom: 4,
         }}
       >
-        {[submittedStep, ...authoritySteps].map((step) => {
+        {[submittedStep, ...authoritySteps].map((step, index, steps) => {
           const colors = stateStyle[step.state] || stateStyle.Waiting;
+          const isLast = index === steps.length - 1;
           return (
             <div
               key={step.label}
               style={{
                 border: `1px solid ${colors.border}`,
-                background: colors.bg,
-                borderRadius: 16,
-                padding: "14px 15px",
-                minHeight: 98,
+                background: `linear-gradient(180deg, ${colors.bg} 0%, #ffffff 100%)`,
+                borderRadius: 18,
+                padding: "10px 12px",
+                minHeight: 84,
+                boxShadow: "0 10px 24px rgba(15,23,42,0.07)",
+                position: "relative",
+                overflow: "visible",
               }}
             >
+              {!isLast && (
+                <span
+                  aria-hidden="true"
+                  style={{
+                    position: "absolute",
+                    right: -17,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    width: 18,
+                    height: 18,
+                    borderRadius: "50%",
+                    background: "#ffffff",
+                    border: "1px solid #e2e8f0",
+                    color: "#64748b",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 11,
+                    fontWeight: 900,
+                    zIndex: 3,
+                    boxShadow: "0 6px 14px rgba(15,23,42,0.08)",
+                  }}
+                >
+                  →
+                </span>
+              )}
               <div
                 style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
                   fontSize: 10,
                   color: colors.color,
                   fontWeight: 900,
                   textTransform: "uppercase",
-                  letterSpacing: 0.6,
+                  letterSpacing: 0.5,
                 }}
               >
-                {step.state}
+                <span
+                  aria-hidden="true"
+                  style={{
+                    width: 22,
+                    height: 22,
+                    borderRadius: "50%",
+                    background: colors.chip,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 12,
+                    boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.65)",
+                  }}
+                >
+                  {colors.emoji}
+                </span>
+                <span>{step.state}</span>
               </div>
-              <div style={{ marginTop: 5, fontSize: 12, fontWeight: 800, color: "#0f172a" }}>
+              <div style={{ marginTop: 6, fontSize: 12, fontWeight: 850, color: "#0f172a", lineHeight: 1.18 }}>
                 {step.label}
               </div>
-              <div style={{ marginTop: 5, fontSize: 10, color: "#64748b" }}>
+              <div style={{ marginTop: 4, fontSize: 10, color: "#64748b", lineHeight: 1.25 }}>
                 {step.timestamp
                   ? new Date(step.timestamp).toLocaleString()
                   : "No timestamp yet"}

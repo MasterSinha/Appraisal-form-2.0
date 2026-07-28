@@ -9,6 +9,7 @@ import { DEAN_TRACKS, UNIVERSITY_SCHOOLS, normalizeHierarchyText } from "../cons
 import { canReviewerRejectProfile, getSchoolKey, profileFromsessionStorage, rejectedStatusFor, visiblePreviousReviewRoles, isAppraisalFinalisedByVc, isPendingReviewStatusFor } from "../utils/hierarchy";
 import { NonTeachingAuthorityReviewPanel } from "./NonTeachingStaffDashboard";
 import { n, pct, grade, RO } from "../features/faculty-appraisal/shared";
+import FacultyInfoSection from "../components/appraisal/common/FacultyInfoSection";
 
 // --- Helpers ------------------------------------------------------------------
 const oneDecimal = (value) =>(Math.trunc(n(value) * 10) / 10).toFixed(1);
@@ -459,19 +460,8 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
 </div>
 </div>
 
- {/* Personal Info */}
-<SC title="Personal Information" accent="#7c3aed">
-<table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-<tbody>
- {Object.entries(info).filter(([k]) =>!hiddenInfoRows.has(k)).map(([k, v]) =>(
-<tr key={k}>
-<td style={{ padding: "6px 10px", background: "#f8fafc", fontWeight: 600, border: "1px solid #e2e8f0", width: "35%", textTransform: "capitalize" }}>{k}</td>
-<td style={{ padding: "5px 10px", border: "1px solid #e2e8f0", color: "#334155" }}>{v}</td>
-</tr>
- ))}
-</tbody>
-</table>
-</SC>
+ {/* Faculty Info */}
+<FacultyInfoSection info={info} />
 
  {sectionView === "partA" && (<div className="review-part-stack">
 <div className="review-part-stack__title">PART A - Teaching &amp; Academic Activities</div>
