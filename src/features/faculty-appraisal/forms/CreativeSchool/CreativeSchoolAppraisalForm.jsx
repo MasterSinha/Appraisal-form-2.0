@@ -70,7 +70,7 @@ import { tableStyle, thStyle, tdStyle, tdCenter } from "./common/TableStyles";
 import FacultyInfoSection from "../../../../components/appraisal/common/FacultyInfoSection";
 import { ALL_ARRAY_KEYS } from "./arrayKeys";
 
-export const ACCENT = "#9d174d";
+export const ACCENT = "#4f46e5";
 export const ACCENT2 = "#4338ca";
 const VERIFY_TEXT = "I have verified all the details and confirm that the information provided is correct. I am responsible for the accuracy of this data.";
 const smallButton = (background) => ({ padding: "8px 14px", background, color: "#fff", border: "none", borderRadius: 7, cursor: background === "#94a3b8" ? "not-allowed" : "pointer", fontWeight: 800, fontSize: 12, fontFamily: "inherit" });
@@ -242,7 +242,11 @@ export const emptyCreativeSchoolForm = (defaultSchool = "SoD - School of Design"
 });
 
 export const emptyDesignArtsForm = () => emptyCreativeSchoolForm("SoD - School of Design");
-export const emptyMediaForm = () => emptyCreativeSchoolForm("SoMCS - School of Media & Communication Studies");
+export const emptyMediaForm = (defaultSchool) => {
+  const schoolVal = defaultSchool || (typeof sessionStorage !== "undefined" ? (sessionStorage.getItem("school") || sessionStorage.getItem("schoolName")) : null) || "SoMCS - School of Media & Communication Studies";
+  const schoolObj = getSchoolByValue(schoolVal);
+  return emptyCreativeSchoolForm(schoolObj?.label || schoolVal || "SoMCS - School of Media & Communication Studies");
+};
 
 export const SECTION_OPTIONS = [
   { value: "partA", label: "Part A — Teaching & Learning (Max: 150)" },
@@ -844,16 +848,16 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
                 );
               })}
               {!hideIndividualB8Summary && (
-                <tr style={{ background: "#f5f3ff", borderTop: "1px solid #e0e7ff" }}>
-                  <td style={{ ...tdCenter, fontWeight: "bold", color: "#3730a3", fontSize: 12, padding: "10px 12px" }} colSpan={totalLabelColSpan}>{totalLabel}</td>
-                  <td style={{ ...tdCenter, fontWeight: "bold", color: "#3730a3", fontSize: 13, padding: "10px 12px" }}>{earned.toFixed(1)}</td>
+                <tr style={{ background: "#eef2ff", borderTop: "1px solid #c7d2fe" }}>
+                  <td style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center" }} colSpan={totalLabelColSpan}>{totalLabel}</td>
+                  <td style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center" }}>{earned.toFixed(1)}</td>
                   {mode === "review" && previousRoles.map((role) => (
-                    <td key={role} style={{ ...tdCenter, fontWeight: "bold" }}>
+                    <td key={role} style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center" }}>
                       {sectionTotalScore(rows, role).toFixed(1)}
                     </td>
                   ))}
                   {mode === "review" && (
-                    <td style={{ ...tdCenter, fontWeight: "bold" }}>
+                    <td style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center" }}>
                       {sectionTotalScore(reviewRows.length ? reviewRows : rows, currentRole).toFixed(1)}
                     </td>
                   )}
@@ -1286,7 +1290,7 @@ function PartA({ sections, SectionTable, InnovativeSection, ObeSection, Mentorin
       subtitle="Fill in your teaching and academic activities for the appraisal period. Enter scores for each item."
       max={PART_A_MAX}
       score={totals.partA}
-      accent="#6b21a8"
+      accent="#4f46e5"
     >
       <SectionTable key={sections[0].key} section={sections[0]} {...sectionTableProps} />
       <SectionTable key={sections[1].key} section={sections[1]} {...sectionTableProps} />
@@ -1308,7 +1312,7 @@ function PartB({ sections, SectionTable, sectionTableProps }) {
       subtitle="Fill in your research papers, books, creative projects, consultancy, and patents. Enter scores for each item."
       max={PART_B_MAX}
       score={totals.partB}
-      accent="#047857"
+      accent="#4f46e5"
     >
       {sections.map((section) => (
         <SectionTable key={section.key} section={section} {...sectionTableProps} />
@@ -1325,7 +1329,7 @@ function PartC({ sections, SectionTable, sectionTableProps }) {
       subtitle="Fill in your university/school administrative roles, event organization, student mentoring, and placement activities."
       max={PART_C_MAX}
       score={totals.partC}
-      accent="#0f766e"
+      accent="#4f46e5"
     >
       {sections.map((section) => (
         <SectionTable key={section.key} section={section} {...sectionTableProps} />
@@ -1527,11 +1531,11 @@ export function AccuracyCheckbox({ checked, onChange, disabled = false }) {
 
 export function SummaryBox({ totals, roleScoreLabel = "Score", maxScores = { partA: PART_A_MAX, partB: PART_B_MAX, partC: PART_C_MAX, partD: PART_D_MAX, grand: GRAND_MAX } }) {
   const rows = [
-    ["Part A", totals.partA, maxScores.partA, ACCENT],
-    ["Part B", totals.partB, maxScores.partB, ACCENT2],
-    ["Part C", totals.partC, maxScores.partC, "#0284c7"],
-    ["Part D", totals.partD, maxScores.partD, "#dc2626"],
-    ["Grand Total", totals.total, maxScores.grand, "#059669"],
+    ["Part A", totals.partA, maxScores.partA, "#4f46e5"],
+    ["Part B", totals.partB, maxScores.partB, "#4338ca"],
+    ["Part C", totals.partC, maxScores.partC, "#6366f1"],
+    ["Part D", totals.partD, maxScores.partD, "#3730a3"],
+    ["Grand Total", totals.total, maxScores.grand, "#4338ca"],
   ];
   return (
     <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: 16, display: "grid", gap: 12 }}>
@@ -1548,13 +1552,13 @@ export function SummaryBox({ totals, roleScoreLabel = "Score", maxScores = { par
   );
 }
 
-export function CompactAuthoritySummaryCard({ title, subtitle, totals, maxScores, accent = ACCENT, remarksTitle, remarksContent }) {
+export function CompactAuthoritySummaryCard({ title, subtitle, totals, maxScores, accent = "#4f46e5", remarksTitle, remarksContent }) {
   const rows = [
-    ["Part A", totals.partA, maxScores.partA, ACCENT],
-    ["Part B", totals.partB, maxScores.partB, ACCENT2],
-    ["Part C", totals.partC, maxScores.partC, "#0284c7"],
-    ["Part D", totals.partD, maxScores.partD, "#dc2626"],
-    ["Total", totals.total, maxScores.grand, "#059669"],
+    ["Part A", totals.partA, maxScores.partA, "#4f46e5"],
+    ["Part B", totals.partB, maxScores.partB, "#4338ca"],
+    ["Part C", totals.partC, maxScores.partC, "#6366f1"],
+    ["Part D", totals.partD, maxScores.partD, "#3730a3"],
+    ["Total", totals.total, maxScores.grand, "#4338ca"],
   ];
   const hasRemarks = Boolean(remarksContent);
   return (
@@ -2014,17 +2018,17 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
       )}
       {sectionView === "summary" && (
         <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 14, display: "grid", gap: 10 }}>
-          <CompactAuthoritySummaryCard title="Faculty Score" totals={facultyTotals} maxScores={facultyTotals.maxScores} accent="#0ea5e9" subtitle={`Faculty submitted score for the ${schoolDisplayName} appraisal form.`} />
+          <CompactAuthoritySummaryCard title="Faculty Score" totals={facultyTotals} maxScores={facultyTotals.maxScores} accent="#4f46e5" subtitle={`Faculty submitted score for the ${schoolDisplayName} appraisal form.`} />
           <SummaryOtherInfoField value={summaryOtherInfoValueFrom(person)} readOnly rows={4} />
           {previousSummaryCards.map(({ role, label, totals: roleTotals, remarks: roleRemarks }) => (
-            <CompactAuthoritySummaryCard key={role} title={`${label} Score`} totals={roleTotals} maxScores={roleTotals.maxScores} accent="#334155" subtitle={`${label} score for the ${schoolDisplayName} appraisal form.`} remarksTitle={`${label} Remarks`} remarksContent={<div style={{ color: "#334155", fontSize: 12, lineHeight: 1.45, whiteSpace: "pre-wrap", maxHeight: 74, overflow: "auto" }}>{String(roleRemarks || "").trim() || "-"}</div>} />
+            <CompactAuthoritySummaryCard key={role} title={`${label} Score`} totals={roleTotals} maxScores={roleTotals.maxScores} accent="#4338ca" subtitle={`${label} score for the ${schoolDisplayName} appraisal form.`} remarksTitle={`${label} Remarks`} remarksContent={<div style={{ color: "#334155", fontSize: 12, lineHeight: 1.45, whiteSpace: "pre-wrap", maxHeight: 74, overflow: "auto" }}>{String(roleRemarks || "").trim() || "-"}</div>} />
           ))}
-          {reviewerRole === "vc" && <CompactAuthoritySummaryCard title="Average Score" totals={averageSummaryTotals} maxScores={averageSummaryTotals.maxScores} accent="#f59e0b" subtitle="Average score before VC review." />}
+          {reviewerRole === "vc" && <CompactAuthoritySummaryCard title="Average Score" totals={averageSummaryTotals} maxScores={averageSummaryTotals.maxScores} accent="#6366f1" subtitle="Average score before VC review." />}
           <CompactAuthoritySummaryCard
             title={`${roleLabel(reviewerRole)} Score`}
             totals={reviewerSummaryTotals}
             maxScores={totals.maxScores}
-            accent="#134e4a"
+            accent="#3730a3"
             subtitle={`${roleLabel(reviewerRole)} score for the ${schoolDisplayName} appraisal form.`}
             remarksTitle={reviewerRole === "vc" ? "Vice Chancellor Remarks and Grade" : `${roleLabel(reviewerRole)} Remarks`}
             remarksContent={<textarea value={remarks} readOnly={panelReadOnly} onChange={(event) => setRemarks(event.target.value)} rows={4} style={{ width: "100%", border: "none", padding: 0, fontFamily: "inherit", fontSize: 12, color: "#334155", resize: "vertical", background: "transparent", outline: "none" }} />}
