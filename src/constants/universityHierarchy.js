@@ -106,6 +106,21 @@ export const UNIVERSITY_SCHOOLS = [
     ],
   },
   {
+    code: "SoHSS",
+    name: "School of Humanities and Social Sciences",
+    label: "SoHSS - School of Humanities and Social Sciences",
+    deanTrack: DEAN_TRACKS.NON_ENGINEERING,
+    hodDepartments: [],
+    aliases: [
+      "sohss",
+      "hss",
+      "humanities",
+      "social sciences",
+      "humanities and social sciences",
+      "school of humanities and social sciences",
+    ],
+  },
+  {
     code: "SoD",
     name: "School of Design",
     label: "SoD - School of Design",

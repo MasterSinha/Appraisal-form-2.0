@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import { useRef, useState } from "react";
-import { api, API_BASE_URL } from "../../../services/api";
+import { api, API_BASE_URL, getFileUrl } from "../../../services/api";
 import { stripMaxMarksFromTitle } from "../../../utils/appraisalFormUtils";
 
 export function openDocumentFile(file) {
@@ -8,11 +8,7 @@ export function openDocumentFile(file) {
   const rawUrl = typeof file === "string" ? file : file.url || file.path || file.fileUrl || file.location;
   if (!rawUrl) return;
 
-  let finalUrl = rawUrl;
-  if (!finalUrl.startsWith("http://") && !finalUrl.startsWith("https://") && !finalUrl.startsWith("data:") && !finalUrl.startsWith("blob:")) {
-    const origin = (API_BASE_URL || "").replace(/\/api\/v1\/?$/, "");
-    finalUrl = origin ? `${origin}/${finalUrl.replace(/^\//, "")}` : finalUrl;
-  }
+  let finalUrl = getFileUrl(rawUrl);
 
   if (finalUrl.startsWith("data:")) {
     try {
@@ -54,11 +50,7 @@ export function downloadDocumentFile(file) {
   const rawUrl = typeof file === "string" ? file : file.url || file.path || file.fileUrl || file.location;
   if (!rawUrl) return;
 
-  let finalUrl = rawUrl;
-  if (!finalUrl.startsWith("http://") && !finalUrl.startsWith("https://") && !finalUrl.startsWith("data:") && !finalUrl.startsWith("blob:")) {
-    const origin = (API_BASE_URL || "").replace(/\/api\/v1\/?$/, "");
-    finalUrl = origin ? `${origin}/${finalUrl.replace(/^\//, "")}` : finalUrl;
-  }
+  let finalUrl = getFileUrl(rawUrl);
 
   if (finalUrl.startsWith("data:")) {
     try {

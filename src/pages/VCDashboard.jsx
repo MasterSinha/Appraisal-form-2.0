@@ -1436,6 +1436,7 @@ const SCHOOL_META = {
  SoEMR: { color: "#f59e0b", icon: "EM" },
  SoCM: { color: "#14b8a6", icon: "CM" },
  SoMCS: { color: "#8b5cf6", icon: "MC" },
+ SoHSS: { color: "#8b5cf6", icon: "HS" },
  SoD: { color: "#ec4899", icon: "DS" },
  CioD: { color: "#ec4899", icon: "DS" },
  SoAA: { color: "#f97316", icon: "AA" },
