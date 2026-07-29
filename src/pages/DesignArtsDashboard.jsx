@@ -130,7 +130,7 @@ export default function DesignArtsDashboard({ fixedRole }) {
  const [attachmentsConfirmed, setAttachmentsConfirmed] = useState(false);
 
  const [showLogoutModal, setShowLogoutModal] = useState(false);
- const [sectionSaveStatus, setSectionSaveStatus] = useState({ partA: false, partB: false });
+ const [sectionSaveStatus, setSectionSaveStatus] = useState({ partA: false, partB: false, partC: false, partD: false });
  const [savingSection, setSavingSection] = useState(null);
  const [declaration, setDeclaration] = useState(null);
  const [reviews, setReviews] = useState([]);
@@ -296,9 +296,13 @@ export default function DesignArtsDashboard({ fixedRole }) {
  totals: {
  partATotal: totals.partA,
  partBTotal: totals.partB,
+ partCTotal: totals.partC,
+ partDTotal: totals.partD,
  grandTotal: totals.total,
  effectivePartAMax: totals.maxScores.partA,
  effectivePartBMax: totals.maxScores.partB,
+ effectivePartCMax: totals.maxScores.partC,
+ effectivePartDMax: totals.maxScores.partD,
  effectiveGrandMax: totals.maxScores.grand,
  },
  submitterProfile: { ...profile, school: currentSchoolValue, appraisal_role: role },
@@ -347,7 +351,7 @@ export default function DesignArtsDashboard({ fixedRole }) {
  }
  const confirmSubmit = window.confirm("Are you sure you want to submit your appraisal? This will save your data to the database.");
  if (!confirmSubmit) return;
- const finalSectionSaveStatus = { ...sectionSaveStatus, partA: true, partB: true };
+ const finalSectionSaveStatus = { ...sectionSaveStatus, partA: true, partB: true, partC: true, partD: true };
  const submittedForm = {
  ...normalizedForm,
  sectionSaveStatus: finalSectionSaveStatus,
@@ -361,9 +365,13 @@ export default function DesignArtsDashboard({ fixedRole }) {
  totals: {
  partATotal: totals.partA,
  partBTotal: totals.partB,
+ partCTotal: totals.partC,
+ partDTotal: totals.partD,
  grandTotal: totals.total,
  effectivePartAMax: totals.maxScores.partA,
  effectivePartBMax: totals.maxScores.partB,
+ effectivePartCMax: totals.maxScores.partC,
+ effectivePartDMax: totals.maxScores.partD,
  effectiveGrandMax: totals.maxScores.grand,
  },
  form: submittedForm,
@@ -400,6 +408,8 @@ export default function DesignArtsDashboard({ fixedRole }) {
  reviewerRole: role,
  partAScore: scores.partA,
  partBScore: scores.partB,
+ partCScore: scores.partC,
+ partDScore: scores.partD,
  totalScore: scores.total,
  remarks,
  sectionScores,

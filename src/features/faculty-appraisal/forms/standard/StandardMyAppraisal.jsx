@@ -745,7 +745,7 @@ export default function StandardMyAppraisal({
         facultyEmail: userEmail,
         academicYear: info.ay,
         form: buildSelfDraftForm(nextStatus),
-        totals: { partATotal, partBTotal, partCTotal, partDTotal, grandTotal, effectivePartAMax, effectivePartBMax, effectiveGrandMax },
+        totals: { partATotal, partBTotal, partCTotal, partDTotal, grandTotal, effectivePartAMax, effectivePartBMax, effectivePartCMax: PART_C_MAX, effectivePartDMax: PART_D_MAX, effectiveGrandMax },
         docs,
         submitterProfile: profileFromsessionStorage(),
         sectionSaveStatus: nextStatus,
@@ -813,7 +813,7 @@ export default function StandardMyAppraisal({
         facultyEmail: userEmail,
         academicYear: info.ay,
         form: buildSelfDraftForm(),
-        totals: { partATotal, partBTotal, partCTotal, partDTotal, grandTotal, effectivePartAMax, effectivePartBMax, effectiveGrandMax },
+        totals: { partATotal, partBTotal, partCTotal, partDTotal, grandTotal, effectivePartAMax, effectivePartBMax, effectivePartCMax: PART_C_MAX, effectivePartDMax: PART_D_MAX, effectiveGrandMax },
         docs,
         submitterProfile,
         activeProfile: submitterProfile,
@@ -906,35 +906,35 @@ export default function StandardMyAppraisal({
 
     <h3>A1. Course Delivery &amp; Classroom Engagement &nbsp;(Max 40)</h3>
     <table>
-      <tr><th>SN</th><th>Semester</th><th>Course Code / Name</th><th>Classes as per Course Structure</th><th>Classes Actually Conducted</th><th>API Score</th></tr>
+      <tr><th>SN</th><th>Semester</th><th>Course Code / Name</th><th>Classes as per Course Structure</th><th>Classes Actually Conducted</th><th>Self Score</th></tr>
       ${lectures.map((l, i) => `<tr><td class="c">${i + 1}</td><td>${l.sem || '&nbsp;'}</td><td>${l.code || '&nbsp;'}</td><td class="c">${l.planned || '&nbsp;'}</td><td class="c">${l.conducted || '&nbsp;'}</td><td class="c">${l.score || '&nbsp;'}</td></tr>`).join('')}
       <tr class="tr"><td colspan="5" class="c b">Total Score (Max 40)</td><td class="c">${totalLecScore.toFixed(1)}</td></tr>
     </table>
 
     <h3>A2. Course File &amp; Curriculum Documentation &nbsp;(Max 20)</h3>
     <table>
-      <tr><th>SN</th><th>Course / Paper</th><th>Program & Semester</th><th>Details</th><th>API Score</th></tr>
+      <tr><th>SN</th><th>Course / Paper</th><th>Program & Semester</th><th>Details</th><th>Self Score</th></tr>
       ${courseFile.map((c, i) => `<tr><td class="c">${i + 1}</td><td>${c.course || '&nbsp;'}</td><td>${c.title || '&nbsp;'}</td><td>${c.details || '&nbsp;'}</td><td class="c">${c.score || '&nbsp;'}</td></tr>`).join('')}
       <tr class="tr"><td colspan="4" class="c b">Total Score (Max 20)</td><td class="c">${courseFileScore.toFixed(1)}</td></tr>
     </table>
 
     <h3>A3. Innovative Teaching-Learning Methods &nbsp;(Max 20)</h3>
     <table>
-      <tr><th>SN</th><th>Methods Used</th><th>Details</th><th>API Score</th></tr>
+      <tr><th>SN</th><th>Methods Used</th><th>Details</th><th>Self Score</th></tr>
       ${innovRows.map((r, i) => `<tr><td class="c">${i + 1}</td><td>${r.method || '&nbsp;'}</td><td>${r.details || '&nbsp;'}</td><td class="c">${r.score || '&nbsp;'}</td></tr>`).join('')}
       <tr class="tr"><td colspan="3" class="c b">Total Score (Max 20)</td><td class="c">${innovTotal.toFixed(1)}</td></tr>
     </table>
 
     <h3>A4. Student Feedback Score &nbsp;(Max 10)</h3>
     <table>
-      <tr><th>SN</th><th>Course Code / Name</th><th>First Feedback(%)</th><th>Second Feedback(%)</th><th>Average</th><th>API Score</th></tr>
+      <tr><th>SN</th><th>Course Code / Name</th><th>First Feedback(%)</th><th>Second Feedback(%)</th><th>Average</th><th>Self Score</th></tr>
       ${feedback.map((f, i) => `<tr><td class="c">${i + 1}</td><td>${f.code || '&nbsp;'}</td><td class="c">${f.fb1 || '&nbsp;'}</td><td class="c">${f.fb2 || '&nbsp;'}</td><td class="c">${(f.fb1 || f.fb2) ? ((n(f.fb1) + n(f.fb2)) / ((f.fb1 ? 1 : 0) + (f.fb2 ? 1 : 0) || 1)).toFixed(2) : '&nbsp;'}</td><td class="c">${(f.fb1 || f.fb2) ? (((n(f.fb1) + n(f.fb2)) / ((f.fb1 ? 1 : 0) + (f.fb2 ? 1 : 0) || 1)) / 10).toFixed(2) : '&nbsp;'}</td></tr>`).join('')}
       <tr class="tr"><td colspan="5" class="c b">Total (Max 10)</td><td class="c">${stuFeedbackScore.toFixed(1)}</td></tr>
     </table>
 
     <h3>A5. Learning Outcomes Attainment &amp; OBE Practice &nbsp;(Max 20)</h3>
     <table>
-      <tr><th>SN</th><th>Component</th><th>Evidence Attached (Yes/No)</th><th>API Score</th></tr>
+      <tr><th>SN</th><th>Component</th><th>Evidence Attached (Yes/No)</th><th>Self Score</th></tr>
       ${obeRows.map((r, i) => `<tr><td class="c">${i + 1}</td><td>${r.component || '&nbsp;'}</td><td>${r.evidence || '&nbsp;'}</td><td class="c">${r.score || '&nbsp;'}</td></tr>`).join('')}
       <tr class="tr"><td colspan="3" class="c b">Total (Max 20)</td><td class="c">${obeScore.toFixed(1)}</td></tr>
     </table>
@@ -942,21 +942,21 @@ export default function StandardMyAppraisal({
     ${`
     <h3>A6. Student Project Guidance &nbsp;(Max 20)</h3>
     <table>
-      <tr><th>SN</th><th>Project Type</th><th>API Score</th></tr>
+      <tr><th>SN</th><th>Project Type</th><th>Self Score</th></tr>
       ${projects.map((p, i) => `<tr><td class="c">${i + 1}</td><td>${p.label || '&nbsp;'}</td><td class="c">${clampScore(p.score, projectGuidanceRowMax(p)) || '&nbsp;'}</td></tr>`).join('')}
       <tr class="tr"><td colspan="2" class="c b">Total Score (Max 20)</td><td class="c">${projectTotal.toFixed(1)}</td></tr>
     </table>`}
 
     <h3>A7. Student Mentoring &amp; Counselling &nbsp;(Max 10)</h3>
     <table>
-      <tr><th>SN</th><th>Activity</th><th>Evidence Attached (Yes/No)</th><th>API Score</th></tr>
+      <tr><th>SN</th><th>Activity</th><th>Evidence Attached (Yes/No)</th><th>Self Score</th></tr>
       ${mentoringRows.map((r, i) => `<tr><td class="c">${i + 1}</td><td>${r.activity || '&nbsp;'}</td><td>${r.evidence || '&nbsp;'}</td><td class="c">${r.score || '&nbsp;'}</td></tr>`).join('')}
       <tr class="tr"><td colspan="3" class="c b">Total (Max 10)</td><td class="c">${mentoringScore.toFixed(1)}</td></tr>
     </table>
 
     <h3>A8. Professional Development &amp; Qualification Enhancement &nbsp;(Max 10)</h3>
     <table>
-      <tr><th>SN</th><th>Qualification / Category</th><th>API Score</th></tr>
+      <tr><th>SN</th><th>Qualification / Category</th><th>Self Score</th></tr>
       ${quals.map((q, i) => `<tr><td class="c">${i + 1}</td><td>${q.label || '&nbsp;'}</td><td class="c">${q.score || '&nbsp;'}</td></tr>`).join('')}
       <tr class="tr"><td colspan="2" class="c b">Total Score (Max 10)</td><td class="c">${qualTotal.toFixed(1)}</td></tr>
     </table>
@@ -966,35 +966,35 @@ export default function StandardMyAppraisal({
 
     <h3>B1. Journal Publications &nbsp;(Max 100)</h3>
     <table>
-      <tr><th>SN</th><th>Title with Page Nos.</th><th>Journal Details</th><th>ISSN/ISBN No.</th><th>Journal Indexing</th><th>API Score</th></tr>
+      <tr><th>SN</th><th>Title with Page Nos.</th><th>Journal Details</th><th>ISSN/ISBN No.</th><th>Journal Indexing</th><th>Self Score</th></tr>
       ${journals.map((j, i) => `<tr><td class="c">${i + 1}</td><td>${j.title || '&nbsp;'}</td><td>${j.journal || '&nbsp;'}</td><td class="c">${j.issn || '&nbsp;'}</td><td class="c">${j.index || '&nbsp;'}</td><td class="c">${j.score || '&nbsp;'}</td></tr>`).join('')}
       <tr class="tr"><td colspan="5" class="c b">Total (Max 100)</td><td class="c">${journalScore.toFixed(1)}</td></tr>
     </table>
 
     <h3>B2. Books, Book Chapters &amp; Edited Volumes &nbsp;(Max 30)</h3>
     <table>
-      <tr><th>SN</th><th>Title with Page Nos.</th><th>Book Title, Editor &amp; Publisher</th><th>ISSN/ISBN</th><th>Type of Publisher</th><th>Co-authors</th><th>First Author</th><th>API Score</th></tr>
+      <tr><th>SN</th><th>Title with Page Nos.</th><th>Book Title, Editor &amp; Publisher</th><th>ISSN/ISBN</th><th>Type of Publisher</th><th>Co-authors</th><th>First Author</th><th>Self Score</th></tr>
       ${books.map((b, i) => `<tr><td class="c">${i + 1}</td><td>${b.title || '&nbsp;'}</td><td>${b.book || '&nbsp;'}</td><td class="c">${b.issn || '&nbsp;'}</td><td>${b.pub || '&nbsp;'}</td><td>${b.coauth || '&nbsp;'}</td><td>${b.first || '&nbsp;'}</td><td class="c">${b.score || '&nbsp;'}</td></tr>`).join('')}
       <tr class="tr"><td colspan="7" class="c b">Total (Max 30)</td><td class="c">${bookScore.toFixed(1)}</td></tr>
     </table>
 
     <h3>B3. Patents, Copyrights &amp; IP and Product Development &nbsp;(Max 40)</h3>
     <table>
-      <tr><th>SN</th><th>Title</th><th>National / International</th><th>Date of Filing</th><th>Status</th><th>Patent File No.</th><th>API Score</th></tr>
+      <tr><th>SN</th><th>Title</th><th>National / International</th><th>Date of Filing</th><th>Status</th><th>Patent File No.</th><th>Self Score</th></tr>
       ${patents.map((p, i) => `<tr><td class="c">${i + 1}</td><td>${p.title || '&nbsp;'}</td><td class="c">${p.type || '&nbsp;'}</td><td class="c">${p.date || '&nbsp;'}</td><td>${p.status || '&nbsp;'}</td><td class="c">${p.fileNo || '&nbsp;'}</td><td class="c">${p.score || '&nbsp;'}</td></tr>`).join('')}
       <tr class="tr"><td colspan="6" class="c b">Total (Max 40)</td><td class="c">${patentScore.toFixed(1)}</td></tr>
     </table>
 
     <h3>B4. Funded Research Projects &nbsp;(Max 40)</h3>
     <table>
-      <tr><th>SN</th><th>Title</th><th>Funding Agency</th><th>Date of Sanction</th><th>Grant Amount</th><th>Role</th><th>Status</th><th>API Score</th></tr>
+      <tr><th>SN</th><th>Title</th><th>Funding Agency</th><th>Date of Sanction</th><th>Grant Amount</th><th>Role</th><th>Status</th><th>Self Score</th></tr>
       ${projects2.map((p, i) => `<tr><td class="c">${i + 1}</td><td>${p.title || '&nbsp;'}</td><td>${p.agency || '&nbsp;'}</td><td class="c">${p.date || '&nbsp;'}</td><td class="c">${p.amount || '&nbsp;'}</td><td>${p.role || '&nbsp;'}</td><td>${p.status || '&nbsp;'}</td><td class="c">${p.score || '&nbsp;'}</td></tr>`).join('')}
       <tr class="tr"><td colspan="7" class="c b">Total (Max 40)</td><td class="c">${projectBScore.toFixed(1)}</td></tr>
     </table>
 
     <h3>Legacy External Research Projects &nbsp;(Not counted in AY 2026-2027 total)</h3>
     <table>
-      <tr><th>SN</th><th>Title</th><th>Funding Agency</th><th>Date of Sanction</th><th>Grant Amount</th><th>Role</th><th>Status</th><th>API Score</th></tr>
+      <tr><th>SN</th><th>Title</th><th>Funding Agency</th><th>Date of Sanction</th><th>Grant Amount</th><th>Role</th><th>Status</th><th>Self Score</th></tr>
       ${externalProjects.map((p, i) => `<tr><td class="c">${i + 1}</td><td>${p.title || '&nbsp;'}</td><td>${p.agency || '&nbsp;'}</td><td class="c">${p.date || '&nbsp;'}</td><td class="c">${p.amount || '&nbsp;'}</td><td>${p.role || '&nbsp;'}</td><td>${p.status || '&nbsp;'}</td><td class="c">${p.score || '&nbsp;'}</td></tr>`).join('')}
       <tr class="tr"><td colspan="7" class="c b">Total (Max 0)</td><td class="c">${externalProjectScore.toFixed(1)}</td></tr>
     </table>
@@ -1002,56 +1002,56 @@ export default function StandardMyAppraisal({
     ${`
     <h3>B5. Research Guidance &nbsp;(Max 20)</h3>
     <table>
-      <tr><th>SN</th><th>Degree</th><th>Name of Student</th><th>Thesis / Status</th><th>API Score</th></tr>
+      <tr><th>SN</th><th>Degree</th><th>Name of Student</th><th>Thesis / Status</th><th>Self Score</th></tr>
       ${research.map((r, i) => `<tr><td class="c">${i + 1}</td><td class="c">${r.degree || '&nbsp;'}</td><td>${r.name || '&nbsp;'}</td><td>${r.thesis || '&nbsp;'}</td><td class="c">${r.degree || r.name || r.thesis || r.score ? researchGuidanceScore(r).toFixed(1) : ""}</td></tr>`).join('')}
       <tr class="tr"><td colspan="4" class="c b">Total (Max 20)</td><td class="c">${researchScore.toFixed(1)}</td></tr>
     </table>`}
 
     <h3>B6. Consultancy, Testing &amp; Training &nbsp;(Max 20)</h3>
     <table>
-      <tr><th>SN</th><th>Title of Proposal</th><th>Duration</th><th>Funding Agency</th><th>Grant Amount Requested</th><th>API Score</th></tr>
+      <tr><th>SN</th><th>Title of Proposal</th><th>Duration</th><th>Funding Agency</th><th>Grant Amount Requested</th><th>Self Score</th></tr>
       ${proposals.map((p, i) => `<tr><td class="c">${i + 1}</td><td>${p.title || '&nbsp;'}</td><td class="c">${p.duration || '&nbsp;'}</td><td>${p.agency || '&nbsp;'}</td><td class="c">${p.amount || '&nbsp;'}</td><td class="c">${p.score || '&nbsp;'}</td></tr>`).join('')}
       <tr class="tr"><td colspan="5" class="c b">Total (Max 20)</td><td class="c">${proposalScore.toFixed(1)}</td></tr>
     </table>
 
     <h3>B7. Conference / FDP Contributions - Organised &nbsp;(Max 20)</h3>
     <table>
-      <tr><th>SN</th><th>Title / Session</th><th>Type</th><th>Organization</th><th>Level</th><th>API Score</th></tr>
+      <tr><th>SN</th><th>Title / Session</th><th>Type</th><th>Organization</th><th>Level</th><th>Self Score</th></tr>
       ${confs.map((c, i) => `<tr><td class="c">${i + 1}</td><td>${c.title || '&nbsp;'}</td><td>${c.type || '&nbsp;'}</td><td>${c.org || '&nbsp;'}</td><td>${c.level || '&nbsp;'}</td><td class="c">${c.score || '&nbsp;'}</td></tr>`).join('')}
       <tr class="tr"><td colspan="5" class="c b">Total (Max 20)</td><td class="c">${confScore.toFixed(1)}</td></tr>
     </table>
 
     <h3>B8. Conference / FDP / Industry Training Attended &nbsp;(Max 20)</h3>
     <table>
-      <tr><th>SN</th><th>Program</th><th>Duration</th><th>Organized By</th><th>API Score</th></tr>
+      <tr><th>SN</th><th>Program</th><th>Duration</th><th>Organized By</th><th>Self Score</th></tr>
       ${fdps.map((f, i) => `<tr><td class="c">${i + 1}</td><td>${f.program || '&nbsp;'}</td><td class="c">${f.duration || '&nbsp;'}</td><td>${f.org || '&nbsp;'}</td><td class="c">${clampScore(f.score, SCORE_LIMITS.fdpRow) || '&nbsp;'}</td></tr>`).join('')}
       <tr class="tr"><td colspan="4" class="c b">FDP / Workshops Total</td><td class="c">${fdpScore.toFixed(1)}</td></tr>
     </table>
 
     <h3>Industrial Training</h3>
     <table>
-      <tr><th>SN</th><th>Company / Industry</th><th>Duration</th><th>Nature of Training</th><th>API Score</th></tr>
+      <tr><th>SN</th><th>Company / Industry</th><th>Duration</th><th>Nature of Training</th><th>Self Score</th></tr>
       ${training.map((t, i) => `<tr><td class="c">${i + 1}</td><td>${t.company || '&nbsp;'}</td><td class="c">${t.duration || '&nbsp;'}</td><td>${t.nature || '&nbsp;'}</td><td class="c">${clampScore(t.score, SCORE_LIMITS.fdpRow) || '&nbsp;'}</td></tr>`).join('')}
       <tr class="tr"><td colspan="4" class="c b">Combined B8 Total (Max 20)</td><td class="c">${b8Score.toFixed(1)}</td></tr>
     </table>
 
     <h3>B9. Research Awards, Fellowships &amp; Citations &nbsp;(Max 20)</h3>
     <table>
-      <tr><th>SN</th><th>Title of Award</th><th>Date</th><th>Awarding Agency</th><th>Level</th><th>API Score</th></tr>
+      <tr><th>SN</th><th>Title of Award</th><th>Date</th><th>Awarding Agency</th><th>Level</th><th>Self Score</th></tr>
       ${awards.map((a, i) => `<tr><td class="c">${i + 1}</td><td>${a.title || '&nbsp;'}</td><td class="c">${a.date || '&nbsp;'}</td><td>${a.agency || '&nbsp;'}</td><td>${a.level || '&nbsp;'}</td><td class="c">${a.score || '&nbsp;'}</td></tr>`).join('')}
       <tr class="tr"><td colspan="5" class="c b">Total (Max 20)</td><td class="c">${awardScore.toFixed(1)}</td></tr>
     </table>
 
     <h3>B10. Innovation, Start-ups &amp; Technology Transfer &nbsp;(Max 20)</h3>
     <table>
-      <tr><th>SN</th><th>Details of Product</th><th>Used by Students / Commercialized</th><th>API Score</th></tr>
+      <tr><th>SN</th><th>Details of Product</th><th>Used by Students / Commercialized</th><th>Self Score</th></tr>
       ${products.map((p, i) => `<tr><td class="c">${i + 1}</td><td>${p.details || '&nbsp;'}</td><td>${p.usage || '&nbsp;'}</td><td class="c">${p.score || '&nbsp;'}</td></tr>`).join('')}
       <tr class="tr"><td colspan="3" class="c b">Total (Max 20)</td><td class="c">${productScore.toFixed(1)}</td></tr>
     </table>
 
     <h3>B11. ICT Content, MOOCs &amp; E-Learning &nbsp;(Max 15)</h3>
     <table>
-      <tr><th>SN</th><th>Title</th><th>Short Description</th><th>Type / Link</th><th>Quadrants</th><th>API Score</th></tr>
+      <tr><th>SN</th><th>Title</th><th>Short Description</th><th>Type / Link</th><th>Quadrants</th><th>Self Score</th></tr>
       ${ict.map((r, i) => `<tr><td class="c">${i + 1}</td><td>${r.title || '&nbsp;'}</td><td>${r.desc || '&nbsp;'}</td><td>${r.type || '&nbsp;'}</td><td class="c">${r.quad || '&nbsp;'}</td><td class="c">${r.score || '&nbsp;'}</td></tr>`).join('')}
       <tr class="tr"><td colspan="5" class="c b">Total (Max 15)</td><td class="c">${ictScore.toFixed(1)}</td></tr>
     </table>
@@ -1061,49 +1061,49 @@ export default function StandardMyAppraisal({
 
     <h3>C1. Administration at University Level &nbsp;(Max 50)</h3>
     <table>
-      <tr><th>SN</th><th>Activity / Responsibility</th><th>Duration Category</th><th>Period</th><th>API Score</th></tr>
+      <tr><th>SN</th><th>Activity / Responsibility</th><th>Duration Category</th><th>Period</th><th>Self Score</th></tr>
       ${uniActs.map((u, i) => `<tr><td class="c">${i + 1}</td><td>${u.activity || '&nbsp;'}</td><td>${u.nature || '&nbsp;'}</td><td>${u.period || '&nbsp;'}</td><td class="c">${u.score || '&nbsp;'}</td></tr>`).join('')}
       <tr class="tr"><td colspan="4" class="c b">Total (Max 50)</td><td class="c">${uniScore.toFixed(1)}</td></tr>
     </table>
 
     <h3>C2. Administration at School Level &nbsp;(Max 30)</h3>
     <table>
-      <tr><th>SN</th><th>Activity / Responsibility</th><th>Duration Category</th><th>Period</th><th>API Score</th></tr>
+      <tr><th>SN</th><th>Activity / Responsibility</th><th>Duration Category</th><th>Period</th><th>Self Score</th></tr>
       ${deptActs.map((d, i) => `<tr><td class="c">${i + 1}</td><td>${d.activity || '&nbsp;'}</td><td>${d.nature || '&nbsp;'}</td><td>${d.period || '&nbsp;'}</td><td class="c">${d.score || '&nbsp;'}</td></tr>`).join('')}
       <tr class="tr"><td colspan="4" class="c b">Total (Max 30)</td><td class="c">${deptScore.toFixed(1)}</td></tr>
     </table>
 
     <h3>C3. Event Organisation &amp; Institutional Visibility &nbsp;(Max 20)</h3>
     <table>
-      <tr><th>SN</th><th>Event / Contribution</th><th>Role</th><th>Date</th><th>Level</th><th>API Score</th></tr>
+      <tr><th>SN</th><th>Event / Contribution</th><th>Role</th><th>Date</th><th>Level</th><th>Self Score</th></tr>
       ${eventRows.map((r, i) => `<tr><td class="c">${i + 1}</td><td>${r.event || '&nbsp;'}</td><td>${r.role || '&nbsp;'}</td><td class="c">${r.date || '&nbsp;'}</td><td>${r.level || '&nbsp;'}</td><td class="c">${r.score || '&nbsp;'}</td></tr>`).join('')}
       <tr class="tr"><td colspan="5" class="c b">Total (Max 20)</td><td class="c">${eventScore.toFixed(1)}</td></tr>
     </table>
 
     <h3>C4. Outreach, Extension &amp; Social Responsibility &nbsp;(Max 20)</h3>
     ${`<table>
-      <tr><th>SN</th><th>Activity</th><th>Details</th><th>Date</th><th>API Score</th></tr>
+      <tr><th>SN</th><th>Activity</th><th>Details</th><th>Date</th><th>Self Score</th></tr>
       ${society.map((s, i) => `<tr><td class="c">${i + 1}</td><td>${s.label || '&nbsp;'}</td><td>${s.details || '&nbsp;'}</td><td class="c">${s.date || '&nbsp;'}</td><td class="c">${s.score || '&nbsp;'}</td></tr>`).join('')}
       <tr class="tr"><td colspan="4" class="c b">Total (Max 20)</td><td class="c">${societyScore.toFixed(1)}</td></tr>
     </table>`}
 
     <h3>C5. Industry Interaction &amp; Linkages &nbsp;(Max 8)</h3>
     <table>
-      <tr><th>SN</th><th>Activity</th><th>Industry Partner</th><th>Date</th><th>API Score</th></tr>
+      <tr><th>SN</th><th>Activity</th><th>Industry Partner</th><th>Date</th><th>Self Score</th></tr>
       ${industry.map((ind, i) => `<tr><td class="c">${i + 1}</td><td>${ind.activity || ind.name || '&nbsp;'}</td><td>${ind.partner || ind.details || '&nbsp;'}</td><td class="c">${ind.date || '&nbsp;'}</td><td class="c">${ind.score || '&nbsp;'}</td></tr>`).join('')}
       <tr class="tr"><td colspan="4" class="c b">Total (Max 8)</td><td class="c">${industryScore.toFixed(1)}</td></tr>
     </table>
 
     <h3>C6. Alumni Engagement &amp; Networking &nbsp;(Max 10)</h3>
     <table>
-      <tr><th>SN</th><th>Activity</th><th>Details</th><th>Date</th><th>API Score</th></tr>
+      <tr><th>SN</th><th>Activity</th><th>Details</th><th>Date</th><th>Self Score</th></tr>
       ${alumniRows.map((r, i) => `<tr><td class="c">${i + 1}</td><td>${r.activity || '&nbsp;'}</td><td>${r.details || '&nbsp;'}</td><td class="c">${r.date || '&nbsp;'}</td><td class="c">${r.score || '&nbsp;'}</td></tr>`).join('')}
       <tr class="tr"><td colspan="4" class="c b">Total (Max 10)</td><td class="c">${alumniScore.toFixed(1)}</td></tr>
     </table>
 
     <h3>C7. Student Placement Mentoring &amp; Career Development &nbsp;(Max 20)</h3>
     <table>
-      <tr><th>SN</th><th>Activity Type</th><th>Student / Company Name</th><th>Date</th><th>API Score</th></tr>
+      <tr><th>SN</th><th>Activity Type</th><th>Student / Company Name</th><th>Date</th><th>Self Score</th></tr>
       ${placementRows.map((r, i) => `<tr><td class="c">${i + 1}</td><td>${r.activityType || '&nbsp;'}</td><td>${r.name || '&nbsp;'}</td><td class="c">${r.date || '&nbsp;'}</td><td class="c">${r.score || '&nbsp;'}</td></tr>`).join('')}
       <tr class="tr"><td colspan="4" class="c b">Total (Max 20)</td><td class="c">${placementScore.toFixed(1)}</td></tr>
     </table>
@@ -1118,7 +1118,7 @@ export default function StandardMyAppraisal({
     </table>
 
     <div class="pb"></div>
-    <h3 style="text-align:center;font-size:13px">SUMMARY OF API SCORES - AY ${info.ay || ""}</h3>
+    <h3 style="text-align:center;font-size:13px">SUMMARY OF SELF SCORES - AY ${info.ay || ""}</h3>
     <table class="st">
       <tr><th>Sr.No.</th><th>Criteria</th><th>Max Score</th><th>Faculty Score</th></tr>
       <tr><td colspan="4" class="b" style="background:#d9d9d9;text-align:center">Part A - Teaching Process</td></tr>
@@ -1382,10 +1382,10 @@ export default function StandardMyAppraisal({
                           {lectures.slice(0, 4).map((r, i) => (
                             <tr key={i} style={i % 2 === 1 ? { background: "#f8fafc" } : {}}>
                               <td style={TDC}>{i + 1}</td>
-                              <td style={TD}><TI val={r.sem} onChange={(v) => setLec(i, "sem", v)} /></td>
-                              <td style={TD}><TI val={r.code} onChange={(v) => setLec(i, "code", v)} textOnly /></td>
-                              <td style={TDC}><TI val={r.planned} onChange={(v) => setLec(i, "planned", v)} center numeric /></td>
-                              <td style={TDC}><TI val={r.conducted} onChange={(v) => setLec(i, "conducted", v)} center numeric /></td>
+                              <td style={TD}><TI val={r.sem} onChange={(v) => setLec(i, "sem", v)} placeholder="e.g. 2026-27 Sem-I" /></td>
+                              <td style={TD}><TI val={r.code} onChange={(v) => setLec(i, "code", v)} textOnly placeholder="e.g. CS201 - Data Structures" /></td>
+                              <td style={TDC}><TI val={r.planned} onChange={(v) => setLec(i, "planned", v)} center numeric placeholder="Planned" /></td>
+                              <td style={TDC}><TI val={r.conducted} onChange={(v) => setLec(i, "conducted", v)} center numeric placeholder="Conducted" /></td>
                               <td style={TDC}>
                                 <TI
                                   val={r.pctConducted || (Number(r.planned) > 0 && Number(r.conducted) >= 0 ? `${((Number(r.conducted) / Number(r.planned)) * 100).toFixed(1)}%` : "")}
@@ -1437,7 +1437,7 @@ export default function StandardMyAppraisal({
                           {courseFile.map((r, i) => (
                             <tr key={i} style={i % 2 === 1 ? { background: "#f8fafc" } : {}}>
                               <td style={TDC}>{i + 1}</td>
-                              <td style={TD}><TI val={r.course} onChange={(v) => setCF(i, "course", v)} /></td>
+                              <td style={TD}><TI val={r.course} onChange={(v) => setCF(i, "course", v)} placeholder="Course code / paper name" /></td>
                               <td style={TD}><TI val={r.title} onChange={(v) => setCF(i, "title", v)} placeholder="Title / Program & Semester" /></td>
                               <td style={TD}>
                                 <select value={r.details} onChange={(e) => setCF(i, "details", e.target.value)} style={{ width: "100%", height: 30, border: "1px solid #cbd5e1", borderRadius: 4, background: "#fff", fontFamily: "inherit", fontSize: 11 }}>
@@ -1522,9 +1522,9 @@ export default function StandardMyAppraisal({
                           {feedback.map((r, i) => (
                             <tr key={i} style={i % 2 === 1 ? { background: "#f8fafc" } : {}}>
                               <td style={TDC}>{i + 1}</td>
-                              <td style={TD}><TI val={r.code} onChange={(v) => setFb(i, "code", v)} textOnly /></td>
-                              <td style={TDC}><TI val={r.fb1} onChange={(v) => setFb(i, "fb1", v)} center numeric max={SCORE_LIMITS.feedbackAverage} deferClampWhileTyping /></td>
-                              <td style={TDC}><TI val={r.fb2} onChange={(v) => setFb(i, "fb2", v)} center numeric max={SCORE_LIMITS.feedbackAverage} deferClampWhileTyping /></td>
+                              <td style={TD}><TI val={r.code} onChange={(v) => setFb(i, "code", v)} textOnly placeholder="Course code / name" /></td>
+                              <td style={TDC}><TI val={r.fb1} onChange={(v) => setFb(i, "fb1", v)} center numeric max={SCORE_LIMITS.feedbackAverage} deferClampWhileTyping placeholder="0-100" /></td>
+                              <td style={TDC}><TI val={r.fb2} onChange={(v) => setFb(i, "fb2", v)} center numeric max={SCORE_LIMITS.feedbackAverage} deferClampWhileTyping placeholder="0-100" /></td>
                               <td style={{ ...TDC, fontWeight: 700, color: "#0ea5e9" }}>{r.fb1 || r.fb2 ? feedbackAverage(r).toFixed(2) : ""}</td>
                               <td style={TDS}>{r.fb1 || r.fb2 ? feedbackRowScore(r, 10).toFixed(1) : ""}</td>
                             </tr>
@@ -1556,7 +1556,7 @@ export default function StandardMyAppraisal({
                           {obeRows.map((r, i) => (
                             <tr key={i} style={i % 2 === 1 ? { background: "#f8fafc" } : {}}>
                               <td style={TDC}>{i + 1}</td>
-                              <td style={TD}><TI val={r.component} onChange={(v) => setObe(i, "component", v)} /></td>
+                              <td style={TD}><TI val={r.component} onChange={(v) => setObe(i, "component", v)} placeholder="CO-PO / attainment / corrective action" /></td>
                               <td style={TD}><TI val={r.evidence} onChange={(v) => setObe(i, "evidence", v)} placeholder="Yes / No" /></td>
                               <td style={TD}><DocCell id={`obe-${i}`} docs={docs} setDocs={setDocs} /></td>
                               <td style={TD}><ViewCell id={`obe-${i}`} docs={docs} /></td>
@@ -1656,7 +1656,7 @@ export default function StandardMyAppraisal({
                           {mentoringRows.map((r, i) => (
                             <tr key={i} style={i % 2 === 1 ? { background: "#f8fafc" } : {}}>
                               <td style={TDC}>{i + 1}</td>
-                              <td style={TD}><TI val={r.activity} onChange={(v) => setMentoring(i, "activity", v)} /></td>
+                              <td style={TD}><TI val={r.activity} onChange={(v) => setMentoring(i, "activity", v)} placeholder="Meeting / register / counselling outcome" /></td>
                               <td style={TD}><TI val={r.evidence} onChange={(v) => setMentoring(i, "evidence", v)} placeholder="Yes / No" /></td>
                               <td style={TD}><DocCell id={`mentor-${i}`} docs={docs} setDocs={setDocs} /></td>
                               <td style={TD}><ViewCell id={`mentor-${i}`} docs={docs} /></td>
@@ -1702,7 +1702,7 @@ export default function StandardMyAppraisal({
                                 />
                               </td>
                               <td style={TD}><TI val={r.awardingBody} onChange={(v) => setQual(i, "awardingBody", v)} placeholder="Awarding Body" /></td>
-                              <td style={TDC}><TI val={r.date} onChange={(v) => setQual(i, "date", v)} placeholder="Date" /></td>
+                              <td style={TDC}><TI val={r.date} onChange={(v) => setQual(i, "date", v)} placeholder="DD/MM/YYYY" /></td>
                               <td style={TD}><DocCell id={`qual-${i}`} docs={docs} setDocs={setDocs} /></td>
                               <td style={TD}><ViewCell id={`qual-${i}`} docs={docs} /></td>
                               <td style={TDS}><TI val={r.score} onChange={(v) => setQual(i, "score", v)} center numeric max={SCORE_LIMITS.qualificationRow} /></td>
@@ -1742,9 +1742,9 @@ export default function StandardMyAppraisal({
                           {uniActs.map((r, i) => (
                             <tr key={i} style={i % 2 === 1 ? { background: "#f8fafc" } : {}}>
                               <td style={TDC}>{i + 1}</td>
-                              <td style={TD}><TI val={r.activity} onChange={(v) => setUni(i, "activity", v)} /></td>
-                              <td style={TD}><TI val={r.nature} onChange={(v) => setUni(i, "nature", v)} /></td>
-                              <td style={TD}><TI val={r.period} onChange={(v) => setUni(i, "period", v)} /></td>
+                              <td style={TD}><TI val={r.activity} onChange={(v) => setUni(i, "activity", v)} placeholder="Committee / cell / university responsibility" /></td>
+                              <td style={TD}><TI val={r.nature} onChange={(v) => setUni(i, "nature", v)} placeholder="Full year / semester / event based" /></td>
+                              <td style={TD}><TI val={r.period} onChange={(v) => setUni(i, "period", v)} placeholder="e.g. Jul 2026 - Dec 2026" /></td>
                               <td style={TD}><DocCell id={`uni-${i}`} docs={docs} setDocs={setDocs} /></td>
                               <td style={TD}><ViewCell id={`uni-${i}`} docs={docs} /></td>
                               <td style={TDS}><TI val={r.score} onChange={(v) => setUni(i, "score", v)} center numeric max={C1_UNIVERSITY_ADMIN_MAX} /></td>
@@ -1775,9 +1775,9 @@ export default function StandardMyAppraisal({
                           {deptActs.map((r, i) => (
                             <tr key={i} style={i % 2 === 1 ? { background: "#f8fafc" } : {}}>
                               <td style={TDC}>{i + 1}</td>
-                              <td style={TD}><TI val={r.activity} onChange={(v) => setDept(i, "activity", v)} /></td>
-                              <td style={TD}><TI val={r.nature} onChange={(v) => setDept(i, "nature", v)} /></td>
-                              <td style={TD}><TI val={r.period} onChange={(v) => setDept(i, "period", v)} /></td>
+                              <td style={TD}><TI val={r.activity} onChange={(v) => setDept(i, "activity", v)} placeholder="School committee / coordinator role" /></td>
+                              <td style={TD}><TI val={r.nature} onChange={(v) => setDept(i, "nature", v)} placeholder="Full year / semester / event based" /></td>
+                              <td style={TD}><TI val={r.period} onChange={(v) => setDept(i, "period", v)} placeholder="e.g. AY 2026-2027" /></td>
                               <td style={TD}><DocCell id={`dept-${i}`} docs={docs} setDocs={setDocs} /></td>
                               <td style={TD}><ViewCell id={`dept-${i}`} docs={docs} /></td>
                               <td style={TDS}><TI val={r.score} onChange={(v) => setDept(i, "score", v)} center numeric max={C2_SCHOOL_ADMIN_MAX} /></td>
@@ -1809,10 +1809,10 @@ export default function StandardMyAppraisal({
                           {eventRows.map((r, i) => (
                             <tr key={i} style={i % 2 === 1 ? { background: "#f8fafc" } : {}}>
                               <td style={TDC}>{i + 1}</td>
-                              <td style={TD}><TI val={r.event} onChange={(v) => setEvent(i, "event", v)} /></td>
-                              <td style={TD}><TI val={r.role} onChange={(v) => setEvent(i, "role", v)} /></td>
+                              <td style={TD}><TI val={r.event} onChange={(v) => setEvent(i, "event", v)} placeholder="Event / conference / workshop name" /></td>
+                              <td style={TD}><TI val={r.role} onChange={(v) => setEvent(i, "role", v)} placeholder="Convener / coordinator / member" /></td>
                               <td style={TD}><TI val={r.date} onChange={(v) => setEvent(i, "date", maskDateDDMMYYYY(v))} placeholder="DD/MM/YYYY" /></td>
-                              <td style={TD}><TI val={r.level} onChange={(v) => setEvent(i, "level", v)} /></td>
+                              <td style={TD}><TI val={r.level} onChange={(v) => setEvent(i, "level", v)} placeholder="University / National / International" /></td>
                               <td style={TD}><DocCell id={`event-${i}`} docs={docs} setDocs={setDocs} /></td>
                               <td style={TD}><ViewCell id={`event-${i}`} docs={docs} /></td>
                               <td style={TDS}><TI val={r.score} onChange={(v) => setEvent(i, "score", v)} center numeric max={C3_EVENT_MAX} /></td>
@@ -1846,8 +1846,8 @@ export default function StandardMyAppraisal({
                               return (
                                 <tr key={i} style={socLocked ? { background: "#f1f5f9", opacity: 0.65 } : i % 2 === 1 ? { background: "#f8fafc" } : {}}>
                                   <td style={TDC}>{i + 1}</td>
-                                  <td style={TD}><TI val={r.label} onChange={(v) => setSoc(i, "label", v)} readOnly={socLocked} /></td>
-                                  <td style={TD}><TI val={r.details} onChange={(v) => setSoc(i, "details", v)} readOnly={socLocked} /></td>
+                                  <td style={TD}><TI val={r.label} onChange={(v) => setSoc(i, "label", v)} placeholder="Outreach / NSS / extension activity" readOnly={socLocked} /></td>
+                                  <td style={TD}><TI val={r.details} onChange={(v) => setSoc(i, "details", v)} placeholder="Beneficiaries, location, outcome" readOnly={socLocked} /></td>
                                   <td style={TD}><TI val={r.date} onChange={(v) => setSoc(i, "date", maskDateDDMMYYYY(v))} placeholder="DD/MM/YYYY" readOnly={socLocked} /></td>
                                   <td style={TD}><DocCell id={`soc-${i}`} docs={docs} setDocs={setDocs} readOnly={socLocked} /></td>
                                   <td style={TD}><ViewCell id={`soc-${i}`} docs={docs} /></td>
@@ -1881,8 +1881,8 @@ export default function StandardMyAppraisal({
                           {industry.map((r, i) => (
                             <tr key={i} style={i % 2 === 1 ? { background: "#f8fafc" } : {}}>
                               <td style={TDC}>{i + 1}</td>
-                              <td style={TD}><TI val={r.activity || r.name || ""} onChange={(v) => setInd(i, "activity", v)} /></td>
-                              <td style={TD}><TI val={r.partner || r.details || ""} onChange={(v) => setInd(i, "partner", v)} /></td>
+                              <td style={TD}><TI val={r.activity || r.name || ""} onChange={(v) => setInd(i, "activity", v)} placeholder="MOU / CoE / drive / guest lecture" /></td>
+                              <td style={TD}><TI val={r.partner || r.details || ""} onChange={(v) => setInd(i, "partner", v)} placeholder="Industry partner name" /></td>
                               <td style={TD}><TI val={r.date} onChange={(v) => setInd(i, "date", maskDateDDMMYYYY(v))} placeholder="DD/MM/YYYY" /></td>
                               <td style={TD}><DocCell id={`ind-${i}`} docs={docs} setDocs={setDocs} /></td>
                               <td style={TD}><ViewCell id={`ind-${i}`} docs={docs} /></td>
@@ -1914,8 +1914,8 @@ export default function StandardMyAppraisal({
                           {alumniRows.map((r, i) => (
                             <tr key={i} style={i % 2 === 1 ? { background: "#f8fafc" } : {}}>
                               <td style={TDC}>{i + 1}</td>
-                              <td style={TD}><TI val={r.activity} onChange={(v) => setAlumni(i, "activity", v)} /></td>
-                              <td style={TD}><TI val={r.details} onChange={(v) => setAlumni(i, "details", v)} /></td>
+                              <td style={TD}><TI val={r.activity} onChange={(v) => setAlumni(i, "activity", v)} placeholder="Alumni talk / meet / mentoring" /></td>
+                              <td style={TD}><TI val={r.details} onChange={(v) => setAlumni(i, "details", v)} placeholder="Alumni name, batch, outcome" /></td>
                               <td style={TD}><TI val={r.date} onChange={(v) => setAlumni(i, "date", maskDateDDMMYYYY(v))} placeholder="DD/MM/YYYY" /></td>
                               <td style={TD}><DocCell id={`alumni-${i}`} docs={docs} setDocs={setDocs} /></td>
                               <td style={TD}><ViewCell id={`alumni-${i}`} docs={docs} /></td>
@@ -1947,8 +1947,8 @@ export default function StandardMyAppraisal({
                           {placementRows.map((r, i) => (
                             <tr key={i} style={i % 2 === 1 ? { background: "#f8fafc" } : {}}>
                               <td style={TDC}>{i + 1}</td>
-                              <td style={TD}><TI val={r.activityType} onChange={(v) => setPlacement(i, "activityType", v)} /></td>
-                              <td style={TD}><TI val={r.name} onChange={(v) => setPlacement(i, "name", v)} /></td>
+                              <td style={TD}><TI val={r.activityType} onChange={(v) => setPlacement(i, "activityType", v)} placeholder="Mock interview / placement mentoring" /></td>
+                              <td style={TD}><TI val={r.name} onChange={(v) => setPlacement(i, "name", v)} placeholder="Student / company name" /></td>
                               <td style={TD}><TI val={r.date} onChange={(v) => setPlacement(i, "date", maskDateDDMMYYYY(v))} placeholder="DD/MM/YYYY" /></td>
                               <td style={TD}><DocCell id={`placement-${i}`} docs={docs} setDocs={setDocs} /></td>
                               <td style={TD}><ViewCell id={`placement-${i}`} docs={docs} /></td>
@@ -2026,9 +2026,9 @@ export default function StandardMyAppraisal({
                           {journals.map((r, i) => (
                             <tr key={i} style={i % 2 === 1 ? { background: "#f8fafc" } : {}}>
                               <td style={TDC}>{i + 1}</td>
-                              <td style={TD}><TI val={r.title} onChange={(v) => setJour(i, "title", v)} textOnly /></td>
-                              <td style={TD}><TI val={r.journal} onChange={(v) => setJour(i, "journal", v)} /></td>
-                              <td style={TD}><TI val={r.issn} onChange={(v) => setJour(i, "issn", v)} /></td>
+                              <td style={TD}><TI val={r.title} onChange={(v) => setJour(i, "title", v)} textOnly placeholder="Paper title" /></td>
+                              <td style={TD}><TI val={r.journal} onChange={(v) => setJour(i, "journal", v)} placeholder="Journal name, volume, issue" /></td>
+                              <td style={TD}><TI val={r.issn} onChange={(v) => setJour(i, "issn", v)} placeholder="ISSN / e-ISSN" /></td>
                               <td style={TD}><TI val={r.impactFactor || r.impact} onChange={(v) => setJour(i, "impactFactor", v)} placeholder="Impact Factor" /></td>
                               <td style={TD}><TI val={r.authorPosition || r.position} onChange={(v) => setJour(i, "authorPosition", v)} placeholder="1st / Corresponding / Co-Author" /></td>
                               <td style={TD}><DocCell id={`jour-${i}`} docs={docs} setDocs={setDocs} /></td>
@@ -2066,7 +2066,7 @@ export default function StandardMyAppraisal({
                           {books.map((r, i) => (
                             <tr key={i} style={i % 2 === 1 ? { background: "#f8fafc" } : {}}>
                               <td style={TDC}>{i + 1}</td>
-                              <td style={TD}><TI val={r.title} onChange={(v) => setBook(i, "title", v)} textOnly /></td>
+                              <td style={TD}><TI val={r.title} onChange={(v) => setBook(i, "title", v)} textOnly placeholder="Book / chapter title" /></td>
                               <td style={TD}><TI val={r.book || r.publisherIsbn} onChange={(v) => setBook(i, "book", v)} placeholder="Publisher & ISBN" /></td>
                               <td style={TD}>
                                 <select
@@ -2215,10 +2215,10 @@ export default function StandardMyAppraisal({
                           {projects2.map((r, i) => (
                             <tr key={i} style={i % 2 === 1 ? { background: "#f8fafc" } : {}}>
                               <td style={TDC}>{i + 1}</td>
-                              <td style={TD}><TI val={r.title} onChange={(v) => setPrj2(i, "title", v)} textOnly /></td>
-                              <td style={TD}><TI val={r.agency} onChange={(v) => setPrj2(i, "agency", v)} textOnly /></td>
+                              <td style={TD}><TI val={r.title} onChange={(v) => setPrj2(i, "title", v)} textOnly placeholder="Project title" /></td>
+                              <td style={TD}><TI val={r.agency} onChange={(v) => setPrj2(i, "agency", v)} textOnly placeholder="Funding agency" /></td>
                               <td style={TD}><TI val={r.date} onChange={(v) => setPrj2(i, "date", maskDateDDMMYYYY(v))} placeholder="DD/MM/YYYY" /></td>
-                              <td style={TD}><TI val={r.amount} onChange={(v) => setPrj2(i, "amount", v)} numeric /></td>
+                              <td style={TD}><TI val={r.amount} onChange={(v) => setPrj2(i, "amount", v)} numeric placeholder="Amount in INR" /></td>
                               <td style={TD}>
                                 <select
                                   value={r.role || ""}
@@ -2279,12 +2279,12 @@ export default function StandardMyAppraisal({
                           {externalProjects.map((r, i) => (
                             <tr key={i} style={i % 2 === 1 ? { background: "#f8fafc" } : {}}>
                               <td style={TDC}>{i + 1}</td>
-                              <td style={TD}><TI val={r.title} onChange={(v) => setExtPrj(i, "title", v)} textOnly /></td>
-                              <td style={TD}><TI val={r.agency} onChange={(v) => setExtPrj(i, "agency", v)} textOnly /></td>
+                              <td style={TD}><TI val={r.title} onChange={(v) => setExtPrj(i, "title", v)} textOnly placeholder="Project title" /></td>
+                              <td style={TD}><TI val={r.agency} onChange={(v) => setExtPrj(i, "agency", v)} textOnly placeholder="Funding agency" /></td>
                               <td style={TD}><TI val={r.date} onChange={(v) => setExtPrj(i, "date", maskDateDDMMYYYY(v))} placeholder="DD/MM/YYYY" /></td>
-                              <td style={TD}><TI val={r.amount} onChange={(v) => setExtPrj(i, "amount", v)} numeric /></td>
-                              <td style={TD}><TI val={r.role} onChange={(v) => setExtPrj(i, "role", v)} textOnly /></td>
-                              <td style={TD}><TI val={r.status} onChange={(v) => setExtPrj(i, "status", v)} textOnly /></td>
+                              <td style={TD}><TI val={r.amount} onChange={(v) => setExtPrj(i, "amount", v)} numeric placeholder="Grant amount" /></td>
+                              <td style={TD}><TI val={r.role} onChange={(v) => setExtPrj(i, "role", v)} textOnly placeholder="PI / Co-PI / Consultant" /></td>
+                              <td style={TD}><TI val={r.status} onChange={(v) => setExtPrj(i, "status", v)} textOnly placeholder="Ongoing / Completed" /></td>
                               <td style={TD}><DocCell id={`externalProject-${i}`} docs={docs} setDocs={setDocs} /></td>
                               <td style={TD}><ViewCell id={`externalProject-${i}`} docs={docs} /></td>
                               <td style={TDS}><TI val={r.score} onChange={(v) => setExtPrj(i, "score", v)} center numeric max={0} /></td>
@@ -2319,7 +2319,7 @@ export default function StandardMyAppraisal({
                           {patents.map((r, i) => (
                             <tr key={i} style={i % 2 === 1 ? { background: "#f8fafc" } : {}}>
                               <td style={TDC}>{i + 1}</td>
-                              <td style={TD}><TI val={r.title} onChange={(v) => setPat(i, "title", v)} textOnly /></td>
+                              <td style={TD}><TI val={r.title} onChange={(v) => setPat(i, "title", v)} textOnly placeholder="Patent / IP title" /></td>
                               <td style={TD}>
                                 <select
                                   value={r.type || r.level || r.scope || ""}
@@ -2344,7 +2344,7 @@ export default function StandardMyAppraisal({
                                   ))}
                                 </select>
                               </td>
-                              <td style={TD}><TI val={r.fileNo || r.date} onChange={(v) => setPat(i, "fileNo", v)} placeholder="No. & Date" /></td>
+                              <td style={TD}><TI val={r.fileNo || r.date} onChange={(v) => setPat(i, "fileNo", v)} placeholder="Filing / grant no. and date" /></td>
                               <td style={TD}><DocCell id={`pat-${i}`} docs={docs} setDocs={setDocs} /></td>
                               <td style={TD}><ViewCell id={`pat-${i}`} docs={docs} /></td>
                               <td style={TDS}><TI val={r.score} onChange={(v) => setPat(i, "score", v)} center numeric /></td>
@@ -2490,9 +2490,9 @@ export default function StandardMyAppraisal({
                           {products.map((r, i) => (
                             <tr key={i} style={i % 2 === 1 ? { background: "#f8fafc" } : {}}>
                               <td style={TDC}>{i + 1}</td>
-                              <td style={TD}><TI val={r.details || r.title} onChange={(v) => setProd(i, "details", v)} placeholder="Title / Start-up / Product" /></td>
-                              <td style={TD}><TI val={r.role || r.usage} onChange={(v) => setProd(i, "role", v)} placeholder="Role" /></td>
-                              <td style={TD}><TI val={r.status} onChange={(v) => setProd(i, "status", v)} placeholder="Status" /></td>
+                              <td style={TD}><TI val={r.details || r.title} onChange={(v) => setProd(i, "details", v)} placeholder="Title / start-up / product" /></td>
+                              <td style={TD}><TI val={r.role || r.usage} onChange={(v) => setProd(i, "role", v)} placeholder="Founder / mentor / developer" /></td>
+                              <td style={TD}><TI val={r.status} onChange={(v) => setProd(i, "status", v)} placeholder="Prototype / registered / commercialized" /></td>
                               <td style={TD}><DocCell id={`prod-${i}`} docs={docs} setDocs={setDocs} /></td>
                               <td style={TD}><ViewCell id={`prod-${i}`} docs={docs} /></td>
                               <td style={TDS}><TI val={r.score} onChange={(v) => setProd(i, "score", v)} center numeric /></td>
@@ -2562,9 +2562,9 @@ export default function StandardMyAppraisal({
                           {training.map((r, i) => (
                             <tr key={i} style={i % 2 === 1 ? { background: "#f8fafc" } : {}}>
                               <td style={TDC}>{i + 1}</td>
-                              <td style={TD}><TI val={r.company} onChange={(v) => setTrain(i, "company", v)} /></td>
-                              <td style={TD}><TI val={r.duration} onChange={(v) => setTrain(i, "duration", v)} /></td>
-                              <td style={TD}><TI val={r.nature} onChange={(v) => setTrain(i, "nature", v)} /></td>
+                              <td style={TD}><TI val={r.company} onChange={(v) => setTrain(i, "company", v)} placeholder="Company / industry name" /></td>
+                              <td style={TD}><TI val={r.duration} onChange={(v) => setTrain(i, "duration", v)} placeholder="Duration" /></td>
+                              <td style={TD}><TI val={r.nature} onChange={(v) => setTrain(i, "nature", v)} placeholder="Nature of training" /></td>
                               <td style={TD}><DocCell id={`train-${i}`} docs={docs} setDocs={setDocs} /></td>
                               <td style={TD}><ViewCell id={`train-${i}`} docs={docs} /></td>
                               <td style={TDS}><TI val={r.score} onChange={(v) => setTrain(i, "score", v)} center numeric max={SCORE_LIMITS.fdpRow} /></td>

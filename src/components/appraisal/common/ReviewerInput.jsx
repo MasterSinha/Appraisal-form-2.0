@@ -9,7 +9,7 @@ export function DirectorInput({ val, onChange, max, disabled = false }) {
  max={max}
  disabled={disabled}
  onChange={e =>onChange(e.target.value === "" || max === undefined ? e.target.value : String(clampScore(e.target.value, max)))}
- style={{ width: 58, textAlign: "center", border: "1.5px solid #0ea5e9", borderRadius: 5, padding: "3px 5px", fontSize: 11, fontFamily: "inherit", outline: "none", background: disabled ? "#f1f5f9" : "#f0fbff", cursor: disabled ? "not-allowed" : "text" }}
+ style={{ width: 74, height: 34, boxSizing: "border-box", textAlign: "center", border: disabled ? "1px solid #cbd5e1" : "1.5px solid #0ea5e9", borderRadius: 9, padding: "6px 8px", fontSize: 13, fontFamily: "inherit", fontWeight: 800, color: disabled ? "#94a3b8" : "#111827", outline: "none", background: disabled ? "#f8fafc" : "#ffffff", cursor: disabled ? "not-allowed" : "text", boxShadow: disabled ? "none" : "0 0 0 3px rgba(14,165,233,0.08), 0 8px 18px rgba(14,165,233,0.08)", transition: "border-color 180ms ease, box-shadow 180ms ease, background 180ms ease" }}
  />
  );
 }

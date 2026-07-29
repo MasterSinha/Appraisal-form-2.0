@@ -84,6 +84,24 @@ const reviewSummaryForRole = (review = {}) => {
       nestedTotals.part_b_score,
       nestedTotals.part_b_total,
     ),
+    partC: firstPresent(
+      review.part_c_score,
+      review.partCScore,
+      review.part_c_total,
+      review.partCTotal,
+      nestedTotals.partC,
+      nestedTotals.part_c_score,
+      nestedTotals.part_c_total,
+    ),
+    partD: firstPresent(
+      review.part_d_score,
+      review.partDScore,
+      review.part_d_total,
+      review.partDTotal,
+      nestedTotals.partD,
+      nestedTotals.part_d_score,
+      nestedTotals.part_d_total,
+    ),
     total: firstPresent(
       review.total_score,
       review.totalScore,
@@ -110,18 +128,26 @@ export const standardReviewSummary = (...sourceInputs) => {
   assign("hodTotal", ["centerHeadTotal", "center_head_total", "centerHeadScore", "center_head_score", "centerHeadTotalScore", "center_head_total_score", "centerHeadGrandTotal", "center_head_grand_total", "centerHeadGrandTotalScore", "center_head_grand_total_score", "hodTotal", "hod_total", "hodScore", "hod_score", "hodTotalScore", "hod_total_score"]);
   assign("hodPartA", ["centerHeadPartA", "center_head_part_a", "centerHeadPartAScore", "center_head_part_a_score", "centerHeadPartATotal", "center_head_part_a_total", "hodPartA", "hod_part_a", "hodPartAScore", "hod_part_a_score", "hodPartATotal", "hod_part_a_total"]);
   assign("hodPartB", ["centerHeadPartB", "center_head_part_b", "centerHeadPartBScore", "center_head_part_b_score", "centerHeadPartBTotal", "center_head_part_b_total", "hodPartB", "hod_part_b", "hodPartBScore", "hod_part_b_score", "hodPartBTotal", "hod_part_b_total"]);
+  assign("hodPartC", ["centerHeadPartC", "center_head_part_c", "centerHeadPartCScore", "center_head_part_c_score", "centerHeadPartCTotal", "center_head_part_c_total", "hodPartC", "hod_part_c", "hodPartCScore", "hod_part_c_score", "hodPartCTotal", "hod_part_c_total"]);
+  assign("hodPartD", ["centerHeadPartD", "center_head_part_d", "centerHeadPartDScore", "center_head_part_d_score", "centerHeadPartDTotal", "center_head_part_d_total", "hodPartD", "hod_part_d", "hodPartDScore", "hod_part_d_score", "hodPartDTotal", "hod_part_d_total"]);
   assign("hodRemarks", ["hodRemarks", "hod_remarks", "centerHeadRemarks", "center_head_remarks"]);
   assign("directorTotal", ["directorTotal", "director_total", "directorScore", "director_score", "directorTotalScore", "director_total_score"]);
   assign("directorPartA", ["directorPartA", "director_part_a", "directorPartAScore", "director_part_a_score", "directorPartATotal", "director_part_a_total"]);
   assign("directorPartB", ["directorPartB", "director_part_b", "directorPartBScore", "director_part_b_score", "directorPartBTotal", "director_part_b_total"]);
+  assign("directorPartC", ["directorPartC", "director_part_c", "directorPartCScore", "director_part_c_score", "directorPartCTotal", "director_part_c_total"]);
+  assign("directorPartD", ["directorPartD", "director_part_d", "directorPartDScore", "director_part_d_score", "directorPartDTotal", "director_part_d_total"]);
   assign("directorRemarks", ["directorRemarks", "director_remarks"]);
   assign("deanTotal", ["deanTotal", "dean_total", "deanScore", "dean_score", "deanTotalScore", "dean_total_score"]);
   assign("deanPartA", ["deanPartA", "dean_part_a", "deanPartAScore", "dean_part_a_score", "deanPartATotal", "dean_part_a_total"]);
   assign("deanPartB", ["deanPartB", "dean_part_b", "deanPartBScore", "dean_part_b_score", "deanPartBTotal", "dean_part_b_total"]);
+  assign("deanPartC", ["deanPartC", "dean_part_c", "deanPartCScore", "dean_part_c_score", "deanPartCTotal", "dean_part_c_total"]);
+  assign("deanPartD", ["deanPartD", "dean_part_d", "deanPartDScore", "dean_part_d_score", "deanPartDTotal", "dean_part_d_total"]);
   assign("deanRemarks", ["deanRemarks", "dean_remarks"]);
   assign("vcTotal", ["vcTotal", "vc_total", "vcScore", "vc_score", "vcTotalScore", "vc_total_score"]);
   assign("vcPartA", ["vcPartA", "vc_part_a", "vcPartAScore", "vc_part_a_score", "vcPartATotal", "vc_part_a_total"]);
   assign("vcPartB", ["vcPartB", "vc_part_b", "vcPartBScore", "vc_part_b_score", "vcPartBTotal", "vc_part_b_total"]);
+  assign("vcPartC", ["vcPartC", "vc_part_c", "vcPartCScore", "vc_part_c_score", "vcPartCTotal", "vc_part_c_total"]);
+  assign("vcPartD", ["vcPartD", "vc_part_d", "vcPartDScore", "vc_part_d_score", "vcPartDTotal", "vc_part_d_total"]);
   assign("vcRemarks", ["vcRemarks", "vc_remarks"]);
 
   reviewsFromSources(sources).forEach((review) => {
@@ -138,6 +164,8 @@ export const standardReviewSummary = (...sourceInputs) => {
       total: `${prefix}Total`,
       partA: `${prefix}PartA`,
       partB: `${prefix}PartB`,
+      partC: `${prefix}PartC`,
+      partD: `${prefix}PartD`,
       remarks: `${prefix}Remarks`,
     };
     Object.entries(targets).forEach(([key, target]) => {
@@ -175,17 +203,27 @@ export const standardSubmittedScoreSummary = (subject = {}, fallback = {}) => {
   const inferredPartAMax = fallbackPartAMax ? Math.min(fallbackPartAMax, inferredSelfPartAMax) : inferredSelfPartAMax;
   const inferredPartBMax = n(fallback.partBMax ?? fallback.effectivePartBMax) ||
     effectiveMaxFromApplicability(375);
+  const inferredPartCMax = n(fallback.partCMax ?? fallback.effectivePartCMax) ||
+    effectiveMaxFromApplicability(150);
+  const inferredPartDMax = n(fallback.partDMax ?? fallback.effectivePartDMax) ||
+    effectiveMaxFromApplicability(0);
 
   const storedPartAMax = numericFrom(sources, [
-    "partAMax", "part_a_max", "effectivePartAMax", "effective_part_a_max", "maxPartA",
+    "partAMax", "part_a_max", "effectivePartAMax", "effective_part_a_max", "maxPartA", "faculty_part_a_max",
   ], inferredPartAMax);
   const partAMax = Math.min(storedPartAMax || inferredPartAMax, inferredPartAMax);
   const partBMax = numericFrom(sources, [
-    "partBMax", "part_b_max", "effectivePartBMax", "effective_part_b_max", "maxPartB",
+    "partBMax", "part_b_max", "effectivePartBMax", "effective_part_b_max", "maxPartB", "faculty_part_b_max",
   ], inferredPartBMax);
+  const partCMax = numericFrom(sources, [
+    "partCMax", "part_c_max", "effectivePartCMax", "effective_part_c_max", "maxPartC", "faculty_part_c_max",
+  ], inferredPartCMax);
+  const partDMax = numericFrom(sources, [
+    "partDMax", "part_d_max", "effectivePartDMax", "effective_part_d_max", "maxPartD", "faculty_part_d_max",
+  ], inferredPartDMax);
   const grandMax = numericFrom(sources, [
-    "grandMax", "grand_max", "effectiveGrandMax", "effective_grand_max", "maxGrand", "totalMax",
-  ], partAMax + partBMax);
+    "grandMax", "grand_max", "effectiveGrandMax", "effective_grand_max", "maxGrand", "totalMax", "faculty_total_max",
+  ], partAMax + partBMax + partCMax + partDMax);
 
   const rawPartA = numericFrom(sources, [
     "partATotal", "partA", "part_a_total", "part_a_score", "selfPartA", "self_part_a",
@@ -197,13 +235,23 @@ export const standardSubmittedScoreSummary = (subject = {}, fallback = {}) => {
     "facultyPartB", "faculty_part_b", "facultyPartBScore", "faculty_part_b_score",
   ], fallback.partB);
   const partB = Math.min(rawPartB, partBMax);
+  const rawPartC = numericFrom(sources, [
+    "partCTotal", "partC", "part_c_total", "part_c_score", "selfPartC", "self_part_c",
+    "facultyPartC", "faculty_part_c", "facultyPartCScore", "faculty_part_c_score",
+  ], fallback.partC);
+  const partC = Math.min(rawPartC, partCMax);
+  const rawPartD = numericFrom(sources, [
+    "partDTotal", "partD", "part_d_total", "part_d_score", "selfPartD", "self_part_d",
+    "facultyPartD", "faculty_part_d", "facultyPartDScore", "faculty_part_d_score",
+  ], fallback.partD);
+  const partD = Math.min(rawPartD, partDMax);
   const rawTotal = numericFrom(sources, [
     "grandTotal", "grand_total", "totalScore", "total_score", "total", "selfTotal",
     "self_total", "facultyTotal", "faculty_total", "facultyScore", "faculty_score",
-  ], fallback.total ?? partA + partB);
-  const total = Math.min(rawTotal, partA + partB, grandMax);
+  ], fallback.total ?? partA + partB + partC + partD);
+  const total = Math.min(rawTotal, partA + partB + partC + partD, grandMax);
 
-  return { partA, partB, total, partAMax, partBMax, grandMax };
+  return { partA, partB, partC, partD, total, partAMax, partBMax, partCMax, partDMax, grandMax };
 };
 
 export const attachSubmittedScoreSummary = (target = {}, ...sources) => {
@@ -212,9 +260,13 @@ export const attachSubmittedScoreSummary = (target = {}, ...sources) => {
     ...target,
     partATotal: summary.partA,
     partBTotal: summary.partB,
+    partCTotal: summary.partC,
+    partDTotal: summary.partD,
     grandTotal: summary.total,
     effectivePartAMax: summary.partAMax,
     effectivePartBMax: summary.partBMax,
+    effectivePartCMax: summary.partCMax,
+    effectivePartDMax: summary.partDMax,
     effectiveGrandMax: summary.grandMax,
   };
 };

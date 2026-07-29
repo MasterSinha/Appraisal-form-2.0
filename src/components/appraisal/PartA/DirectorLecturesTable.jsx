@@ -29,7 +29,7 @@ export default function DirectorLecturesTable({ ctx }) {
  return (
 <>
 {/* A1: Lectures */}
-<SC title="A1. Lectures / Tutorials / Practicals (Max 50)" accent="#6366f1">
+<SC title="A1. Course Delivery & Classroom Engagement (Max 40)" accent="#6366f1">
 <div style={{ overflowX: "auto" }}>
 <table style={T}>
 <thead><tr>

@@ -7,7 +7,7 @@
  *
  * Import from here instead of redefining in each dashboard file.
  */
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { StatusBadge } from "../../../components/dashboard/dashboardPrimitives";
 import {
@@ -72,30 +72,10 @@ function hasHiddenOverflow(element) {
 // ---------------------------------------------------------------------------
 export function RO({ val, value, center, placeholder }) {
   const actualVal = val !== undefined ? val : value;
-  const ref = useRef(null);
-  const [showPreview, setShowPreview] = useState(false);
-  const [previewPosition, setPreviewPosition] = useState({ top: 0, left: 0 });
   const displayValue = String(actualVal || "");
-  const canShowPreview = displayValue.trim().length > 0;
-
-  const openPreview = () => {
-    if (!canShowPreview || !hasHiddenOverflow(ref.current)) return;
-    const rect = ref.current.getBoundingClientRect();
-    setPreviewPosition({
-      top: rect.bottom + 8,
-      left: Math.min(rect.left, window.innerWidth - 430),
-    });
-    setShowPreview(true);
-  };
 
   return (
     <span
-      ref={ref}
-      onMouseEnter={openPreview}
-      onMouseLeave={() => setShowPreview(false)}
-      onFocus={openPreview}
-      onBlur={() => setShowPreview(false)}
-      tabIndex={canShowPreview ? 0 : -1}
       style={{
         fontSize: 11,
         fontFamily: "inherit",
@@ -106,11 +86,12 @@ export function RO({ val, value, center, placeholder }) {
         width: "100%",
         minHeight: 34,
         textAlign: center ? "center" : "left",
-        cursor: canShowPreview ? "default" : "inherit",
+        whiteSpace: "normal",
+        overflowWrap: "anywhere",
+        wordBreak: "normal",
       }}
     >
-      {actualVal || (placeholder ? <span style={{ color: "#94a3b8" }}>{placeholder}</span> : <span style={{ color: "#cbd5e1" }}>-</span>)}
-      {showPreview && <HoverPreviewCard value={displayValue} position={previewPosition} />}
+      {displayValue || (placeholder ? <span style={{ color: "#94a3b8" }}>{placeholder}</span> : <span style={{ color: "#cbd5e1" }}>-</span>)}
     </span>
   );
 }
@@ -137,21 +118,19 @@ export function TI({
   const isInteger = integer || type === "integer";
 
   const [textErr, setTextErr] = useState(false);
-  const [showFullValue, setShowFullValue] = useState(false);
-  const [previewPosition, setPreviewPosition] = useState({ top: 0, left: 0 });
-  const inputRef = useRef(null);
+  const textAreaRef = useRef(null);
   const displayValue = String(actualVal ?? "");
-  const canShowFullValue = displayValue.trim().length > 0;
 
-  const openFullValuePreview = () => {
-    if (!canShowFullValue || !hasHiddenOverflow(inputRef.current)) return;
-    const rect = inputRef.current.getBoundingClientRect();
-    setPreviewPosition({
-      top: rect.bottom + 8,
-      left: Math.min(rect.left, window.innerWidth - 360),
-    });
-    setShowFullValue(true);
+  const resizeTextArea = () => {
+    const el = textAreaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.max(38, el.scrollHeight)}px`;
   };
+
+  useEffect(() => {
+    if (!isNumeric) resizeTextArea();
+  }, [displayValue, isNumeric]);
 
   const handleChange = (e) => {
     if (readOnly) return;
@@ -191,7 +170,7 @@ export function TI({
   const baseStyle = {
     width: "100%",
     maxWidth: "100%",
-    height: 38,
+    minHeight: 38,
     boxSizing: "border-box",
     border: textErr ? "1.5px solid #ef4444" : "1.25px solid #d8deea",
     borderRadius: 5,
@@ -205,28 +184,46 @@ export function TI({
     fontWeight: isNumeric || center ? 700 : 500,
     boxShadow: readOnly ? "none" : "inset 0 1px 0 rgba(17,24,39,0.03), 0 1px 2px rgba(17,24,39,0.04)",
   };
+  const textStyle = {
+    ...baseStyle,
+    height: "auto",
+    overflow: "hidden",
+    resize: "none",
+    whiteSpace: "pre-wrap",
+    overflowWrap: "anywhere",
+    wordBreak: "normal",
+  };
 
   return (
     <div
       className="appraisal-input-preview-wrap"
       style={{ position: "relative", width: "100%", minHeight: 38, display: "flex", alignItems: "center" }}
-      onMouseEnter={openFullValuePreview}
-      onMouseLeave={() => setShowFullValue(false)}
     >
-      <input
-        ref={inputRef}
-        value={actualVal ?? ""}
-        disabled={readOnly}
-        onChange={handleChange}
-        onBlur={handleBlur}
-        onFocus={openFullValuePreview}
-        onBlurCapture={() => setShowFullValue(false)}
-        placeholder={placeholder || ""}
-        aria-label={displayValue || placeholder || "Appraisal field"}
-        inputMode={isInteger ? "numeric" : isNumeric ? "decimal" : undefined}
-        style={center ? { ...baseStyle, textAlign: "center" } : baseStyle}
-      />
-      {showFullValue && <HoverPreviewCard value={displayValue} position={previewPosition} />}
+      {isNumeric ? (
+        <input
+          value={actualVal ?? ""}
+          disabled={readOnly}
+          onChange={handleChange}
+          onBlur={handleBlur}
+          placeholder={placeholder || ""}
+          aria-label={displayValue || placeholder || "Appraisal field"}
+          inputMode={isInteger ? "numeric" : "decimal"}
+          style={center ? { ...baseStyle, height: 38, textAlign: "center" } : { ...baseStyle, height: 38 }}
+        />
+      ) : (
+        <textarea
+          ref={textAreaRef}
+          value={actualVal ?? ""}
+          disabled={readOnly}
+          onChange={handleChange}
+          onInput={resizeTextArea}
+          onBlur={handleBlur}
+          placeholder={placeholder || ""}
+          aria-label={displayValue || placeholder || "Appraisal field"}
+          rows={1}
+          style={center ? { ...textStyle, textAlign: "center" } : textStyle}
+        />
+      )}
       {textErr && (
         <span
           style={{
@@ -267,12 +264,12 @@ export function WorkflowStatusTracker({ declaration, reviews, profile }) {
   };
 
   const stateStyle = {
-    Submitted: { bg: "#dbeafe", color: "#1d4ed8", border: "#93c5fd" },
-    Pending:   { bg: "#fef3c7", color: "#92400e", border: "#fcd34d" },
-    Approved:  { bg: "#dcfce7", color: "#166534", border: "#86efac" },
-    Rejected:  { bg: "#fee2e2", color: "#991b1b", border: "#fca5a5" },
-    Waiting:   { bg: "#f8fafc", color: "#64748b", border: "#e2e8f0" },
-    Stopped:   { bg: "#f1f5f9", color: "#94a3b8", border: "#e2e8f0" },
+    Submitted: { emoji: "📤", bg: "#eff6ff", color: "#1d4ed8", border: "#93c5fd", chip: "#dbeafe" },
+    Pending:   { emoji: "⏳", bg: "#fffbeb", color: "#92400e", border: "#fcd34d", chip: "#fef3c7" },
+    Approved:  { emoji: "✅", bg: "#ecfdf5", color: "#166534", border: "#86efac", chip: "#dcfce7" },
+    Rejected:  { emoji: "⚠️", bg: "#fef2f2", color: "#991b1b", border: "#fca5a5", chip: "#fee2e2" },
+    Waiting:   { emoji: "🕒", bg: "#f8fafc", color: "#64748b", border: "#e2e8f0", chip: "#f1f5f9" },
+    Stopped:   { emoji: "⛔", bg: "#f8fafc", color: "#94a3b8", border: "#e2e8f0", chip: "#f1f5f9" },
   };
 
   if (!declaration) {
@@ -350,39 +347,89 @@ export function WorkflowStatusTracker({ declaration, reviews, profile }) {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: `repeat(${authoritySteps.length + 1}, minmax(160px, 1fr))`,
-          gap: 12,
-          overflowX: "auto",
+          gridTemplateColumns: `repeat(${authoritySteps.length + 1}, minmax(0, 1fr))`,
+          gap: 16,
+          overflowX: "visible",
+          paddingBottom: 4,
         }}
       >
-        {[submittedStep, ...authoritySteps].map((step) => {
+        {[submittedStep, ...authoritySteps].map((step, index, steps) => {
           const colors = stateStyle[step.state] || stateStyle.Waiting;
+          const isLast = index === steps.length - 1;
           return (
             <div
               key={step.label}
               style={{
                 border: `1px solid ${colors.border}`,
-                background: colors.bg,
-                borderRadius: 16,
-                padding: "14px 15px",
-                minHeight: 98,
+                background: `linear-gradient(180deg, ${colors.bg} 0%, #ffffff 100%)`,
+                borderRadius: 18,
+                padding: "10px 12px",
+                minHeight: 84,
+                boxShadow: "0 10px 24px rgba(15,23,42,0.07)",
+                position: "relative",
+                overflow: "visible",
               }}
             >
+              {!isLast && (
+                <span
+                  aria-hidden="true"
+                  style={{
+                    position: "absolute",
+                    right: -17,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    width: 18,
+                    height: 18,
+                    borderRadius: "50%",
+                    background: "#ffffff",
+                    border: "1px solid #e2e8f0",
+                    color: "#64748b",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 11,
+                    fontWeight: 900,
+                    zIndex: 3,
+                    boxShadow: "0 6px 14px rgba(15,23,42,0.08)",
+                  }}
+                >
+                  →
+                </span>
+              )}
               <div
                 style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
                   fontSize: 10,
                   color: colors.color,
                   fontWeight: 900,
                   textTransform: "uppercase",
-                  letterSpacing: 0.6,
+                  letterSpacing: 0.5,
                 }}
               >
-                {step.state}
+                <span
+                  aria-hidden="true"
+                  style={{
+                    width: 22,
+                    height: 22,
+                    borderRadius: "50%",
+                    background: colors.chip,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 12,
+                    boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.65)",
+                  }}
+                >
+                  {colors.emoji}
+                </span>
+                <span>{step.state}</span>
               </div>
-              <div style={{ marginTop: 5, fontSize: 12, fontWeight: 800, color: "#0f172a" }}>
+              <div style={{ marginTop: 6, fontSize: 12, fontWeight: 850, color: "#0f172a", lineHeight: 1.18 }}>
                 {step.label}
               </div>
-              <div style={{ marginTop: 5, fontSize: 10, color: "#64748b" }}>
+              <div style={{ marginTop: 4, fontSize: 10, color: "#64748b", lineHeight: 1.25 }}>
                 {step.timestamp
                   ? new Date(step.timestamp).toLocaleString()
                   : "No timestamp yet"}
