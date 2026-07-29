@@ -131,6 +131,19 @@ export const isDesignArtsSchool = (...sources) => {
   return false;
 };
 
+export const isCreativeSchool = (...sources) => {
+  for (const source of sources) {
+    if (!source) continue;
+    if (isMediaCommSchool(source) || isDesignArtsSchool(source)) return true;
+    const str = typeof source === "string" ? source : (source.school || source.info?.school || source.profile?.school || source.schoolCode || "");
+    const formType = typeof source === "object" ? (source.formType || source.form_type || "") : "";
+    if (formType === FORM_TYPES.MEDIA_COMM || formType === FORM_TYPES.DESIGN_ARTS) return true;
+    const code = getSchoolKey(str);
+    if (code === "SoMCS" || code === "SoD" || code === "SoAA") return true;
+  }
+  return false;
+};
+
 export const getPartBSectionsForSchool = (...sources) => {
   const isMedia = isMediaCommSchool(...sources);
   const isDesign = isDesignArtsSchool(...sources);
@@ -616,7 +629,7 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
     const acrRows = createAcrRows(rows);
     const acrTotal = scoreSectionRows(section.key, acrRows, section.max);
     return (
-      <SectionShell title="(xi) Annual Confidential Report (ACR) - Max 50 marks" max={section.max} earned={acrTotal} accent="#ef4444" showScoreSummary={false}>
+      <SectionShell title="(xi) Annual Confidential Report (ACR) - Max 50 marks" max={section.max} earned={acrTotal} accent={ACCENT2} showScoreSummary={false}>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
             <thead>
@@ -716,7 +729,7 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
   };
 
   return (
-    <SectionShell title={section.title} max={section.max} earned={earned} accent={section.key === "acr" ? "#ef4444" : section.key === "society" ? "#10b981" : ACCENT2}>
+    <SectionShell title={section.title} max={section.max} earned={earned} accent={ACCENT2}>
       <>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
@@ -1929,7 +1942,19 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
         ...summaryRow(applicability, "ict", { id: "B11", label: "ICT Content, MOOCs & E-Learning", max: 40, score: rowSum("ict", 40) }),
         ...summaryRow(applicability, "exhibitions", { id: "B12", label: "Exhibitions — Photography, Design & Applied Arts, Documentaries, Films & Audio-Visual Productions", max: 30, score: rowSum("exhibitions", 30) }),
         { isTotal: true, label: "Part B Total", max: maxScores.partB, score: partBTotal },
-        { isGrandTotal: true, label: "Grand Total (Part A + Part B)", max: maxScores.grand, score: grandTotal },
+        { isHeader: true, label: "Part C - Administrative Role & Contribution" },
+        ...summaryRow(applicability, "uniActs", { id: "C1", label: "Administration at University Level", max: 50, score: rowSum("uniActs", 50) }),
+        ...summaryRow(applicability, "deptActs", { id: "C2", label: "School / Department Level Activities", max: 30, score: rowSum("deptActs", 30) }),
+        ...summaryRow(applicability, "events", { id: "C3", label: "Event Organisation", max: 20, score: rowSum("events", 20) }),
+        ...summaryRow(applicability, "society", { id: "C4", label: "Contribution to Society", max: 10, score: rowSum("society", 10) }),
+        ...summaryRow(applicability, "industry", { id: "C5", label: "Industry Connect", max: 10, score: rowSum("industry", 10) }),
+        ...summaryRow(applicability, "alumni", { id: "C6", label: "Alumni Engagement", max: 10, score: rowSum("alumni", 10) }),
+        ...summaryRow(applicability, "placements", { id: "C7", label: "Placement & Internship Support", max: 20, score: rowSum("placements", 20) }),
+        { isTotal: true, label: "Part C Total", max: maxScores.partC, score: totals.partC },
+        { isHeader: true, label: "Part D - Annual Confidential Report (ACR)" },
+        ...summaryRow(applicability, "acr", { id: "D1", label: "Annual Confidential Report", max: 50, score: rowSum("acr", 50) }),
+        { isTotal: true, label: "Part D Total", max: maxScores.partD, score: totals.partD },
+        { isGrandTotal: true, label: "Grand Total", max: maxScores.grand, score: grandTotal },
       ],
     });
   };
@@ -1960,7 +1985,7 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
           This appraisal has been finalised by the VC.
         </div>
       )}
-      {(sectionView === "partA" || sectionView === "partB") && (
+      {(sectionView === "partA" || sectionView === "partB" || sectionView === "partC" || sectionView === "partD") && (
         <CreativeSchoolForm
           form={form}
           setForm={() => { }}
@@ -1975,7 +2000,7 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
           sectionView={sectionView}
         />
       )}
-      {(sectionView === "partA" || sectionView === "partB") && !panelReadOnly && (
+      {(sectionView === "partA" || sectionView === "partB" || sectionView === "partC" || sectionView === "partD") && !panelReadOnly && (
         <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, margin: "12px 0 14px", flexWrap: "wrap" }}>
           <span style={{ color: "#64748b", fontSize: 11, fontWeight: 700 }}>{draftStatus}</span>
           <button

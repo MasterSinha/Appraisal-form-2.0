@@ -168,6 +168,13 @@ export const getSchoolByValue = (value) => {
   const normalized = normalizeHierarchyText(value);
   if (!normalized) return null;
 
+  if (normalized === "engineering") {
+    return UNIVERSITY_SCHOOLS.find((school) => school.deanTrack === DEAN_TRACKS.ENGINEERING) || null;
+  }
+  if (normalized === "non engineering" || normalized === "nonengineering" || normalized === "non_engineering") {
+    return null;
+  }
+
   const exactOrPrefixMatch = UNIVERSITY_SCHOOLS.find((school) => {
     const candidates = [
       school.code,
@@ -195,7 +202,7 @@ export const getSchoolByValue = (value) => {
     ].map(normalizeHierarchyText);
 
     return candidates.some((candidate) =>
-      candidate && (normalized.includes(candidate) || candidate.includes(normalized))
+      candidate && candidate !== "engineering" && (normalized.includes(candidate) || candidate.includes(normalized))
     );
   }) || null;
 };
