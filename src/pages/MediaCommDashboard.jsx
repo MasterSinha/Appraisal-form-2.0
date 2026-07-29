@@ -675,23 +675,23 @@ export default function MediaCommDashboard({ fixedRole }) {
  )}
  {selfSectionView === "summary" && (
 <div style={{ display: "grid", gap: 16 }}>
-<div className="fa-section-card appraisal-section-card" style={{ background: "#fff", borderRadius: 14, boxShadow: "0 18px 50px rgba(17,24,39,0.08)", overflow: "hidden", border: "1px solid #e5e7eb", borderTop: "3px solid #10b981" }}>
-  <div className="appraisal-part-header" style={{ padding: "18px 24px", borderBottom: "1px solid #f3f4f6", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, background: "linear-gradient(180deg,#ffffff 0%,#fbfffd 100%)" }}>
+<div className="fa-section-card appraisal-section-card" style={{ background: "#fff", borderRadius: 14, boxShadow: "0 18px 50px rgba(17,24,39,0.08)", overflow: "hidden", border: "1px solid #e5e7eb", borderTop: "3px solid #4f46e5" }}>
+  <div className="appraisal-part-header" style={{ padding: "18px 24px", borderBottom: "1px solid #f3f4f6", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, background: "linear-gradient(180deg,#ffffff 0%,#fcfdff 100%)" }}>
     <div style={{ minWidth: 0, display: "flex", alignItems: "center", gap: 12 }}>
-      <span style={{ width: 36, height: 36, borderRadius: 12, background: "#10b98114", color: "#10b981", border: "1px solid #10b9812e", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+      <span style={{ width: 36, height: 36, borderRadius: 12, background: "#eef2ff", color: "#4f46e5", border: "1px solid #e0e7ff", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
         <InlineSvgIcon paths={SUMMARY_ICONS.cap} size={19} />
       </span>
-      <div style={{ fontWeight: 900, fontSize: 18, color: "#10b981", letterSpacing: 0 }}>Appraisal Summary & Submission</div>
+      <div style={{ fontWeight: 900, fontSize: 18, color: "#4f46e5", letterSpacing: 0 }}>Appraisal Summary & Submission</div>
     </div>
   </div>
   <div style={{ padding: "24px 28px 28px", display: "grid", gap: 20 }}>
     <table className="appraisal-summary-table" style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, marginBottom: 0, border: "1px solid #e5e7eb", borderRadius: 12, overflow: "hidden", boxShadow: "0 12px 26px rgba(15,23,42,0.04)" }}>
       <tbody>
         <SummaryRow label="Part A - Teaching & Learning" score={totals.partA} max={totals.maxScores?.partA || 150} color="#4f46e5" tone="#eef2ff" iconTone="#eef2ff" icon="book" />
-        <SummaryRow label="Part B - Research & Innovation" score={totals.partB} max={totals.maxScores?.partB || 350} color="#7c3aed" tone="#f3e8ff" iconTone="#f5f3ff" icon="flask" />
-        <SummaryRow label="Part C - Administrative Contribution" score={totals.partC} max={totals.maxScores?.partC || 150} color="#0f766e" tone="#ccfbf1" iconTone="#ccfbf1" icon="building" />
-        <SummaryRow label="Part D - Annual Confidential Report" score={totals.partD} max={totals.maxScores?.partD || 50} color="#c2410c" tone="#ffedd5" iconTone="#ffedd5" icon="document" />
-        <SummaryRow label="Grand Total" score={totals.total} max={totals.maxScores?.grand || 700} color="#e11d48" tone="#ffe4e6" iconTone="#f1f5f9" icon="sigma" />
+        <SummaryRow label="Part B - Research & Innovation" score={totals.partB} max={totals.maxScores?.partB || 350} color="#4338ca" tone="#eef2ff" iconTone="#eef2ff" icon="flask" />
+        <SummaryRow label="Part C - Administrative Contribution" score={totals.partC} max={totals.maxScores?.partC || 150} color="#4f46e5" tone="#eef2ff" iconTone="#eef2ff" icon="building" />
+        <SummaryRow label="Part D - Annual Confidential Report" score={totals.partD} max={totals.maxScores?.partD || 50} color="#4338ca" tone="#eef2ff" iconTone="#eef2ff" icon="document" />
+        <SummaryRow label="Grand Total" score={totals.total} max={totals.maxScores?.grand || 700} color="#3730a3" tone="#eef2ff" iconTone="#eef2ff" icon="sigma" />
       </tbody>
     </table>
 <SummaryOtherInfoField

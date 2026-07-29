@@ -564,36 +564,36 @@ export function SectionInfoButton({ titleText, customGuideline }) {
   );
 }
 
-export function SectionCard({ title, subtitle, accent = "#4338ca", scoreBadge, children }) {
+export function SectionCard({ title, subtitle, accent = "#4f46e5", scoreBadge, children }) {
   const displayTitle = stripMaxMarksFromTitle(title);
 
   return (
-    <div className="fa-section-card appraisal-section-card" style={{ background: "rgba(255,255,255,0.96)", borderRadius: 16, boxShadow: "0 18px 45px rgba(15,23,42,0.07)", marginBottom: 18, overflow: "hidden", border: "1px solid #e7eaf3", borderTop: `3px solid ${accent}` }}>
-      <div className="appraisal-part-header" style={{ padding: "18px 22px", borderBottom: "1px solid #eef2f7", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, background: "linear-gradient(180deg,#ffffff 0%,#fbfbff 100%)" }}>
-        <div style={{ minWidth: 0, display: "flex", alignItems: "center", gap: 12 }}>
-          <span className="appraisal-part-icon" style={{ width: 36, height: 36, borderRadius: 12, background: `${accent}14`, color: accent, border: `1px solid ${accent}2e`, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <div className="fa-section-card appraisal-section-card" style={{ background: "#fff", borderRadius: 16, boxShadow: "0 1px 3px rgba(0,0,0,0.03)", marginBottom: 20, overflow: "hidden", border: "1px solid #e2e8f0" }}>
+      <div className="appraisal-part-header" style={{ padding: "20px 26px", borderBottom: "1px solid #e2e8f0", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, background: "#fbfcfd" }}>
+        <div style={{ minWidth: 0, display: "flex", alignItems: "center", gap: 14 }}>
+          <span className="appraisal-part-icon" style={{ width: 38, height: 38, borderRadius: 10, background: "#eef2ff", color: "#4f46e5", border: "1px solid #e0e7ff", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M12 3 3 7l9 4 9-4-9-4Z" />
               <path d="M5 10v5c2 2 12 2 14 0v-5" />
               <path d="M12 11v8" />
             </svg>
           </span>
           <div>
-            <div className="appraisal-part-title" style={{ fontWeight: 900, fontSize: 18, color: accent, letterSpacing: 0, display: "flex", alignItems: "center" }}>
+            <div className="appraisal-part-title" style={{ fontWeight: 800, fontSize: 18, color: "#4f46e5", letterSpacing: 0, display: "flex", alignItems: "center" }}>
               <span>{displayTitle}</span>
               <SectionInfoButton titleText={title} />
             </div>
-            {subtitle && <div style={{ color: "#6b7280", fontSize: 13, marginTop: 4, lineHeight: 1.45 }}>{subtitle}</div>}
+            {subtitle && <div style={{ color: "#64748b", fontSize: 13, marginTop: 4, lineHeight: 1.45, fontWeight: 500 }}>{subtitle}</div>}
           </div>
         </div>
         {scoreBadge && (
-          <div className="appraisal-part-score" style={{ display: "inline-flex", alignItems: "center", gap: 10, flexShrink: 0, background: "#fff", border: "1px solid #e5e7eb", borderRadius: 14, padding: "7px 10px 7px 12px", boxShadow: "0 8px 18px rgba(17,24,39,0.05)" }}>
-            <span style={{ color: "#6b7280", fontSize: 12, fontWeight: 800 }}>Total Score</span>
-            <span style={{ background: "#eef2ff", color: accent, borderRadius: 10, padding: "6px 11px", fontSize: 14, fontWeight: 900, whiteSpace: "nowrap" }}>{scoreBadge}</span>
+          <div className="appraisal-part-score" style={{ display: "inline-flex", alignItems: "center", gap: 10, flexShrink: 0, background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 12, padding: "6px 14px" }}>
+            <span style={{ color: "#475569", fontSize: 12, fontWeight: 700 }}>Total Score</span>
+            <span style={{ background: "#eef2ff", color: "#4f46e5", borderRadius: 999, padding: "4px 12px", fontSize: 14, fontWeight: 800, whiteSpace: "nowrap" }}>{scoreBadge}</span>
           </div>
         )}
       </div>
-      <div style={{ padding: "22px 24px 24px", display: "flex", flexDirection: "column", gap: 18 }}>{children}</div>
+      <div style={{ padding: "24px 28px 28px", display: "flex", flexDirection: "column", gap: 20 }}>{children}</div>
     </div>
   );
 }
@@ -601,8 +601,8 @@ export function SectionCard({ title, subtitle, accent = "#4338ca", scoreBadge, c
 export function RowButtons({ onAdd, onDel, canDel = true, addLabel = "+ Add Row", deleteLabel = "- Delete Last" }) {
   return (
     <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
-      <button type="button" className="appraisal-add-row-button" style={{ minHeight: 38, padding: "8px 18px", background: "#fff", color: "#4f46e5", border: "1.5px solid #6366f1", borderRadius: 10, cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 6, boxShadow: "0 1px 2px rgba(99,102,241,0.05)" }} onClick={onAdd}>{addLabel}</button>
-      {canDel && <button type="button" className="appraisal-danger-button" style={{ minHeight: 38, padding: "8px 18px", background: "#fff", color: "#ef4444", border: "1.5px solid #fecaca", borderRadius: 10, cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 6 }} onClick={onDel}>{deleteLabel}</button>}
+      <button type="button" className="appraisal-add-row-button" style={{ minHeight: 38, padding: "8px 18px", background: "#fff", color: "#4f46e5", border: "1.5px solid #6366f1", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 6, boxShadow: "none" }} onClick={onAdd}>{addLabel}</button>
+      {canDel && <button type="button" className="appraisal-danger-button" style={{ minHeight: 38, padding: "8px 18px", background: "#fff", color: "#ef4444", border: "1.5px solid #fecaca", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 6 }} onClick={onDel}>{deleteLabel}</button>}
     </div>
   );
 }
@@ -704,7 +704,7 @@ export function DocCell({ id, docs, setDocs, readOnly = false }) {
           {!readOnly && <button type="button" aria-label={`Remove ${file.name || "attachment"}`} onClick={() => removeFile(idx)} style={{ width: 18, height: 18, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#fff", border: "1px solid #fecaca", borderRadius: "50%", color: "#dc2626", fontSize: 12, lineHeight: 1, cursor: "pointer", fontWeight: 900, padding: 0 }}>×</button>}
         </div>
       ))}
-      <div role="button" tabIndex={readOnly ? -1 : 0} aria-label="Attach supporting document" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: uploading || readOnly ? "not-allowed" : "pointer", width: 38, height: 38, padding: 0, border: "1px dashed #d1d5db", borderRadius: 10, background: "#fff", opacity: uploading || readOnly ? 0.7 : 1, color: "#4b5563", fontWeight: 800, boxShadow: "0 1px 2px rgba(17,24,39,0.04)" }} onClick={() => !uploading && !readOnly && ref.current?.click()} onKeyDown={(event) => { if ((event.key === "Enter" || event.key === " ") && !uploading && !readOnly) ref.current?.click(); }}>
+      <div role="button" tabIndex={readOnly ? -1 : 0} aria-label="Attach supporting document" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: uploading || readOnly ? "not-allowed" : "pointer", width: 36, height: 36, padding: 0, border: "1px dashed #cbd5e1", borderRadius: 8, background: "#fff", opacity: uploading || readOnly ? 0.7 : 1, color: "#475569", fontWeight: 800, boxShadow: "none" }} onClick={() => !uploading && !readOnly && ref.current?.click()} onKeyDown={(event) => { if ((event.key === "Enter" || event.key === " ") && !uploading && !readOnly) ref.current?.click(); }}>
         <DocumentIcon />
         <input ref={ref} type="file" multiple style={{ display: "none" }} disabled={uploading || readOnly} onChange={(event) => handleFiles(event.target.files)} />
       </div>
