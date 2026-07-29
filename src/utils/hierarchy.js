@@ -55,7 +55,7 @@ export const getDeanTrack = (profile = {}) => {
 
   const combined = normalizeText(`${profile.school || ""} ${profile.department || ""} ${profile.designation || ""} ${profile.email || ""}`);
 
-  if (combined.includes("non engineering") || combined.includes("nonengineering") || combined.includes("commerce") || combined.includes("media") || combined.includes("design") || combined.includes("applied arts") || combined.includes("socm") || combined.includes("somcs") || combined.includes("sod") || combined.includes("soaa") || combined.includes("soa")) {
+  if (combined.includes("non engineering") || combined.includes("nonengineering") || combined.includes("commerce") || combined.includes("media") || combined.includes("humanities") || combined.includes("social sciences") || combined.includes("design") || combined.includes("applied arts") || combined.includes("socm") || combined.includes("somcs") || combined.includes("sohss") || combined.includes("sod") || combined.includes("soaa") || combined.includes("soa")) {
     return NON_ENGINEERING;
   }
 
