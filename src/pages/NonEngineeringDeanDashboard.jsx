@@ -5,9 +5,9 @@ import { api } from "../services/api";
 import { Avatar, CompactSummaryCard, ScoreBar, StatusBadge } from "../components/dashboard/dashboardPrimitives";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import DashboardSidebar from "../components/dashboard/DashboardSidebar";
-import { ACR_DETAIL_POINTS, SOCIETY_LABELS, MAX_SCORES, APP_INFO, createAcrRows, fetchSavedAppraisal, loadAppraisalDocuments, loadSavedAppraisal, mergeFacultyInfo, saveAppraisalDraftSection, submitAppraisal, fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, INNOVATIVE_METHODS, SCORE_LIMITS, averageSectionScore, clampScore, clampReviewScore, courseFileAverageScore, courseFileRowScore, effectiveMaxScore, feedbackAverage, feedbackRowScore, feedbackSectionScore, innovativeSelectionsFromDetails, innovativeTeachingScore, isAllowedAttachmentFile, isValidDDMMYYYY, maskDateDDMMYYYY, normalizeAutoScores, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewSectionScore, rowHasReviewableData, scoreRemaining, selfEffectivePartAMax, societyRowLocked, societyRowScore, sumSectionScore, toggleInnovativeMethod, validateCompleteRows, generateStandardReport, standardSubmittedScoreSummary, AppraisalHeaderImage, SummaryOtherInfoField, summaryOtherInfoValueFrom, RejectionNotice, DocCell, ViewCell, ViewDocsCell, RowButtons as RowBtns, SectionSaveFooter, SectionCard as SC, T, TH, TH_HOD, TH_DIR, TH_DEAN, TD, TDC, TDS, TDS_HOD, TDS_DIR, TDS_DEAN, TDV, MyAppraisalSection } from "../features/faculty-appraisal";
+import { ACR_DETAIL_POINTS, SOCIETY_LABELS, MAX_SCORES, APP_INFO, createAcrRows, fetchSavedAppraisal, loadAppraisalDocuments, loadSavedAppraisal, mergeFacultyInfo, saveAppraisalDraftSection, submitAppraisal, fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, INNOVATIVE_METHODS, SCORE_LIMITS, averageSectionScore, clampScore, clampReviewScore, courseFileAverageScore, courseFileRowScore, effectiveMaxScore, feedbackAverage, feedbackRowScore, feedbackSectionScore, innovativeSelectionsFromDetails, innovativeTeachingScore, isAllowedAttachmentFile, isValidDDMMYYYY, maskDateDDMMYYYY, normalizeAutoScores, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewSectionScore, rowHasReviewableData, scoreRemaining, selfEffectivePartAMax, societyRowLocked, societyRowScore, sumSectionScore, toggleInnovativeMethod, validateCompleteRows, generateStandardReport, standardSubmittedScoreSummary, AppraisalHeaderImage, SummaryOtherInfoField, summaryOtherInfoValueFrom, RejectionNotice, DocCell, ViewCell, ViewDocsCell, RowButtons as RowBtns, SectionSaveFooter, SectionCard as SC, T, TH, TH_HOD, TH_DIR, TH_DEAN, TD, TDC, TDS, TDS_HOD, TDS_DIR, TDS_DEAN, TDV, MyAppraisalSection, CreativeSchoolAuthorityReviewPanel, isCreativeSchool } from "../features/faculty-appraisal";
 import { DEAN_TRACKS, getSchoolKey, getSchoolsByDeanTrack } from "../constants/universityHierarchy";
-import { canReviewerRejectProfile, rejectedStatusFor, reviewedStatusFor, profileFromsessionStorage, workflowValidationError, roleLabel, isAppraisalFinalisedByVc, isRejectedStatus, isPendingReviewStatusFor, hasActiveRejection, reviewListFrom } from "../utils/hierarchy";
+import { canReviewerRejectProfile, rejectedStatusFor, reviewedStatusFor, profileFromsessionStorage, workflowValidationError, roleLabel, isAppraisalFinalisedByVc, isRejectedStatus, isPendingReviewStatusFor, hasActiveRejection, reviewListFrom, getDeanTrack } from "../utils/hierarchy";
 import { n, pct, grade, RO, TI } from "../features/faculty-appraisal/shared";
 
 const NON_ENGINEERING_SCHOOLS = getSchoolsByDeanTrack(DEAN_TRACKS.NON_ENGINEERING);
@@ -152,22 +152,22 @@ function ReviewPanel({ faculty, onBack, onSubmit }) {
 
  {/* Section switcher */}
 <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
- {[["partA", "Part A"], ["partB", "Part B"], ["summary", "Summary"]].map(([id, label]) =>(
-<button key={id} onClick={() =>{
- setSectionView(id);
- requestAnimationFrame(() =>{
- window.scrollTo({ top: 0, left: 0, behavior: "auto" });
- });
- }}
- style={{ padding: "7px 18px", border: "none", borderRadius: 6, cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 700, background: sectionView === id ? "#312e81" : "#e2e8f0", color: sectionView === id ? "#e0e7ff" : "#475569" }}>
- {label}
-</button>
- ))}
-</div>
+  {[["partA", "Part A"], ["partB", "Part B"], ["partC", "Part C"], ["partD", "Part D"], ["summary", "Summary"]].map(([id, label]) =>(
+ <button key={id} onClick={() =>{
+  setSectionView(id);
+  requestAnimationFrame(() =>{
+  window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  });
+  }}
+  style={{ padding: "7px 18px", border: "none", borderRadius: 6, cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 700, background: sectionView === id ? "#312e81" : "#e2e8f0", color: sectionView === id ? "#e0e7ff" : "#475569" }}>
+  {label}
+ </button>
+  ))}
+ </div>
 
- {(sectionView === "partA" || sectionView === "partB") && (
-<MyAppraisalForm faculty={faculty} hodData={hodData} setHodData={setHodData} sectionView={sectionView} />
- )}
+  {["partA", "partB", "partC", "partD"].includes(sectionView) && (
+ <MyAppraisalForm faculty={faculty} hodData={hodData} setHodData={setHodData} sectionView={sectionView} />
+  )}
 
  {sectionView === "summary" && (
 <div style={{ background: "#fff", borderRadius: 10, padding: "22px 24px", boxShadow: "0 1px 6px rgba(0,0,0,.06)" }}>
@@ -357,7 +357,7 @@ function DeanInnovativeScoreCell({ row, index, rows, deanData, setDeanData }) {
 
 const DeanReviewTableContext = createContext(null);
 
-function ReviewTable({ title, accent = "#4c1d95", sectionKey, columns, docPrefix, rows: sectionRows }) {
+function ReviewTable({ title, accent = "#4338ca", sectionKey, columns, docPrefix, rows: sectionRows }) {
  const ctx = useContext(DeanReviewTableContext);
  if (!ctx) return null;
  const dataRows = sectionRows || ctx.rows(sectionKey);
@@ -422,11 +422,11 @@ function DeanReviewScoreForm({ approval, deanData, setDeanData, sectionView = "p
  return (
 <DeanReviewTableContext.Provider value={{ approval, deanData, docs, rows, scoreHeaders, setDeanData, cell }}>
 <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-<div style={{ background: "linear-gradient(90deg,#4c1d95,#7c3aed)", color: "#ede9fe", borderRadius: 8, padding: "10px 16px", marginBottom: 14, fontSize: 12 }}>
+<div style={{ background: "linear-gradient(90deg,#312e81,#4338ca)", color: "#ede9fe", borderRadius: 8, padding: "10px 16px", marginBottom: 14, fontSize: 12 }}>
 <strong>Dean Review Mode</strong>- Faculty self-scores are read-only. Only the Dean score column is editable.
 </div>
 
-<SC title="Faculty Information" accent="#4c1d95">
+<SC title="Faculty Information" accent="#4338ca">
 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
 <tbody>
  {[["Name", info.name || approval.name], ["Qualification", info.qual], ["Designation", info.desig || approval.designation], ["Academic Year", approval.academicYear || info.ay]].map(([label, value]) =>(
@@ -446,7 +446,7 @@ function DeanReviewScoreForm({ approval, deanData, setDeanData, sectionView = "p
 
 <ReviewTable
  title="A1. Lectures / Tutorials / Practicals"
- accent="#6366f1"
+ accent="#4338ca"
  sectionKey="lectures"
  docPrefix="lec"
  columns={[
@@ -460,7 +460,7 @@ function DeanReviewScoreForm({ approval, deanData, setDeanData, sectionView = "p
 
 <ReviewTable
  title="A2. Course File"
- accent="#6366f1"
+ accent="#4338ca"
  sectionKey="courseFile"
  docPrefix="courseFile"
  columns={[
@@ -470,7 +470,7 @@ function DeanReviewScoreForm({ approval, deanData, setDeanData, sectionView = "p
  ]}
  />
 
-<SC title="A3. Innovative Teaching-Learning" accent="#8b5cf6">
+<SC title="A3. Innovative Teaching-Learning" accent="#4338ca">
 <table style={T}>
 <thead>
 <tr>
@@ -744,6 +744,18 @@ function DeanReviewScoreForm({ approval, deanData, setDeanData, sectionView = "p
 }
 
 function ApprovalReviewPanel({ approval, approvalType, onBack, onSubmit, readOnly = false }) {
+  if (isCreativeSchool(approval)) {
+    return (
+      <CreativeSchoolAuthorityReviewPanel
+        person={approval}
+        reviewerRole="dean"
+        onBack={onBack}
+        onSubmit={onSubmit}
+        readOnly={readOnly}
+        showReport={true}
+      />
+    );
+  }
  const [remarks, setRemarks] = useState(approval?.deanRemarks || "");
  const [deanData, setDeanData] = useState({});
  const [sectionView, setSectionView] = useState("partA");
@@ -831,6 +843,8 @@ function ApprovalReviewPanel({ approval, approvalType, onBack, onSubmit, readOnl
  { label: "Submitted", value: approval.submittedOn },
  { label: "Self Part A", value: `${selfSummary.partA.toFixed(1)} / ${selfSummary.partAMax}` },
  { label: "Self Part B", value: `${selfSummary.partB.toFixed(1)} / ${selfSummary.partBMax}` },
+ { label: "Self Part C", value: `${selfSummary.partC.toFixed(1)} / ${selfSummary.partCMax}` },
+ { label: "Self Part D", value: `${selfSummary.partD.toFixed(1)} / ${selfSummary.partDMax}` },
  { label: "Self Total", value: `${selfSummary.total.toFixed(1)} / ${selfSummary.grandMax}` },
  { label: "Dean Total", value: displayedDeanScores.total.toFixed(1) },
  ].map((item) =>(
@@ -847,7 +861,7 @@ function ApprovalReviewPanel({ approval, approvalType, onBack, onSubmit, readOnl
  )}
 
 <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
- {[["partA", "Part A"], ["partB", "Part B"], ["summary", "Summary"]].map(([id, label]) =>(
+ {[["partA", "Part A"], ["partB", "Part B"], ["partC", "Part C"], ["partD", "Part D"], ["summary", "Summary"]].map(([id, label]) =>(
 <button key={id} onClick={() =>{
  setSectionView(id);
  requestAnimationFrame(() =>{
@@ -860,12 +874,12 @@ function ApprovalReviewPanel({ approval, approvalType, onBack, onSubmit, readOnl
  ))}
 </div>
 
- {(sectionView === "partA" || sectionView === "partB") && (
+ {["partA", "partB", "partC", "partD"].includes(sectionView) && (
 <fieldset disabled={reviewLocked} style={{ border: "none", padding: 0, margin: 0 }}>
 <DeanReviewScoreForm approval={approval} deanData={deanData} setDeanData={setDeanData} sectionView={sectionView} />
 </fieldset>
  )}
- {(sectionView === "partA" || sectionView === "partB") && !reviewLocked && (
+ {["partA", "partB", "partC", "partD"].includes(sectionView) && !reviewLocked && (
 <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, margin: "12px 0 14px", flexWrap: "wrap" }}>
 <span style={{ color: "#64748b", fontSize: 11, fontWeight: 700 }}>{draftStatus}</span>
 <button
@@ -957,379 +971,451 @@ function ApprovalReviewPanel({ approval, approvalType, onBack, onSubmit, readOnl
 
 // --- Main Dean Dashboard -------------------------------------------------------
 export default function NonEngineeringDeanDashboard() {
- const [activeMainTab, setActiveMainTab] = useState("myAppraisal");
- const [hodAppraisalTab, setHodAppraisalTab] = useState("partA");
- const [reviewingApproval, setReviewingApproval] = useState(null);
- const [reviewLoading, setReviewLoading] = useState(null);
+  const [activeMainTab, setActiveMainTab] = useState("schoolAppraisal");
+  const [activeRoleTab, setActiveRoleTab] = useState("facultyApprovals");
+  const [hodAppraisalTab, setHodAppraisalTab] = useState("partA");
+  const [reviewingApproval, setReviewingApproval] = useState(null);
+  const [reviewLoading, setReviewLoading] = useState(null);
 
- const [facultyList, setFacultyList] = useState([]);
- const [directorList, setDirectorList] = useState([]);
+  const [facultyList, setFacultyList] = useState([]);
+  const [directorList, setDirectorList] = useState([]);
 
- useEffect(() =>{
- const loadReviewQueue = async () =>{
- try {
- const items = await fetchReviewQueueForRole({
- reviewerRole: "dean",
- reviewerProfile: profileFromsessionStorage(),
- schoolValues: NON_ENGINEERING_SCHOOL_CODES,
- });
- const schoolOf = (item) =>getSchoolKey(item.school || item.school_name || item.schoolName || "");
- const roleOf = (item) =>(item.appraisalRole || item.appraisal_role || "").toLowerCase();
- const scopedItems = items.filter((item) =>{
- const code = schoolOf(item);
- return NON_ENGINEERING_SCHOOL_CODES.includes(code) || NON_ENGINEERING_SCHOOL_CODES.includes(item.school);
- });
- setFacultyList(scopedItems.filter((item) =>roleOf(item) === "faculty"));
- setDirectorList(scopedItems.filter((item) =>roleOf(item) === "director"));
- } catch (err) {
- console.error("Could not load Non-Engineering Dean review queue:", err);
- setFacultyList([]);
- setDirectorList([]);
- }
- };
+  const userProfile = profileFromsessionStorage();
+  const activeDeanTrack = getDeanTrack(userProfile);
+  const activeSchools = getSchoolsByDeanTrack(activeDeanTrack);
+  const activeSchoolCodes = activeSchools.map((s) => s.code);
 
- loadReviewQueue();
- }, []);
+  useEffect(() => {
+    const loadReviewQueue = async () => {
+      try {
+        const items = await fetchReviewQueueForRole({
+          reviewerRole: "dean",
+          reviewerProfile: userProfile,
+          schoolValues: activeSchoolCodes,
+        });
+        const schoolOf = (item) => getSchoolKey(item.school || item.school_name || item.schoolName || "");
+        const roleOf = (item) => (item.appraisalRole || item.appraisal_role || "").toLowerCase();
+        const scopedItems = items.filter((item) => {
+          const code = schoolOf(item);
+          return activeSchoolCodes.includes(code) || activeSchoolCodes.includes(item.school);
+        });
+        setFacultyList(scopedItems.filter((item) => roleOf(item) === "faculty"));
+        setDirectorList(scopedItems.filter((item) => roleOf(item) === "director"));
+      } catch (err) {
+        console.error("Could not load Non-Engineering Dean review queue:", err);
+        setFacultyList([]);
+        setDirectorList([]);
+      }
+    };
 
- const [filterStatus, setFilterStatus] = useState("All");
- const [selectedSchoolCode, setSelectedSchoolCode] = useState("all");
- const [showLogoutModal, setShowLogoutModal] = useState(false);
+    loadReviewQueue();
+  }, [activeSchoolCodes.join(",")]);
 
+  const [filterStatus, setFilterStatus] = useState("All");
+  const [selectedSchoolCode, setSelectedSchoolCode] = useState(activeSchools[0]?.code || "SoCM");
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
- const isDeanPending = (item) =>{
- const s = item.status || "";
- if (isPendingReviewStatusFor([s, item.workflowStatus, item.workflow_status], "dean")) return true;
- return s === "pending_dean" ||
- (n(item.deanTotal)<= 0 && !String(item.deanRemarks || "").trim() && s !== "Reviewed" && s !== "pending_vc" && s !== "completed" && !/Dean\s*(Reviewed|Rejected)/i.test(s));
- };
- const isDeanReviewed = (item) =>{
- const s = item.status || "";
- if (isPendingReviewStatusFor([s, item.workflowStatus, item.workflow_status], "dean")) return false;
- return n(item.deanTotal) >0 || String(item.deanRemarks || "").trim() !== "" || s === "Reviewed" || s === "pending_vc" || s === "completed" || /Dean\s*Reviewed/i.test(s);
- };
+  const isDeanPending = (item) => {
+    const s = item.status || "";
+    if (isPendingReviewStatusFor([s, item.workflowStatus, item.workflow_status], "dean")) return true;
+    return s === "pending_dean" ||
+      (n(item.deanTotal) <= 0 && !String(item.deanRemarks || "").trim() && s !== "Reviewed" && s !== "pending_vc" && s !== "completed" && !/Dean\s*(Reviewed|Rejected)/i.test(s));
+  };
+  const isDeanReviewed = (item) => {
+    const s = item.status || "";
+    if (isPendingReviewStatusFor([s, item.workflowStatus, item.workflow_status], "dean")) return false;
+    return n(item.deanTotal) > 0 || String(item.deanRemarks || "").trim() !== "" || s === "Reviewed" || s === "pending_vc" || s === "completed" || /Dean\s*Reviewed/i.test(s);
+  };
 
- const facultyPendingCount = facultyList.filter(isDeanPending).length;
- const facultyReviewedCount = facultyList.filter(isDeanReviewed).length;
- const directorPendingCount = directorList.filter(isDeanPending).length;
- const directorReviewedCount = directorList.filter(isDeanReviewed).length;
+  const facultyPendingCount = facultyList.filter(isDeanPending).length;
+  const directorPendingCount = directorList.filter(isDeanPending).length;
+  const totalSchoolPendingCount = facultyPendingCount + directorPendingCount;
 
- const activeApprovalList = activeMainTab === "directorApprovals"
- ? directorList
- : activeMainTab === "facultyApprovals"
- ? facultyList
- : [];
+  const activeApprovalList = activeRoleTab === "directorApprovals"
+    ? directorList
+    : facultyList;
 
- const activeSchoolApprovalList = selectedSchoolCode === "all"
- ? activeApprovalList
- : activeApprovalList.filter((item) =>getSchoolKey(item.school) === selectedSchoolCode);
+  const activeSchoolApprovalList = (selectedSchoolCode === "all" || selectedSchoolCode === "DEAN-NONENGG" || selectedSchoolCode === "DEAN-ENGG")
+    ? activeApprovalList
+    : activeApprovalList.filter((item) => getSchoolKey(item.school) === selectedSchoolCode || item.school === selectedSchoolCode);
 
- const pendingCount = activeSchoolApprovalList.filter(isDeanPending).length;
+  const pendingCount = activeSchoolApprovalList.filter(isDeanPending).length;
+  const reviewedCount = activeSchoolApprovalList.filter(isDeanReviewed).length;
 
- const reviewedCount = activeSchoolApprovalList.filter(isDeanReviewed).length;
+  const filtered = filterStatus === "All"
+    ? activeSchoolApprovalList
+    : (filterStatus === "Pending Review"
+    ? activeSchoolApprovalList.filter(isDeanPending)
+    : activeSchoolApprovalList.filter(isDeanReviewed));
 
- const filtered = filterStatus === "All"
- ? activeSchoolApprovalList
- : (filterStatus === "Pending Review"
- ? activeSchoolApprovalList.filter(isDeanPending)
- : activeSchoolApprovalList.filter(isDeanReviewed));
+  const schoolCards = activeSchools.map((school) => {
+    const visual = SCHOOL_VISUALS[school.code] || {};
+    return {
+      code: school.code,
+      icon: visual.icon || school.code.slice(2).toUpperCase(),
+      name: school.name,
+      shortName: school.shortName || school.name.replace(/^School of\s+/i, ""),
+    };
+  });
 
- const schoolTabs = [
- { code: "all", label: "All Schools", count: activeApprovalList.length, icon: "All", color: "#0f172a", bg: "#e2e8f0" },
- ...NON_ENGINEERING_SCHOOLS.map((school) =>({
- code: school.code,
- label: school.code,
- count: activeApprovalList.filter((item) =>getSchoolKey(item.school) === school.code).length,
- icon: SCHOOL_VISUALS[school.code]?.icon || school.code.slice(0, 2),
- color: SCHOOL_VISUALS[school.code]?.color || "#334155",
- bg: SCHOOL_VISUALS[school.code]?.bg || "#f1f5f9",
- })),
- ];
+  const activeSchoolInfo = schoolCards.find((s) => s.code === selectedSchoolCode) || schoolCards[0];
+  const activeSchoolMembersCount = (selectedSchoolCode === "all" || selectedSchoolCode === "DEAN-NONENGG")
+    ? activeApprovalList.length
+    : activeApprovalList.filter((item) => getSchoolKey(item.school) === selectedSchoolCode || item.school === selectedSchoolCode).length;
 
- const navItems = [
- { id: "myAppraisal", icon: "", label: "My Appraisal", sub: "Self-assessment form" },
- { id: "directorApprovals", icon: "", label: "Director's Appraisal", sub: `${directorPendingCount} awaiting review`, badge: directorPendingCount },
- { id: "facultyApprovals", icon: "", label: "Faculty's Appraisal", sub: `${facultyPendingCount} awaiting review`, badge: facultyPendingCount },
- ];
- const handleSubmitReview = async (id, scores, remarks, sectionScores, reviewConfirmed = false, decision = "approved") =>{
- if (!reviewConfirmed) {
- alert("Please verify and confirm the accuracy declaration before submitting the review.");
- return;
- }
- if (!remarks?.trim()) {
- alert("Remarks are mandatory. Please enter your remarks before submitting the review.");
- return;
- }
- const sourceList = activeMainTab === "facultyApprovals"
- ? facultyList
- : directorList;
- const item = sourceList.find((entry) =>entry.id === id);
- if (!item) return;
+  const roleTabsForSchool = [
+    {
+      id: "facultyApprovals",
+      label: "Faculty's Appraisal",
+      count: facultyList.filter((item) => (selectedSchoolCode === "all" || selectedSchoolCode === "DEAN-NONENGG") ? true : (getSchoolKey(item.school) === selectedSchoolCode || item.school === selectedSchoolCode)).filter(isDeanPending).length,
+    },
+    {
+      id: "directorApprovals",
+      label: "Director's Appraisal",
+      count: directorList.filter((item) => (selectedSchoolCode === "all" || selectedSchoolCode === "DEAN-NONENGG") ? true : (getSchoolKey(item.school) === selectedSchoolCode || item.school === selectedSchoolCode)).filter(isDeanPending).length,
+    },
+  ];
 
- try {
- await submitWorkflowReview({
- subjectEmail: item.email,
- academicYear: item.academicYear || item.academic_year || item.info?.ay || APP_INFO.DEFAULT_AY || "2026-2027",
- reviewerRole: "dean",
- partAScore: scores.partA,
- partBScore: scores.partB,
- partCScore: scores.partC,
- partDScore: scores.partD,
- totalScore: scores.total,
- remarks,
- sectionScores,
- subjectProfile: item,
- decision,
- });
+  const navItems = [
+    { id: "myAppraisal", icon: "", label: "My Appraisal", sub: "Self-assessment form" },
+    { id: "schoolAppraisal", icon: "", label: "School Appraisal", sub: "Review school submissions", badge: totalSchoolPendingCount },
+  ];
 
- const status = decision === "rejected" ? rejectedStatusFor("dean") : reviewedStatusFor("dean");
- const markReviewed = (entry) =>entry.id === id
- ? { ...entry, ...sectionScores, innovDean: sectionScores?.innovativeTeaching?.dean ?? entry.innovDean, status, workflowStatus: status, deanPartA: scores.partA, deanPartB: scores.partB, deanTotal: scores.total, deanRemarks: remarks }
- : entry;
+  const handleSubmitReview = async (id, scores, remarks, sectionScores, reviewConfirmed = false, decision = "approved") => {
+    if (!reviewConfirmed) {
+      alert("Please verify and confirm the accuracy declaration before submitting the review.");
+      return;
+    }
+    if (!remarks?.trim()) {
+      alert("Remarks are mandatory. Please enter your remarks before submitting the review.");
+      return;
+    }
+    const sourceList = activeRoleTab === "facultyApprovals"
+      ? facultyList
+      : directorList;
+    const item = sourceList.find((entry) => entry.id === id);
+    if (!item) return;
 
- if (activeMainTab === "facultyApprovals") {
- setFacultyList(prev =>prev.map(markReviewed));
- }
- if (activeMainTab === "directorApprovals") {
- setDirectorList(prev =>prev.map(markReviewed));
- }
- setReviewingApproval(null);
- alert(decision === "rejected" ? "Appraisal rejected and sent back for editing." : "Dean review approved and forwarded to VC.");
- } catch (err) {
- console.error("Could not submit Dean review:", err);
- alert(`Unable to submit Dean review.\n\n${err.message}`);
- }
- };
+    try {
+      await submitWorkflowReview({
+        subjectEmail: item.email,
+        academicYear: item.academicYear || item.academic_year || item.info?.ay || APP_INFO.DEFAULT_AY || "2026-2027",
+        reviewerRole: "dean",
+        partAScore: scores.partA,
+        partBScore: scores.partB,
+        partCScore: scores.partC,
+        partDScore: scores.partD,
+        totalScore: scores.total,
+        remarks,
+        sectionScores,
+        subjectProfile: item,
+        decision,
+      });
 
+      const status = decision === "rejected" ? rejectedStatusFor("dean") : reviewedStatusFor("dean");
+      const markReviewed = (entry) => entry.id === id
+        ? { ...entry, ...sectionScores, innovDean: sectionScores?.innovativeTeaching?.dean ?? entry.innovDean, status, workflowStatus: status, deanPartA: scores.partA, deanPartB: scores.partB, deanTotal: scores.total, deanRemarks: remarks }
+        : entry;
 
- const handleMyAppraisalSectionChange = (section) =>{
- setHodAppraisalTab(section);
- requestAnimationFrame(() =>{
- window.scrollTo({ top: 0, left: 0, behavior: "auto" });
- });
- };
- return (
-<DashboardLayout
- appInfo={APP_INFO}
- showLogoutModal={showLogoutModal}
- onCancelLogout={() =>setShowLogoutModal(false)}
- containerStyle={{ display: "flex", minHeight: "100vh", fontFamily: "inherit", background: "#f8fafc", color: "#1e293b" }}
- mainStyle={{ flex: 1, padding: "24px 30px", display: "flex", flexDirection: "column", gap: 18, overflowX: "auto" }}
- sidebar={(
-<DashboardSidebar
- appInfo={APP_INFO}
- navItems={navItems}
- activeTab={activeMainTab}
- onTabSelect={(tab) =>{ setActiveMainTab(tab); setReviewingApproval(null); setSelectedSchoolCode("all"); }}
- showSectionSelector={activeMainTab === "myAppraisal"}
- sectionTab={hodAppraisalTab}
- onSectionChange={handleMyAppraisalSectionChange}
- afterNavItem={{
- id: "myAppraisal",
- content: (
-<div style={{ background: "#1e293b", borderRadius: 9, padding: "12px 13px", display: "grid", gap: 8 }}>
-<div style={{ fontSize: 9, color: "#94a3b8", fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.9 }}>Schools Overseen</div>
- {NON_ENGINEERING_SCHOOLS.map((school) =>{
- const visual = SCHOOL_VISUALS[school.code] || {};
- return (
-<div key={school.code} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 10, color: "#cbd5e1" }}>
-<span style={{ width: 9, height: 9, borderRadius: 2, background: visual.color || "#64748b", display: "inline-block" }} />
-<span style={{ color: visual.color || "#cbd5e1", fontWeight: 800 }}>{visual.icon || "-"}</span>
-<span>{school.code}</span>
-</div>
- );
- })}
-</div>
- ),
- wrapperStyle: { display: "grid", gap: 10 },
- }}
- profileSubtitle={`Dean - ${sessionStorage.getItem("department")?.split(" ")[0] || ""}`}
- onLogout={() =>setShowLogoutModal(true)}
- showLogoutSpacer
-/>
- )}
->
+      if (activeRoleTab === "facultyApprovals") {
+        setFacultyList((prev) => prev.map(markReviewed));
+      }
+      if (activeRoleTab === "directorApprovals") {
+        setDirectorList((prev) => prev.map(markReviewed));
+      }
+      setReviewingApproval(null);
+      alert(decision === "rejected" ? "Appraisal rejected and sent back for editing." : "Dean review approved and forwarded to VC.");
+    } catch (err) {
+      console.error("Could not submit Dean review:", err);
+      alert(`Unable to submit Dean review.\n\n${err.message}`);
+    }
+  };
 
-{activeMainTab === "myAppraisal" && <MyAppraisalSection sectionTab={hodAppraisalTab} onSectionTabChange={handleMyAppraisalSectionChange} defaultDesignation={sessionStorage.getItem("role") === "dean" ? "Dean" : ""} defaultAcademicYear={sessionStorage.getItem("academicYear") || APP_INFO.DEFAULT_AY} titleNameFallback="Dean" subtitleSeparator=" - " />}
+  const handleMyAppraisalSectionChange = (section) => {
+    setHodAppraisalTab(section);
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    });
+  };
 
- {(activeMainTab === "directorApprovals" || activeMainTab === "facultyApprovals") && !reviewingApproval && (
-<>
-<div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-<div>
-<h1 style={{ margin: 0, fontSize: 28, fontWeight: 900, color: "#0f172a", letterSpacing: -0.5 }}>
- {activeMainTab === "directorApprovals" ? "Director's Appraisal" : "Faculty's Appraisal"}
-</h1>
-<p style={{ margin: "4px 0 0", color: "#64748b", fontSize: 11 }}>{NON_ENGINEERING_SCHOOLS.length} Non-Engineering Schools - AY {sessionStorage.getItem("academicYear") || APP_INFO.DEFAULT_AY}</p>
-</div>
-<div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-<div style={{ fontSize: 11, fontWeight: 700, padding: "5px 12px", borderRadius: 20, background: "#fef3c7", color: "#92400e" }}>{pendingCount} Pending</div>
-<div style={{ fontSize: 11, fontWeight: 700, padding: "5px 12px", borderRadius: 20, background: "#d1fae5", color: "#065f46" }}>{reviewedCount} Reviewed</div>
-<AppraisalHeaderImage />
-</div>
-</div>
+  return (
+    <DashboardLayout
+      appInfo={APP_INFO}
+      showLogoutModal={showLogoutModal}
+      onCancelLogout={() => setShowLogoutModal(false)}
+      containerStyle={{ display: "flex", minHeight: "100vh", fontFamily: "inherit", background: "#f4f6fa", color: "#1e293b" }}
+      mainStyle={{ flex: 1, padding: "24px 30px", display: "flex", flexDirection: "column", gap: 18, overflowX: "auto" }}
+      sidebar={(
+        <DashboardSidebar
+          appInfo={APP_INFO}
+          navItems={navItems}
+          activeTab={activeMainTab}
+          onTabSelect={(tab) => { setActiveMainTab(tab); setReviewingApproval(null); }}
+          showSectionSelector={activeMainTab === "myAppraisal"}
+          sectionTab={hodAppraisalTab}
+          onSectionChange={handleMyAppraisalSectionChange}
+          afterNavItem={{
+            id: "myAppraisal",
+            content: (
+              <div style={{ background: "#1e293b", borderRadius: 9, padding: "12px 13px", display: "grid", gap: 8 }}>
+                <div style={{ fontSize: 9, color: "#94a3b8", fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.9 }}>Schools Overseen</div>
+                {NON_ENGINEERING_SCHOOLS.map((school) => {
+                  const visual = SCHOOL_VISUALS[school.code] || {};
+                  return (
+                    <div key={school.code} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 10, color: "#cbd5e1" }}>
+                      <span style={{ width: 9, height: 9, borderRadius: 2, background: visual.color || "#64748b", display: "inline-block" }} />
+                      <span style={{ color: visual.color || "#cbd5e1", fontWeight: 800 }}>{visual.icon || "-"}</span>
+                      <span>{school.code}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            ),
+            wrapperStyle: { display: "grid", gap: 10 },
+          }}
+          profileSubtitle={`Dean - ${sessionStorage.getItem("department")?.split(" ")[0] || ""}`}
+          onLogout={() => setShowLogoutModal(true)}
+          showLogoutSpacer
+        />
+      )}
+    >
+      {activeMainTab === "myAppraisal" && (
+        <MyAppraisalSection
+          sectionTab={hodAppraisalTab}
+          onSectionTabChange={handleMyAppraisalSectionChange}
+          defaultDesignation={sessionStorage.getItem("role") === "dean" ? "Dean" : ""}
+          defaultAcademicYear={sessionStorage.getItem("academicYear") || APP_INFO.DEFAULT_AY}
+          titleNameFallback="Dean"
+          subtitleSeparator=" - "
+        />
+      )}
 
-<div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
- {schoolTabs.map((school) =>{
- const active = selectedSchoolCode === school.code;
- return (
-<button
- key={school.code}
- onClick={() =>setSelectedSchoolCode(school.code)}
- style={{
- minWidth: school.code === "all" ? 132 : 112,
- border: "none",
- borderRadius: 8,
- padding: "8px 14px",
- cursor: "pointer",
- fontFamily: "inherit",
- background: active ? school.color : school.bg,
- color: active ? "#fff" : "#334155",
- display: "flex",
- alignItems: "center",
- justifyContent: "center",
- gap: 8,
- fontSize: 13,
- fontWeight: 900,
- boxShadow: active ? "0 8px 18px rgba(15,23,42,0.16)" : "none",
- }}
- >
-<span>{school.icon}</span>
-<span>{school.label}</span>
-<span style={{ minWidth: 22, borderRadius: 12, padding: "2px 6px", background: active ? "rgba(255,255,255,0.2)" : "#cbd5e1", color: active ? "#fff" : "#475569", fontSize: 10 }}>
- {school.count}
-</span>
-</button>
- );
- })}
-</div>
+      {(activeMainTab === "schoolAppraisal" || activeMainTab === "directorApprovals" || activeMainTab === "facultyApprovals") && !reviewingApproval && (
+        <>
+          {/* Horizontal School Selector Bar */}
+          <div style={{ background: "#ffffff", borderRadius: 14, border: "1px solid #e2e8f0", boxShadow: "0 1px 4px rgba(0,0,0,0.04)", overflow: "hidden", display: "grid", gridTemplateColumns: `repeat(${schoolCards.length}, 1fr)` }}>
+            {schoolCards.map((school) => {
+              const active = selectedSchoolCode === school.code;
+              return (
+                <button
+                  key={school.code}
+                  onClick={() => setSelectedSchoolCode(school.code)}
+                  style={{
+                    padding: "16px 12px",
+                    border: "none",
+                    borderBottom: active ? "3px solid #6366f1" : "3px solid transparent",
+                    background: active ? "#f5f3ff" : "#ffffff",
+                    cursor: "pointer",
+                    textAlign: "center",
+                    fontFamily: "inherit",
+                    transition: "all 0.2s ease",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 4,
+                  }}
+                >
+                  <span style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 10,
+                    background: active ? "#6366f1" : "#f1f5f9",
+                    color: active ? "#ffffff" : "#475569",
+                    fontWeight: 800,
+                    fontSize: 13,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginBottom: 4,
+                    boxShadow: active ? "0 4px 10px rgba(99,102,241,0.25)" : "none",
+                  }}>
+                    {school.icon}
+                  </span>
+                  <span style={{ fontSize: 13, fontWeight: 800, color: active ? "#4338ca" : "#1e293b" }}>
+                    {school.code}
+                  </span>
+                  <span style={{ fontSize: 11, color: active ? "#6366f1" : "#64748b", fontWeight: 600, lineHeight: 1.25, maxWidth: 160, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {school.shortName}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
 
- {/* Filter */}
-<div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 16px", background: "#fff", borderRadius: 9, boxShadow: "0 1px 4px rgba(0,0,0,.05)" }}>
-<span style={{ fontSize: 11, fontWeight: 700, color: "#64748b" }}>Filter:</span>
- {[
- ["All", "All"],
- ["Pending Review", "Pending Dean Review"],
- ["Reviewed", "Dean Reviewed"],
- ].map(([value, label]) =>(
-<button key={value} onClick={() =>setFilterStatus(value)}
- style={{ fontSize: 11, padding: "4px 12px", border: "1px solid #e2e8f0", borderRadius: 20, cursor: "pointer", fontFamily: "inherit", background: filterStatus === value ? "#0f172a" : "none", color: filterStatus === value ? "#f1f5f9" : "#475569" }}>
- {label}
-</button>
- ))}
-</div>
+          {/* Role Sub-Tabs & Filter Bar directly below Horizontal School Selector */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#ffffff", padding: "10px 16px", borderRadius: 12, border: "1px solid #e2e8f0", boxShadow: "0 1px 3px rgba(0,0,0,0.03)", flexWrap: "wrap", gap: 12 }}>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {roleTabsForSchool.map((role) => {
+                const active = activeRoleTab === role.id;
+                return (
+                  <button
+                    key={role.id}
+                    onClick={() => setActiveRoleTab(role.id)}
+                    style={{
+                      padding: "8px 18px",
+                      borderRadius: 8,
+                      border: "none",
+                      background: active ? "#4338ca" : "transparent",
+                      color: active ? "#ffffff" : "#475569",
+                      fontWeight: 800,
+                      fontSize: 13,
+                      cursor: "pointer",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 8,
+                      fontFamily: "inherit",
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    <span>{role.label}</span>
+                    {role.count > 0 && (
+                      <span style={{
+                        background: active ? "rgba(255,255,255,0.25)" : "#e0e7ff",
+                        color: active ? "#ffffff" : "#4338ca",
+                        padding: "2px 8px",
+                        borderRadius: 12,
+                        fontSize: 11,
+                        fontWeight: 800,
+                      }}>
+                        {role.count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
 
- {/* Faculty Grid */}
-<div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 14 }}>
- {filtered.map(faculty =>{
- const facultySummary = standardSubmittedScoreSummary(faculty);
- const courseFilePartA = Array.isArray(faculty.courseFile)
- ? (() =>{
- const filled = faculty.courseFile.filter(row =>String(row?.score ?? "").trim() !== "");
- return filled.length ? filled.reduce((total, row) =>total + courseFileRowScore(row), 0) / filled.length : 0;
- })()
- : n(faculty.courseFile?.score);
- const facPartA = [
- ...(faculty.lectures || []).map(r =>n(r.score)),
- courseFilePartA, n(faculty.innovScore),
- ...(faculty.projects || []).map(r =>n(r.score)),
- ...(faculty.quals || []).map(r =>n(r.score)),
- ...(faculty.feedback || []).map(r =>n(r.score)),
- ...(faculty.deptActs || []).map(r =>n(r.score)),
- ...(faculty.uniActs || []).map(r =>n(r.score)),
- ...(faculty.society || []).map(r =>societyRowScore(r)),
- ...(faculty.industry || []).map(r =>n(r.score)),
- ].reduce((a, b) =>a + b, 0);
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b" }}>Filter:</span>
+              {[
+                ["All", "All"],
+                ["Pending Review", "Pending Review"],
+                ["Reviewed", "Dean Reviewed"],
+              ].map(([value, label]) => (
+                <button
+                  key={value}
+                  onClick={() => setFilterStatus(value)}
+                  style={{
+                    fontSize: 11,
+                    padding: "5px 14px",
+                    border: filterStatus === value ? "none" : "1px solid #e2e8f0",
+                    borderRadius: 20,
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                    fontWeight: 700,
+                    background: filterStatus === value ? "#4338ca" : "#ffffff",
+                    color: filterStatus === value ? "#ffffff" : "#475569",
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
 
- const facPartB = [
- ...(faculty.journals || []).map(r =>n(r.score)),
- ...(faculty.books || []).map(r =>n(r.score)),
- ...(faculty.confs || []).map(r =>n(r.score)),
- ...(faculty.patents || []).map(r =>n(r.score)),
- ].reduce((a, b) =>a + b, 0);
+          {/* Submissions Grid or Empty State */}
+          {filtered.length > 0 ? (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 14 }}>
+              {filtered.map((faculty) => {
+                const facultySummary = standardSubmittedScoreSummary(faculty);
+                const courseFilePartA = Array.isArray(faculty.courseFile)
+                  ? (() => {
+                      const filled = faculty.courseFile.filter((row) => String(row?.score ?? "").trim() !== "");
+                      return filled.length ? filled.reduce((total, row) => total + courseFileRowScore(row), 0) / filled.length : 0;
+                    })()
+                  : n(faculty.courseFile?.score);
+                const docCount = Object.values(faculty.docs || {}).reduce((a, arr) => a + arr.length, 0);
 
- const docCount = Object.values(faculty.docs || {}).reduce((a, arr) =>a + arr.length, 0);
+                return (
+                  <div key={faculty.id} style={{ background: "#fff", borderRadius: 12, padding: "18px 20px", boxShadow: "0 1px 6px rgba(0,0,0,.07)", display: "flex", flexDirection: "column", gap: 14, border: "1px solid #e2e8f0" }}>
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                      <Avatar initials={faculty.avatar} color={faculty.avatarColor} size={46} />
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", marginBottom: 2 }}>{faculty.name}</div>
+                        <div style={{ fontSize: 11, color: "#475569", marginBottom: 2 }}>{faculty.designation}</div>
+                        <div style={{ fontSize: 10, color: "#94a3b8", fontFamily: "monospace" }}>{faculty.employeeId}</div>
+                      </div>
+                      <StatusBadge status={faculty.status} />
+                    </div>
 
- 
-return (
-<div key={faculty.id} style={{ background: "#fff", borderRadius: 12, padding: "18px 20px", boxShadow: "0 1px 6px rgba(0,0,0,.07)", display: "flex", flexDirection: "column", gap: 14 }}>
-<div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-<Avatar initials={faculty.avatar} color={faculty.avatarColor} size={46} />
-<div style={{ flex: 1 }}>
-<div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", marginBottom: 2 }}>{faculty.name}</div>
-<div style={{ fontSize: 11, color: "#475569", marginBottom: 2 }}>{faculty.designation}</div>
-<div style={{ fontSize: 10, color: "#94a3b8", fontFamily: "monospace" }}>{faculty.employeeId}</div>
-</div>
-<StatusBadge status={faculty.status} />
-</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 8, background: "#f8fafc", borderRadius: 8, padding: "12px 10px" }}>
+                      {[
+                        { label: "Part A", val: facultySummary.partA, max: facultySummary.partAMax, color: "#6366f1" },
+                        { label: "Part B", val: facultySummary.partB, max: facultySummary.partBMax, color: "#0ea5e9" },
+                        { label: "Part C", val: facultySummary.partC, max: facultySummary.partCMax, color: "#10b981" },
+                        { label: "Part D", val: facultySummary.partD, max: facultySummary.partDMax, color: "#f59e0b" },
+                        { label: "Total", val: facultySummary.total, max: facultySummary.grandMax, color: "#4338ca" },
+                      ].map(({ label, val, max, color }) => (
+                        <div key={label} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                          <div style={{ fontSize: 9, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5 }}>{label}</div>
+                          <div style={{ fontSize: 13, fontWeight: 800, color, lineHeight: 1 }}>
+                            {val.toFixed ? val.toFixed(1) : val}{max != null && <span style={{ fontSize: 8, color: "#94a3b8" }}>/{max}</span>}
+                          </div>
+                          {max != null && max > 0 && <ScoreBar score={val} max={max} color={color} />}
+                        </div>
+                      ))}
+                    </div>
 
-<div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, background: "#f8fafc", borderRadius: 8, padding: "12px 14px" }}>
- {[
- { label: "Part A", val: facultySummary.partA, max: facultySummary.partAMax, color: "#6366f1" },
- { label: "Part B", val: facultySummary.partB, max: facultySummary.partBMax, color: "#0ea5e9" },
- { label: "Docs", val: docCount, max: null, color: "#10b981" },
- ].map(({ label, val, max, color }) =>(
-<div key={label} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-<div style={{ fontSize: 9, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.6 }}>{label}</div>
-<div style={{ fontSize: 15, fontWeight: 800, color, lineHeight: 1 }}>
- {val.toFixed ? val.toFixed(1) : val}{max &&<span style={{ fontSize: 9, color: "#94a3b8" }}>/{max}</span>}
-</div>
- {max &&<ScoreBar score={val} max={max} color={color} />}
- {!max &&<div style={{ fontSize: 9, color: "#94a3b8" }}>files uploaded</div>}
-</div>
- ))}
-</div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #f1f5f9", paddingTop: 12 }}>
+                      <div style={{ fontSize: 10, color: "#94a3b8" }}>Submitted: {faculty.submittedOn}</div>
+                      <button
+                        disabled={reviewLoading === faculty.id}
+                        onClick={async () => {
+                          setReviewLoading(faculty.id);
+                          try {
+                            const data = await fetchSavedAppraisal({
+                              facultyEmail: faculty.email,
+                              academicYear: faculty.academic_year || faculty.academicYear || APP_INFO.DEFAULT_AY || "2026-2027",
+                            });
+                            const form = data?.payload?.form || data?.form || {};
+                            const docs = data?.payload?.docs || data?.docs || {};
+                            const mergedForm = preserveSavedReviewScores(form, faculty);
+                            const declaration = data?.declaration || faculty.declaration || null;
+                            setReviewingApproval({ ...faculty, ...mergedForm, docs, declaration, status: declaration?.status || data?.status || faculty.status, workflowStatus: declaration?.status || data?.workflowStatus || faculty.workflowStatus });
+                          } catch (err) {
+                            alert(`Unable to open submitted form.\n\n${err.message}`);
+                          } finally {
+                            setReviewLoading(null);
+                          }
+                        }}
+                        style={{ fontSize: 11, padding: "7px 18px", background: isDeanReviewed(faculty) ? "#1e293b" : "#312e81", color: "#f1f5f9", border: "none", borderRadius: 6, cursor: reviewLoading === faculty.id ? "wait" : "pointer", fontWeight: 700, fontFamily: "inherit", opacity: reviewLoading === faculty.id ? 0.7 : 1 }}
+                      >
+                        {reviewLoading === faculty.id ? "Loading..." : isDeanReviewed(faculty) ? "View Review" : "Review Form"}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div style={{ background: "#ffffff", borderRadius: 14, padding: "64px 24px", border: "1.5px dashed #cbd5e1", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+              <div style={{ background: "#f5f3ff", border: "1.5px dashed #c7d2fe", color: "#6366f1", padding: "8px 20px", borderRadius: 12, fontWeight: 800, fontSize: 15, marginBottom: 16, display: "inline-block" }}>
+                {activeSchoolInfo.code}
+              </div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: "#1e293b", marginBottom: 6 }}>
+                No submissions yet
+              </div>
+              <div style={{ fontSize: 13, color: "#64748b", fontWeight: 500 }}>
+                New appraisal forms will appear here automatically.
+              </div>
+            </div>
+          )}
+        </>
+      )}
 
-<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #f1f5f9", paddingTop: 12 }}>
-<div style={{ fontSize: 10, color: "#94a3b8" }}>Submitted: {faculty.submittedOn}</div>
-<button
- disabled={reviewLoading === faculty.id}
- onClick={async () =>{
- setReviewLoading(faculty.id);
- try {
- const data = await fetchSavedAppraisal({
- facultyEmail: faculty.email,
- academicYear: faculty.academic_year || faculty.academicYear || APP_INFO.DEFAULT_AY || "2026-2027",
- });
- const form = data?.payload?.form || data?.form || {};
- const docs = data?.payload?.docs || data?.docs || {};
- const mergedForm = preserveSavedReviewScores(form, faculty);
- const declaration = data?.declaration || faculty.declaration || null;
- setReviewingApproval({ ...faculty, ...mergedForm, docs, declaration, status: declaration?.status || data?.status || faculty.status, workflowStatus: declaration?.status || data?.workflowStatus || faculty.workflowStatus });
- } catch (err) {
- alert(`Unable to open submitted form.\n\n${err.message}`);
- } finally {
- setReviewLoading(null);
- }
- }}
- style={{ fontSize: 11, padding: "7px 18px", background: isDeanReviewed(faculty) ? "#1e293b" : "#312e81", color: "#f1f5f9", border: "none", borderRadius: 6, cursor: reviewLoading === faculty.id ? "wait" : "pointer", fontWeight: 700, fontFamily: "inherit", opacity: reviewLoading === faculty.id ? 0.7 : 1 }}>
- {reviewLoading === faculty.id ? "Loading..." : isDeanReviewed(faculty) ? "View Review" : "Review Form"}
-</button>
-</div>
-</div>
- );
- })}
-</div>
-
- {filtered.length === 0 && (
-<div style={{ textAlign: "center", padding: "60px 0", color: "#94a3b8" }}>
-<div style={{ fontWeight: 700, color: "#0f172a" }}>All caught up!</div>
-<div style={{ color: "#64748b", fontSize: 12 }}>No records match the selected school / status filter.</div>
-</div>
- )}
-</>
- )}
-
- {/* REVIEW PANEL */}
- {(activeMainTab === "directorApprovals" || activeMainTab === "facultyApprovals") && reviewingApproval && (
-<ApprovalReviewPanel
- approval={reviewingApproval}
- approvalType={activeMainTab}
- onBack={() =>setReviewingApproval(null)}
- onSubmit={handleSubmitReview}
- readOnly={isDeanReviewed(reviewingApproval)}
- />
- )}
-</DashboardLayout>
- );
+      {/* REVIEW PANEL */}
+      {(activeMainTab === "schoolAppraisal" || activeMainTab === "directorApprovals" || activeMainTab === "facultyApprovals") && reviewingApproval && (
+        <ApprovalReviewPanel
+          approval={reviewingApproval}
+          approvalType={activeRoleTab}
+          onBack={() => setReviewingApproval(null)}
+          onSubmit={handleSubmitReview}
+          readOnly={isDeanReviewed(reviewingApproval)}
+        />
+      )}
+    </DashboardLayout>
+  );
 }
 
 

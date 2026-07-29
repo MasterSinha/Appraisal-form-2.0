@@ -564,7 +564,7 @@ export function SectionInfoButton({ titleText, customGuideline }) {
   );
 }
 
-export function SectionCard({ title, subtitle, accent = "#6366f1", scoreBadge, children }) {
+export function SectionCard({ title, subtitle, accent = "#4338ca", scoreBadge, children }) {
   const displayTitle = stripMaxMarksFromTitle(title);
 
   return (

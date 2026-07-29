@@ -196,7 +196,7 @@ function SubsectionTitle({ icon, children }) {
   const displayTitle = stripMaxMarksFromTitle(children);
 
   return (
-    <div className="appraisal-subsection-title" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+    <div className="appraisal-subsection-title" style={{ display: "flex", alignItems: "center", gap: 8, color: "#4338ca", fontWeight: 800 }}>
       <SubsectionIcon type={icon} />
       <span>{displayTitle}</span>
       <SectionInfoButton titleText={children} />

@@ -803,7 +803,7 @@ tbody tr { transition: background-color 0.12s ease; }
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #111827;
+  color: #4338ca;
   font-size: 14px;
   font-weight: 800;
   line-height: 1.35;
@@ -841,15 +841,15 @@ tbody tr { transition: background-color 0.12s ease; }
   align-items: center;
   justify-content: center;
   flex: 0 0 30px;
-  color: #5b5ceb;
-  background: linear-gradient(135deg, rgba(91, 92, 235, 0.16), rgba(124, 58, 237, 0.08));
-  border: 1px solid #ddd6fe;
+  color: #4338ca;
+  background: rgba(67, 56, 202, 0.12);
+  border: 1px solid rgba(67, 56, 202, 0.22);
 }
 
 .appraisal-subsection-title:hover .appraisal-subsection-icon {
-  background: #5b5ceb;
+  background: #4338ca;
   color: #fff;
-  box-shadow: 0 8px 18px rgba(91, 92, 235, 0.24);
+  box-shadow: 0 8px 18px rgba(67, 56, 202, 0.24);
 }
 
 .appraisal-form-shell input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
