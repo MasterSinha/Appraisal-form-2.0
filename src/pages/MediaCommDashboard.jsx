@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import DashboardSidebar from "../components/dashboard/DashboardSidebar";
 import { Avatar, LogoutConfirmModal, ScoreBar, StatusBadge } from "../components/dashboard/dashboardPrimitives";
-import { getSchoolKey } from "../constants/universityHierarchy";
+import { getSchoolByValue, getSchoolKey } from "../constants/universityHierarchy";
 import { api } from "../services/api";
 import {
  ACR_DETAIL_POINTS,
@@ -140,6 +140,9 @@ export default function MediaCommDashboard({ fixedRole }) {
  const userEmail = sessionStorage.getItem("username") || sessionStorage.getItem("email") || localStorage.getItem("username") || localStorage.getItem("email") || "";
  const academicYear = form.info?.ay || sessionStorage.getItem("academicYear") || "2026-2027";
  const currentSchoolValue = form.info?.school || profile.school || sessionStorage.getItem("school") || sessionStorage.getItem("schoolName") || "SoMCS";
+ const currentSchool = getSchoolByValue(currentSchoolValue);
+ const currentSchoolCode = currentSchool?.code || getSchoolKey(currentSchoolValue) || "SoMCS";
+ const currentSchoolName = currentSchool?.name || "School of Media & Communication Studies";
 
  useEffect(() => {
    const fetchCycles = async () => {
@@ -189,7 +192,7 @@ export default function MediaCommDashboard({ fixedRole }) {
 
   const handleGenerateReport = () => {
     openFullFormReport({
-      title: "School of Media & Communication Studies — Faculty Appraisal Report",
+      title: `${currentSchoolName} — Faculty Appraisal Report`,
       subtitle: `Academic Year: ${academicYear}`,
       form,
       docs,
@@ -235,7 +238,7 @@ export default function MediaCommDashboard({ fixedRole }) {
  loadAppraisalDocuments({ facultyEmail: userEmail, academicYear, setDocs }),
  ]);
  };
- loadAll().catch((err) =>console.error("Could not load SoMCS appraisal:", err));
+ loadAll().catch((err) =>console.error(`Could not load ${currentSchoolCode} appraisal:`, err));
  }, [userEmail, academicYear, setters, canSelfSubmit, isSelectedCycleClosed]);
 
  const loadQueue = async () =>{
@@ -249,7 +252,7 @@ export default function MediaCommDashboard({ fixedRole }) {
  });
  setQueue(items.filter((item) =>FORM_SCHOOL_CODES[FORM_TYPES.MEDIA_COMM].includes(getSchoolKey(item.school))));
  } catch (err) {
- console.error("Could not load SoMCS review queue:", err);
+ console.error(`Could not load ${currentSchoolCode} review queue:`, err);
  setQueue([]);
  } finally {
  setLoadingQueue(false);
@@ -370,7 +373,7 @@ export default function MediaCommDashboard({ fixedRole }) {
  setSectionSaveStatus(finalSectionSaveStatus);
  setDeclaration({ status: pendingStatusFor(getReviewChain({ ...profile, appraisal_role: role })[0]), submitted_at: submittedAt, updated_at: submittedAt });
  setReviews([]);
- alert("SoMCS appraisal submitted successfully.");
+ alert(`${currentSchoolCode} appraisal submitted successfully.`);
  } catch (err) {
  alert(`Unable to submit appraisal.\n\n${err.message}`);
  } finally {
@@ -468,8 +471,8 @@ export default function MediaCommDashboard({ fixedRole }) {
   const partBTotal = clampScore(b1Score + b2Score + b3Score + b4Score + b5Score + b6Score + b7Score + b8Score + b9Score + b10Score + b11Score + b12Score, maxScores.partB);
   const grandTotal = clampScore(partATotal + partBTotal, maxScores.grand);
  await generateMediaCommReport({
- title: "SoMCS Faculty Appraisal Report",
- subtitle: "School of Media & Communication Studies",
+ title: `${currentSchoolCode} Faculty Appraisal Report`,
+ subtitle: currentSchoolName,
  form,
  docs,
  partASections: PART_A_SECTIONS.map((section) =>section.key === "acr" ? { ...section, max: 0, title: "(x) Annual Confidential Report (ACR) - Not counted in self score" } : section),
@@ -548,7 +551,7 @@ export default function MediaCommDashboard({ fixedRole }) {
       <div style={{ marginBottom: 0, display: "flex", flexDirection: "column", gap: 0 }}>
         <div className="appraisal-page-header" style={{ background: "#fff", borderRadius: 14, padding: "16px 24px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 20, flexWrap: "wrap" }}>
           <div style={{ minWidth: 260 }}>
-            <h2 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: "#111827", letterSpacing: 0, lineHeight: 1.1 }}>School of Media & Communication Studies — My Appraisal Form</h2>
+            <h2 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: "#111827", letterSpacing: 0, lineHeight: 1.1 }}>{currentSchoolName} — My Appraisal Form</h2>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6, fontSize: 13, color: "#6b7280", fontWeight: 600, flexWrap: "wrap" }}>
               <span>{form.info?.name || profile.name || sessionStorage.getItem("name") || "Faculty Member"}</span>
               <span>•</span>
@@ -746,7 +749,7 @@ export default function MediaCommDashboard({ fixedRole }) {
  {loadingQueue && (
 <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "24px 0", color: "#64748b", fontSize: 13 }}>
 <div className="fa-pulse" style={{ width: 8, height: 8, borderRadius: "50%", background: ACCENT }} />
- Loading SoMCS queue...
+ Loading {currentSchoolCode} queue...
 </div>
  )}
 
@@ -755,7 +758,7 @@ export default function MediaCommDashboard({ fixedRole }) {
 <div style={{ textAlign: "center", padding: "56px 24px", background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0" }}>
 <div style={{ width: 52, height: 52, borderRadius: "50%", background: "#f0fdf4", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px", fontSize: 24 }}>Done</div>
 <div style={{ fontWeight: 700, fontSize: 15, color: "#0f172a", marginBottom: 6 }}>All caught up!</div>
-<div style={{ color: "#64748b", fontSize: 13 }}>No SoMCS submissions are assigned to you at this time.</div>
+<div style={{ color: "#64748b", fontSize: 13 }}>No {currentSchoolCode} submissions are assigned to you at this time.</div>
 </div>
  )}
 

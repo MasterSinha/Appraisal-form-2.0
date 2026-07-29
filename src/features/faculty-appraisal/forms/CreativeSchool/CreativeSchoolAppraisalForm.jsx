@@ -112,9 +112,9 @@ export const isMediaCommSchool = (...sources) => {
     if (!source) continue;
     const str = typeof source === "string" ? source : (source.school || source.info?.school || source.profile?.school || "");
     const schoolObj = getSchoolByValue(str);
-    if (schoolObj?.code === "SoMCS" || schoolObj?.code === "SoMC") return true;
+    if (schoolObj?.code === "SoMCS" || schoolObj?.code === "SoHSS" || schoolObj?.code === "SoMC") return true;
     const lower = String(str).toLowerCase();
-    if (lower.includes("somcs") || lower.includes("somc") || lower.includes("media")) return true;
+    if (lower.includes("somcs") || lower.includes("somc") || lower.includes("sohss") || lower.includes("media") || lower.includes("humanities") || lower.includes("social sciences")) return true;
   }
   return false;
 };
@@ -139,7 +139,7 @@ export const isCreativeSchool = (...sources) => {
     const formType = typeof source === "object" ? (source.formType || source.form_type || "") : "";
     if (formType === FORM_TYPES.MEDIA_COMM || formType === FORM_TYPES.DESIGN_ARTS) return true;
     const code = getSchoolKey(str);
-    if (code === "SoMCS" || code === "SoD" || code === "SoAA") return true;
+    if (code === "SoMCS" || code === "SoHSS" || code === "SoD" || code === "SoAA") return true;
   }
   return false;
 };

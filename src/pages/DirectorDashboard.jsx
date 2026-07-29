@@ -10,7 +10,7 @@ import { canReviewerRejectProfile, rejectedStatusFor, reviewedStatusFor, profile
 import { n, pct, grade, RO, TI } from "../features/faculty-appraisal/shared";
 
 // - Helpers - (n, pct, grade, RO, TI → imported from shared)
-const NON_ENGINEERING_REVIEW_SCHOOLS = new Set(["SoCM", "SoMCS", "SoD", "SoAA"]);
+const NON_ENGINEERING_REVIEW_SCHOOLS = new Set(["SoCM", "SoMCS", "SoHSS", "SoD", "SoAA"]);
 const isNonEngineeringReviewSubject = (item = {}) =>
  NON_ENGINEERING_REVIEW_SCHOOLS.has(getSchoolKey(item.school || item.schoolName || item.info?.school || ""));
 const docsCount = (docs = {}) =>{
