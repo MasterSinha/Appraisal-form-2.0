@@ -631,10 +631,10 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
   const reviewLocked = mode === "review" && locked;
   const currentRole = reviewerRole;
   const selfLocked = mode === "self" && section.key === "acr";
-  const earned = scoreSectionRows(section.key, rows, section.max);
+  const earned = section.key === "feedback" ? feedbackSectionScore(rows, section.max) : scoreSectionRows(section.key, rows, section.max);
   const hideIndividualB8Summary = section.key === "fdps" || section.key === "training";
-  const totalLabel = ["feedback"].includes(section.key)
-    ? `Average Score (Max ${section.max})`
+  const totalLabel = section.key === "feedback"
+    ? `Faculty Score (Max ${section.max})`
     : `Total Score (Max ${section.max})`;
   const totalLabelColSpan = 1 + section.fields.length + (section.key === "feedback" ? 1 : 0) + 2;
   const sectionTotalScore = (sourceRows = rows, scoreKey = "score") => {
@@ -778,7 +778,13 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
                     <td style={tdCenter}>{index + 1}</td>
                     {section.fields.map(([key, , readOnlyField]) => (
                       <td key={key} style={tdStyle}>
-                        {mode !== "self" ? <RO value={row[key]} /> : key === "first" ? (
+                        {mode !== "self" ? (
+                          key === "pctConducted" ? (
+                            <RO value={row.pctConducted || (Number(row.planned) > 0 && Number(row.conducted) >= 0 ? `${((Number(row.conducted) / Number(row.planned)) * 100).toFixed(1)}%` : "")} placeholder="%" center />
+                          ) : (
+                            <RO value={row[key]} />
+                          )
+                        ) : key === "first" ? (
                           <select
                             value={row[key] || ""}
                             disabled={!editableSelf || readOnlyField || selfLocked}
@@ -828,7 +834,13 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
                             ))}
                           </select>
                         ) : key === "pctConducted" ? (
-                          <RO value={row.pctConducted || (Number(row.planned) > 0 && Number(row.conducted) >= 0 ? `${((Number(row.conducted) / Number(row.planned)) * 100).toFixed(1)}%` : "")} placeholder="%" center />
+                          <TI
+                            value={row.pctConducted || (Number(row.planned) > 0 && Number(row.conducted) >= 0 ? `${((Number(row.conducted) / Number(row.planned)) * 100).toFixed(1)}%` : "")}
+                            onChange={(value) => updateRow(index, "pctConducted", value)}
+                            center
+                            placeholder="%"
+                            readOnly={!editableSelf || readOnlyField || selfLocked || socRowLocked}
+                          />
                         ) : (
                           <>
                             <TI value={row[key]} type={NUMERIC_KEYS.has(key) ? "number" : "text"} center={section.key === "courseFile" && key === "title"} placeholder={placeholderForField(section.key, key)} max={key === "fb1" || key === "fb2" ? SCORE_LIMITS.feedbackAverage : undefined} deferClampWhileTyping={key === "fb1" || key === "fb2"} textOnly={TEXT_ONLY_KEYS.has(key) && !(section.key === "courseFile" && key === "title")} readOnly={!editableSelf || readOnlyField || selfLocked || socRowLocked} onChange={(value) => updateRow(index, key, value)} />
@@ -916,11 +928,11 @@ function InnovativeSection({ form, setForm, docs, setDocs, mode, locked, reviewe
   const selectedInnovativeMethods = new Set(visibleInnovRows.map((row) => String(row.method ?? "").trim()).filter(Boolean));
   const innovativeMethodOptionsForRow = (currentMethod) =>
     INNOVATIVE_METHOD_OPTIONS.filter((option) => option.value === currentMethod || !selectedInnovativeMethods.has(option.value));
-  const facultyScore = clampScore(innovRows.reduce((total, row) => total + clampScore(row.score, SCORE_LIMITS.innovativeRow), 0), 10);
+  const facultyScore = clampScore(innovRows.reduce((total, row) => total + clampScore(row.score, 4), 0), 10);
   const rowReviewScore = (role, row, index) => {
     if (!rowHasReviewableData("innovRows", row) && role !== "director") return "";
     const value = reviewData.innovRows?.[index]?.[role] ?? row[role] ?? "";
-    return String(value ?? "").trim() ? clampScore(value, SCORE_LIMITS.innovativeRow) : "";
+    return String(value ?? "").trim() ? clampScore(value, 4) : "";
   };
   const roleInnovTotal = (role) => {
     const total = reviewSectionScore("innovRows", visibleInnovRows.map((row, index) => ({
@@ -936,8 +948,8 @@ function InnovativeSection({ form, setForm, docs, setDocs, mode, locked, reviewe
   const updateReview = (index, value) => {
     const sourceRow = visibleInnovRows[index] || {};
     const nextValue = reviewerRole === "director"
-      ? clampDirectorReviewScore("innovRows", sourceRow, value, 10)
-      : clampReviewScore("innovRows", sourceRow, value, 10);
+      ? clampDirectorReviewScore("innovRows", sourceRow, value, 4)
+      : clampReviewScore("innovRows", sourceRow, value, 4);
     setReviewData((prev) => {
       const sourceRows = Array.isArray(prev.innovRows) && prev.innovRows.length ? prev.innovRows : cloneRows(visibleInnovRows);
       const nextRows = sourceRows.map((row, rowIndex) => rowIndex === index ? { ...row, [reviewerRole]: nextValue } : row);
@@ -958,7 +970,7 @@ function InnovativeSection({ form, setForm, docs, setDocs, mode, locked, reviewe
       const nextRows = baseRows.map((row, rowIndex) => rowIndex === index ? { ...row, [field]: value } : row);
       const hasAnyScore = nextRows.some((row) => String(row.score ?? "").trim() !== "");
       const nextScore = hasAnyScore
-        ? String(clampScore(nextRows.reduce((total, row) => total + clampScore(row.score, SCORE_LIMITS.innovativeRow), 0), 10))
+        ? String(clampScore(nextRows.reduce((total, row) => total + clampScore(row.score, 4), 0), 10))
         : "";
       return { ...prev, innovRows: nextRows, innovDetails: nextRows.map((row) => row.method).filter(Boolean).join(", "), innovScore: nextScore };
     });
@@ -1013,16 +1025,25 @@ function InnovativeSection({ form, setForm, docs, setDocs, mode, locked, reviewe
                 </td>
                 <td style={tdStyle}>
                   {mode === "self" ? (
-                    <TI value={row.details} textOnly readOnly={!editableSelf} onChange={(value) => updateSelfRow(index, "details", value)} placeholder="Yes / No (with details)" />
+                    <select
+                      value={row.details || ""}
+                      disabled={!editableSelf}
+                      onChange={(e) => updateSelfRow(index, "details", e.target.value)}
+                      style={{ width: "100%", height: 30, border: "1px solid #cbd5e1", borderRadius: 4, background: "#fff", fontFamily: "inherit", fontSize: 11 }}
+                    >
+                      <option value="">Select</option>
+                      <option value="Yes">Yes</option>
+                      <option value="No">No</option>
+                    </select>
                   ) : (
                     <RO value={row.details} />
                   )}
                 </td>
                 <td style={tdStyle}><DocCell id={`innov-${index}`} docs={docs} setDocs={setDocs} readOnly={!editableSelf} /></td>
                 <td style={tdStyle}><ViewCell id={`innov-${index}`} docs={docs} /></td>
-                <td style={tdCenter}>{mode === "self" ? <TI type="number" center max={SCORE_LIMITS.innovativeRow} readOnly={!editableSelf} value={row.score} onChange={(value) => updateSelfRow(index, "score", value)} /> : <RO value={row.score || form.innovScore} center />}</td>
+                <td style={tdCenter}>{mode === "self" ? <TI type="number" center max={4} readOnly={!editableSelf} value={row.score} onChange={(value) => updateSelfRow(index, "score", value)} /> : <RO value={row.score || form.innovScore} center />}</td>
                 {mode === "review" && previousRoles.map((role) => <td key={role} style={tdCenter}><RO value={rowReviewScore(role, row, index)} center /></td>)}
-                {mode === "review" && <td style={tdCenter}><TI type="number" center max={SCORE_LIMITS.innovativeRow} readOnly={reviewLocked || !(rowReviewable || reviewerRole === "director")} value={rowReviewScore(reviewerRole, row, index)} onChange={(value) => updateReview(index, value)} /></td>}
+                {mode === "review" && <td style={tdCenter}><TI type="number" center max={4} readOnly={reviewLocked || !(rowReviewable || reviewerRole === "director")} value={rowReviewScore(reviewerRole, row, index)} onChange={(value) => updateReview(index, value)} /></td>}
               </tr>
             );
           })}
@@ -1241,9 +1262,6 @@ function MentoringSection({ form, setForm, docs, setDocs, mode, locked, reviewer
 
   return (
     <SectionShell title="A7. Student Mentoring & Counselling (Max: 10)" max={10} earned={facultyScore}>
-      <div style={{ fontSize: 11, fontStyle: "italic", color: "#475569", marginBottom: 8 }}>
-        Regular mentoring meetings (min. 2/semester) — 4 marks; mentoring register maintained — 3 marks; documented counselling outcomes — 3 marks.
-      </div>
       <div style={{ overflowX: "auto" }}>
         <table style={tableStyle}>
           <thead>
@@ -1923,6 +1941,18 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
     }
   };
 
+  const handleSaveAndNext = async () => {
+    await handleSaveDraft();
+    const NEXT_SECTION_MAP = { partA: "partB", partB: "partC", partC: "partD", partD: "summary" };
+    const nextSection = NEXT_SECTION_MAP[sectionView];
+    if (nextSection) {
+      setSectionView(nextSection);
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+      });
+    }
+  };
+
   const generateReviewReport = () => {
     if (!reviewCompleted) return;
     const applicability = {};
@@ -2042,11 +2072,11 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
         <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, margin: "12px 0 14px", flexWrap: "wrap" }}>
           <span style={{ color: "#64748b", fontSize: 11, fontWeight: 700 }}>{draftStatus}</span>
           <button
-            onClick={handleSaveDraft}
+            onClick={handleSaveAndNext}
             disabled={savingDraft}
             style={smallButton(savingDraft ? "#94a3b8" : "#2563eb")}
           >
-            {savingDraft ? "Saving..." : "Save Draft"}
+            {savingDraft ? "Saving..." : "Save & Next"}
           </button>
         </div>
       )}

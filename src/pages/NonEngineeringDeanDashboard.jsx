@@ -840,6 +840,19 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
  }
  };
 
+ const NEXT_SECTION_MAP = { partA: "partB", partB: "partC", partC: "partD", partD: "summary" };
+
+ const handleSaveAndNext = async () => {
+   await handleSaveDraft();
+   const nextSection = NEXT_SECTION_MAP[sectionView];
+   if (nextSection) {
+     setSectionView(nextSection);
+     requestAnimationFrame(() => {
+       window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+     });
+   }
+ };
+
  return (
 <div style={{ background: "#fff", borderRadius: 14, padding: "24px", boxShadow: "0 18px 45px rgba(15,23,42,0.18)", minHeight: "100%" }}>
 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 22 }}>
@@ -896,11 +909,11 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
 <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, margin: "12px 0 14px", flexWrap: "wrap" }}>
 <span style={{ color: "#64748b", fontSize: 11, fontWeight: 700 }}>{draftStatus}</span>
 <button
- onClick={handleSaveDraft}
+ onClick={handleSaveAndNext}
  disabled={savingDraft}
  style={{ padding: "10px 22px", background: savingDraft ? "#94a3b8" : "#2563eb", color: "#fff", border: "none", borderRadius: 7, cursor: savingDraft ? "not-allowed" : "pointer", fontWeight: 700, fontSize: 13, fontFamily: "inherit" }}
 >
- {savingDraft ? "Saving..." : "Save Draft"}
+ {savingDraft ? "Saving..." : "Save & Next"}
 </button>
 </div>
  )}
@@ -1063,11 +1076,20 @@ export default function NonEngineeringDeanDashboard() {
 
   const schoolCards = activeSchools.map((school) => {
     const visual = SCHOOL_VISUALS[school.code] || {};
+    const facPending = facultyList
+      .filter((item) => getSchoolKey(item.school) === school.code || item.school === school.code)
+      .filter(isDeanPending).length;
+    const dirPending = directorList
+      .filter((item) => getSchoolKey(item.school) === school.code || item.school === school.code)
+      .filter(isDeanPending).length;
+    const pendingCount = facPending + dirPending;
+
     return {
       code: school.code,
       icon: visual.icon || school.code.slice(2).toUpperCase(),
       name: school.name,
       shortName: school.shortName || school.name.replace(/^School of\s+/i, ""),
+      pendingCount,
     };
   });
 
@@ -1227,27 +1249,49 @@ export default function NonEngineeringDeanDashboard() {
                     alignItems: "center",
                     justifyContent: "center",
                     gap: 4,
+                    position: "relative",
                   }}
                 >
-                  <span style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 10,
-                    background: active ? "#6366f1" : "#f1f5f9",
-                    color: active ? "#ffffff" : "#475569",
-                    fontWeight: 800,
-                    fontSize: 13,
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    marginBottom: 4,
-                    boxShadow: active ? "0 4px 10px rgba(99,102,241,0.25)" : "none",
-                  }}>
-                    {school.icon}
-                  </span>
-                  <span style={{ fontSize: 13, fontWeight: 800, color: active ? "#4338ca" : "#1e293b" }}>
-                    {school.code}
-                  </span>
+                  <div style={{ position: "relative" }}>
+                    <span style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
+                      background: active ? "#6366f1" : "#f1f5f9",
+                      color: active ? "#ffffff" : "#475569",
+                      fontWeight: 800,
+                      fontSize: 13,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      boxShadow: active ? "0 4px 10px rgba(99,102,241,0.25)" : "none",
+                    }}>
+                      {school.icon}
+                    </span>
+                    {school.pendingCount > 0 && (
+                      <span style={{
+                        position: "absolute",
+                        top: -5,
+                        right: -10,
+                        background: "#ef4444",
+                        color: "#ffffff",
+                        borderRadius: 10,
+                        padding: "2px 6px",
+                        fontSize: 10,
+                        fontWeight: 800,
+                        lineHeight: 1,
+                        boxShadow: "0 2px 6px rgba(239,68,68,0.4)",
+                        border: "2px solid #ffffff",
+                      }}>
+                        {school.pendingCount}
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: active ? "#4338ca" : "#1e293b" }}>
+                      {school.code}
+                    </span>
+                  </div>
                   <span style={{ fontSize: 11, color: active ? "#6366f1" : "#64748b", fontWeight: 600, lineHeight: 1.25, maxWidth: 160, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                     {school.shortName}
                   </span>
