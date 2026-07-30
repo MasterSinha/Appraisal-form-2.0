@@ -22,7 +22,7 @@ const roles = {
   reportingOfficer: { appraisal_role: "reporting_officer" },
 };
 
-assert.equal(SCHOOL_OPTIONS.length, 9, "Signup must expose exactly 8 schools plus CISR");
+assert.equal(SCHOOL_OPTIONS.length, 10, "Signup must expose exactly 9 schools plus CISR");
 assert.deepEqual(
   SCHOOL_OPTIONS.map((school) => school.value),
   [
@@ -32,6 +32,7 @@ assert.deepEqual(
     "SoEMR",
     "SoCM",
     "SoMCS",
+    "SoHSS",
     "SoD",
     "SoAA",
     "CISR",
@@ -47,6 +48,7 @@ assert.deepEqual(
     "SoEMR - School of Engineering Management & Research",
     "SoCM - School of Commerce & Management",
     "SoMCS - School of Media & Communication Studies",
+    "SoHSS - School of Humanities and Social Sciences",
     "SoD - School of Design",
     "SoAA - School of Applied Arts",
     "CISR - Center for Interdisciplinary Studies and Research",
