@@ -660,16 +660,11 @@ export default function MediaCommDashboard({ fixedRole }) {
  sectionView={selfSectionView}
 />
 <SectionSaveFooter
- savingSection={savingSection}
- onSaveSection={handleSaveSelfSection}
- showNext={selfSectionView !== "partD"}
- onNext={() =>{
-  if (selfSectionView === "partA") setSelfSectionView("partB");
-  else if (selfSectionView === "partB") setSelfSectionView("partC");
-  else if (selfSectionView === "partC") setSelfSectionView("partD");
-  else if (selfSectionView === "partD") setSelfSectionView("summary");
- }}
- disabled={locked}
+ label={{ partA: "Part A", partB: "Part B", partC: "Part C", partD: "Part D" }[selfSectionView]}
+ saved={Boolean(sectionSaveStatus[selfSectionView])}
+ saving={savingSection === selfSectionView}
+ locked={locked}
+ onSave={() =>handleSaveSelfSection(selfSectionView)}
 />
 </>
  )}
