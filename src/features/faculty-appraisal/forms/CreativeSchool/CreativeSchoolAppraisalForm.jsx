@@ -753,10 +753,10 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
     <SectionShell title={section.title} max={section.max} earned={earned} accent={ACCENT2}>
       <>
         <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+          <table style={tableStyle}>
             <thead>
               <tr>
-                <th style={thStyle}>SN</th>
+                <th style={{ ...thStyle, width: 46 }}>SN</th>
                 {section.fields.map(([, label]) => <th key={label} style={thStyle}>{label}</th>)}
                 {section.key === "feedback" && <th style={thStyle}>Average</th>}
                 <th style={thStyle}>Attachment</th>
@@ -866,16 +866,16 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
                 );
               })}
               {!hideIndividualB8Summary && (
-                <tr style={{ background: "#eef2ff", borderTop: "1px solid #c7d2fe" }}>
-                  <td style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center" }} colSpan={totalLabelColSpan}>{totalLabel}</td>
-                  <td style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center" }}>{earned.toFixed(1)}</td>
+                <tr className="appraisal-total-row" style={{ background: "#f0f3ff", borderTop: "1px solid #c7d2fe" }}>
+                  <td style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center", background: "#f0f3ff" }} colSpan={totalLabelColSpan}>{totalLabel}</td>
+                  <td style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center", background: "#f0f3ff" }}>{earned.toFixed(1)}</td>
                   {mode === "review" && previousRoles.map((role) => (
-                    <td key={role} style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center" }}>
+                    <td key={role} style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center", background: "#f0f3ff" }}>
                       {sectionTotalScore(rows, role).toFixed(1)}
                     </td>
                   ))}
                   {mode === "review" && (
-                    <td style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center" }}>
+                    <td style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center", background: "#f0f3ff" }}>
                       {sectionTotalScore(reviewRows.length ? reviewRows : rows, currentRole).toFixed(1)}
                     </td>
                   )}
@@ -974,10 +974,10 @@ function InnovativeSection({ form, setForm, docs, setDocs, mode, locked, reviewe
 
   return (
     <SectionShell title="A3. Innovative Teaching-Learning Methodologies - Max 10 marks" max={10} earned={facultyScore}>
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+      <table style={tableStyle}>
         <thead>
           <tr>
-            <th style={{ ...thStyle, width: 42 }}>SN</th>
+            <th style={{ ...thStyle, width: 46 }}>SN</th>
             <th style={thStyle}>Methods Used</th>
             <th style={thStyle}>Proof Attached (Yes/No)</th>
             <th style={thStyle}>Attachment</th>
@@ -1061,6 +1061,8 @@ function ObeSection({ form, setForm, docs, setDocs, mode, locked, reviewerRole, 
     20
   );
 
+  const currentRole = reviewerRole;
+
   const rowReviewScore = (role, row, index) => {
     if (!rowHasReviewableData("obeRows", row)) return "";
     const value = reviewData.obeRows?.[index]?.[role] ?? row[role] ?? "";
@@ -1081,22 +1083,20 @@ function ObeSection({ form, setForm, docs, setDocs, mode, locked, reviewerRole, 
   })), 20, reviewerRole);
 
   const updateReview = (index, value) => {
-    const sourceRow = visibleObeRows[index] || {};
-    const nextValue = reviewerRole === "director"
-      ? clampDirectorReviewScore("obeRows", sourceRow, value, sourceRow.max || 20)
-      : clampReviewScore("obeRows", sourceRow, value, sourceRow.max || 20);
-    setReviewData((prev) => {
-      const sourceRows = Array.isArray(prev.obeRows) && prev.obeRows.length ? prev.obeRows : cloneRows(visibleObeRows);
-      const nextRows = sourceRows.map((row, rowIndex) => rowIndex === index ? { ...row, [reviewerRole]: nextValue } : row);
-      return { ...prev, obeRows: nextRows };
+    const source = reviewData.obeRows || cloneRows(obeRows);
+    const updated = source.map((row, i) => {
+      if (i !== index) return row;
+      const sourceRow = obeRows[i] || row;
+      return { ...row, [currentRole]: clampReviewScore("obeRows", sourceRow, value, sourceRow.max || 20) };
     });
+    setReviewData((prev) => ({ ...prev, obeRows: updated }));
   };
 
   const updateSelfRow = (index, field, value) => {
     setForm((prev) => {
       const baseRows = Array.isArray(prev.obeRows) && prev.obeRows.length ? prev.obeRows : defaultObeRows();
-      const nextRows = baseRows.map((row, rowIndex) => rowIndex === index ? { ...row, [field]: value } : row);
-      return { ...prev, obeRows: nextRows };
+      const updatedRows = baseRows.map((row, i) => (i === index ? { ...row, [field]: value } : row));
+      return { ...prev, obeRows: updatedRows };
     });
   };
 
@@ -1115,61 +1115,63 @@ function ObeSection({ form, setForm, docs, setDocs, mode, locked, reviewerRole, 
       <div style={{ fontSize: 11, fontStyle: "italic", color: "#475569", marginBottom: 8 }}>
         CO-PO mapping — 5 marks; attainment computation — 10 marks; corrective action taken — 5 marks.
       </div>
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
-        <thead>
-          <tr>
-            <th style={{ ...thStyle, width: 42 }}>SN</th>
-            <th style={thStyle}>Component</th>
-            <th style={thStyle}>Evidence Attached (Yes/No)</th>
-            <th style={thStyle}>Attachment</th>
-            <th style={thStyle}>View Docs</th>
-            <th style={thStyle}>{mode === "self" ? "Score" : "Faculty Score"}</th>
-            {mode === "review" && previousRoles.map((role) => <th key={role} style={thStyle}>{roleLabel(role)} Score</th>)}
-            {mode === "review" && <th style={thStyle}>{roleLabel(reviewerRole)} Score</th>}
-          </tr>
-        </thead>
-        <tbody>
-          {visibleObeRows.map((row, index) => {
-            const rowReviewable = rowHasReviewableData("obeRows", row);
-            return (
-              <tr key={index}>
-                <td style={tdCenter}>{index + 1}</td>
-                <td style={tdStyle}>
-                  {mode === "self" && index >= 3 ? (
-                    <TI value={row.component} textOnly readOnly={!editableSelf} onChange={(value) => updateSelfRow(index, "component", value)} />
-                  ) : (
-                    <RO value={row.component} />
-                  )}
-                </td>
-                <td style={tdStyle}>
-                  {mode === "self" ? (
-                    <TI value={row.evidence} textOnly readOnly={!editableSelf} onChange={(value) => updateSelfRow(index, "evidence", value)} placeholder="Yes / No" />
-                  ) : (
-                    <RO value={row.evidence} />
-                  )}
-                </td>
-                <td style={tdStyle}><DocCell id={`obe-${index}`} docs={docs} setDocs={setDocs} readOnly={!editableSelf} /></td>
-                <td style={tdStyle}><ViewCell id={`obe-${index}`} docs={docs} /></td>
-                <td style={tdCenter}>
-                  {mode === "self" ? (
-                    <TI type="number" center max={row.max || 20} readOnly={!editableSelf} value={row.score} onChange={(value) => updateSelfRow(index, "score", value)} />
-                  ) : (
-                    <RO value={row.score} center />
-                  )}
-                </td>
-                {mode === "review" && previousRoles.map((role) => <td key={role} style={tdCenter}><RO value={rowReviewScore(role, row, index)} center /></td>)}
-                {mode === "review" && <td style={tdCenter}><TI type="number" center max={row.max || 20} readOnly={reviewLocked || !(rowReviewable || reviewerRole === "director")} value={rowReviewScore(reviewerRole, row, index)} onChange={(value) => updateReview(index, value)} /></td>}
-              </tr>
-            );
-          })}
-          <tr style={{ background: "#eff6ff" }}>
-            <td style={{ ...tdCenter, fontWeight: 800 }} colSpan={5}>Total (Max: 20)</td>
-            <td style={{ ...tdCenter, fontWeight: 800 }}>{facultyScore.toFixed(1)}</td>
-            {mode === "review" && previousRoles.map((role) => <td key={role} style={{ ...tdCenter, fontWeight: 800 }}><RO value={roleObeTotal(role)} center /></td>)}
-            {mode === "review" && <td style={{ ...tdCenter, fontWeight: 800 }}><RO value={currentObeTotal()} center /></td>}
-          </tr>
-        </tbody>
-      </table>
+      <div style={{ overflowX: "auto" }}>
+        <table style={tableStyle}>
+          <thead>
+            <tr>
+              <th style={{ ...thStyle, width: 46 }}>SN</th>
+              <th style={thStyle}>Component</th>
+              <th style={thStyle}>Evidence Attached (Yes/No)</th>
+              <th style={thStyle}>Attachment</th>
+              <th style={thStyle}>View Docs</th>
+              <th style={thStyle}>{mode === "self" ? "Score" : "Faculty Score"}</th>
+              {mode === "review" && previousRoles.map((role) => <th key={role} style={thStyle}>{roleLabel(role)} Score</th>)}
+              {mode === "review" && <th style={thStyle}>{roleLabel(reviewerRole)} Score</th>}
+            </tr>
+          </thead>
+          <tbody>
+            {visibleObeRows.map((row, index) => {
+              const rowReviewable = rowHasReviewableData("obeRows", row);
+              return (
+                <tr key={index}>
+                  <td style={tdCenter}>{index + 1}</td>
+                  <td style={tdStyle}>
+                    {mode === "self" && index >= 3 ? (
+                      <TI value={row.component} textOnly readOnly={!editableSelf} onChange={(value) => updateSelfRow(index, "component", value)} />
+                    ) : (
+                      <RO value={row.component} />
+                    )}
+                  </td>
+                  <td style={tdStyle}>
+                    {mode === "self" ? (
+                      <TI value={row.evidence} textOnly readOnly={!editableSelf} onChange={(value) => updateSelfRow(index, "evidence", value)} placeholder="Yes / No" />
+                    ) : (
+                      <RO value={row.evidence} />
+                    )}
+                  </td>
+                  <td style={tdStyle}><DocCell id={`obe-${index}`} docs={docs} setDocs={setDocs} readOnly={!editableSelf} /></td>
+                  <td style={tdStyle}><ViewCell id={`obe-${index}`} docs={docs} /></td>
+                  <td style={tdCenter}>
+                    {mode === "self" ? (
+                      <TI type="number" center max={row.max || 20} readOnly={!editableSelf} value={row.score} onChange={(value) => updateSelfRow(index, "score", value)} />
+                    ) : (
+                      <RO value={row.score} center />
+                    )}
+                  </td>
+                  {mode === "review" && previousRoles.map((role) => <td key={role} style={tdCenter}><RO value={rowReviewScore(role, row, index)} center /></td>)}
+                  {mode === "review" && <td style={tdCenter}><TI type="number" center max={row.max || 20} readOnly={reviewLocked || !(rowReviewable || reviewerRole === "director")} value={rowReviewScore(reviewerRole, row, index)} onChange={(value) => updateReview(index, value)} /></td>}
+                </tr>
+              );
+            })}
+            <tr className="appraisal-total-row" style={{ background: "#f0f3ff", borderTop: "1px solid #c7d2fe" }}>
+              <td style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center", background: "#f0f3ff" }} colSpan={5}>Total (Max: 20)</td>
+              <td style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center", background: "#f0f3ff" }}>{facultyScore.toFixed(1)}</td>
+              {mode === "review" && previousRoles.map((role) => <td key={role} style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center", background: "#f0f3ff" }}><RO value={roleObeTotal(role)} center /></td>)}
+              {mode === "review" && <td style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center", background: "#f0f3ff" }}><RO value={currentObeTotal()} center /></td>}
+            </tr>
+          </tbody>
+        </table>
+      </div>
       {mode === "self" && !locked && (
         <RowBtns onAdd={addObeRow} onDel={deleteObeRow} canDel={visibleObeRows.length > 3} />
       )}
@@ -1187,6 +1189,8 @@ function MentoringSection({ form, setForm, docs, setDocs, mode, locked, reviewer
     mentoringRows.reduce((total, row) => total + clampScore(row.score, row.max || 10), 0),
     10
   );
+
+  const currentRole = reviewerRole;
 
   const rowReviewScore = (role, row, index) => {
     if (!rowHasReviewableData("mentoringRows", row)) return "";
@@ -1208,22 +1212,20 @@ function MentoringSection({ form, setForm, docs, setDocs, mode, locked, reviewer
   })), 10, reviewerRole);
 
   const updateReview = (index, value) => {
-    const sourceRow = visibleMentoringRows[index] || {};
-    const nextValue = reviewerRole === "director"
-      ? clampDirectorReviewScore("mentoringRows", sourceRow, value, sourceRow.max || 10)
-      : clampReviewScore("mentoringRows", sourceRow, value, sourceRow.max || 10);
-    setReviewData((prev) => {
-      const sourceRows = Array.isArray(prev.mentoringRows) && prev.mentoringRows.length ? prev.mentoringRows : cloneRows(visibleMentoringRows);
-      const nextRows = sourceRows.map((row, rowIndex) => rowIndex === index ? { ...row, [reviewerRole]: nextValue } : row);
-      return { ...prev, mentoringRows: nextRows };
+    const source = reviewData.mentoringRows || cloneRows(mentoringRows);
+    const updated = source.map((row, i) => {
+      if (i !== index) return row;
+      const sourceRow = mentoringRows[i] || row;
+      return { ...row, [currentRole]: clampReviewScore("mentoringRows", sourceRow, value, sourceRow.max || 10) };
     });
+    setReviewData((prev) => ({ ...prev, mentoringRows: updated }));
   };
 
   const updateSelfRow = (index, field, value) => {
     setForm((prev) => {
       const baseRows = Array.isArray(prev.mentoringRows) && prev.mentoringRows.length ? prev.mentoringRows : defaultMentoringRows();
-      const nextRows = baseRows.map((row, rowIndex) => rowIndex === index ? { ...row, [field]: value } : row);
-      return { ...prev, mentoringRows: nextRows };
+      const updatedRows = baseRows.map((row, i) => (i === index ? { ...row, [field]: value } : row));
+      return { ...prev, mentoringRows: updatedRows };
     });
   };
 
@@ -1242,69 +1244,69 @@ function MentoringSection({ form, setForm, docs, setDocs, mode, locked, reviewer
       <div style={{ fontSize: 11, fontStyle: "italic", color: "#475569", marginBottom: 8 }}>
         Regular mentoring meetings (min. 2/semester) — 4 marks; mentoring register maintained — 3 marks; documented counselling outcomes — 3 marks.
       </div>
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
-        <thead>
-          <tr>
-            <th style={{ ...thStyle, width: 42 }}>SN</th>
-            <th style={thStyle}>Activity</th>
-            <th style={thStyle}>Evidence Attached (Yes/No)</th>
-            <th style={thStyle}>Attachment</th>
-            <th style={thStyle}>View Docs</th>
-            <th style={thStyle}>{mode === "self" ? "Score" : "Faculty Score"}</th>
-            {mode === "review" && previousRoles.map((role) => <th key={role} style={thStyle}>{roleLabel(role)} Score</th>)}
-            {mode === "review" && <th style={thStyle}>{roleLabel(reviewerRole)} Score</th>}
-          </tr>
-        </thead>
-        <tbody>
-          {visibleMentoringRows.map((row, index) => {
-            const rowReviewable = rowHasReviewableData("mentoringRows", row);
-            return (
-              <tr key={index}>
-                <td style={tdCenter}>{index + 1}</td>
-                <td style={tdStyle}>
-                  {mode === "self" && index >= 3 ? (
-                    <TI value={row.activity} textOnly readOnly={!editableSelf} onChange={(value) => updateSelfRow(index, "activity", value)} />
-                  ) : (
-                    <RO value={row.activity} />
-                  )}
-                </td>
-                <td style={tdStyle}>
-                  {mode === "self" ? (
-                    <TI value={row.evidence} textOnly readOnly={!editableSelf} onChange={(value) => updateSelfRow(index, "evidence", value)} placeholder="Yes / No" />
-                  ) : (
-                    <RO value={row.evidence} />
-                  )}
-                </td>
-                <td style={tdStyle}><DocCell id={`mentor-${index}`} docs={docs} setDocs={setDocs} readOnly={!editableSelf} /></td>
-                <td style={tdStyle}><ViewCell id={`mentor-${index}`} docs={docs} /></td>
-                <td style={tdCenter}>
-                  {mode === "self" ? (
-                    <TI type="number" center max={row.max || 10} readOnly={!editableSelf} value={row.score} onChange={(value) => updateSelfRow(index, "score", value)} />
-                  ) : (
-                    <RO value={row.score} center />
-                  )}
-                </td>
-                {mode === "review" && previousRoles.map((role) => <td key={role} style={tdCenter}><RO value={rowReviewScore(role, row, index)} center /></td>)}
-                {mode === "review" && <td style={tdCenter}><TI type="number" center max={row.max || 10} readOnly={reviewLocked || !(rowReviewable || reviewerRole === "director")} value={rowReviewScore(reviewerRole, row, index)} onChange={(value) => updateReview(index, value)} /></td>}
-              </tr>
-            );
-          })}
-          <tr style={{ background: "#eff6ff" }}>
-            <td style={{ ...tdCenter, fontWeight: 800 }} colSpan={5}>Total (Max: 10)</td>
-            <td style={{ ...tdCenter, fontWeight: 800 }}>{facultyScore.toFixed(1)}</td>
-            {mode === "review" && previousRoles.map((role) => <td key={role} style={{ ...tdCenter, fontWeight: 800 }}><RO value={roleMentoringTotal(role)} center /></td>)}
-            {mode === "review" && <td style={{ ...tdCenter, fontWeight: 800 }}><RO value={currentMentoringTotal()} center /></td>}
-          </tr>
-        </tbody>
-      </table>
+      <div style={{ overflowX: "auto" }}>
+        <table style={tableStyle}>
+          <thead>
+            <tr>
+              <th style={{ ...thStyle, width: 46 }}>SN</th>
+              <th style={thStyle}>Activity</th>
+              <th style={thStyle}>Evidence Attached (Yes/No)</th>
+              <th style={thStyle}>Attachment</th>
+              <th style={thStyle}>View Docs</th>
+              <th style={thStyle}>{mode === "self" ? "Score" : "Faculty Score"}</th>
+              {mode === "review" && previousRoles.map((role) => <th key={role} style={thStyle}>{roleLabel(role)} Score</th>)}
+              {mode === "review" && <th style={thStyle}>{roleLabel(reviewerRole)} Score</th>}
+            </tr>
+          </thead>
+          <tbody>
+            {visibleMentoringRows.map((row, index) => {
+              const rowReviewable = rowHasReviewableData("mentoringRows", row);
+              return (
+                <tr key={index}>
+                  <td style={tdCenter}>{index + 1}</td>
+                  <td style={tdStyle}>
+                    {mode === "self" && index >= 3 ? (
+                      <TI value={row.activity} textOnly readOnly={!editableSelf} onChange={(value) => updateSelfRow(index, "activity", value)} />
+                    ) : (
+                      <RO value={row.activity} />
+                    )}
+                  </td>
+                  <td style={tdStyle}>
+                    {mode === "self" ? (
+                      <TI value={row.evidence} textOnly readOnly={!editableSelf} onChange={(value) => updateSelfRow(index, "evidence", value)} placeholder="Yes / No" />
+                    ) : (
+                      <RO value={row.evidence} />
+                    )}
+                  </td>
+                  <td style={tdStyle}><DocCell id={`mentor-${index}`} docs={docs} setDocs={setDocs} readOnly={!editableSelf} /></td>
+                  <td style={tdStyle}><ViewCell id={`mentor-${index}`} docs={docs} /></td>
+                  <td style={tdCenter}>
+                    {mode === "self" ? (
+                      <TI type="number" center max={row.max || 10} readOnly={!editableSelf} value={row.score} onChange={(value) => updateSelfRow(index, "score", value)} />
+                    ) : (
+                      <RO value={row.score} center />
+                    )}
+                  </td>
+                  {mode === "review" && previousRoles.map((role) => <td key={role} style={tdCenter}><RO value={rowReviewScore(role, row, index)} center /></td>)}
+                  {mode === "review" && <td style={tdCenter}><TI type="number" center max={row.max || 10} readOnly={reviewLocked || !(rowReviewable || reviewerRole === "director")} value={rowReviewScore(reviewerRole, row, index)} onChange={(value) => updateReview(index, value)} /></td>}
+                </tr>
+              );
+            })}
+            <tr className="appraisal-total-row" style={{ background: "#f0f3ff", borderTop: "1px solid #c7d2fe" }}>
+              <td style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center", background: "#f0f3ff" }} colSpan={5}>Total (Max: 10)</td>
+              <td style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center", background: "#f0f3ff" }}>{facultyScore.toFixed(1)}</td>
+              {mode === "review" && previousRoles.map((role) => <td key={role} style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center", background: "#f0f3ff" }}><RO value={roleMentoringTotal(role)} center /></td>)}
+              {mode === "review" && <td style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center", background: "#f0f3ff" }}><RO value={currentMentoringTotal()} center /></td>}
+            </tr>
+          </tbody>
+        </table>
+      </div>
       {mode === "self" && !locked && (
         <RowBtns onAdd={addMentoringRow} onDel={deleteMentoringRow} canDel={visibleMentoringRows.length > 3} />
       )}
     </SectionShell>
   );
 }
-
-
 
 function PartA({ sections, SectionTable, InnovativeSection, ObeSection, MentoringSection, sectionTableProps }) {
   const totals = calculateCreativeSchoolTotals(sectionTableProps.form || {});
@@ -1427,7 +1429,7 @@ function PartD({ sectionTableProps }) {
           </h3>
           <span
             title="Evaluated by HOD/Director only. This part has no faculty self-score input."
-            style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 18, height: 18, borderRadius: "50%", background: "#e2e8f0", color: "#475569", fontSize: 11, fontWeight: 700, cursor: "help" }}
+            style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 18, height: 18, borderRadius: "50%", background: "#e2e8f0", color: "#475469", fontSize: 11, fontWeight: 700, cursor: "help" }}
           >
             ℹ
           </span>
@@ -1445,18 +1447,18 @@ function PartD({ sectionTableProps }) {
 
       {/* Table */}
       <div style={{ overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+        <table style={tableStyle}>
           <thead>
-            <tr style={{ background: "#1e293b", color: "#ffffff" }}>
-              <th style={{ border: "1px solid #334155", padding: "10px 8px", textAlign: "center", width: 60 }}>Sr. No.</th>
-              <th style={{ border: "1px solid #334155", padding: "10px 12px", textAlign: "left", width: 220 }}>Parameter</th>
-              <th style={{ border: "1px solid #334155", padding: "10px 12px", textAlign: "left" }}>Description / Indicators</th>
-              <th style={{ border: "1px solid #334155", padding: "10px 8px", textAlign: "center", width: 90 }}>Max Marks</th>
+            <tr>
+              <th style={{ ...thStyle, width: 46 }}>Sr. No.</th>
+              <th style={{ ...thStyle, width: 220, textAlign: "left" }}>Parameter</th>
+              <th style={{ ...thStyle, textAlign: "left" }}>Description / Indicators</th>
+              <th style={{ ...thStyle, width: 90 }}>Max Marks</th>
               {mode === "review" && previousRoles.map((role) => (
-                <th key={role} style={{ border: "1px solid #334155", padding: "10px 8px", textAlign: "center", width: 110 }}>{roleLabel(role)} Score</th>
+                <th key={role} style={{ ...thStyle, width: 110 }}>{roleLabel(role)} Score</th>
               ))}
               {mode === "review" && (
-                <th style={{ border: "1px solid #334155", padding: "10px 8px", textAlign: "center", width: 120 }}>{roleLabel(currentRole)} Score</th>
+                <th style={{ ...thStyle, width: 120 }}>{roleLabel(currentRole)} Score</th>
               )}
             </tr>
           </thead>
@@ -1466,17 +1468,17 @@ function PartD({ sectionTableProps }) {
               const reviewRow = reviewData?.acr?.[index] || row;
               return (
                 <tr key={param.id} style={{ background: index % 2 === 1 ? "#f8fafc" : "#ffffff" }}>
-                  <td style={{ border: "1px solid #cbd5e1", padding: "8px", textAlign: "center", fontWeight: 700, color: "#475569" }}>{param.id}</td>
-                  <td style={{ border: "1px solid #cbd5e1", padding: "8px 12px", fontWeight: 600, color: "#0f172a" }}>{param.label}</td>
-                  <td style={{ border: "1px solid #cbd5e1", padding: "8px 12px", color: "#334155", lineHeight: 1.4 }}>{param.desc}</td>
-                  <td style={{ border: "1px solid #cbd5e1", padding: "8px", textAlign: "center", fontWeight: 700, color: "#1e293b" }}>{param.max}</td>
+                  <td style={tdCenter}>{param.id}</td>
+                  <td style={{ ...tdStyle, fontWeight: 600, color: "#0f172a" }}>{param.label}</td>
+                  <td style={{ ...tdStyle, color: "#334155" }}>{param.desc}</td>
+                  <td style={tdCenter}>{param.max}</td>
                   {mode === "review" && previousRoles.map((role) => (
-                    <td key={role} style={{ border: "1px solid #cbd5e1", padding: "8px", textAlign: "center" }}>
+                    <td key={role} style={tdCenter}>
                       <RO value={reviewRow[role] ?? row[role]} center />
                     </td>
                   ))}
                   {mode === "review" && (
-                    <td style={{ border: "1px solid #cbd5e1", padding: "8px", textAlign: "center" }}>
+                    <td style={tdCenter}>
                       <TI
                         type="number"
                         center
@@ -1490,21 +1492,21 @@ function PartD({ sectionTableProps }) {
                 </tr>
               );
             })}
-            <tr style={{ background: "#f1f5f9", fontWeight: 700 }}>
-              <td colSpan={3} style={{ border: "1px solid #cbd5e1", padding: "10px 12px", textAlign: "right", color: "#1e293b", fontSize: 12 }}>
-                Part D Total (Max: 50)
+            <tr className="appraisal-total-row" style={{ background: "#f0f3ff", borderTop: "1px solid #c7d2fe" }}>
+              <td colSpan={3} style={{ ...tdStyle, textAlign: "center", color: "#3730a3", fontSize: 14, fontWeight: 800, background: "#f0f3ff" }}>
+                Part D Total (Max 50)
               </td>
-              <td style={{ border: "1px solid #cbd5e1", padding: "10px 8px", textAlign: "center", color: "#1e293b", fontSize: 12 }}>50</td>
+              <td style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, background: "#f0f3ff" }}>50</td>
               {mode === "review" && previousRoles.map((role) => {
                 const prevTotal = scoreSectionRows("acr", reviewData?.acr || rows, 50, role);
                 return (
-                  <td key={role} style={{ border: "1px solid #cbd5e1", padding: "10px 8px", textAlign: "center", color: "#4f46e5", fontSize: 12 }}>
+                  <td key={role} style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, background: "#f0f3ff" }}>
                     {prevTotal.toFixed(1)}
                   </td>
                 );
               })}
               {mode === "review" && (
-                <td style={{ border: "1px solid #cbd5e1", padding: "10px 8px", textAlign: "center", color: "#4f46e5", fontSize: 12 }}>
+                <td style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, background: "#f0f3ff" }}>
                   {partDScore.toFixed(1)}
                 </td>
               )}
