@@ -906,7 +906,7 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  setDraftStatus(`Draft saved: ${new Date().toLocaleString()}`);
  } catch (err) {
  console.error("Could not save reviewer draft:", err);
- alert(err?.message || "Unable to save draft.");
+ setDraftStatus(err?.message || "Unable to save draft.");
  } finally {
  setSavingDraft(false);
  }
