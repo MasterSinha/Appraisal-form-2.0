@@ -20,7 +20,7 @@ const NON_ENGINEERING_SCHOOL_CODES = NON_ENGINEERING_SCHOOLS.map((school) =>scho
 const SCHOOL_VISUALS = {
  SoCM: { icon: "CM", color: "#14b8a6", bg: "#ecfeff" },
  SoMCS: { icon: "MC", color: "#6366f1", bg: "#eef2ff" },
- SoHSS: { icon: "MC", color: "#6366f1", bg: "#eef2ff" },
+ SoHSS: { icon: "HS", color: "#6366f1", bg: "#eef2ff" },
  SoD: { icon: "DS", color: "#ec4899", bg: "#fdf2f8" },
  CioD: { icon: "DS", color: "#ec4899", bg: "#fdf2f8" },
  SoAA: { icon: "AA", color: "#7c3aed", bg: "#f3e8ff" },
@@ -757,9 +757,21 @@ function ApprovalReviewPanel({ approval, approvalType, onBack, onSubmit, readOnl
       />
     );
   }
- const [remarks, setRemarks] = useState(approval?.deanRemarks || "");
- const [deanData, setDeanData] = useState({});
- const [sectionView, setSectionView] = useState("partA");
+  return (
+    <StandardApprovalReviewPanel
+      approval={approval}
+      approvalType={approvalType}
+      onBack={onBack}
+      onSubmit={onSubmit}
+      readOnly={readOnly}
+    />
+  );
+}
+
+function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit, readOnly = false }) {
+  const [remarks, setRemarks] = useState(approval?.deanRemarks || "");
+  const [deanData, setDeanData] = useState({});
+  const [sectionView, setSectionView] = useState("partA");
  const [reviewConfirmed, setReviewConfirmed] = useState(false);
  const [draftStatus, setDraftStatus] = useState("");
  const [savingDraft, setSavingDraft] = useState(false);

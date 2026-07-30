@@ -117,9 +117,18 @@ export const isMediaCommSchool = (...sources) => {
     if (!source) continue;
     const str = typeof source === "string" ? source : (source.school || source.info?.school || source.profile?.school || "");
     const schoolObj = getSchoolByValue(str);
-    if (schoolObj?.code === "SoMCS" || schoolObj?.code === "SoHSS" || schoolObj?.code === "SoMC") return true;
+    if (schoolObj?.code === "SoMCS" || schoolObj?.code === "SoMC" || schoolObj?.code === "SoHSS") return true;
     const lower = String(str).toLowerCase();
-    if (lower.includes("somcs") || lower.includes("somc") || lower.includes("sohss") || lower.includes("media") || lower.includes("humanities") || lower.includes("social sciences")) return true;
+    if (
+      lower.includes("somcs") ||
+      lower.includes("somc") ||
+      lower.includes("media") ||
+      lower.includes("sohss") ||
+      lower.includes("hss") ||
+      lower.includes("humanities") ||
+      lower.includes("social sciences")
+    )
+      return true;
   }
   return false;
 };

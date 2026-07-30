@@ -93,6 +93,7 @@ function DocumentIcon() {
   );
 }
 
+/* eslint-disable no-unused-vars */
 function EyeIcon() {
   return (
     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -567,7 +568,7 @@ export function SectionCard({ title, subtitle, accent = "#4f46e5", scoreBadge, c
     <div className="fa-section-card appraisal-section-card" style={{ background: "#fff", borderRadius: 16, boxShadow: "0 1px 3px rgba(0,0,0,0.03)", marginBottom: 20, overflow: "hidden", border: "1px solid #e2e8f0" }}>
       <div className="appraisal-part-header" style={{ padding: "20px 26px", borderBottom: "1px solid #e2e8f0", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, background: "#fbfcfd" }}>
         <div style={{ minWidth: 0, display: "flex", alignItems: "center", gap: 14 }}>
-          <span className="appraisal-part-icon" style={{ width: 38, height: 38, borderRadius: 10, background: "#eef2ff", color: "#4f46e5", border: "1px solid #e0e7ff", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <span className="appraisal-part-icon" style={{ width: 38, height: 38, borderRadius: 10, background: `${accent}1A`, color: accent, border: `1px solid ${accent}2A`, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M12 3 3 7l9 4 9-4-9-4Z" />
               <path d="M5 10v5c2 2 12 2 14 0v-5" />
