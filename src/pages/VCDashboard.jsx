@@ -772,9 +772,21 @@ function VCReviewPanel({ person, personMode, onBack, onSubmit, readOnly = false 
       />
     );
   }
- const [vcData, setVcData] = useState({});
- const [remarks, setRemarks] = useState(person.vcRemarks || "");
- const [sectionView, setSectionView] = useState("partA");
+  return (
+    <StandardVCReviewPanel
+      person={person}
+      personMode={personMode}
+      onBack={onBack}
+      onSubmit={onSubmit}
+      readOnly={readOnly}
+    />
+  );
+}
+
+function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly = false }) {
+  const [vcData, setVcData] = useState({});
+  const [remarks, setRemarks] = useState(person.vcRemarks || "");
+  const [sectionView, setSectionView] = useState("partA");
  const [reviewConfirmed, setReviewConfirmed] = useState(false);
  const [draftStatus, setDraftStatus] = useState("");
  const [savingDraft, setSavingDraft] = useState(false);

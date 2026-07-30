@@ -832,9 +832,21 @@ function ApprovalReviewPanel({ approval, approvalType, onBack, onSubmit, readOnl
       />
     );
   }
- const [remarks, setRemarks] = useState(approval?.deanRemarks || "");
- const [deanData, setDeanData] = useState({});
- const [sectionView, setSectionView] = useState("partA");
+  return (
+    <StandardApprovalReviewPanel
+      approval={approval}
+      approvalType={approvalType}
+      onBack={onBack}
+      onSubmit={onSubmit}
+      readOnly={readOnly}
+    />
+  );
+}
+
+function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit, readOnly = false }) {
+  const [remarks, setRemarks] = useState(approval?.deanRemarks || "");
+  const [deanData, setDeanData] = useState({});
+  const [sectionView, setSectionView] = useState("partA");
  const [reviewConfirmed, setReviewConfirmed] = useState(false);
  const [draftStatus, setDraftStatus] = useState("");
  const [savingDraft, setSavingDraft] = useState(false);

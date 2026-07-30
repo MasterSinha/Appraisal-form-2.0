@@ -155,6 +155,10 @@ function ReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
       />
     );
   }
+  return <StandardReviewPanel faculty={faculty} onBack={onBack} onSubmit={onSubmit} readOnly={readOnly} />;
+}
+
+function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
  const [hodData, setHodData] = useState({});
  const [dirData, setDirData] = useState({});
  const [hodRemarks] = useState(faculty.hodRemarks || "");

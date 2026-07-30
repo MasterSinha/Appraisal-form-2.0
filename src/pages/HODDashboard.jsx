@@ -88,9 +88,22 @@ function ReviewPanel({ faculty, onBack, onSubmit, readOnly = false, reviewerLabe
       />
     );
   }
+  return (
+    <StandardReviewPanel
+      faculty={faculty}
+      onBack={onBack}
+      onSubmit={onSubmit}
+      readOnly={readOnly}
+      reviewerLabel={reviewerLabel}
+      reviewerRole={reviewerRole}
+    />
+  );
+}
+
+function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false, reviewerLabel = "HOD", reviewerRole = "hod" }) {
   const [hodData, setHodData] = useState({});
- const [remarks, setRemarks] = useState(faculty.hodRemarks || "");
- const [sectionView, setSectionView] = useState("partA");
+  const [remarks, setRemarks] = useState(faculty.hodRemarks || "");
+  const [sectionView, setSectionView] = useState("partA");
  const [reviewConfirmed, setReviewConfirmed] = useState(false);
  const [draftStatus, setDraftStatus] = useState("");
  const [savingDraft, setSavingDraft] = useState(false);
