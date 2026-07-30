@@ -74,6 +74,11 @@ export const ACCENT = "#4f46e5";
 export const ACCENT2 = "#4338ca";
 const VERIFY_TEXT = "I have verified all the details and confirm that the information provided is correct. I am responsible for the accuracy of this data.";
 const smallButton = (background) => ({ padding: "8px 14px", background, color: "#fff", border: "none", borderRadius: 7, cursor: background === "#94a3b8" ? "not-allowed" : "pointer", fontWeight: 800, fontSize: 12, fontFamily: "inherit" });
+const clampDirectorReviewScore = (sectionKey, row, value, maxScore) => {
+  if (String(value ?? "").trim() === "") return "";
+  const strictValue = clampReviewScore(sectionKey, row, value, maxScore);
+  return strictValue === "" ? String(clampScore(value, maxScore)) : strictValue;
+};
 export const PART_A_MAX = 150;
 export const PART_B_MAX = 350;
 export const PART_C_MAX = 150;
@@ -702,7 +707,10 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
       const nextRows = source.map((row, rowIndex) => {
         if (rowIndex !== index) return row;
         const sourceRow = rows[rowIndex] || row;
-        return { ...row, [currentRole]: clampReviewScore(section.key, sourceRow, value, section.max) };
+        const nextValue = currentRole === "director"
+          ? clampDirectorReviewScore(section.key, sourceRow, value, section.max)
+          : clampReviewScore(section.key, sourceRow, value, section.max);
+        return { ...row, [currentRole]: nextValue };
       });
       return { ...prev, [section.key]: nextRows };
     });
@@ -753,8 +761,9 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
               {rows.map((row, index) => {
                 const socRowLocked = section.key === "society" && societyRowLocked(row);
                 const rowReviewable = rowHasReviewableData(section.key, row);
+                const reviewerCanScoreRow = rowReviewable || currentRole === "director";
                 const currentRowMax = reviewRowMaxForSection(section.key, row, section.max);
-                const displayScore = (value) => rowReviewable && String(value ?? "").trim() ? clampScore(value, currentRowMax) : "";
+                const displayScore = (value) => reviewerCanScoreRow && String(value ?? "").trim() ? clampScore(value, currentRowMax) : "";
                 return (
                   <tr key={row._id ?? `${section.key}-${index}`} style={socRowLocked ? { background: "#f1f5f9", opacity: 0.65 } : {}}>
                     <td style={tdCenter}>{index + 1}</td>
@@ -841,7 +850,7 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
                     {mode === "review" && previousRoles.map((role) => <td key={role} style={tdCenter}><RO value={socRowLocked ? "0" : displayScore(row[role])} center /></td>)}
                     {mode === "review" && (
                       <td style={tdCenter}>
-                        <TI type="number" center max={currentRowMax} readOnly={reviewLocked || socRowLocked || !rowReviewable} value={socRowLocked ? "0" : displayScore(reviewRows[index]?.[currentRole] ?? row[currentRole] ?? "")} onChange={(value) => updateReview(index, value)} />
+                        <TI type="number" center max={currentRowMax} readOnly={reviewLocked || socRowLocked || !reviewerCanScoreRow} value={socRowLocked ? "0" : displayScore(reviewRows[index]?.[currentRole] ?? row[currentRole] ?? "")} onChange={(value) => updateReview(index, value)} />
                       </td>
                     )}
                   </tr>
@@ -900,7 +909,7 @@ function InnovativeSection({ form, setForm, docs, setDocs, mode, locked, reviewe
     INNOVATIVE_METHOD_OPTIONS.filter((option) => option.value === currentMethod || !selectedInnovativeMethods.has(option.value));
   const facultyScore = clampScore(innovRows.reduce((total, row) => total + clampScore(row.score, SCORE_LIMITS.innovativeRow), 0), 10);
   const rowReviewScore = (role, row, index) => {
-    if (!rowHasReviewableData("innovRows", row)) return "";
+    if (!rowHasReviewableData("innovRows", row) && role !== "director") return "";
     const value = reviewData.innovRows?.[index]?.[role] ?? row[role] ?? "";
     return String(value ?? "").trim() ? clampScore(value, SCORE_LIMITS.innovativeRow) : "";
   };
@@ -917,7 +926,9 @@ function InnovativeSection({ form, setForm, docs, setDocs, mode, locked, reviewe
   })), 10, reviewerRole);
   const updateReview = (index, value) => {
     const sourceRow = visibleInnovRows[index] || {};
-    const nextValue = clampReviewScore("innovRows", sourceRow, value, 10);
+    const nextValue = reviewerRole === "director"
+      ? clampDirectorReviewScore("innovRows", sourceRow, value, 10)
+      : clampReviewScore("innovRows", sourceRow, value, 10);
     setReviewData((prev) => {
       const sourceRows = Array.isArray(prev.innovRows) && prev.innovRows.length ? prev.innovRows : cloneRows(visibleInnovRows);
       const nextRows = sourceRows.map((row, rowIndex) => rowIndex === index ? { ...row, [reviewerRole]: nextValue } : row);
@@ -1002,7 +1013,7 @@ function InnovativeSection({ form, setForm, docs, setDocs, mode, locked, reviewe
                 <td style={tdStyle}><ViewCell id={`innov-${index}`} docs={docs} /></td>
                 <td style={tdCenter}>{mode === "self" ? <TI type="number" center max={SCORE_LIMITS.innovativeRow} readOnly={!editableSelf} value={row.score} onChange={(value) => updateSelfRow(index, "score", value)} /> : <RO value={row.score || form.innovScore} center />}</td>
                 {mode === "review" && previousRoles.map((role) => <td key={role} style={tdCenter}><RO value={rowReviewScore(role, row, index)} center /></td>)}
-                {mode === "review" && <td style={tdCenter}><TI type="number" center max={SCORE_LIMITS.innovativeRow} readOnly={reviewLocked || !rowReviewable} value={rowReviewScore(reviewerRole, row, index)} onChange={(value) => updateReview(index, value)} /></td>}
+                {mode === "review" && <td style={tdCenter}><TI type="number" center max={SCORE_LIMITS.innovativeRow} readOnly={reviewLocked || !(rowReviewable || reviewerRole === "director")} value={rowReviewScore(reviewerRole, row, index)} onChange={(value) => updateReview(index, value)} /></td>}
               </tr>
             );
           })}
@@ -1062,7 +1073,9 @@ function ObeSection({ form, setForm, docs, setDocs, mode, locked, reviewerRole, 
 
   const updateReview = (index, value) => {
     const sourceRow = visibleObeRows[index] || {};
-    const nextValue = clampReviewScore("obeRows", sourceRow, value, sourceRow.max || 20);
+    const nextValue = reviewerRole === "director"
+      ? clampDirectorReviewScore("obeRows", sourceRow, value, sourceRow.max || 20)
+      : clampReviewScore("obeRows", sourceRow, value, sourceRow.max || 20);
     setReviewData((prev) => {
       const sourceRows = Array.isArray(prev.obeRows) && prev.obeRows.length ? prev.obeRows : cloneRows(visibleObeRows);
       const nextRows = sourceRows.map((row, rowIndex) => rowIndex === index ? { ...row, [reviewerRole]: nextValue } : row);
@@ -1136,7 +1149,7 @@ function ObeSection({ form, setForm, docs, setDocs, mode, locked, reviewerRole, 
                   )}
                 </td>
                 {mode === "review" && previousRoles.map((role) => <td key={role} style={tdCenter}><RO value={rowReviewScore(role, row, index)} center /></td>)}
-                {mode === "review" && <td style={tdCenter}><TI type="number" center max={row.max || 20} readOnly={reviewLocked || !rowReviewable} value={rowReviewScore(reviewerRole, row, index)} onChange={(value) => updateReview(index, value)} /></td>}
+                {mode === "review" && <td style={tdCenter}><TI type="number" center max={row.max || 20} readOnly={reviewLocked || !(rowReviewable || reviewerRole === "director")} value={rowReviewScore(reviewerRole, row, index)} onChange={(value) => updateReview(index, value)} /></td>}
               </tr>
             );
           })}
@@ -1187,7 +1200,9 @@ function MentoringSection({ form, setForm, docs, setDocs, mode, locked, reviewer
 
   const updateReview = (index, value) => {
     const sourceRow = visibleMentoringRows[index] || {};
-    const nextValue = clampReviewScore("mentoringRows", sourceRow, value, sourceRow.max || 10);
+    const nextValue = reviewerRole === "director"
+      ? clampDirectorReviewScore("mentoringRows", sourceRow, value, sourceRow.max || 10)
+      : clampReviewScore("mentoringRows", sourceRow, value, sourceRow.max || 10);
     setReviewData((prev) => {
       const sourceRows = Array.isArray(prev.mentoringRows) && prev.mentoringRows.length ? prev.mentoringRows : cloneRows(visibleMentoringRows);
       const nextRows = sourceRows.map((row, rowIndex) => rowIndex === index ? { ...row, [reviewerRole]: nextValue } : row);
@@ -1261,7 +1276,7 @@ function MentoringSection({ form, setForm, docs, setDocs, mode, locked, reviewer
                   )}
                 </td>
                 {mode === "review" && previousRoles.map((role) => <td key={role} style={tdCenter}><RO value={rowReviewScore(role, row, index)} center /></td>)}
-                {mode === "review" && <td style={tdCenter}><TI type="number" center max={row.max || 10} readOnly={reviewLocked || !rowReviewable} value={rowReviewScore(reviewerRole, row, index)} onChange={(value) => updateReview(index, value)} /></td>}
+                {mode === "review" && <td style={tdCenter}><TI type="number" center max={row.max || 10} readOnly={reviewLocked || !(rowReviewable || reviewerRole === "director")} value={rowReviewScore(reviewerRole, row, index)} onChange={(value) => updateReview(index, value)} /></td>}
               </tr>
             );
           })}
@@ -1754,7 +1769,9 @@ function buildCreativeSchoolSectionScores(person, reviewData, reviewerRole) {
   const reviewInnovRows = Array.isArray(reviewData.innovRows) ? reviewData.innovRows : [];
   const mergedInnovRows = innovRows.map((row, index) => ({
     ...row,
-    [reviewerRole]: clampReviewScore("innovRows", row, reviewInnovRows[index]?.[reviewerRole] ?? row[reviewerRole] ?? "", 10),
+    [reviewerRole]: reviewerRole === "director"
+      ? clampDirectorReviewScore("innovRows", row, reviewInnovRows[index]?.[reviewerRole] ?? row[reviewerRole] ?? "", 10)
+      : clampReviewScore("innovRows", row, reviewInnovRows[index]?.[reviewerRole] ?? row[reviewerRole] ?? "", 10),
   }));
   const innovTotal = reviewSectionScore("innovRows", mergedInnovRows, 10, reviewerRole);
   payload.innovRows = mergedInnovRows;
@@ -1789,12 +1806,18 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
     ALL_ARRAY_KEYS.forEach((key) => {
       merged[key] = (form[key] || []).map((row, index) => ({
         ...row,
-        [reviewerRole]: key === "society" && societyRowLocked(row) ? "0" : clampReviewScore(key, row, reviewData[key]?.[index]?.[reviewerRole] ?? row[reviewerRole] ?? "", SECTION_MAX_BY_KEY[key] || 0),
+        [reviewerRole]: key === "society" && societyRowLocked(row)
+          ? "0"
+          : reviewerRole === "director"
+            ? clampDirectorReviewScore(key, row, reviewData[key]?.[index]?.[reviewerRole] ?? row[reviewerRole] ?? "", SECTION_MAX_BY_KEY[key] || 0)
+            : clampReviewScore(key, row, reviewData[key]?.[index]?.[reviewerRole] ?? row[reviewerRole] ?? "", SECTION_MAX_BY_KEY[key] || 0),
       }));
     });
     merged.innovRows = (form.innovRows || []).map((row, index) => ({
       ...row,
-      [reviewerRole]: clampReviewScore("innovRows", row, reviewData.innovRows?.[index]?.[reviewerRole] ?? row[reviewerRole] ?? "", 10),
+      [reviewerRole]: reviewerRole === "director"
+        ? clampDirectorReviewScore("innovRows", row, reviewData.innovRows?.[index]?.[reviewerRole] ?? row[reviewerRole] ?? "", 10)
+        : clampReviewScore("innovRows", row, reviewData.innovRows?.[index]?.[reviewerRole] ?? row[reviewerRole] ?? "", 10),
     }));
     const innovTotal = reviewSectionScore("innovRows", merged.innovRows, 10, reviewerRole);
     merged[scoreKeyForInnov(reviewerRole)] = innovTotal ? String(innovTotal) : reviewData.innovativeTeaching?.[reviewerRole] ?? form[scoreKeyForInnov(reviewerRole)] ?? "";

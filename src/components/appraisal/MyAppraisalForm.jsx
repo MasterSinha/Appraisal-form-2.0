@@ -1,6 +1,7 @@
 ﻿/* eslint-disable no-unused-vars */
 import {
   SCORE_LIMITS,
+  clampScore,
   clampReviewScore,
   mergeFacultyInfo,
   reviewSectionScore,
@@ -43,7 +44,28 @@ const REVIEW_SECTION_MAX = {
   fdps: 10,
   training: 10,
 };
+const DIRECTOR_REVIEW_SECTION_MAX = {
+ ...REVIEW_SECTION_MAX,
+ deptActs: 30,
+ uniActs: 50,
+ society: 20,
+ industry: 8,
+ journals: 100,
+ books: 30,
+ research: 20,
+ projects2: 40,
+ awards: 20,
+ confs: 20,
+ proposals: 20,
+ products: 20,
+ fdps: 20,
+};
 const DIRECTOR_ACR_DEFAULT_SCORE = 5;
+const clampDirectorReviewScore = (section, row, value, maxScore) => {
+ if (String(value ?? "").trim() === "") return "";
+ const strictValue = clampReviewScore(section, row, value, maxScore);
+ return strictValue === "" ? String(clampScore(value, maxScore)) : strictValue;
+};
 
 // - Faculty Form in HOD Review Mode -
 export default function MyAppraisalForm({ faculty, hodData, setHodData, reviewerLabel = "HOD", sectionView = "partA" }) {
@@ -136,7 +158,7 @@ export function DirectorFacultyReviewForm({ faculty, hodData, setHodData, dirDat
  const updated = { ...prev };
  if (!updated[section]) updated[section] = JSON.parse(JSON.stringify(faculty[section] || []));
  const nextVal = field === "dir" && idx !== null
- ? clampReviewScore(section, faculty[section]?.[idx] || {}, val, REVIEW_SECTION_MAX[section] || 0)
+ ? clampDirectorReviewScore(section, faculty[section]?.[idx] || {}, val, DIRECTOR_REVIEW_SECTION_MAX[section] || 0)
  : val;
  if (idx === null) {
  updated[section] = Array.isArray(updated[section])
@@ -149,7 +171,7 @@ export function DirectorFacultyReviewForm({ faculty, hodData, setHodData, dirDat
  };
 
  const getDir = (section, idx, field) =>{
- let value = "";
+ let value;
  if (dirData[section]) {
  const s = dirData[section];
  value = idx === null ? (Array.isArray(s) ? (s[0]?.[field] ?? "") : (s[field] ?? "")) : (s[idx]?.[field] ?? "");
@@ -172,7 +194,7 @@ export function DirectorFacultyReviewForm({ faculty, hodData, setHodData, dirDat
  const getInnovDir = (index) =>dirData.innovRows?.[index]?.director ?? dirData.innovRows?.[index]?.dir ?? innovativeRows[index]?.director ?? "";
  const setInnovDir = (index, value) =>{
  const sourceRow = innovativeRows[index] || {};
- const nextValue = clampReviewScore("innovRows", sourceRow, value, 10);
+ const nextValue = clampDirectorReviewScore("innovRows", sourceRow, value, 10);
  setDirData(prev =>{
  const sourceRows = Array.isArray(prev.innovRows) && prev.innovRows.length ? prev.innovRows : JSON.parse(JSON.stringify(innovativeRows));
  const nextRows = sourceRows.map((row, rowIndex) =>rowIndex === index ? { ...row, director: nextValue } : row);
@@ -181,7 +203,8 @@ export function DirectorFacultyReviewForm({ faculty, hodData, setHodData, dirDat
  });
  };
  const setDirector = (section, idx, _field, val) => setDir(section, idx, "dir", val);
- const ctx = { faculty, docs, lectures, courseFile, obeRows, projects, mentoringRows, quals, feedback, deptActs, uniActs, eventRows, society, industry, alumniRows, placementRows, acr, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, rows, get: getDir, set: setDirector, getDir, setDir, getInnovDir, setInnovDir, innovativeRows, reviewerScoreLabel: "Director Score", reviewerLabel: "Director", acrDefaultScore: DIRECTOR_ACR_DEFAULT_SCORE };
+ const getDirector = (section, idx, field) => getDir(section, idx, field === "hod" ? "dir" : field);
+ const ctx = { faculty, docs, lectures, courseFile, obeRows, projects, mentoringRows, quals, feedback, deptActs, uniActs, eventRows, society, industry, alumniRows, placementRows, acr, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, rows, get: getDirector, set: setDirector, getDir, setDir, getInnovDir, setInnovDir, innovativeRows, reviewerScoreLabel: "Director Score", reviewerLabel: "Director", acrDefaultScore: DIRECTOR_ACR_DEFAULT_SCORE };
 
  return (
 <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
