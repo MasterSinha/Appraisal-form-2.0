@@ -36,7 +36,7 @@ export default function DirectorInnovativeTeaching({ ctx }) {
 </tr></thead>
 <tbody>
  {innovativeRows.map((row, index) =>{
- const rowReviewable = rowHasReviewableData(row);
+ const rowReviewable = true;
  return (
 <tr key={index}>
 <td style={TDC}>{index + 1}</td>

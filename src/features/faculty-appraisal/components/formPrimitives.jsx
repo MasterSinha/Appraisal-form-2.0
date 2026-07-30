@@ -1,18 +1,20 @@
 /* eslint-disable react-refresh/only-export-components */
 import { useRef, useState } from "react";
-import { api, API_BASE_URL } from "../../../services/api";
+import { api } from "../../../services/api";
 import { stripMaxMarksFromTitle } from "../../../utils/appraisalFormUtils";
+
+const documentRawUrl = (file) =>
+  typeof file === "string" ? file : file?.url || file?.file_url || file?.fileUrl || file?.document_url || file?.documentUrl || file?.path || file?.location;
+
+const documentFileUrl = (file) => {
+  const rawUrl = documentRawUrl(file);
+  return rawUrl ? api.getFileUrl(rawUrl) : "";
+};
 
 export function openDocumentFile(file) {
   if (!file) return;
-  const rawUrl = typeof file === "string" ? file : file.url || file.path || file.fileUrl || file.location;
-  if (!rawUrl) return;
-
-  let finalUrl = rawUrl;
-  if (!finalUrl.startsWith("http://") && !finalUrl.startsWith("https://") && !finalUrl.startsWith("data:") && !finalUrl.startsWith("blob:")) {
-    const origin = (API_BASE_URL || "").replace(/\/api\/v1\/?$/, "");
-    finalUrl = origin ? `${origin}/${finalUrl.replace(/^\//, "")}` : finalUrl;
-  }
+  const finalUrl = documentFileUrl(file);
+  if (!finalUrl) return;
 
   if (finalUrl.startsWith("data:")) {
     try {
@@ -51,14 +53,8 @@ export function openDocumentFile(file) {
 
 export function downloadDocumentFile(file) {
   if (!file) return;
-  const rawUrl = typeof file === "string" ? file : file.url || file.path || file.fileUrl || file.location;
-  if (!rawUrl) return;
-
-  let finalUrl = rawUrl;
-  if (!finalUrl.startsWith("http://") && !finalUrl.startsWith("https://") && !finalUrl.startsWith("data:") && !finalUrl.startsWith("blob:")) {
-    const origin = (API_BASE_URL || "").replace(/\/api\/v1\/?$/, "");
-    finalUrl = origin ? `${origin}/${finalUrl.replace(/^\//, "")}` : finalUrl;
-  }
+  let finalUrl = documentFileUrl(file);
+  if (!finalUrl) return;
 
   if (finalUrl.startsWith("data:")) {
     try {
@@ -729,8 +725,10 @@ export function ViewDocsCell({ docKey, docs, emptyText = "No docs", compact = fa
     <div style={{ display: "flex", flexDirection: compact ? "row" : "column", gap: compact ? 5 : 6, alignItems: "center", justifyContent: "center", flexWrap: "wrap", width: "100%", maxWidth: "100%", minWidth: 0, overflow: "hidden" }}>
       {files.map((file, idx) => (
         <div key={`${file.url || file.name || "doc"}-${idx}`} style={{ display: "flex", flexDirection: compact ? "row" : "column", alignItems: "center", justifyContent: "center", gap: 5, width: "100%", maxWidth: "100%", minWidth: 0, overflow: "hidden" }}>
-          <button
-            type="button"
+          <a
+            href={documentFileUrl(file) || "#"}
+            target="_blank"
+            rel="noreferrer"
             onClick={(e) => {
               e.preventDefault();
               openDocumentFile(file);
@@ -742,7 +740,7 @@ export function ViewDocsCell({ docKey, docs, emptyText = "No docs", compact = fa
             {file.type?.startsWith("image/") && file.url && <img src={file.url} alt="" style={{ width: 22, height: 22, objectFit: "cover", borderRadius: 3 }} />}
             <DocumentIcon />
             {!compact && <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>View Docs</span>}
-          </button>
+          </a>
         </div>
       ))}
     </div>

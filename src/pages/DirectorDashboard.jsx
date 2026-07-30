@@ -29,6 +29,11 @@ const REVIEW_ARRAY_KEYS = ["lectures", "courseFile", "obeRows", "projects", "men
 const REVIEW_SECTION_MAX = { lectures: 40, courseFile: 20, obeRows: 20, projects: 20, mentoringRows: 10, quals: 10, feedback: 10, deptActs: 30, uniActs: 50, eventRows: 20, society: 20, industry: 8, alumniRows: 10, placementRows: 20, acr: 50, journals: 100, books: 30, ict: 20, research: 20, projects2: 40, patents: 40, awards: 20, confs: 20, proposals: 20, products: 20, fdps: 20 };
 const DIRECTOR_ACR_DEFAULT_SCORE = 5;
 const REVIEW_SCORE_FIELDS = ["hod", "director", "dean", "vc"];
+const clampDirectorReviewScore = (section, row, value, maxScore) =>{
+ if (String(value ?? "").trim() === "") return "";
+ const strictValue = clampReviewScore(section, row, value, maxScore);
+ return strictValue === "" ? String(clampScore(value, maxScore)) : strictValue;
+};
 const preserveSavedReviewScores = (form = {}, source = {}) =>{
  const merged = { ...form };
  merged.info = mergeFacultyInfo(form.info, source, form);
@@ -71,17 +76,17 @@ const buildDirectorSectionScores = (faculty, dirData) =>{
  payload[key] = rows.map((row, index) =>({
  ...row,
  director: key === "acr"
- ? clampReviewScore(key, row, dirData[key]?.[index]?.dir ?? dirData[key]?.[index]?.director ?? row.director ?? DIRECTOR_ACR_DEFAULT_SCORE, REVIEW_SECTION_MAX[key] || 0)
+ ? clampDirectorReviewScore(key, row, dirData[key]?.[index]?.dir ?? dirData[key]?.[index]?.director ?? row.director ?? DIRECTOR_ACR_DEFAULT_SCORE, REVIEW_SECTION_MAX[key] || 0)
  : key === "society" && societyRowLocked(row)
  ? "0"
- : clampReviewScore(key, row, dirData[key]?.[index]?.dir ?? row.director ?? "", REVIEW_SECTION_MAX[key] || 0),
+ : clampDirectorReviewScore(key, row, dirData[key]?.[index]?.dir ?? row.director ?? "", REVIEW_SECTION_MAX[key] || 0),
  }));
  });
  const innovRows = Array.isArray(faculty.innovRows) ? faculty.innovRows : [];
  const reviewInnovRows = Array.isArray(dirData.innovRows) ? dirData.innovRows : [];
  const mergedInnovRows = innovRows.map((row, index) =>({
  ...row,
- director: clampReviewScore("innovRows", row, reviewInnovRows[index]?.director ?? reviewInnovRows[index]?.dir ?? row.director ?? "", 10),
+ director: clampDirectorReviewScore("innovRows", row, reviewInnovRows[index]?.director ?? reviewInnovRows[index]?.dir ?? row.director ?? "", 10),
  }));
  const innovTotal = reviewSectionScore("innovRows", mergedInnovRows, 10, "director");
  payload.innovRows = mergedInnovRows;
@@ -201,10 +206,10 @@ function ReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
  const mentoring = sumReviewRows("mentoringRows", "hod", 10, (row) =>row.max || 10);
  const qual = sumReviewRows("quals", "hod", 10, SCORE_LIMITS.qualificationRow);
  const fb = reviewSectionScore("feedback", faculty.feedback || [], 10, "hod");
- const dept = sumReviewRows("deptActs", "hod", 20);
- const uni = sumReviewRows("uniActs", "hod", 30);
- const soc = sumReviewRows("society", "hod", 10, SCORE_LIMITS.societyRow);
- const ind = sumReviewRows("industry", "hod", 5);
+ const dept = sumReviewRows("deptActs", "hod", 30);
+ const uni = sumReviewRows("uniActs", "hod", 50);
+ const soc = sumReviewRows("society", "hod", 20, SCORE_LIMITS.societyRow);
+ const ind = sumReviewRows("industry", "hod", 8);
  const acrT = sumReviewRows("acr", "hod", 50, SCORE_LIMITS.acrRow);
  const partA = clampScore(lec + cf + innov + fb + obe + proj + mentoring + qual + dept + uni + soc + ind + acrT, reviewerMaxScores.partA);
 
@@ -227,7 +232,12 @@ function ReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
  // Compute Director total from dirData
  const calcDirScore = () =>{
  const getD = (section, idx, field) =>{
- let value = "";
+ const value = getDRaw(section, idx, field);
+ if (section === "acr" && String(value ?? "").trim() === "") return DIRECTOR_ACR_DEFAULT_SCORE;
+ return n(value);
+ };
+ const getDRaw = (section, idx, field) =>{
+ let value;
  if (dirData[section]) {
  const s = dirData[section];
  value = idx === null ? (Array.isArray(s) ? s[0]?.[field] : s[field]) : s[idx]?.[field];
@@ -235,14 +245,13 @@ function ReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
  const source = faculty[section];
  value = idx === null ? (Array.isArray(source) ? source[0]?.director : source?.director) : source?.[idx]?.director;
  }
- if (section === "acr" && String(value ?? "").trim() === "") return DIRECTOR_ACR_DEFAULT_SCORE;
- return n(value);
+ return value;
  };
  const getDirS = (key) =>n(dirData[key] ?? faculty.innovDirector ?? faculty.innovDir);
  const sumReviewRows = (section, field, max, rowMax) =>clampScore(
  (faculty[section] || []).reduce((total, row, index) =>{
  if (section === "society" && societyRowLocked(row)) return total;
- if (!rowHasReviewableData(section, row)) return total;
+ if (!rowHasReviewableData(section, row) && String(getDRaw(section, index, field) ?? "").trim() === "") return total;
  const limit = typeof rowMax === "function" ? rowMax(row) : rowMax;
  return total + (limit ? clampScore(getD(section, index, field), limit) : getD(section, index, field));
  }, 0),

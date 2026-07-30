@@ -2,6 +2,7 @@ import { api } from "./api";
 import { APP_INFO } from "../constants/formConfig";
 import {
   canAuthorityReviewProfile,
+  departmentHasHod,
   getSchoolKey,
   getReviewChain,
   isRejectedStatus,
@@ -526,6 +527,13 @@ const draftRoleFor = (reviewerRole) => {
   return normalizeRoleForWorkflow(rawRole);
 };
 
+const backendErrorDetails = (err) => ({
+  status: err?.statusCode || err?.response?.status || null,
+  message: err?.message || "",
+  detail: err?.response?.data?.detail || err?.response?.data?.error || err?.response?.data?.message || "",
+  data: err?.response?.data || null,
+});
+
 export const loadReviewerDraft = async ({
   subjectEmail,
   academicYear,
@@ -562,19 +570,101 @@ export const saveReviewerDraft = async ({
     throw new Error("Missing reviewer draft details.");
   }
 
-  return await api.put(`/appraisal-remarks/draft/${encodeURIComponent(subjectEmail)}`, {
-    academic_year: academicYear,
-    reviewer_role: role,
-    payload: payload || {
-      part_a_score: n(partAScore),
-      part_b_score: n(partBScore),
-      part_c_score: n(partCScore),
-      part_d_score: n(partDScore),
-      total_score: n(totalScore),
-      remarks,
-      section_scores: sectionScores || {},
+  const draftPayload = payload || {
+    part_a_score: n(partAScore),
+    part_b_score: n(partBScore),
+    part_c_score: n(partCScore),
+    part_d_score: n(partDScore),
+    total_score: n(totalScore),
+    remarks,
+    section_scores: sectionScores || {},
+  };
+
+  try {
+    return await api.put(`/appraisal-remarks/draft/${encodeURIComponent(subjectEmail)}`, {
+      academic_year: academicYear,
+      reviewer_role: role,
+      payload: draftPayload,
+    }) || {};
+  } catch (err) {
+    console.error("Reviewer draft backend save failed.", backendErrorDetails(err));
+    throw err;
+  }
+};
+
+const workflowHierarchyHintsFor = (role, subjectProfile = {}) => {
+  const chain = getReviewChain(subjectProfile);
+  const reviewerIndex = chain.indexOf(role);
+  const previousReviewer = reviewerIndex > 0 ? chain[reviewerIndex - 1] : "";
+  const firstReviewer = chain[0] || "";
+  const schoolKey = getSchoolKey(subjectProfile.school);
+  const hasHod = departmentHasHod(subjectProfile.school, subjectProfile.department);
+
+  return {
+    review_chain: chain,
+    workflow_chain: chain,
+    reviewChain: chain,
+    workflowChain: chain,
+    current_reviewer: role,
+    current_reviewer_role: role,
+    currentReviewer: role,
+    currentReviewerRole: role,
+    first_reviewer: firstReviewer,
+    first_reviewer_role: firstReviewer,
+    firstReviewer,
+    firstReviewerRole: firstReviewer,
+    is_first_reviewer: !previousReviewer,
+    isFirstReviewer: !previousReviewer,
+    previous_reviewer: previousReviewer || null,
+    previous_reviewer_role: previousReviewer || null,
+    previousReviewer: previousReviewer || null,
+    previousReviewerRole: previousReviewer || null,
+    previous_review_required: Boolean(previousReviewer),
+    previousReviewRequired: Boolean(previousReviewer),
+    skip_previous_review: !previousReviewer,
+    skipPreviousReview: !previousReviewer,
+    bypass_previous_review: !previousReviewer,
+    bypassPreviousReview: !previousReviewer,
+    allow_missing_previous_review: !previousReviewer,
+    allowMissingPreviousReview: !previousReviewer,
+    school_code: schoolKey,
+    subject_school_code: schoolKey,
+    subjectSchoolCode: schoolKey,
+    has_hod: hasHod,
+    hasHod,
+    hod_required: hasHod,
+    hodRequired: hasHod,
+    requires_hod: hasHod,
+    requiresHod: hasHod,
+    skip_hod: !hasHod,
+    skipHod: !hasHod,
+    skip_hod_review: !hasHod,
+    skipHodReview: !hasHod,
+    no_hod: !hasHod,
+    noHod: !hasHod,
+    direct_to_director: !hasHod && role === "director",
+    directToDirector: !hasHod && role === "director",
+    allow_missing_hod_review: !hasHod && role === "director",
+    allowMissingHodReview: !hasHod && role === "director",
+    subject_profile: {
+      email: firstValue(subjectProfile.email, subjectProfile.faculty_email, subjectProfile.facultyEmail),
+      appraisal_role: normalizeRoleForWorkflow(subjectProfile.appraisal_role || subjectProfile.appraisalRole || subjectProfile.role),
+      school: subjectProfile.school,
+      school_code: schoolKey,
+      schoolCode: schoolKey,
+      department: subjectProfile.department,
+      has_hod: hasHod,
+      hasHod,
+      hod_required: hasHod,
+      hodRequired: hasHod,
+      skip_hod: !hasHod,
+      skipHod: !hasHod,
+      no_hod: !hasHod,
+      noHod: !hasHod,
+      review_chain: chain,
+      reviewChain: chain,
     },
-  }) || {};
+  };
 };
 
 export const submitWorkflowReview = async ({
@@ -619,6 +709,7 @@ export const submitWorkflowReview = async ({
   const endpointUrl = `/appraisal-remarks/${endpoint}/${encodeURIComponent(subjectEmail)}`;
   const rejected = decision === "rejected";
   const forwarding = rejected ? workflowRejectionFor(role) : workflowForwardingFor(role, subjectProfile || {});
+  const hierarchyHints = workflowHierarchyHintsFor(role, subjectProfile || {});
 
   if (rejected) {
     const roleHints = rejectionRoleHintsFor(role);
@@ -626,6 +717,7 @@ export const submitWorkflowReview = async ({
       ...basePayload,
       ...roleHints,
       ...forwarding,
+      ...hierarchyHints,
       rejected_by: role,
       rejectedBy: role,
       rejection_reason: remarks,
@@ -639,11 +731,11 @@ export const submitWorkflowReview = async ({
 
   let result;
   try {
-    result = await api.put(endpointUrl, { ...basePayload, ...forwarding });
+    result = await api.put(endpointUrl, { ...basePayload, ...forwarding, ...hierarchyHints });
   } catch (err) {
     if (rejected) throw err;
     if (![400, 422].includes(err?.response?.status)) throw err;
-    result = await api.put(endpointUrl, basePayload);
+    result = await api.put(endpointUrl, { ...basePayload, ...hierarchyHints });
   }
 
   return result || {};

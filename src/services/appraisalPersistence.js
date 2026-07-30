@@ -81,8 +81,64 @@ const applySnapshotToSetters = (snapshotPayload, setters) =>{
 const submittedFormFromResponse = (response) =>
  response?.payload?.form || response?.form || null;
 
+const normalizeDocFile = (file) =>{
+ if (!file) return null;
+ if (typeof file === "string") return { url: file, name: file.split("/").pop() || "Document" };
+ const url = file.url || file.file_url || file.fileUrl || file.path || file.location || file.document_url || file.documentUrl;
+ if (!url) return null;
+ return {
+ ...file,
+ url,
+ name: file.name || file.file_name || file.fileName || file.original_name || file.originalName || url.split("/").pop() || "Document",
+ type: file.type || file.file_type || file.fileType || file.mime_type || file.mimeType || "",
+ publicId: file.publicId || file.public_id || file.storage_path || file.storagePath || file.path || null,
+ };
+};
+
+const normalizeDocsMap = (docs = {}) =>{
+ if (!docs || typeof docs !== "object" || Array.isArray(docs)) return {};
+ return Object.fromEntries(
+ Object.entries(docs || {})
+ .map(([key, files]) =>[
+ key,
+ filesForDocValue(files).map(normalizeDocFile).filter(Boolean),
+ ])
+ .filter(([, files]) =>files.length >0),
+ );
+};
+
+const docsRowsToMap = (rows = []) =>{
+ const groupedDocs = {};
+ (rows || []).forEach((row) =>{
+ const section = row.section || row.doc_section || row.docSection || "";
+ const rowNo = row.row_no ?? row.rowNo ?? row.row_number ?? row.rowNumber;
+ const key = row.doc_key || row.docKey || row.document_key || row.documentKey || (section ? `${section}-${Math.max((Number(rowNo) || 1) - 1, 0)}` : "");
+ const file = normalizeDocFile(row);
+ if (!key || !file) return;
+ if (!groupedDocs[key]) groupedDocs[key] = [];
+ groupedDocs[key].push(file);
+ });
+ return groupedDocs;
+};
+
+const mergeDocsMaps = (...sources) =>{
+ const merged = {};
+ sources.forEach((source) =>{
+ Object.entries(normalizeDocsMap(source)).forEach(([key, files]) =>{
+ merged[key] = [...(merged[key] || []), ...files];
+ });
+ });
+ return merged;
+};
+
 const submittedDocsFromResponse = (response) =>
- response?.payload?.docs || response?.docs || response?.payload?.form?.docs || response?.form?.docs || null;
+ mergeDocsMaps(
+ response?.payload?.docs,
+ response?.docs,
+ response?.payload?.form?.docs,
+ response?.form?.docs,
+ docsRowsToMap(response?.documents || response?.appraisal_documents || response?.appraisalDocuments || response?.payload?.documents || response?.payload?.appraisal_documents || response?.payload?.appraisalDocuments || []),
+ );
 
 const applySubmittedAppraisalToSetters = (submittedAppraisal, setters) =>{
  if (!submittedAppraisal || !setters) return false;
@@ -108,11 +164,6 @@ const applySubmittedAppraisalToSetters = (submittedAppraisal, setters) =>{
 
  return true;
 };
-
-const normalizeDocsMap = (docs = {}) =>
- Object.fromEntries(
- Object.entries(docs || {}).map(([key, files]) =>[key, filesForDocValue(files)]),
- );
 
 const docsHaveFiles = (docs = {}) =>
  Object.values(docs || {}).some((files) =>filesForDocValue(files).length >0);
@@ -278,21 +329,6 @@ export const loadAppraisalDocuments = async ({ facultyEmail, academicYear, setDo
  } catch {
  // non-fatal
  }
-};
-
-const docsRowsToMap = (rows = []) =>{
- const groupedDocs = {};
- (rows || []).forEach((row) =>{
- const key = row.doc_key || `${row.section}-${Math.max((row.row_no || 1) - 1, 0)}`;
- if (!groupedDocs[key]) groupedDocs[key] = [];
- groupedDocs[key].push({
- name: row.file_name,
- type: row.file_type,
- url: row.file_url,
- publicId: row.storage_path,
- });
- });
- return groupedDocs;
 };
 
 const fetchSubmittedDocsMap = async ({ facultyEmail, academicYear }) =>{
