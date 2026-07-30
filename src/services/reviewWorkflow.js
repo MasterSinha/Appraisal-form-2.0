@@ -534,11 +534,23 @@ const backendErrorDetails = (err) => ({
   data: err?.response?.data || null,
 });
 
+const removeLegacyLocalReviewerDrafts = () => {
+  if (typeof window === "undefined" || !window.localStorage) return;
+  try {
+    Object.keys(window.localStorage)
+      .filter((key) => key.startsWith("facultyAppraisal:reviewerDraft:"))
+      .forEach((key) => window.localStorage.removeItem(key));
+  } catch {
+    // Ignore storage access failures; server-side draft saving remains authoritative.
+  }
+};
+
 export const loadReviewerDraft = async ({
   subjectEmail,
   academicYear,
   reviewerRole,
 } = {}) => {
+  removeLegacyLocalReviewerDrafts();
   const role = draftRoleFor(reviewerRole);
   if (!subjectEmail || !academicYear || !role || role === "faculty") {
     return { payload: null, updated_at: null };
@@ -579,13 +591,15 @@ export const saveReviewerDraft = async ({
     remarks,
     section_scores: sectionScores || {},
   };
+  const draftBody = {
+    academic_year: academicYear,
+    reviewer_role: role,
+    payload: draftPayload,
+  };
+  const draftUrl = `/appraisal-remarks/draft/${encodeURIComponent(subjectEmail)}`;
 
   try {
-    return await api.put(`/appraisal-remarks/draft/${encodeURIComponent(subjectEmail)}`, {
-      academic_year: academicYear,
-      reviewer_role: role,
-      payload: draftPayload,
-    }) || {};
+    return await api.put(draftUrl, draftBody) || {};
   } catch (err) {
     console.error("Reviewer draft backend save failed.", backendErrorDetails(err));
     throw err;
