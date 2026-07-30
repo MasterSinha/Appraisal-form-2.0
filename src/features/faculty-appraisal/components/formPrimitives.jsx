@@ -604,7 +604,7 @@ export function RowButtons({ onAdd, onDel, canDel = true, addLabel = "+ Add Row"
   );
 }
 
-export function SectionSaveFooter({ label, saved, saving, locked, onSave, variant = "inline" }) {
+export function SectionSaveFooter({ label = "section", saved, saving, locked, onSave, variant = "inline" }) {
   const isCard = variant === "card";
   return (
     <div style={isCard ? { background: "#fff", border: "1px solid #e5e7eb", borderRadius: 16, padding: 18, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, flexWrap: "wrap", boxShadow: "0 10px 24px rgba(17,24,39,0.06)" } : { marginTop: 22, paddingTop: 18, borderTop: "1px solid #e5e7eb", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, flexWrap: "wrap" }}>

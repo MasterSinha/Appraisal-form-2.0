@@ -766,7 +766,9 @@ function VCReviewPanel({ person, personMode, onBack, onSubmit, readOnly = false 
         person={person}
         reviewerRole="vc"
         onBack={onBack}
-        onSubmit={onSubmit}
+        onSubmit={(id, scores, remarks, sectionScores, reviewConfirmed, decision) =>
+          onSubmit(id, scores, remarks, personMode, sectionScores, reviewConfirmed, decision)
+        }
         readOnly={readOnly}
         showReport={true}
       />
