@@ -751,6 +751,14 @@ export default function StandardMyAppraisal({
         sectionSaveStatus: nextStatus,
       });
       setSectionSaveStatus(nextStatus);
+      const NEXT_SECTION = { partA: "partB", partB: "partC", partC: "partD", partD: "summary" };
+      const nextTab = NEXT_SECTION[section];
+      if (nextTab) {
+        setHodAppraisalTab(nextTab);
+        requestAnimationFrame(() => {
+          window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+        });
+      }
     } catch (err) {
       if (err?.statusCode === 403 || err?.response?.status === 403) {
         markSnapshotLocked();

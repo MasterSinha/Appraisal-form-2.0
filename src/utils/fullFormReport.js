@@ -578,6 +578,48 @@ ${PRINT_REPORT_CSS}
     .join("")}
 
   <div class="page-break"></div>
+  <h3 style="background:#d9d9d9;padding:4px;text-align:center;font-size:13px">PART C - Administrative Role &amp; University Development Contribution</h3>
+  ${[
+    { key: "uniActs", title: "C1. Administration at University Level", max: 50, fields: [["activity", "Activity / Responsibility"], ["durationCat", "Duration Category"], ["period", "Period"]] },
+    { key: "deptActs", title: "C2. Administration at School Level", max: 30, fields: [["activity", "Activity / Responsibility"], ["durationCat", "Duration Category"], ["period", "Period"]] },
+    { key: "events", title: "C3. Event Organisation & Institutional Visibility", max: 20, fields: [["event", "Event / Contribution"], ["role", "Role"], ["date", "Date"], ["level", "Level"]] },
+    { key: "society", title: "C4. Contribution to Society", max: 10, fields: [["label", "Activity / Initiative"], ["details", "Details & Impact"]] },
+    { key: "industry", title: "C5. Industry Connect", max: 10, fields: [["name", "Company / Industry Partner"], ["details", "Details of Engagement"]] },
+    { key: "alumni", title: "C6. Alumni Engagement", max: 10, fields: [["activity", "Alumni Activity / Initiative"], ["details", "Details & Outcomes"]] },
+    { key: "placements", title: "C7. Placement Mentoring & Internship Support", max: 20, fields: [["activity", "Activity / Student Mentoring"], ["details", "Outcomes / Placements Achieved"]] }
+  ]
+    .filter((section) => isSectionReportable(form, section))
+    .map((section) =>
+      renderSection({
+        section,
+        rows: form[section.key],
+        docs,
+        scoreRoles,
+        roleLabel,
+        showTotal,
+      }),
+    )
+    .join("")}
+
+  ${!hideAcr ? `
+  <div class="page-break"></div>
+  <h3 style="background:#d9d9d9;padding:4px;text-align:center;font-size:13px">PART D - Annual Confidential Report (ACR)</h3>
+  ${[{ key: "acr", title: "Part D - Annual Confidential Report (ACR)", max: 50, fields: [["label", "Attribute"]] }]
+    .filter((section) => isSectionReportable(form, section))
+    .map((section) =>
+      renderSection({
+        section,
+        rows: form[section.key] || form.acr,
+        docs,
+        scoreRoles,
+        roleLabel,
+        showTotal,
+      }),
+    )
+    .join("")}
+  ` : ""}
+
+  <div class="page-break"></div>
   <h3 style="text-align:center;font-size:13px">SUMMARY</h3>
   <table class="st">
     <thead><tr><th>Section</th><th>Score</th><th>Maximum</th></tr></thead>
@@ -719,6 +761,48 @@ ${PRINT_REPORT_CSS}
       }),
     )
     .join("")}
+
+  <div class="pb"></div>
+  <h3 style="background:#d9d9d9;padding:4px;text-align:center;font-size:13px">PART C - Administrative Role &amp; University Development Contribution</h3>
+  ${(partCSections.length ? partCSections : [
+    { key: "uniActs", title: "C1. Administration at University Level", max: 50, fields: [["activity", "Activity / Responsibility"], ["durationCat", "Duration Category"], ["period", "Period"]] },
+    { key: "deptActs", title: "C2. Administration at School Level", max: 30, fields: [["activity", "Activity / Responsibility"], ["durationCat", "Duration Category"], ["period", "Period"]] },
+    { key: "events", title: "C3. Event Organisation & Institutional Visibility", max: 20, fields: [["event", "Event / Contribution"], ["role", "Role"], ["date", "Date"], ["level", "Level"]] },
+    { key: "society", title: "C4. Contribution to Society", max: 10, fields: [["label", "Activity / Initiative"], ["details", "Details & Impact"]] },
+    { key: "industry", title: "C5. Industry Connect", max: 10, fields: [["name", "Company / Industry Partner"], ["details", "Details of Engagement"]] },
+    { key: "alumni", title: "C6. Alumni Engagement", max: 10, fields: [["activity", "Alumni Activity / Initiative"], ["details", "Details & Outcomes"]] },
+    { key: "placements", title: "C7. Placement Mentoring & Internship Support", max: 20, fields: [["activity", "Activity / Student Mentoring"], ["details", "Outcomes / Placements Achieved"]] }
+  ])
+    .filter((s) => isSectionReportable(form, s))
+    .map((s) =>
+      renderSection({
+        section: s,
+        rows: form[s.key],
+        docs,
+        scoreRoles,
+        roleLabel: undefined,
+        showTotal: true,
+      }),
+    )
+    .join("")}
+
+  ${!hideAcr ? `
+  <div class="pb"></div>
+  <h3 style="background:#d9d9d9;padding:4px;text-align:center;font-size:13px">PART D - Annual Confidential Report (ACR)</h3>
+  ${(partDSections.length ? partDSections : [{ key: "acr", title: "Part D - Annual Confidential Report (ACR)", max: 50, fields: [["label", "Attribute"]] }])
+    .filter((s) => isSectionReportable(form, s))
+    .map((s) =>
+      renderSection({
+        section: s,
+        rows: form[s.key] || form.acr,
+        docs,
+        scoreRoles,
+        roleLabel: undefined,
+        showTotal: true,
+      }),
+    )
+    .join("")}
+  ` : ""}
 
   <div class="pb"></div>
   ${

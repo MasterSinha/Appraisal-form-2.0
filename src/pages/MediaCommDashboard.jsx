@@ -303,6 +303,14 @@ export default function MediaCommDashboard({ fixedRole }) {
  sectionSaveStatus: nextStatus,
  });
  setSectionSaveStatus(nextStatus);
+ const NEXT_SECTION_MAP = { partA: "partB", partB: "partC", partC: "partD", partD: "summary" };
+ const nextSection = NEXT_SECTION_MAP[section];
+ if (nextSection) {
+   setSelfSectionView(nextSection);
+   requestAnimationFrame(() => {
+     window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+   });
+ }
  } catch (err) {
  if (err?.statusCode === 403 || err?.response?.status === 403) {
  setDeclaration((current) =>current || { status: "Submitted" });
@@ -475,10 +483,12 @@ export default function MediaCommDashboard({ fixedRole }) {
  subtitle: currentSchoolName,
  form,
  docs,
- partASections: PART_A_SECTIONS.map((section) =>section.key === "acr" ? { ...section, max: 0, title: "(x) Annual Confidential Report (ACR) - Not counted in self score" } : section),
+ partASections: PART_A_SECTIONS,
  partBSections: PART_B_SECTIONS,
-		totals: { partA: partATotal, partB: partBTotal, total: grandTotal },
-		hideAcr: true,
+ partCSections: PART_C_SECTIONS,
+ partDSections: PART_D_SECTIONS,
+ totals: { partA: partATotal, partB: partBTotal, partC: totals.partC, partD: totals.partD, total: grandTotal },
+ hideAcr: false,
  maxScores,
  generatedBy: sessionStorage.getItem("name") || roleLabel(role),
  declaration,
@@ -512,7 +522,19 @@ export default function MediaCommDashboard({ fixedRole }) {
  ...summaryRow(applicability, "ict", { id: "B11", label: "ICT Content, MOOCs & E-Learning", max: 40, score: b11Score }),
  ...summaryRow(applicability, "exhibitions", { id: "B12", label: "Exhibitions — Photography, Documentaries, Films & Audio-Visual", max: 30, score: b12Score }),
  { isTotal: true, label: "Part B Total", max: maxScores.partB, score: partBTotal },
- { isGrandTotal: true, label: "Grand Total (Part A + Part B)", max: maxScores.grand, score: grandTotal },
+ { isHeader: true, label: "Part C - Administrative Role & University Development" },
+ ...summaryRow(applicability, "uniActs", { id: "C1", label: "Administration at University Level", max: 50, score: rowSum("uniActs", 50) }),
+ ...summaryRow(applicability, "deptActs", { id: "C2", label: "School / Department Level Activities", max: 30, score: rowSum("deptActs", 30) }),
+ ...summaryRow(applicability, "events", { id: "C3", label: "Event Organisation", max: 20, score: rowSum("events", 20) }),
+ ...summaryRow(applicability, "society", { id: "C4", label: "Contribution to Society", max: 10, score: rowSum("society", 10) }),
+ ...summaryRow(applicability, "industry", { id: "C5", label: "Industry Connect", max: 10, score: rowSum("industry", 10) }),
+ ...summaryRow(applicability, "alumni", { id: "C6", label: "Alumni Engagement", max: 10, score: rowSum("alumni", 10) }),
+ ...summaryRow(applicability, "placements", { id: "C7", label: "Placement & Internship Support", max: 20, score: rowSum("placements", 20) }),
+ { isTotal: true, label: "Part C Total", max: maxScores.partC, score: totals.partC },
+ { isHeader: true, label: "Part D - Annual Confidential Report (ACR)" },
+ ...summaryRow(applicability, "acr", { id: "D1", label: "Annual Confidential Report", max: 50, score: rowSum("acr", 50) }),
+ { isTotal: true, label: "Part D Total", max: maxScores.partD, score: totals.partD },
+ { isGrandTotal: true, label: "Grand Total", max: maxScores.grand, score: grandTotal },
  ],
  });
  };
