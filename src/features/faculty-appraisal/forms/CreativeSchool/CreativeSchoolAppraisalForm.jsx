@@ -1915,7 +1915,7 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
       setDraftStatus(`Draft saved: ${new Date().toLocaleString()}`);
     } catch (err) {
       console.error("Could not save reviewer draft:", err);
-      alert(err?.message || "Unable to save draft.");
+      setDraftStatus(err?.message || "Unable to save draft.");
     } finally {
       setSavingDraft(false);
     }
