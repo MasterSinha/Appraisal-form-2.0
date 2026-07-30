@@ -20,6 +20,7 @@ import {
 } from "../../../utils/hierarchy";
 import { clampScore } from "../../../utils/appraisalFormUtils";
 
+/* eslint-disable no-unused-vars */
 function HoverPreviewCard({ value, position }) {
   if (!value) return null;
 
