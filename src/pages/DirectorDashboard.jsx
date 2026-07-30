@@ -550,7 +550,7 @@ export default function DirectorDashboard() {
  const [reviewLoading, setReviewLoading] = useState(null);
 
  const dirSchool = sessionStorage.getItem("school");
- const hasHOD = sessionStorage.getItem("hasHod") === "true";
+ const isSoemrDirector = getSchoolKey(dirSchool) === "SoEMR";
 
  const [facultyList, setFacultyList] = useState([]);
  const [hodList, setHodList] = useState([]);
@@ -599,7 +599,7 @@ export default function DirectorDashboard() {
  const navItems = [
  { id: "myAppraisal", icon: "", label: "My Appraisal", sub: "View your self-appraisal form" },
  { id: "facultyApprovals", icon: "", label: "Faculty's Appraisal", sub: `${facultyPendingCount} awaiting review`, badge: facultyPendingCount },
- ...(hasHOD ? [{ id: "hodApprovals", icon: "", label: "HOD's Appraisal", sub: `${hodPendingCount} awaiting review`, badge: hodPendingCount }] : []),
+ ...(isSoemrDirector ? [{ id: "hodApprovals", icon: "", label: "HOD's Appraisal", sub: `${hodPendingCount} awaiting review`, badge: hodPendingCount }] : []),
  ];
  const handleSubmitReview = async (type, id, scores, remarks, sectionScores, reviewConfirmed = false, decision = "approved") =>{
  if (!reviewConfirmed) {
@@ -669,7 +669,7 @@ export default function DirectorDashboard() {
  appInfo={APP_INFO}
  navItems={navItems}
  activeTab={activeMainTab}
- onTabSelect={(tab) =>{ setActiveMainTab(tab); setReviewingFaculty(null); }}
+ onTabSelect={(tab) =>{ setActiveMainTab(tab); setReviewingFaculty(null); setReviewingHod(null); }}
  showSectionSelector={activeMainTab === "myAppraisal"}
  sectionTab={hodAppraisalTab}
  onSectionChange={handleMyAppraisalSectionChange}

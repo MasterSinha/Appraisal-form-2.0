@@ -1175,6 +1175,26 @@ export default function DeanDashboard() {
   const hodPendingCount = hodList.filter(isDeanPending).length;
   const directorPendingCount = directorList.filter(isDeanPending).length;
   const totalSchoolPendingCount = facultyPendingCount + hodPendingCount + directorPendingCount;
+  const allSchoolApprovalItems = [...facultyList, ...hodList, ...directorList];
+  const itemBelongsToSchool = (item, schoolCode) =>
+    getSchoolKey(item.school || item.schoolName || item.info?.school || "") === schoolCode || item.school === schoolCode;
+  const pendingCountForSchoolRole = (schoolCode, list) =>
+    list.filter((item) => itemBelongsToSchool(item, schoolCode) && isDeanPending(item)).length;
+  const firstPendingRoleTabForSchool = (schoolCode) => {
+    if (pendingCountForSchoolRole(schoolCode, facultyList) > 0) return "facultyApprovals";
+    if (pendingCountForSchoolRole(schoolCode, hodList) > 0) return "hodApprovals";
+    if (pendingCountForSchoolRole(schoolCode, directorList) > 0) return "directorApprovals";
+    return activeRoleTab;
+  };
+  const pendingBySchool = Object.fromEntries(
+    activeSchools.map((school) => [
+      school.code,
+      allSchoolApprovalItems.filter((item) => itemBelongsToSchool(item, school.code) && isDeanPending(item)).length,
+    ])
+  );
+  const pendingSchoolCards = activeSchools
+    .map((school) => ({ ...school, pending: pendingBySchool[school.code] || 0 }))
+    .filter((school) => school.pending > 0);
 
   const activeApprovalList = activeRoleTab === "hodApprovals"
     ? hodList
@@ -1348,9 +1368,54 @@ export default function DeanDashboard() {
       {(activeMainTab === "schoolAppraisal" || activeMainTab === "hodApprovals" || activeMainTab === "directorApprovals" || activeMainTab === "facultyApprovals") && !reviewingApproval && (
         <>
           {/* Horizontal School Selector Bar */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+            <div style={{ minWidth: 0 }}>
+              <h1 style={{ margin: 0, fontSize: 26, fontWeight: 900, color: "#0f172a", lineHeight: 1.15, letterSpacing: -0.5 }}>Engineering School Appraisal Reviews</h1>
+              <p style={{ margin: "5px 0 0", color: "#64748b", fontSize: 12, display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ background: "#e0e7ff", color: "#3730a3", borderRadius: 6, padding: "2px 8px", fontSize: 10, fontWeight: 700 }}>{APP_INFO.SHORT_NAME}</span>
+                <span>AY {APP_INFO.DEFAULT_AY}</span>
+              </p>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", justifyContent: "flex-end" }}>
+              <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 14, padding: "10px 16px", boxShadow: "0 2px 8px rgba(15,23,42,0.08)", minWidth: 250 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: pendingSchoolCards.length ? 8 : 0 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: 999, background: totalSchoolPendingCount ? "#f59e0b" : "#10b981", boxShadow: totalSchoolPendingCount ? "0 0 0 4px #fef3c7" : "0 0 0 4px #dcfce7" }} />
+                  <span style={{ color: "#334155", fontSize: 12, fontWeight: 800 }}>
+                    {totalSchoolPendingCount ? `${totalSchoolPendingCount} pending reviews` : "No pending reviews"}
+                  </span>
+                </div>
+                {pendingSchoolCards.length > 0 && (
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    {pendingSchoolCards.map((school) => {
+                      const visual = SCHOOL_VISUALS[school.code] || {};
+                      return (
+                        <button
+                          key={school.code}
+                          type="button"
+                          onClick={() => {
+                            setSelectedSchoolCode(school.code);
+                            setActiveRoleTab(firstPendingRoleTabForSchool(school.code));
+                            setFilterStatus("Pending Review");
+                          }}
+                          title={`${school.name}: ${school.pending} pending`}
+                          style={{ display: "inline-flex", alignItems: "center", gap: 6, border: `1px solid ${(visual.color || "#f59e0b")}40`, background: visual.bg || "#fffbeb", color: visual.color || "#92400e", borderRadius: 999, padding: "4px 9px", fontSize: 10, fontWeight: 900, cursor: "pointer", fontFamily: "inherit" }}
+                        >
+                          <span>{school.code}</span>
+                          <span style={{ background: visual.color || "#f59e0b", color: "#fff", minWidth: 17, height: 17, borderRadius: 999, display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "0 5px", fontSize: 9 }}>{school.pending}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+              <AppraisalHeaderImage />
+            </div>
+          </div>
+
           <div style={{ background: "#ffffff", borderRadius: 14, border: "1px solid #e2e8f0", boxShadow: "0 1px 4px rgba(0,0,0,0.04)", overflow: "hidden", display: "grid", gridTemplateColumns: `repeat(${schoolCards.length}, 1fr)` }}>
             {schoolCards.map((school) => {
               const active = selectedSchoolCode === school.code;
+              const pending = pendingBySchool[school.code] || 0;
               return (
                 <button
                   key={school.code}
@@ -1393,6 +1458,11 @@ export default function DeanDashboard() {
                   <span style={{ fontSize: 11, color: active ? "#6366f1" : "#64748b", fontWeight: 600, lineHeight: 1.25, maxWidth: 160, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                     {school.shortName}
                   </span>
+                  {pending > 0 && (
+                    <span style={{ background: "#f59e0b", color: "#ffffff", borderRadius: 8, padding: "1px 7px", fontSize: 9, fontWeight: 900 }}>
+                      {pending}
+                    </span>
+                  )}
                 </button>
               );
             })}
