@@ -49,7 +49,6 @@ import {
   TDS,
   TH,
   ViewCell,
-  ViewDocsCell,
 } from "../../components";
 import {
   n,
@@ -100,6 +99,162 @@ const sanitizeInnovativeRows = (rows) => {
     return method || hasEnteredData;
   });
   return cleaned.length ? cleaned : [blankInnovativeRow()];
+};
+
+const textEncoder = new TextEncoder();
+const crcTable = (() => {
+  const table = new Uint32Array(256);
+  for (let i = 0; i < 256; i += 1) {
+    let c = i;
+    for (let k = 0; k < 8; k += 1) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    table[i] = c >>> 0;
+  }
+  return table;
+})();
+
+const crc32 = (bytes) => {
+  let crc = 0xffffffff;
+  for (let i = 0; i < bytes.length; i += 1) {
+    crc = crcTable[(crc ^ bytes[i]) & 0xff] ^ (crc >>> 8);
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+};
+
+const dosDateTime = (date = new Date()) => ({
+  time: ((date.getHours() & 0x1f) << 11) | ((date.getMinutes() & 0x3f) << 5) | ((Math.floor(date.getSeconds() / 2)) & 0x1f),
+  date: (((date.getFullYear() - 1980) & 0x7f) << 9) | (((date.getMonth() + 1) & 0x0f) << 5) | (date.getDate() & 0x1f),
+});
+
+const writeZipHeader = (size, writer) => {
+  const bytes = new Uint8Array(size);
+  const view = new DataView(bytes.buffer);
+  writer(view);
+  return bytes;
+};
+
+const createZipBlob = async (entries) => {
+  const parts = [];
+  const centralParts = [];
+  let offset = 0;
+  const stamp = dosDateTime();
+
+  for (const entry of entries) {
+    const nameBytes = textEncoder.encode(entry.name);
+    const dataBytes = new Uint8Array(await entry.blob.arrayBuffer());
+    const crc = crc32(dataBytes);
+
+    const localHeader = writeZipHeader(30, (view) => {
+      view.setUint32(0, 0x04034b50, true);
+      view.setUint16(4, 20, true);
+      view.setUint16(6, 0, true);
+      view.setUint16(8, 0, true);
+      view.setUint16(10, stamp.time, true);
+      view.setUint16(12, stamp.date, true);
+      view.setUint32(14, crc, true);
+      view.setUint32(18, dataBytes.length, true);
+      view.setUint32(22, dataBytes.length, true);
+      view.setUint16(26, nameBytes.length, true);
+      view.setUint16(28, 0, true);
+    });
+
+    parts.push(localHeader, nameBytes, dataBytes);
+
+    const centralHeader = writeZipHeader(46, (view) => {
+      view.setUint32(0, 0x02014b50, true);
+      view.setUint16(4, 20, true);
+      view.setUint16(6, 20, true);
+      view.setUint16(8, 0, true);
+      view.setUint16(10, 0, true);
+      view.setUint16(12, stamp.time, true);
+      view.setUint16(14, stamp.date, true);
+      view.setUint32(16, crc, true);
+      view.setUint32(20, dataBytes.length, true);
+      view.setUint32(24, dataBytes.length, true);
+      view.setUint16(28, nameBytes.length, true);
+      view.setUint16(30, 0, true);
+      view.setUint16(32, 0, true);
+      view.setUint16(34, 0, true);
+      view.setUint16(36, 0, true);
+      view.setUint32(38, 0, true);
+      view.setUint32(42, offset, true);
+    });
+
+    centralParts.push(centralHeader, nameBytes);
+    offset += localHeader.length + nameBytes.length + dataBytes.length;
+  }
+
+  const centralSize = centralParts.reduce((total, part) => total + part.length, 0);
+  const endHeader = writeZipHeader(22, (view) => {
+    view.setUint32(0, 0x06054b50, true);
+    view.setUint16(4, 0, true);
+    view.setUint16(6, 0, true);
+    view.setUint16(8, entries.length, true);
+    view.setUint16(10, entries.length, true);
+    view.setUint32(12, centralSize, true);
+    view.setUint32(16, offset, true);
+    view.setUint16(20, 0, true);
+  });
+
+  return new Blob([...parts, ...centralParts, endHeader], { type: "application/zip" });
+};
+
+const dataUrlToBlob = (dataUrl) => {
+  const [meta, value = ""] = String(dataUrl).split(",");
+  const mime = meta.match(/:(.*?);/)?.[1] || "application/octet-stream";
+  const binary = atob(value);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  return new Blob([bytes], { type: mime });
+};
+
+const rawAttachmentUrl = (file) =>
+  typeof file === "string" ? file : file?.url || file?.file_url || file?.fileUrl || file?.document_url || file?.documentUrl || file?.path || file?.location;
+
+const attachmentFileName = (file, fallbackName, usedNames) => {
+  const rawUrl = rawAttachmentUrl(file) || "";
+  const rawName = typeof file === "object" && file?.name ? file.name : rawUrl.split(/[/?#]/).filter(Boolean).pop() || fallbackName;
+  const cleaned = String(rawName || fallbackName).replace(/[<>:"/\\|?*\x00-\x1f]/g, "_").trim() || fallbackName;
+  if (!usedNames.has(cleaned)) {
+    usedNames.add(cleaned);
+    return cleaned;
+  }
+
+  const dotIndex = cleaned.lastIndexOf(".");
+  const base = dotIndex > 0 ? cleaned.slice(0, dotIndex) : cleaned;
+  const ext = dotIndex > 0 ? cleaned.slice(dotIndex) : "";
+  let count = 2;
+  let next = `${base}-${count}${ext}`;
+  while (usedNames.has(next)) {
+    count += 1;
+    next = `${base}-${count}${ext}`;
+  }
+  usedNames.add(next);
+  return next;
+};
+
+const fetchAttachmentBlob = async (file) => {
+  const rawUrl = rawAttachmentUrl(file);
+  const finalUrl = rawUrl ? api.getFileUrl(rawUrl) : "";
+  if (!finalUrl) throw new Error("Attachment URL is missing.");
+  if (finalUrl.startsWith("data:")) return dataUrlToBlob(finalUrl);
+  const token = sessionStorage.getItem("accessToken") || sessionStorage.getItem("token") || localStorage.getItem("accessToken") || localStorage.getItem("token");
+  const response = await fetch(finalUrl, {
+    credentials: "include",
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
+  if (!response.ok) throw new Error(`Attachment download failed: ${response.status}`);
+  return response.blob();
+};
+
+const downloadBlob = (blob, name) => {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = name;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 };
 
 const PART_A_MAX = 150;
@@ -627,6 +782,7 @@ export default function StandardMyAppraisal({
   const [submitting, setSubmitting] = useState(false);
   const [declarationConfirmed, setDeclarationConfirmed] = useState(false);
   const [attachmentsConfirmed, setAttachmentsConfirmed] = useState(false);
+  const [attachmentDownloading, setAttachmentDownloading] = useState(false);
 
   const validateSelfAppraisalRows = () => {
     const sections = [
@@ -1232,6 +1388,34 @@ export default function StandardMyAppraisal({
     const files = Array.isArray(docs?.[key]) ? docs[key] : docs?.[key] ? [docs[key]] : [];
     return total + files.length;
   }, 0);
+  const allDocumentFiles = documentKeys.flatMap((key) => {
+    const files = Array.isArray(docs?.[key]) ? docs[key] : docs?.[key] ? [docs[key]] : [];
+    return files.map((file, index) => ({ file, key, index }));
+  });
+  const handleDownloadAttachments = async () => {
+    if (!allDocumentFiles.length) {
+      alert("No attachments found for this academic year.");
+      return;
+    }
+    setAttachmentDownloading(true);
+    try {
+      const usedNames = new Set();
+      const entries = [];
+      for (const item of allDocumentFiles) {
+        entries.push({
+          name: attachmentFileName(item.file, `${item.key}-${item.index + 1}`, usedNames),
+          blob: await fetchAttachmentBlob(item.file),
+        });
+      }
+      const zipBlob = await createZipBlob(entries);
+      downloadBlob(zipBlob, `attachments-${String(info.ay || "academic-year").replace(/[^a-z0-9-]/gi, "_")}.zip`);
+    } catch (error) {
+      console.error("Could not download attachments:", error);
+      alert("Could not download all attachments. Please try again.");
+    } finally {
+      setAttachmentDownloading(false);
+    }
+  };
   const handleAcademicYearChange = (newAcademicYear) => {
     setInfo((previousInfo) => ({ ...previousInfo, ay: newAcademicYear }));
     sessionStorage.setItem("academicYear", newAcademicYear);
@@ -1347,14 +1531,22 @@ export default function StandardMyAppraisal({
                 </div>
                 <div style={{ marginTop: 18, borderTop: "1px solid #e5e7eb", paddingTop: 16 }}>
                   <div style={{ fontSize: 13, color: "#374151", fontWeight: 900, marginBottom: 10 }}>Attachments</div>
-                  {documentKeys.length ? (
-                    <div style={{ display: "grid", gap: 10 }}>
-                      {documentKeys.map((key) => (
-                        <div key={key} style={{ display: "grid", gridTemplateColumns: "minmax(120px, 180px) minmax(0, 1fr)", alignItems: "center", gap: 12, border: "1px solid #e5e7eb", borderRadius: 10, padding: "10px 12px", background: "#fff" }}>
-                          <div style={{ fontSize: 12, color: "#475569", fontWeight: 800 }}>{key}</div>
-                          <ViewDocsCell docKey={key} docs={docs} />
-                        </div>
-                      ))}
+                  {documentCount ? (
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, flexWrap: "wrap", border: "1px solid #e5e7eb", borderRadius: 10, padding: "14px 16px", background: "#fff" }}>
+                      <div>
+                        <div style={{ fontSize: 13, color: "#111827", fontWeight: 900 }}>Attachments for {info.ay || "selected academic year"}</div>
+                        <div style={{ marginTop: 4, fontSize: 12, color: "#64748b", fontWeight: 700 }}>{documentCount} file{documentCount === 1 ? "" : "s"} available</div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleDownloadAttachments}
+                        disabled={attachmentDownloading}
+                        className="appraisal-report-button"
+                        style={{ minWidth: 190, minHeight: 40, padding: "10px 18px", background: attachmentDownloading ? "#64748b" : "linear-gradient(180deg,#6d28d9 0%,#4c1d95 100%)", color: "#fff", border: "none", borderRadius: 9, cursor: attachmentDownloading ? "not-allowed" : "pointer", fontWeight: 800, fontSize: 13, fontFamily: "inherit", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 9, boxShadow: attachmentDownloading ? "none" : "0 10px 20px rgba(76,29,149,0.18)", opacity: attachmentDownloading ? 0.78 : 1 }}
+                      >
+                        <InlineSvgIcon paths={SUMMARY_ICONS.document} size={16} />
+                        {attachmentDownloading ? "Preparing..." : "Download Attachments"}
+                      </button>
                     </div>
                   ) : (
                     <div style={{ fontSize: 12, color: "#64748b", fontWeight: 700, padding: "12px 14px", border: "1px solid #e5e7eb", borderRadius: 10, background: "#f8fafc" }}>No attachments found for this closed appraisal year.</div>
