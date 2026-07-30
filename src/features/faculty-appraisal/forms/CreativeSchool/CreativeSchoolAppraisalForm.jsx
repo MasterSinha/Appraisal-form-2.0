@@ -70,10 +70,15 @@ import { tableStyle, thStyle, tdStyle, tdCenter } from "./common/TableStyles";
 import FacultyInfoSection from "../../../../components/appraisal/common/FacultyInfoSection";
 import { ALL_ARRAY_KEYS } from "./arrayKeys";
 
-export const ACCENT = "#9d174d";
+export const ACCENT = "#4f46e5";
 export const ACCENT2 = "#4338ca";
 const VERIFY_TEXT = "I have verified all the details and confirm that the information provided is correct. I am responsible for the accuracy of this data.";
 const smallButton = (background) => ({ padding: "8px 14px", background, color: "#fff", border: "none", borderRadius: 7, cursor: background === "#94a3b8" ? "not-allowed" : "pointer", fontWeight: 800, fontSize: 12, fontFamily: "inherit" });
+const clampDirectorReviewScore = (sectionKey, row, value, maxScore) => {
+  if (String(value ?? "").trim() === "") return "";
+  const strictValue = clampReviewScore(sectionKey, row, value, maxScore);
+  return strictValue === "" ? String(clampScore(value, maxScore)) : strictValue;
+};
 export const PART_A_MAX = 150;
 export const PART_B_MAX = 350;
 export const PART_C_MAX = 150;
@@ -120,7 +125,8 @@ export const isMediaCommSchool = (...sources) => {
       lower.includes("media") ||
       lower.includes("sohss") ||
       lower.includes("hss") ||
-      lower.includes("humanities")
+      lower.includes("humanities") ||
+      lower.includes("social sciences")
     )
       return true;
   }
@@ -135,6 +141,19 @@ export const isDesignArtsSchool = (...sources) => {
     if (schoolObj?.code === "SoD" || schoolObj?.code === "SoAA" || schoolObj?.code === "SoA") return true;
     const lower = String(str).toLowerCase();
     if (lower.includes("sod") || lower.includes("soaa") || lower.includes("soa") || lower.includes("design") || lower.includes("arts")) return true;
+  }
+  return false;
+};
+
+export const isCreativeSchool = (...sources) => {
+  for (const source of sources) {
+    if (!source) continue;
+    if (isMediaCommSchool(source) || isDesignArtsSchool(source)) return true;
+    const str = typeof source === "string" ? source : (source.school || source.info?.school || source.profile?.school || source.schoolCode || "");
+    const formType = typeof source === "object" ? (source.formType || source.form_type || "") : "";
+    if (formType === FORM_TYPES.MEDIA_COMM || formType === FORM_TYPES.DESIGN_ARTS) return true;
+    const code = getSchoolKey(str);
+    if (code === "SoMCS" || code === "SoHSS" || code === "SoD" || code === "SoAA") return true;
   }
   return false;
 };
@@ -237,7 +256,11 @@ export const emptyCreativeSchoolForm = (defaultSchool = "SoD - School of Design"
 });
 
 export const emptyDesignArtsForm = () => emptyCreativeSchoolForm("SoD - School of Design");
-export const emptyMediaForm = () => emptyCreativeSchoolForm("SoMCS - School of Media & Communication Studies");
+export const emptyMediaForm = (defaultSchool) => {
+  const schoolVal = defaultSchool || (typeof sessionStorage !== "undefined" ? (sessionStorage.getItem("school") || sessionStorage.getItem("schoolName")) : null) || "SoMCS - School of Media & Communication Studies";
+  const schoolObj = getSchoolByValue(schoolVal);
+  return emptyCreativeSchoolForm(schoolObj?.label || schoolVal || "SoMCS - School of Media & Communication Studies");
+};
 
 export const SECTION_OPTIONS = [
   { value: "partA", label: "Part A — Teaching & Learning (Max: 150)" },
@@ -624,7 +647,7 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
     const acrRows = createAcrRows(rows);
     const acrTotal = scoreSectionRows(section.key, acrRows, section.max);
     return (
-      <SectionShell title="(xi) Annual Confidential Report (ACR) - Max 50 marks" max={section.max} earned={acrTotal} accent="#ef4444" showScoreSummary={false}>
+      <SectionShell title="(xi) Annual Confidential Report (ACR) - Max 50 marks" max={section.max} earned={acrTotal} accent={ACCENT2} showScoreSummary={false}>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
             <thead>
@@ -693,7 +716,10 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
       const nextRows = source.map((row, rowIndex) => {
         if (rowIndex !== index) return row;
         const sourceRow = rows[rowIndex] || row;
-        return { ...row, [currentRole]: clampReviewScore(section.key, sourceRow, value, section.max) };
+        const nextValue = currentRole === "director"
+          ? clampDirectorReviewScore(section.key, sourceRow, value, section.max)
+          : clampReviewScore(section.key, sourceRow, value, section.max);
+        return { ...row, [currentRole]: nextValue };
       });
       return { ...prev, [section.key]: nextRows };
     });
@@ -724,7 +750,7 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
   };
 
   return (
-    <SectionShell title={section.title} max={section.max} earned={earned} accent={section.key === "acr" ? "#ef4444" : section.key === "society" ? "#10b981" : ACCENT2}>
+    <SectionShell title={section.title} max={section.max} earned={earned} accent={ACCENT2}>
       <>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
@@ -744,8 +770,9 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
               {rows.map((row, index) => {
                 const socRowLocked = section.key === "society" && societyRowLocked(row);
                 const rowReviewable = rowHasReviewableData(section.key, row);
+                const reviewerCanScoreRow = rowReviewable || currentRole === "director";
                 const currentRowMax = reviewRowMaxForSection(section.key, row, section.max);
-                const displayScore = (value) => rowReviewable && String(value ?? "").trim() ? clampScore(value, currentRowMax) : "";
+                const displayScore = (value) => reviewerCanScoreRow && String(value ?? "").trim() ? clampScore(value, currentRowMax) : "";
                 return (
                   <tr key={row._id ?? `${section.key}-${index}`} style={socRowLocked ? { background: "#f1f5f9", opacity: 0.65 } : {}}>
                     <td style={tdCenter}>{index + 1}</td>
@@ -832,23 +859,23 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
                     {mode === "review" && previousRoles.map((role) => <td key={role} style={tdCenter}><RO value={socRowLocked ? "0" : displayScore(row[role])} center /></td>)}
                     {mode === "review" && (
                       <td style={tdCenter}>
-                        <TI type="number" center max={currentRowMax} readOnly={reviewLocked || socRowLocked || !rowReviewable} value={socRowLocked ? "0" : displayScore(reviewRows[index]?.[currentRole] ?? row[currentRole] ?? "")} onChange={(value) => updateReview(index, value)} />
+                        <TI type="number" center max={currentRowMax} readOnly={reviewLocked || socRowLocked || !reviewerCanScoreRow} value={socRowLocked ? "0" : displayScore(reviewRows[index]?.[currentRole] ?? row[currentRole] ?? "")} onChange={(value) => updateReview(index, value)} />
                       </td>
                     )}
                   </tr>
                 );
               })}
               {!hideIndividualB8Summary && (
-                <tr style={{ background: "#f5f3ff", borderTop: "1px solid #e0e7ff" }}>
-                  <td style={{ ...tdCenter, fontWeight: "bold", color: "#3730a3", fontSize: 12, padding: "10px 12px" }} colSpan={totalLabelColSpan}>{totalLabel}</td>
-                  <td style={{ ...tdCenter, fontWeight: "bold", color: "#3730a3", fontSize: 13, padding: "10px 12px" }}>{earned.toFixed(1)}</td>
+                <tr style={{ background: "#eef2ff", borderTop: "1px solid #c7d2fe" }}>
+                  <td style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center" }} colSpan={totalLabelColSpan}>{totalLabel}</td>
+                  <td style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center" }}>{earned.toFixed(1)}</td>
                   {mode === "review" && previousRoles.map((role) => (
-                    <td key={role} style={{ ...tdCenter, fontWeight: "bold" }}>
+                    <td key={role} style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center" }}>
                       {sectionTotalScore(rows, role).toFixed(1)}
                     </td>
                   ))}
                   {mode === "review" && (
-                    <td style={{ ...tdCenter, fontWeight: "bold" }}>
+                    <td style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center" }}>
                       {sectionTotalScore(reviewRows.length ? reviewRows : rows, currentRole).toFixed(1)}
                     </td>
                   )}
@@ -891,7 +918,7 @@ function InnovativeSection({ form, setForm, docs, setDocs, mode, locked, reviewe
     INNOVATIVE_METHOD_OPTIONS.filter((option) => option.value === currentMethod || !selectedInnovativeMethods.has(option.value));
   const facultyScore = clampScore(innovRows.reduce((total, row) => total + clampScore(row.score, SCORE_LIMITS.innovativeRow), 0), 10);
   const rowReviewScore = (role, row, index) => {
-    if (!rowHasReviewableData("innovRows", row)) return "";
+    if (!rowHasReviewableData("innovRows", row) && role !== "director") return "";
     const value = reviewData.innovRows?.[index]?.[role] ?? row[role] ?? "";
     return String(value ?? "").trim() ? clampScore(value, SCORE_LIMITS.innovativeRow) : "";
   };
@@ -908,7 +935,9 @@ function InnovativeSection({ form, setForm, docs, setDocs, mode, locked, reviewe
   })), 10, reviewerRole);
   const updateReview = (index, value) => {
     const sourceRow = visibleInnovRows[index] || {};
-    const nextValue = clampReviewScore("innovRows", sourceRow, value, 10);
+    const nextValue = reviewerRole === "director"
+      ? clampDirectorReviewScore("innovRows", sourceRow, value, 10)
+      : clampReviewScore("innovRows", sourceRow, value, 10);
     setReviewData((prev) => {
       const sourceRows = Array.isArray(prev.innovRows) && prev.innovRows.length ? prev.innovRows : cloneRows(visibleInnovRows);
       const nextRows = sourceRows.map((row, rowIndex) => rowIndex === index ? { ...row, [reviewerRole]: nextValue } : row);
@@ -993,7 +1022,7 @@ function InnovativeSection({ form, setForm, docs, setDocs, mode, locked, reviewe
                 <td style={tdStyle}><ViewCell id={`innov-${index}`} docs={docs} /></td>
                 <td style={tdCenter}>{mode === "self" ? <TI type="number" center max={SCORE_LIMITS.innovativeRow} readOnly={!editableSelf} value={row.score} onChange={(value) => updateSelfRow(index, "score", value)} /> : <RO value={row.score || form.innovScore} center />}</td>
                 {mode === "review" && previousRoles.map((role) => <td key={role} style={tdCenter}><RO value={rowReviewScore(role, row, index)} center /></td>)}
-                {mode === "review" && <td style={tdCenter}><TI type="number" center max={SCORE_LIMITS.innovativeRow} readOnly={reviewLocked || !rowReviewable} value={rowReviewScore(reviewerRole, row, index)} onChange={(value) => updateReview(index, value)} /></td>}
+                {mode === "review" && <td style={tdCenter}><TI type="number" center max={SCORE_LIMITS.innovativeRow} readOnly={reviewLocked || !(rowReviewable || reviewerRole === "director")} value={rowReviewScore(reviewerRole, row, index)} onChange={(value) => updateReview(index, value)} /></td>}
               </tr>
             );
           })}
@@ -1053,7 +1082,9 @@ function ObeSection({ form, setForm, docs, setDocs, mode, locked, reviewerRole, 
 
   const updateReview = (index, value) => {
     const sourceRow = visibleObeRows[index] || {};
-    const nextValue = clampReviewScore("obeRows", sourceRow, value, sourceRow.max || 20);
+    const nextValue = reviewerRole === "director"
+      ? clampDirectorReviewScore("obeRows", sourceRow, value, sourceRow.max || 20)
+      : clampReviewScore("obeRows", sourceRow, value, sourceRow.max || 20);
     setReviewData((prev) => {
       const sourceRows = Array.isArray(prev.obeRows) && prev.obeRows.length ? prev.obeRows : cloneRows(visibleObeRows);
       const nextRows = sourceRows.map((row, rowIndex) => rowIndex === index ? { ...row, [reviewerRole]: nextValue } : row);
@@ -1127,7 +1158,7 @@ function ObeSection({ form, setForm, docs, setDocs, mode, locked, reviewerRole, 
                   )}
                 </td>
                 {mode === "review" && previousRoles.map((role) => <td key={role} style={tdCenter}><RO value={rowReviewScore(role, row, index)} center /></td>)}
-                {mode === "review" && <td style={tdCenter}><TI type="number" center max={row.max || 20} readOnly={reviewLocked || !rowReviewable} value={rowReviewScore(reviewerRole, row, index)} onChange={(value) => updateReview(index, value)} /></td>}
+                {mode === "review" && <td style={tdCenter}><TI type="number" center max={row.max || 20} readOnly={reviewLocked || !(rowReviewable || reviewerRole === "director")} value={rowReviewScore(reviewerRole, row, index)} onChange={(value) => updateReview(index, value)} /></td>}
               </tr>
             );
           })}
@@ -1178,7 +1209,9 @@ function MentoringSection({ form, setForm, docs, setDocs, mode, locked, reviewer
 
   const updateReview = (index, value) => {
     const sourceRow = visibleMentoringRows[index] || {};
-    const nextValue = clampReviewScore("mentoringRows", sourceRow, value, sourceRow.max || 10);
+    const nextValue = reviewerRole === "director"
+      ? clampDirectorReviewScore("mentoringRows", sourceRow, value, sourceRow.max || 10)
+      : clampReviewScore("mentoringRows", sourceRow, value, sourceRow.max || 10);
     setReviewData((prev) => {
       const sourceRows = Array.isArray(prev.mentoringRows) && prev.mentoringRows.length ? prev.mentoringRows : cloneRows(visibleMentoringRows);
       const nextRows = sourceRows.map((row, rowIndex) => rowIndex === index ? { ...row, [reviewerRole]: nextValue } : row);
@@ -1252,7 +1285,7 @@ function MentoringSection({ form, setForm, docs, setDocs, mode, locked, reviewer
                   )}
                 </td>
                 {mode === "review" && previousRoles.map((role) => <td key={role} style={tdCenter}><RO value={rowReviewScore(role, row, index)} center /></td>)}
-                {mode === "review" && <td style={tdCenter}><TI type="number" center max={row.max || 10} readOnly={reviewLocked || !rowReviewable} value={rowReviewScore(reviewerRole, row, index)} onChange={(value) => updateReview(index, value)} /></td>}
+                {mode === "review" && <td style={tdCenter}><TI type="number" center max={row.max || 10} readOnly={reviewLocked || !(rowReviewable || reviewerRole === "director")} value={rowReviewScore(reviewerRole, row, index)} onChange={(value) => updateReview(index, value)} /></td>}
               </tr>
             );
           })}
@@ -1281,7 +1314,7 @@ function PartA({ sections, SectionTable, InnovativeSection, ObeSection, Mentorin
       subtitle="Fill in your teaching and academic activities for the appraisal period. Enter scores for each item."
       max={PART_A_MAX}
       score={totals.partA}
-      accent="#6b21a8"
+      accent="#4f46e5"
     >
       <SectionTable key={sections[0].key} section={sections[0]} {...sectionTableProps} />
       <SectionTable key={sections[1].key} section={sections[1]} {...sectionTableProps} />
@@ -1303,7 +1336,7 @@ function PartB({ sections, SectionTable, sectionTableProps }) {
       subtitle="Fill in your research papers, books, creative projects, consultancy, and patents. Enter scores for each item."
       max={PART_B_MAX}
       score={totals.partB}
-      accent="#047857"
+      accent="#4f46e5"
     >
       {sections.map((section) => (
         <SectionTable key={section.key} section={section} {...sectionTableProps} />
@@ -1320,7 +1353,7 @@ function PartC({ sections, SectionTable, sectionTableProps }) {
       subtitle="Fill in your university/school administrative roles, event organization, student mentoring, and placement activities."
       max={PART_C_MAX}
       score={totals.partC}
-      accent="#0f766e"
+      accent="#4f46e5"
     >
       {sections.map((section) => (
         <SectionTable key={section.key} section={section} {...sectionTableProps} />
@@ -1522,11 +1555,11 @@ export function AccuracyCheckbox({ checked, onChange, disabled = false }) {
 
 export function SummaryBox({ totals, roleScoreLabel = "Score", maxScores = { partA: PART_A_MAX, partB: PART_B_MAX, partC: PART_C_MAX, partD: PART_D_MAX, grand: GRAND_MAX } }) {
   const rows = [
-    ["Part A", totals.partA, maxScores.partA, ACCENT],
-    ["Part B", totals.partB, maxScores.partB, ACCENT2],
-    ["Part C", totals.partC, maxScores.partC, "#0284c7"],
-    ["Part D", totals.partD, maxScores.partD, "#dc2626"],
-    ["Grand Total", totals.total, maxScores.grand, "#059669"],
+    ["Part A", totals.partA, maxScores.partA, "#4f46e5"],
+    ["Part B", totals.partB, maxScores.partB, "#4338ca"],
+    ["Part C", totals.partC, maxScores.partC, "#6366f1"],
+    ["Part D", totals.partD, maxScores.partD, "#3730a3"],
+    ["Grand Total", totals.total, maxScores.grand, "#4338ca"],
   ];
   return (
     <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: 16, display: "grid", gap: 12 }}>
@@ -1543,13 +1576,13 @@ export function SummaryBox({ totals, roleScoreLabel = "Score", maxScores = { par
   );
 }
 
-export function CompactAuthoritySummaryCard({ title, subtitle, totals, maxScores, accent = ACCENT, remarksTitle, remarksContent }) {
+export function CompactAuthoritySummaryCard({ title, subtitle, totals, maxScores, accent = "#4f46e5", remarksTitle, remarksContent }) {
   const rows = [
-    ["Part A", totals.partA, maxScores.partA, ACCENT],
-    ["Part B", totals.partB, maxScores.partB, ACCENT2],
-    ["Part C", totals.partC, maxScores.partC, "#0284c7"],
-    ["Part D", totals.partD, maxScores.partD, "#dc2626"],
-    ["Total", totals.total, maxScores.grand, "#059669"],
+    ["Part A", totals.partA, maxScores.partA, "#4f46e5"],
+    ["Part B", totals.partB, maxScores.partB, "#4338ca"],
+    ["Part C", totals.partC, maxScores.partC, "#6366f1"],
+    ["Part D", totals.partD, maxScores.partD, "#3730a3"],
+    ["Total", totals.total, maxScores.grand, "#4338ca"],
   ];
   const hasRemarks = Boolean(remarksContent);
   return (
@@ -1745,7 +1778,9 @@ function buildCreativeSchoolSectionScores(person, reviewData, reviewerRole) {
   const reviewInnovRows = Array.isArray(reviewData.innovRows) ? reviewData.innovRows : [];
   const mergedInnovRows = innovRows.map((row, index) => ({
     ...row,
-    [reviewerRole]: clampReviewScore("innovRows", row, reviewInnovRows[index]?.[reviewerRole] ?? row[reviewerRole] ?? "", 10),
+    [reviewerRole]: reviewerRole === "director"
+      ? clampDirectorReviewScore("innovRows", row, reviewInnovRows[index]?.[reviewerRole] ?? row[reviewerRole] ?? "", 10)
+      : clampReviewScore("innovRows", row, reviewInnovRows[index]?.[reviewerRole] ?? row[reviewerRole] ?? "", 10),
   }));
   const innovTotal = reviewSectionScore("innovRows", mergedInnovRows, 10, reviewerRole);
   payload.innovRows = mergedInnovRows;
@@ -1780,12 +1815,18 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
     ALL_ARRAY_KEYS.forEach((key) => {
       merged[key] = (form[key] || []).map((row, index) => ({
         ...row,
-        [reviewerRole]: key === "society" && societyRowLocked(row) ? "0" : clampReviewScore(key, row, reviewData[key]?.[index]?.[reviewerRole] ?? row[reviewerRole] ?? "", SECTION_MAX_BY_KEY[key] || 0),
+        [reviewerRole]: key === "society" && societyRowLocked(row)
+          ? "0"
+          : reviewerRole === "director"
+            ? clampDirectorReviewScore(key, row, reviewData[key]?.[index]?.[reviewerRole] ?? row[reviewerRole] ?? "", SECTION_MAX_BY_KEY[key] || 0)
+            : clampReviewScore(key, row, reviewData[key]?.[index]?.[reviewerRole] ?? row[reviewerRole] ?? "", SECTION_MAX_BY_KEY[key] || 0),
       }));
     });
     merged.innovRows = (form.innovRows || []).map((row, index) => ({
       ...row,
-      [reviewerRole]: clampReviewScore("innovRows", row, reviewData.innovRows?.[index]?.[reviewerRole] ?? row[reviewerRole] ?? "", 10),
+      [reviewerRole]: reviewerRole === "director"
+        ? clampDirectorReviewScore("innovRows", row, reviewData.innovRows?.[index]?.[reviewerRole] ?? row[reviewerRole] ?? "", 10)
+        : clampReviewScore("innovRows", row, reviewData.innovRows?.[index]?.[reviewerRole] ?? row[reviewerRole] ?? "", 10),
     }));
     const innovTotal = reviewSectionScore("innovRows", merged.innovRows, 10, reviewerRole);
     merged[scoreKeyForInnov(reviewerRole)] = innovTotal ? String(innovTotal) : reviewData.innovativeTeaching?.[reviewerRole] ?? form[scoreKeyForInnov(reviewerRole)] ?? "";
@@ -1937,7 +1978,19 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
         ...summaryRow(applicability, "ict", { id: "B11", label: "ICT Content, MOOCs & E-Learning", max: 40, score: rowSum("ict", 40) }),
         ...summaryRow(applicability, "exhibitions", { id: "B12", label: "Exhibitions — Photography, Design & Applied Arts, Documentaries, Films & Audio-Visual Productions", max: 30, score: rowSum("exhibitions", 30) }),
         { isTotal: true, label: "Part B Total", max: maxScores.partB, score: partBTotal },
-        { isGrandTotal: true, label: "Grand Total (Part A + Part B)", max: maxScores.grand, score: grandTotal },
+        { isHeader: true, label: "Part C - Administrative Role & Contribution" },
+        ...summaryRow(applicability, "uniActs", { id: "C1", label: "Administration at University Level", max: 50, score: rowSum("uniActs", 50) }),
+        ...summaryRow(applicability, "deptActs", { id: "C2", label: "School / Department Level Activities", max: 30, score: rowSum("deptActs", 30) }),
+        ...summaryRow(applicability, "events", { id: "C3", label: "Event Organisation", max: 20, score: rowSum("events", 20) }),
+        ...summaryRow(applicability, "society", { id: "C4", label: "Contribution to Society", max: 10, score: rowSum("society", 10) }),
+        ...summaryRow(applicability, "industry", { id: "C5", label: "Industry Connect", max: 10, score: rowSum("industry", 10) }),
+        ...summaryRow(applicability, "alumni", { id: "C6", label: "Alumni Engagement", max: 10, score: rowSum("alumni", 10) }),
+        ...summaryRow(applicability, "placements", { id: "C7", label: "Placement & Internship Support", max: 20, score: rowSum("placements", 20) }),
+        { isTotal: true, label: "Part C Total", max: maxScores.partC, score: totals.partC },
+        { isHeader: true, label: "Part D - Annual Confidential Report (ACR)" },
+        ...summaryRow(applicability, "acr", { id: "D1", label: "Annual Confidential Report", max: 50, score: rowSum("acr", 50) }),
+        { isTotal: true, label: "Part D Total", max: maxScores.partD, score: totals.partD },
+        { isGrandTotal: true, label: "Grand Total", max: maxScores.grand, score: grandTotal },
       ],
     });
   };
@@ -1968,7 +2021,7 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
           This appraisal has been finalised by the VC.
         </div>
       )}
-      {(sectionView === "partA" || sectionView === "partB") && (
+      {(sectionView === "partA" || sectionView === "partB" || sectionView === "partC" || sectionView === "partD") && (
         <CreativeSchoolForm
           form={form}
           setForm={() => { }}
@@ -1983,7 +2036,7 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
           sectionView={sectionView}
         />
       )}
-      {(sectionView === "partA" || sectionView === "partB") && !panelReadOnly && (
+      {(sectionView === "partA" || sectionView === "partB" || sectionView === "partC" || sectionView === "partD") && !panelReadOnly && (
         <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, margin: "12px 0 14px", flexWrap: "wrap" }}>
           <span style={{ color: "#64748b", fontSize: 11, fontWeight: 700 }}>{draftStatus}</span>
           <button
@@ -1997,17 +2050,17 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
       )}
       {sectionView === "summary" && (
         <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 14, display: "grid", gap: 10 }}>
-          <CompactAuthoritySummaryCard title="Faculty Score" totals={facultyTotals} maxScores={facultyTotals.maxScores} accent="#0ea5e9" subtitle={`Faculty submitted score for the ${schoolDisplayName} appraisal form.`} />
+          <CompactAuthoritySummaryCard title="Faculty Score" totals={facultyTotals} maxScores={facultyTotals.maxScores} accent="#4f46e5" subtitle={`Faculty submitted score for the ${schoolDisplayName} appraisal form.`} />
           <SummaryOtherInfoField value={summaryOtherInfoValueFrom(person)} readOnly rows={4} />
           {previousSummaryCards.map(({ role, label, totals: roleTotals, remarks: roleRemarks }) => (
-            <CompactAuthoritySummaryCard key={role} title={`${label} Score`} totals={roleTotals} maxScores={roleTotals.maxScores} accent="#334155" subtitle={`${label} score for the ${schoolDisplayName} appraisal form.`} remarksTitle={`${label} Remarks`} remarksContent={<div style={{ color: "#334155", fontSize: 12, lineHeight: 1.45, whiteSpace: "pre-wrap", maxHeight: 74, overflow: "auto" }}>{String(roleRemarks || "").trim() || "-"}</div>} />
+            <CompactAuthoritySummaryCard key={role} title={`${label} Score`} totals={roleTotals} maxScores={roleTotals.maxScores} accent="#4338ca" subtitle={`${label} score for the ${schoolDisplayName} appraisal form.`} remarksTitle={`${label} Remarks`} remarksContent={<div style={{ color: "#334155", fontSize: 12, lineHeight: 1.45, whiteSpace: "pre-wrap", maxHeight: 74, overflow: "auto" }}>{String(roleRemarks || "").trim() || "-"}</div>} />
           ))}
-          {reviewerRole === "vc" && <CompactAuthoritySummaryCard title="Average Score" totals={averageSummaryTotals} maxScores={averageSummaryTotals.maxScores} accent="#f59e0b" subtitle="Average score before VC review." />}
+          {reviewerRole === "vc" && <CompactAuthoritySummaryCard title="Average Score" totals={averageSummaryTotals} maxScores={averageSummaryTotals.maxScores} accent="#6366f1" subtitle="Average score before VC review." />}
           <CompactAuthoritySummaryCard
             title={`${roleLabel(reviewerRole)} Score`}
             totals={reviewerSummaryTotals}
             maxScores={totals.maxScores}
-            accent="#134e4a"
+            accent="#3730a3"
             subtitle={`${roleLabel(reviewerRole)} score for the ${schoolDisplayName} appraisal form.`}
             remarksTitle={reviewerRole === "vc" ? "Vice Chancellor Remarks and Grade" : `${roleLabel(reviewerRole)} Remarks`}
             remarksContent={<textarea value={remarks} readOnly={panelReadOnly} onChange={(event) => setRemarks(event.target.value)} rows={4} style={{ width: "100%", border: "none", padding: 0, fontFamily: "inherit", fontSize: 12, color: "#334155", resize: "vertical", background: "transparent", outline: "none" }} />}

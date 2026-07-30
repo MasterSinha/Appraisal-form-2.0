@@ -47,10 +47,15 @@ function DashboardSwitch({ role, school, department, formType }) {
       return <HODDashboard />;
     }
 
-    case "director":
+    case "director": {
+      if (formType === FORM_TYPES.MEDIA_COMM) return <MediaCommDashboard fixedRole="director" />;
+      if (formType === FORM_TYPES.DESIGN_ARTS) return <DesignArtsDashboard fixedRole="director" />;
       return <DirectorDashboard />;
+    }
 
     case "dean": {
+      if (formType === FORM_TYPES.MEDIA_COMM) return <MediaCommDashboard fixedRole="dean" />;
+      if (formType === FORM_TYPES.DESIGN_ARTS) return <DesignArtsDashboard fixedRole="dean" />;
       const deanTrack = getDeanTrack({ school, department, designation: sessionStorage.getItem("designation") || "" });
       if (deanTrack === DEAN_TRACKS.NON_ENGINEERING) return <NonEngineeringDeanDashboard />;
       return <DeanDashboard />;

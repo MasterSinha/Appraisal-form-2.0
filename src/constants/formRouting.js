@@ -6,10 +6,11 @@
  *   2. SoCM   — School of Commerce & Management
  *   3. SoBB   — School of Bio-Engineering & Bio Science
  *   4. SoMCS  — School of Media & Communication Studies
- *   5. SoD    — School of Design
- *   6. SoAA   — School of Applied Arts
- *   7. SoCE   — School of Continual Education
- *   8. SoEMR  — School of Engineering Management & Research
+ *   5. SoHSS  — School of Humanities and Social Sciences
+ *   6. SoD    — School of Design
+ *   7. SoAA   — School of Applied Arts
+ *   8. SoCE   — School of Continual Education
+ *   9. SoEMR  — School of Engineering Management & Research
  *
  * Form-type assignment:
  *   FORM_A — all teaching schools use the engineering-equivalent appraisal structure.

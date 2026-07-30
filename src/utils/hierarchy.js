@@ -45,15 +45,25 @@ export const getSchoolKey = getConfiguredSchoolKey;
 export const getSchoolHierarchy = (school) => SCHOOL_HIERARCHY[getSchoolKey(school)] || null;
 
 export const getDeanTrack = (profile = {}) => {
+  const rawSchool = normalizeText(profile.school);
+  if (rawSchool === "non engineering" || rawSchool === "nonengineering" || rawSchool === "non_engineering") {
+    return NON_ENGINEERING;
+  }
+  if (rawSchool === "engineering") {
+    return ENGINEERING;
+  }
+
+  const combined = normalizeText(`${profile.school || ""} ${profile.department || ""} ${profile.designation || ""} ${profile.email || ""}`);
+
+  if (combined.includes("non engineering") || combined.includes("nonengineering") || combined.includes("commerce") || combined.includes("media") || combined.includes("humanities") || combined.includes("social sciences") || combined.includes("design") || combined.includes("applied arts") || combined.includes("socm") || combined.includes("somcs") || combined.includes("sohss") || combined.includes("sod") || combined.includes("soaa") || combined.includes("soa")) {
+    return NON_ENGINEERING;
+  }
+
   const schoolConfig = getSchoolHierarchy(profile.school);
   if (schoolConfig?.deanTrack) return schoolConfig.deanTrack;
 
-  const combined = normalizeText(`${profile.school || ""} ${profile.department || ""} ${profile.designation || ""}`);
   if (combined.includes("cisr") || combined.includes("interdisciplinary studies and research") || combined.includes("center head") || combined.includes("centre head")) {
     return DIRECT_VC;
-  }
-  if (combined.includes("non engineering") || combined.includes("commerce") || combined.includes("media") || combined.includes("design") || combined.includes("applied arts")) {
-    return NON_ENGINEERING;
   }
 
   return ENGINEERING;
