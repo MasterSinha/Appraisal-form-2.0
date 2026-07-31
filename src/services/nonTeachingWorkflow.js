@@ -1177,7 +1177,7 @@ export const openNonTeachingReport = ({
         (file) =>
           `<a href="${escapeHtml(file.url)}" target="_blank">${escapeHtml(file.name || file.url)}</a>`,
       )
-      .join("<br>") || "-";
+      .join("<br>") || "";
 
   const partARows = SELF_ITEMS.map(
     ({ key, label, max }) => `

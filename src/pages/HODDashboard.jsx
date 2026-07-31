@@ -335,6 +335,15 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false, revi
 <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, margin: "12px 0 14px", flexWrap: "wrap" }}>
 <span style={{ color: "#64748b", fontSize: 11, fontWeight: 700 }}>{draftStatus}</span>
 <button
+ type="button"
+ onClick={handleSaveDraft}
+ disabled={savingDraft}
+ style={{ padding: "10px 22px", background: "#fff", color: savingDraft ? "#94a3b8" : "#2563eb", border: "1.5px solid #2563eb", borderRadius: 7, cursor: savingDraft ? "not-allowed" : "pointer", fontWeight: 700, fontSize: 13, fontFamily: "inherit" }}
+>
+ {savingDraft ? "Saving..." : "Save as Draft"}
+</button>
+<button
+ type="button"
  onClick={handleSaveAndNext}
  disabled={savingDraft}
  style={{ padding: "10px 22px", background: savingDraft ? "#94a3b8" : "#2563eb", color: "#fff", border: "none", borderRadius: 7, cursor: savingDraft ? "not-allowed" : "pointer", fontWeight: 700, fontSize: 13, fontFamily: "inherit" }}

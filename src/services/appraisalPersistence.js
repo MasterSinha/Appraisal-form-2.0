@@ -1488,7 +1488,11 @@ export const submitAppraisal = async ({
  });
  } catch (err) {
  if (![400, 422].includes(err?.response?.status)) throw err;
+ try {
  await api.post("/appraisal/submit", basePayload);
+ } catch (fallbackErr) {
+ throw fallbackErr?.message ? fallbackErr : err;
+ }
  }
 };
 
