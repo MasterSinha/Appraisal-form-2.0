@@ -31,8 +31,8 @@ const DIRECTOR_ACR_DEFAULT_SCORE = 5;
 const REVIEW_SCORE_FIELDS = ["hod", "director", "dean", "vc"];
 const clampDirectorReviewScore = (section, row, value, maxScore) =>{
  if (String(value ?? "").trim() === "") return "";
- const strictValue = clampReviewScore(section, row, value, maxScore);
- return strictValue === "" ? String(clampScore(value, maxScore)) : strictValue;
+ if (section !== "acr" && clampReviewScore(section, row, value, maxScore) === "") return "";
+ return String(clampScore(value, maxScore));
 };
 const preserveSavedReviewScores = (form = {}, source = {}) =>{
  const merged = { ...form };
@@ -258,7 +258,7 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
  };
  const getDirS = (key) =>n(dirData[key] ?? faculty.innovDirector ?? faculty.innovDir);
  const sumReviewRows = (section, field, max, rowMax) =>clampScore(
- (faculty[section] || []).reduce((total, row, index) =>{
+ (section === "acr" ? createAcrRows(faculty.acr) : (faculty[section] || [])).reduce((total, row, index) =>{
  if (section === "society" && societyRowLocked(row)) return total;
  if (!rowHasReviewableData(section, row) && String(getDRaw(section, index, field) ?? "").trim() === "") return total;
  const limit = typeof rowMax === "function" ? rowMax(row) : rowMax;

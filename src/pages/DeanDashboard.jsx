@@ -267,7 +267,7 @@ const deanScorePayload = (approval, deanData) =>{
  const payload = {};
 
  DEAN_REVIEW_ARRAY_KEYS.forEach((key) =>{
- const rows = Array.isArray(approval[key]) ? approval[key] : [];
+ const rows = key === "acr" ? createAcrRows(approval[key]) : (Array.isArray(approval[key]) ? approval[key] : []);
  payload[key] = rows.map((row, index) =>({
  ...row,
  dean: key === "society" && societyRowLocked(row)
@@ -377,8 +377,15 @@ function ReviewTable({ title, accent = "#4338ca", sectionKey, columns, docPrefix
   const ctx = useContext(DeanReviewTableContext);
   if (!ctx) return null;
   const dataRows = sectionRows || ctx.rows(sectionKey);
+  const visibleRows = dataRows.length ? dataRows : [{}];
   const hasDocs = Boolean(docPrefix);
-  const totalColumns = 1 + columns.length + (hasDocs ? 1 : 0) + 2;
+  const previousScoreLabel = sectionKey === "acr" ? "Director Score" : "Faculty Score";
+  const previousScoreFor = (row) => {
+    if (sectionKey === "research") return row.degree || row.name || row.thesis || row.score ? researchGuidanceScore(row).toFixed(1) : "";
+    if (sectionKey === "society") return String(row.score ?? "").trim() ? societyRowScore(row) : "";
+    if (sectionKey === "acr") return row.director ?? row.dir ?? row.director_score ?? row.dir_score ?? "";
+    return row.score;
+  };
 
   return (
     <SC title={title} accent={accent}>
@@ -391,11 +398,12 @@ function ReviewTable({ title, accent = "#4338ca", sectionKey, columns, docPrefix
                 <th key={column.label} style={TH}>{column.label}</th>
               ))}
               {hasDocs && <th style={TH}>View Docs</th>}
-              {ctx.scoreHeaders}
+              <th style={TH}>{previousScoreLabel}</th>
+              <th style={TH_DEAN}>Dean Score</th>
             </tr>
           </thead>
           <tbody>
-            {dataRows.length ? dataRows.map((row, index) => (
+            {visibleRows.map((row, index) => (
               <tr key={`${sectionKey}-${index}`} style={sectionKey === "society" && societyRowLocked(row) ? { background: "#f1f5f9", opacity: 0.65 } : index % 2 ? { background: "#f8fafc" } : {}}>
                 <td style={TDC}>{index + 1}</td>
                 {columns.map((column) => (
@@ -404,16 +412,10 @@ function ReviewTable({ title, accent = "#4338ca", sectionKey, columns, docPrefix
                   </td>
                 ))}
                 {hasDocs && <td style={TDV}><ViewDocsCell docKey={`${docPrefix}-${index}`} docs={ctx.docs} /></td>}
-                <td style={TDS}>{ctx.cell(sectionKey === "research" ? (row.degree || row.name || row.thesis || row.score ? researchGuidanceScore(row).toFixed(1) : "") : sectionKey === "society" ? (String(row.score ?? "").trim() ? societyRowScore(row) : "") : row.score, true)}</td>
+                <td style={TDS}>{ctx.cell(previousScoreFor(row), true)}</td>
                 <td style={TDS_DEAN}><DeanScoreCell sectionKey={sectionKey} index={index} row={row} deanData={ctx.deanData} setDeanData={ctx.setDeanData} /></td>
               </tr>
-            )) : (
-              <tr>
-                <td style={{ ...TDC, color: "#94a3b8", fontStyle: "italic" }} colSpan={totalColumns}>
-                  No submitted rows for this table.
-                </td>
-              </tr>
-            )}
+            ))}
           </tbody>
         </table>
       </div>
@@ -430,15 +432,8 @@ function DeanReviewScoreForm({ approval, deanData, setDeanData, sectionView = "p
     ? approval.innovRows
     : [{ method: approval.innovDetails || "Innovative / participatory teaching methods", details: approval.innovDetails || "", score: approval.innovScore || "" }];
 
-  const scoreHeaders = (
-    <>
-      <th style={TH}>Faculty Score</th>
-      <th style={TH_DEAN}>Dean Score</th>
-    </>
-  );
-
   return (
-    <DeanReviewTableContext.Provider value={{ approval, deanData, docs, rows, scoreHeaders, setDeanData, cell }}>
+    <DeanReviewTableContext.Provider value={{ approval, deanData, docs, rows, setDeanData, cell }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
         <div style={{ background: "linear-gradient(90deg,#312e81,#4338ca)", color: "#ede9fe", borderRadius: 8, padding: "10px 16px", marginBottom: 14, fontSize: 12 }}>
           <strong>Dean Review Mode</strong> - Faculty self-scores are read-only. Only the Dean score column is editable.
@@ -667,6 +662,7 @@ function DeanReviewScoreForm({ approval, deanData, setDeanData, sectionView = "p
  title="D1. Annual Confidential Report (ACR)"
  accent="#ef4444"
  sectionKey="acr"
+ rows={createAcrRows(approval.acr)}
  columns={[{ label: "Parameter", render: (r) =>r.label }]}
  />
 </div>)}
