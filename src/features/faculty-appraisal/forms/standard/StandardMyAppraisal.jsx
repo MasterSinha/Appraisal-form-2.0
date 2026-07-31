@@ -805,8 +805,8 @@ export default function StandardMyAppraisal({
       { label: "C5. Industry Interaction & Linkages", rows: industry, fields: ["activity", "partner", "date", "score"] },
       { label: "C6. Alumni Engagement & Networking", rows: alumniRows, fields: ["activity", "details", "date", "score"] },
       { label: "C7. Student Placement Mentoring & Career Development", rows: placementRows, fields: ["activityType", "name", "date", "score"] },
-      { label: "B1. Journals", rows: journals, fields: ["title", "journal", "issn", "index", "score"] },
-      { label: "B2. Books / Chapters", rows: books, fields: ["title", "book", "issn", "pub", "coauth", "first", "score"] },
+      { label: "B1. Journals", rows: journals, fields: ["title", "journal", "score"] },
+      { label: "B2. Books / Chapters", rows: books, fields: ["title", "book", "pub", "score"] },
       { label: "B3. Patents, Copyrights & IP and Product Development", rows: patents, fields: ["title", "type", "date", "status", "fileNo", "score"] },
       { label: "B4. Funded Research Projects", rows: projects2, fields: ["title", "agency", "date", "amount", "role", "status", "score"] },
       { label: "B5. Research Guidance", rows: research, fields: ["degree", "name", "thesis"] },
@@ -890,7 +890,7 @@ export default function StandardMyAppraisal({
     setWorkflowDeclaration((current) => current || { status: "Submitted" });
   };
 
-  const handleSaveCurrentSection = async (section) => {
+  const handleSaveCurrentSection = async (section, navigateNext = true) => {
     if (appraisalLocked) return;
     const userEmail = sessionStorage.getItem("username") || sessionStorage.getItem("email") || localStorage.getItem("username") || localStorage.getItem("email");
     if (!userEmail) {
@@ -911,13 +911,15 @@ export default function StandardMyAppraisal({
         sectionSaveStatus: nextStatus,
       });
       setSectionSaveStatus(nextStatus);
-      const NEXT_SECTION = { partA: "partB", partB: "partC", partC: "partD", partD: "summary" };
-      const nextTab = NEXT_SECTION[section];
-      if (nextTab) {
-        setHodAppraisalTab(nextTab);
-        requestAnimationFrame(() => {
-          window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-        });
+      if (navigateNext) {
+        const NEXT_SECTION = { partA: "partB", partB: "partC", partC: "partD", partD: "summary" };
+        const nextTab = NEXT_SECTION[section];
+        if (nextTab) {
+          setHodAppraisalTab(nextTab);
+          requestAnimationFrame(() => {
+            window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+          });
+        }
       }
     } catch (err) {
       if (err?.statusCode === 403 || err?.response?.status === 403) {
@@ -1063,10 +1065,10 @@ export default function StandardMyAppraisal({
     </tr></table>
 
     <table>
-      <tr><td class="b" style="width:35%">Name of Faculty</td><td>${info.name || "&nbsp;"}</td></tr>
+      <tr><td class="b" style="width:35%">Name of Faculty</td><td>${reportTextValue(info.name)}</td></tr>
       <tr><td class="b">Educational Qualifications</td><td>${reportQualification(info)}</td></tr>
-      <tr><td class="b">Present Designation</td><td>${info.desig || "&nbsp;"}</td></tr>
-      <tr><td class="b">School / Department</td><td>${info.school || "&nbsp;"}</td></tr>
+      <tr><td class="b">Present Designation</td><td>${reportTextValue(info.desig)}</td></tr>
+      <tr><td class="b">School / Department</td><td>${reportTextValue(info.school)}</td></tr>
       <tr><td class="b">Experience</td><td>${reportExperience(info)}</td></tr>
     </table>
 
@@ -1075,58 +1077,58 @@ export default function StandardMyAppraisal({
     <h3>A1. Course Delivery &amp; Classroom Engagement &nbsp;(Max 40)</h3>
     <table>
       <tr><th>SN</th><th>Semester</th><th>Course Code / Name</th><th>Classes as per Course Structure</th><th>Classes Actually Conducted</th><th>Self Score</th></tr>
-      ${lectures.map((l, i) => `<tr><td class="c">${i + 1}</td><td>${l.sem || '&nbsp;'}</td><td>${l.code || '&nbsp;'}</td><td class="c">${l.planned || '&nbsp;'}</td><td class="c">${l.conducted || '&nbsp;'}</td><td class="c">${l.score || '&nbsp;'}</td></tr>`).join('')}
-      <tr class="tr"><td colspan="5" class="c b">Total Score (Max 40)</td><td class="c">${totalLecScore.toFixed(1)}</td></tr>
+      ${lectures.map((l, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(l.sem)}</td><td>${reportTextValue(l.code)}</td><td class="c">${reportTextValue(l.planned)}</td><td class="c">${reportTextValue(l.conducted)}</td><td class="c">${reportTextValue(l.score)}</td></tr>`).join('')}
+      <tr class="tr"><td colspan="5" class="c b">Total Score (Max 40)</td><td class="c">${totalLecScore > 0 ? totalLecScore.toFixed(1) : "&nbsp;"}</td></tr>
     </table>
 
     <h3>A2. Course File &amp; Curriculum Documentation &nbsp;(Max 20)</h3>
     <table>
       <tr><th>SN</th><th>Course / Paper</th><th>Program & Semester</th><th>Details</th><th>Self Score</th></tr>
-      ${courseFile.map((c, i) => `<tr><td class="c">${i + 1}</td><td>${c.course || '&nbsp;'}</td><td>${c.title || '&nbsp;'}</td><td>${c.details || '&nbsp;'}</td><td class="c">${c.score || '&nbsp;'}</td></tr>`).join('')}
-      <tr class="tr"><td colspan="4" class="c b">Total Score (Max 20)</td><td class="c">${courseFileScore.toFixed(1)}</td></tr>
+      ${courseFile.map((c, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(c.course)}</td><td>${reportTextValue(c.title)}</td><td>${reportTextValue(c.details)}</td><td class="c">${reportTextValue(c.score)}</td></tr>`).join('')}
+      <tr class="tr"><td colspan="4" class="c b">Total Score (Max 20)</td><td class="c">${courseFileScore > 0 ? courseFileScore.toFixed(1) : "&nbsp;"}</td></tr>
     </table>
 
     <h3>A3. Innovative Teaching-Learning Methods &nbsp;(Max 20)</h3>
     <table>
       <tr><th>SN</th><th>Methods Used</th><th>Details</th><th>Self Score</th></tr>
-      ${innovRows.map((r, i) => `<tr><td class="c">${i + 1}</td><td>${r.method || '&nbsp;'}</td><td>${r.details || '&nbsp;'}</td><td class="c">${r.score || '&nbsp;'}</td></tr>`).join('')}
-      <tr class="tr"><td colspan="3" class="c b">Total Score (Max 20)</td><td class="c">${innovTotal.toFixed(1)}</td></tr>
+      ${innovRows.map((r, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(r.method)}</td><td>${reportTextValue(r.details)}</td><td class="c">${reportTextValue(r.score)}</td></tr>`).join('')}
+      <tr class="tr"><td colspan="3" class="c b">Total Score (Max 20)</td><td class="c">${innovTotal > 0 ? innovTotal.toFixed(1) : "&nbsp;"}</td></tr>
     </table>
 
     <h3>A4. Student Feedback Score &nbsp;(Max 10)</h3>
     <table>
       <tr><th>SN</th><th>Course Code / Name</th><th>First Feedback(%)</th><th>Second Feedback(%)</th><th>Average</th><th>Self Score</th></tr>
-      ${feedback.map((f, i) => `<tr><td class="c">${i + 1}</td><td>${f.code || '&nbsp;'}</td><td class="c">${f.fb1 || '&nbsp;'}</td><td class="c">${f.fb2 || '&nbsp;'}</td><td class="c">${(f.fb1 || f.fb2) ? ((n(f.fb1) + n(f.fb2)) / ((f.fb1 ? 1 : 0) + (f.fb2 ? 1 : 0) || 1)).toFixed(2) : '&nbsp;'}</td><td class="c">${(f.fb1 || f.fb2) ? (((n(f.fb1) + n(f.fb2)) / ((f.fb1 ? 1 : 0) + (f.fb2 ? 1 : 0) || 1)) / 10).toFixed(2) : '&nbsp;'}</td></tr>`).join('')}
-      <tr class="tr"><td colspan="5" class="c b">Total (Max 10)</td><td class="c">${stuFeedbackScore.toFixed(1)}</td></tr>
+      ${feedback.map((f, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(f.code)}</td><td class="c">${reportTextValue(f.fb1)}</td><td class="c">${reportTextValue(f.fb2)}</td><td class="c">${(f.fb1 || f.fb2) ? ((n(f.fb1) + n(f.fb2)) / ((f.fb1 ? 1 : 0) + (f.fb2 ? 1 : 0) || 1)).toFixed(2) : '&nbsp;'}</td><td class="c">${(f.fb1 || f.fb2) ? (((n(f.fb1) + n(f.fb2)) / ((f.fb1 ? 1 : 0) + (f.fb2 ? 1 : 0) || 1)) / 10).toFixed(2) : '&nbsp;'}</td></tr>`).join('')}
+      <tr class="tr"><td colspan="5" class="c b">Total (Max 10)</td><td class="c">${stuFeedbackScore > 0 ? stuFeedbackScore.toFixed(1) : "&nbsp;"}</td></tr>
     </table>
 
     <h3>A5. Learning Outcomes Attainment &amp; OBE Practice &nbsp;(Max 20)</h3>
     <table>
       <tr><th>SN</th><th>Component</th><th>Evidence Attached (Yes/No)</th><th>Self Score</th></tr>
-      ${obeRows.map((r, i) => `<tr><td class="c">${i + 1}</td><td>${r.component || '&nbsp;'}</td><td>${r.evidence || '&nbsp;'}</td><td class="c">${r.score || '&nbsp;'}</td></tr>`).join('')}
-      <tr class="tr"><td colspan="3" class="c b">Total (Max 20)</td><td class="c">${obeScore.toFixed(1)}</td></tr>
+      ${obeRows.map((r, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(r.component)}</td><td>${reportTextValue(r.evidence)}</td><td class="c">${reportTextValue(r.score)}</td></tr>`).join('')}
+      <tr class="tr"><td colspan="3" class="c b">Total (Max 20)</td><td class="c">${obeScore > 0 ? obeScore.toFixed(1) : "&nbsp;"}</td></tr>
     </table>
 
     ${`
     <h3>A6. Student Project Guidance &nbsp;(Max 20)</h3>
     <table>
       <tr><th>SN</th><th>Project Type</th><th>Self Score</th></tr>
-      ${projects.map((p, i) => `<tr><td class="c">${i + 1}</td><td>${p.label || '&nbsp;'}</td><td class="c">${clampScore(p.score, projectGuidanceRowMax(p)) || '&nbsp;'}</td></tr>`).join('')}
-      <tr class="tr"><td colspan="2" class="c b">Total Score (Max 20)</td><td class="c">${projectTotal.toFixed(1)}</td></tr>
+      ${projects.map((p, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(p.label)}</td><td class="c">${reportTextValue(clampScore(p.score, projectGuidanceRowMax(p)))}</td></tr>`).join('')}
+      <tr class="tr"><td colspan="2" class="c b">Total Score (Max 20)</td><td class="c">${projectTotal > 0 ? projectTotal.toFixed(1) : "&nbsp;"}</td></tr>
     </table>`}
 
     <h3>A7. Student Mentoring &amp; Counselling &nbsp;(Max 10)</h3>
     <table>
       <tr><th>SN</th><th>Activity</th><th>Evidence Attached (Yes/No)</th><th>Self Score</th></tr>
-      ${mentoringRows.map((r, i) => `<tr><td class="c">${i + 1}</td><td>${r.activity || '&nbsp;'}</td><td>${r.evidence || '&nbsp;'}</td><td class="c">${r.score || '&nbsp;'}</td></tr>`).join('')}
-      <tr class="tr"><td colspan="3" class="c b">Total (Max 10)</td><td class="c">${mentoringScore.toFixed(1)}</td></tr>
+      ${mentoringRows.map((r, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(r.activity)}</td><td>${reportTextValue(r.evidence)}</td><td class="c">${reportTextValue(r.score)}</td></tr>`).join('')}
+      <tr class="tr"><td colspan="3" class="c b">Total (Max 10)</td><td class="c">${mentoringScore > 0 ? mentoringScore.toFixed(1) : "&nbsp;"}</td></tr>
     </table>
 
     <h3>A8. Professional Development &amp; Qualification Enhancement &nbsp;(Max 10)</h3>
     <table>
       <tr><th>SN</th><th>Qualification / Category</th><th>Self Score</th></tr>
-      ${quals.map((q, i) => `<tr><td class="c">${i + 1}</td><td>${q.label || '&nbsp;'}</td><td class="c">${q.score || '&nbsp;'}</td></tr>`).join('')}
-      <tr class="tr"><td colspan="2" class="c b">Total Score (Max 10)</td><td class="c">${qualTotal.toFixed(1)}</td></tr>
+      ${quals.map((q, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(q.label)}</td><td class="c">${reportTextValue(q.score)}</td></tr>`).join('')}
+      <tr class="tr"><td colspan="2" class="c b">Total Score (Max 10)</td><td class="c">${qualTotal > 0 ? qualTotal.toFixed(1) : "&nbsp;"}</td></tr>
     </table>
 
     <div class="pb"></div>
@@ -1135,93 +1137,93 @@ export default function StandardMyAppraisal({
     <h3>B1. Journal Publications &nbsp;(Max 100)</h3>
     <table>
       <tr><th>SN</th><th>Title with Page Nos.</th><th>Journal Details</th><th>ISSN/ISBN No.</th><th>Journal Indexing</th><th>Self Score</th></tr>
-      ${journals.map((j, i) => `<tr><td class="c">${i + 1}</td><td>${j.title || '&nbsp;'}</td><td>${j.journal || '&nbsp;'}</td><td class="c">${j.issn || '&nbsp;'}</td><td class="c">${j.index || '&nbsp;'}</td><td class="c">${j.score || '&nbsp;'}</td></tr>`).join('')}
-      <tr class="tr"><td colspan="5" class="c b">Total (Max 100)</td><td class="c">${journalScore.toFixed(1)}</td></tr>
+      ${journals.map((j, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(j.title)}</td><td>${reportTextValue(j.journal)}</td><td class="c">${reportTextValue(j.issn)}</td><td class="c">${reportTextValue(j.index)}</td><td class="c">${reportTextValue(j.score)}</td></tr>`).join('')}
+      <tr class="tr"><td colspan="5" class="c b">Total (Max 100)</td><td class="c">${journalScore > 0 ? journalScore.toFixed(1) : "&nbsp;"}</td></tr>
     </table>
 
     <h3>B2. Books, Book Chapters &amp; Edited Volumes &nbsp;(Max 30)</h3>
     <table>
       <tr><th>SN</th><th>Title with Page Nos.</th><th>Book Title, Editor &amp; Publisher</th><th>ISSN/ISBN</th><th>Type of Publisher</th><th>Co-authors</th><th>First Author</th><th>Self Score</th></tr>
-      ${books.map((b, i) => `<tr><td class="c">${i + 1}</td><td>${b.title || '&nbsp;'}</td><td>${b.book || '&nbsp;'}</td><td class="c">${b.issn || '&nbsp;'}</td><td>${b.pub || '&nbsp;'}</td><td>${b.coauth || '&nbsp;'}</td><td>${b.first || '&nbsp;'}</td><td class="c">${b.score || '&nbsp;'}</td></tr>`).join('')}
-      <tr class="tr"><td colspan="7" class="c b">Total (Max 30)</td><td class="c">${bookScore.toFixed(1)}</td></tr>
+      ${books.map((b, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(b.title)}</td><td>${reportTextValue(b.book)}</td><td class="c">${reportTextValue(b.issn)}</td><td>${reportTextValue(b.pub)}</td><td>${reportTextValue(b.coauth)}</td><td class="c">${reportTextValue(b.first)}</td><td class="c">${reportTextValue(b.score)}</td></tr>`).join('')}
+      <tr class="tr"><td colspan="7" class="c b">Total (Max 30)</td><td class="c">${bookScore > 0 ? bookScore.toFixed(1) : "&nbsp;"}</td></tr>
     </table>
 
     <h3>B3. Patents, Copyrights &amp; IP and Product Development &nbsp;(Max 40)</h3>
     <table>
       <tr><th>SN</th><th>Title</th><th>National / International</th><th>Date of Filing</th><th>Status</th><th>Patent File No.</th><th>Self Score</th></tr>
-      ${patents.map((p, i) => `<tr><td class="c">${i + 1}</td><td>${p.title || '&nbsp;'}</td><td class="c">${p.type || '&nbsp;'}</td><td class="c">${p.date || '&nbsp;'}</td><td>${p.status || '&nbsp;'}</td><td class="c">${p.fileNo || '&nbsp;'}</td><td class="c">${p.score || '&nbsp;'}</td></tr>`).join('')}
-      <tr class="tr"><td colspan="6" class="c b">Total (Max 40)</td><td class="c">${patentScore.toFixed(1)}</td></tr>
+      ${patents.map((p, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(p.title)}</td><td class="c">${reportTextValue(p.type)}</td><td class="c">${reportTextValue(p.date)}</td><td>${reportTextValue(p.status)}</td><td class="c">${reportTextValue(p.fileNo)}</td><td class="c">${reportTextValue(p.score)}</td></tr>`).join('')}
+      <tr class="tr"><td colspan="6" class="c b">Total (Max 40)</td><td class="c">${patentScore > 0 ? patentScore.toFixed(1) : "&nbsp;"}</td></tr>
     </table>
 
     <h3>B4. Funded Research Projects &nbsp;(Max 40)</h3>
     <table>
       <tr><th>SN</th><th>Title</th><th>Funding Agency</th><th>Date of Sanction</th><th>Grant Amount</th><th>Role</th><th>Status</th><th>Self Score</th></tr>
-      ${projects2.map((p, i) => `<tr><td class="c">${i + 1}</td><td>${p.title || '&nbsp;'}</td><td>${p.agency || '&nbsp;'}</td><td class="c">${p.date || '&nbsp;'}</td><td class="c">${p.amount || '&nbsp;'}</td><td>${p.role || '&nbsp;'}</td><td>${p.status || '&nbsp;'}</td><td class="c">${p.score || '&nbsp;'}</td></tr>`).join('')}
-      <tr class="tr"><td colspan="7" class="c b">Total (Max 40)</td><td class="c">${projectBScore.toFixed(1)}</td></tr>
+      ${projects2.map((p, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(p.title)}</td><td>${reportTextValue(p.agency)}</td><td class="c">${reportTextValue(p.date)}</td><td class="c">${reportTextValue(p.amount)}</td><td>${reportTextValue(p.role)}</td><td>${reportTextValue(p.status)}</td><td class="c">${reportTextValue(p.score)}</td></tr>`).join('')}
+      <tr class="tr"><td colspan="7" class="c b">Total (Max 40)</td><td class="c">${projectBScore > 0 ? projectBScore.toFixed(1) : "&nbsp;"}</td></tr>
     </table>
 
     <h3>Legacy External Research Projects &nbsp;(Not counted in AY 2026-2027 total)</h3>
     <table>
       <tr><th>SN</th><th>Title</th><th>Funding Agency</th><th>Date of Sanction</th><th>Grant Amount</th><th>Role</th><th>Status</th><th>Self Score</th></tr>
-      ${externalProjects.map((p, i) => `<tr><td class="c">${i + 1}</td><td>${p.title || '&nbsp;'}</td><td>${p.agency || '&nbsp;'}</td><td class="c">${p.date || '&nbsp;'}</td><td class="c">${p.amount || '&nbsp;'}</td><td>${p.role || '&nbsp;'}</td><td>${p.status || '&nbsp;'}</td><td class="c">${p.score || '&nbsp;'}</td></tr>`).join('')}
-      <tr class="tr"><td colspan="7" class="c b">Total (Max 0)</td><td class="c">${externalProjectScore.toFixed(1)}</td></tr>
+      ${externalProjects.map((p, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(p.title)}</td><td>${reportTextValue(p.agency)}</td><td class="c">${reportTextValue(p.date)}</td><td class="c">${reportTextValue(p.amount)}</td><td>${reportTextValue(p.role)}</td><td>${reportTextValue(p.status)}</td><td class="c">${reportTextValue(p.score)}</td></tr>`).join('')}
+      <tr class="tr"><td colspan="7" class="c b">Total (Max 0)</td><td class="c">${externalProjectScore > 0 ? externalProjectScore.toFixed(1) : "&nbsp;"}</td></tr>
     </table>
 
     ${`
     <h3>B5. Research Guidance &nbsp;(Max 20)</h3>
     <table>
       <tr><th>SN</th><th>Degree</th><th>Name of Student</th><th>Thesis / Status</th><th>Self Score</th></tr>
-      ${research.map((r, i) => `<tr><td class="c">${i + 1}</td><td class="c">${r.degree || '&nbsp;'}</td><td>${r.name || '&nbsp;'}</td><td>${r.thesis || '&nbsp;'}</td><td class="c">${r.degree || r.name || r.thesis || r.score ? researchGuidanceScore(r).toFixed(1) : ""}</td></tr>`).join('')}
-      <tr class="tr"><td colspan="4" class="c b">Total (Max 20)</td><td class="c">${researchScore.toFixed(1)}</td></tr>
+      ${research.map((r, i) => `<tr><td class="c">${i + 1}</td><td class="c">${reportTextValue(r.degree)}</td><td>${reportTextValue(r.name)}</td><td>${reportTextValue(r.thesis)}</td><td class="c">${(r.degree || r.name || r.thesis || r.score) ? researchGuidanceScore(r).toFixed(1) : "&nbsp;"}</td></tr>`).join('')}
+      <tr class="tr"><td colspan="4" class="c b">Total (Max 20)</td><td class="c">${researchScore > 0 ? researchScore.toFixed(1) : "&nbsp;"}</td></tr>
     </table>`}
 
     <h3>B6. Consultancy, Testing &amp; Training &nbsp;(Max 20)</h3>
     <table>
       <tr><th>SN</th><th>Title of Proposal</th><th>Duration</th><th>Funding Agency</th><th>Grant Amount Requested</th><th>Self Score</th></tr>
-      ${proposals.map((p, i) => `<tr><td class="c">${i + 1}</td><td>${p.title || '&nbsp;'}</td><td class="c">${p.duration || '&nbsp;'}</td><td>${p.agency || '&nbsp;'}</td><td class="c">${p.amount || '&nbsp;'}</td><td class="c">${p.score || '&nbsp;'}</td></tr>`).join('')}
-      <tr class="tr"><td colspan="5" class="c b">Total (Max 20)</td><td class="c">${proposalScore.toFixed(1)}</td></tr>
+      ${proposals.map((p, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(p.title)}</td><td class="c">${reportTextValue(p.duration)}</td><td>${reportTextValue(p.agency)}</td><td class="c">${reportTextValue(p.amount)}</td><td class="c">${reportTextValue(p.score)}</td></tr>`).join('')}
+      <tr class="tr"><td colspan="5" class="c b">Total (Max 20)</td><td class="c">${proposalScore > 0 ? proposalScore.toFixed(1) : "&nbsp;"}</td></tr>
     </table>
 
     <h3>B7. Conference / FDP Contributions - Organised &nbsp;(Max 20)</h3>
     <table>
       <tr><th>SN</th><th>Title / Session</th><th>Type</th><th>Organization</th><th>Level</th><th>Self Score</th></tr>
-      ${confs.map((c, i) => `<tr><td class="c">${i + 1}</td><td>${c.title || '&nbsp;'}</td><td>${c.type || '&nbsp;'}</td><td>${c.org || '&nbsp;'}</td><td>${c.level || '&nbsp;'}</td><td class="c">${c.score || '&nbsp;'}</td></tr>`).join('')}
-      <tr class="tr"><td colspan="5" class="c b">Total (Max 20)</td><td class="c">${confScore.toFixed(1)}</td></tr>
+      ${confs.map((c, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(c.title)}</td><td>${reportTextValue(c.type)}</td><td>${reportTextValue(c.org)}</td><td>${reportTextValue(c.level)}</td><td class="c">${reportTextValue(c.score)}</td></tr>`).join('')}
+      <tr class="tr"><td colspan="5" class="c b">Total (Max 20)</td><td class="c">${confScore > 0 ? confScore.toFixed(1) : "&nbsp;"}</td></tr>
     </table>
 
     <h3>B8. Conference / FDP / Industry Training Attended &nbsp;(Max 20)</h3>
     <table>
       <tr><th>SN</th><th>Program</th><th>Duration</th><th>Organized By</th><th>Self Score</th></tr>
-      ${fdps.map((f, i) => `<tr><td class="c">${i + 1}</td><td>${f.program || '&nbsp;'}</td><td class="c">${f.duration || '&nbsp;'}</td><td>${f.org || '&nbsp;'}</td><td class="c">${clampScore(f.score, SCORE_LIMITS.fdpRow) || '&nbsp;'}</td></tr>`).join('')}
-      <tr class="tr"><td colspan="4" class="c b">FDP / Workshops Total</td><td class="c">${fdpScore.toFixed(1)}</td></tr>
+      ${fdps.map((f, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(f.program)}</td><td class="c">${reportTextValue(f.duration)}</td><td>${reportTextValue(f.org)}</td><td class="c">${reportTextValue(clampScore(f.score, SCORE_LIMITS.fdpRow))}</td></tr>`).join('')}
+      <tr class="tr"><td colspan="4" class="c b">FDP / Workshops Total</td><td class="c">${fdpScore > 0 ? fdpScore.toFixed(1) : "&nbsp;"}</td></tr>
     </table>
 
     <h3>Industrial Training</h3>
     <table>
       <tr><th>SN</th><th>Company / Industry</th><th>Duration</th><th>Nature of Training</th><th>Self Score</th></tr>
-      ${training.map((t, i) => `<tr><td class="c">${i + 1}</td><td>${t.company || '&nbsp;'}</td><td class="c">${t.duration || '&nbsp;'}</td><td>${t.nature || '&nbsp;'}</td><td class="c">${clampScore(t.score, SCORE_LIMITS.fdpRow) || '&nbsp;'}</td></tr>`).join('')}
-      <tr class="tr"><td colspan="4" class="c b">Combined B8 Total (Max 20)</td><td class="c">${b8Score.toFixed(1)}</td></tr>
+      ${training.map((t, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(t.company)}</td><td class="c">${reportTextValue(t.duration)}</td><td>${reportTextValue(t.nature)}</td><td class="c">${reportTextValue(clampScore(t.score, SCORE_LIMITS.fdpRow))}</td></tr>`).join('')}
+      <tr class="tr"><td colspan="4" class="c b">Combined B8 Total (Max 20)</td><td class="c">${b8Score > 0 ? b8Score.toFixed(1) : "&nbsp;"}</td></tr>
     </table>
 
     <h3>B9. Research Awards, Fellowships &amp; Citations &nbsp;(Max 20)</h3>
     <table>
       <tr><th>SN</th><th>Title of Award</th><th>Date</th><th>Awarding Agency</th><th>Level</th><th>Self Score</th></tr>
-      ${awards.map((a, i) => `<tr><td class="c">${i + 1}</td><td>${a.title || '&nbsp;'}</td><td class="c">${a.date || '&nbsp;'}</td><td>${a.agency || '&nbsp;'}</td><td>${a.level || '&nbsp;'}</td><td class="c">${a.score || '&nbsp;'}</td></tr>`).join('')}
-      <tr class="tr"><td colspan="5" class="c b">Total (Max 20)</td><td class="c">${awardScore.toFixed(1)}</td></tr>
+      ${awards.map((a, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(a.title)}</td><td class="c">${reportTextValue(a.date)}</td><td>${reportTextValue(a.agency)}</td><td>${reportTextValue(a.level)}</td><td class="c">${reportTextValue(a.score)}</td></tr>`).join('')}
+      <tr class="tr"><td colspan="5" class="c b">Total (Max 20)</td><td class="c">${awardScore > 0 ? awardScore.toFixed(1) : "&nbsp;"}</td></tr>
     </table>
 
     <h3>B10. Innovation, Start-ups &amp; Technology Transfer &nbsp;(Max 20)</h3>
     <table>
       <tr><th>SN</th><th>Details of Product</th><th>Used by Students / Commercialized</th><th>Self Score</th></tr>
-      ${products.map((p, i) => `<tr><td class="c">${i + 1}</td><td>${p.details || '&nbsp;'}</td><td>${p.usage || '&nbsp;'}</td><td class="c">${p.score || '&nbsp;'}</td></tr>`).join('')}
-      <tr class="tr"><td colspan="3" class="c b">Total (Max 20)</td><td class="c">${productScore.toFixed(1)}</td></tr>
+      ${products.map((p, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(p.details)}</td><td>${reportTextValue(p.usage)}</td><td class="c">${reportTextValue(p.score)}</td></tr>`).join('')}
+      <tr class="tr"><td colspan="3" class="c b">Total (Max 20)</td><td class="c">${productScore > 0 ? productScore.toFixed(1) : "&nbsp;"}</td></tr>
     </table>
 
     <h3>B11. ICT Content, MOOCs &amp; E-Learning &nbsp;(Max 15)</h3>
     <table>
       <tr><th>SN</th><th>Title</th><th>Short Description</th><th>Type / Link</th><th>Quadrants</th><th>Self Score</th></tr>
-      ${ict.map((r, i) => `<tr><td class="c">${i + 1}</td><td>${r.title || '&nbsp;'}</td><td>${r.desc || '&nbsp;'}</td><td>${r.type || '&nbsp;'}</td><td class="c">${r.quad || '&nbsp;'}</td><td class="c">${r.score || '&nbsp;'}</td></tr>`).join('')}
-      <tr class="tr"><td colspan="5" class="c b">Total (Max 15)</td><td class="c">${ictScore.toFixed(1)}</td></tr>
+      ${ict.map((r, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(r.title)}</td><td>${reportTextValue(r.desc)}</td><td>${reportTextValue(r.type)}</td><td class="c">${reportTextValue(r.quad)}</td><td class="c">${reportTextValue(r.score)}</td></tr>`).join('')}
+      <tr class="tr"><td colspan="5" class="c b">Total (Max 15)</td><td class="c">${ictScore > 0 ? ictScore.toFixed(1) : "&nbsp;"}</td></tr>
     </table>
 
     <div class="pb"></div>
@@ -1230,50 +1232,50 @@ export default function StandardMyAppraisal({
     <h3>C1. Administration at University Level &nbsp;(Max 50)</h3>
     <table>
       <tr><th>SN</th><th>Activity / Responsibility</th><th>Duration Category</th><th>Period</th><th>Self Score</th></tr>
-      ${uniActs.map((u, i) => `<tr><td class="c">${i + 1}</td><td>${u.activity || '&nbsp;'}</td><td>${u.nature || '&nbsp;'}</td><td>${u.period || '&nbsp;'}</td><td class="c">${u.score || '&nbsp;'}</td></tr>`).join('')}
-      <tr class="tr"><td colspan="4" class="c b">Total (Max 50)</td><td class="c">${uniScore.toFixed(1)}</td></tr>
+      ${uniActs.map((u, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(u.activity)}</td><td>${reportTextValue(u.nature)}</td><td>${reportTextValue(u.period)}</td><td class="c">${reportTextValue(u.score)}</td></tr>`).join('')}
+      <tr class="tr"><td colspan="4" class="c b">Total (Max 50)</td><td class="c">${uniScore > 0 ? uniScore.toFixed(1) : "&nbsp;"}</td></tr>
     </table>
 
     <h3>C2. Administration at School Level &nbsp;(Max 30)</h3>
     <table>
       <tr><th>SN</th><th>Activity / Responsibility</th><th>Duration Category</th><th>Period</th><th>Self Score</th></tr>
-      ${deptActs.map((d, i) => `<tr><td class="c">${i + 1}</td><td>${d.activity || '&nbsp;'}</td><td>${d.nature || '&nbsp;'}</td><td>${d.period || '&nbsp;'}</td><td class="c">${d.score || '&nbsp;'}</td></tr>`).join('')}
-      <tr class="tr"><td colspan="4" class="c b">Total (Max 30)</td><td class="c">${deptScore.toFixed(1)}</td></tr>
+      ${deptActs.map((d, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(d.activity)}</td><td>${reportTextValue(d.nature)}</td><td>${reportTextValue(d.period)}</td><td class="c">${reportTextValue(d.score)}</td></tr>`).join('')}
+      <tr class="tr"><td colspan="4" class="c b">Total (Max 30)</td><td class="c">${deptScore > 0 ? deptScore.toFixed(1) : "&nbsp;"}</td></tr>
     </table>
 
     <h3>C3. Event Organisation &amp; Institutional Visibility &nbsp;(Max 20)</h3>
     <table>
       <tr><th>SN</th><th>Event / Contribution</th><th>Role</th><th>Date</th><th>Level</th><th>Self Score</th></tr>
-      ${eventRows.map((r, i) => `<tr><td class="c">${i + 1}</td><td>${r.event || '&nbsp;'}</td><td>${r.role || '&nbsp;'}</td><td class="c">${r.date || '&nbsp;'}</td><td>${r.level || '&nbsp;'}</td><td class="c">${r.score || '&nbsp;'}</td></tr>`).join('')}
-      <tr class="tr"><td colspan="5" class="c b">Total (Max 20)</td><td class="c">${eventScore.toFixed(1)}</td></tr>
+      ${eventRows.map((r, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(r.event)}</td><td>${reportTextValue(r.role)}</td><td class="c">${reportTextValue(r.date)}</td><td>${reportTextValue(r.level)}</td><td class="c">${reportTextValue(r.score)}</td></tr>`).join('')}
+      <tr class="tr"><td colspan="5" class="c b">Total (Max 20)</td><td class="c">${eventScore > 0 ? eventScore.toFixed(1) : "&nbsp;"}</td></tr>
     </table>
 
     <h3>C4. Outreach, Extension &amp; Social Responsibility &nbsp;(Max 20)</h3>
     ${`<table>
       <tr><th>SN</th><th>Activity</th><th>Details</th><th>Date</th><th>Self Score</th></tr>
-      ${society.map((s, i) => `<tr><td class="c">${i + 1}</td><td>${s.label || '&nbsp;'}</td><td>${s.details || '&nbsp;'}</td><td class="c">${s.date || '&nbsp;'}</td><td class="c">${s.score || '&nbsp;'}</td></tr>`).join('')}
-      <tr class="tr"><td colspan="4" class="c b">Total (Max 20)</td><td class="c">${societyScore.toFixed(1)}</td></tr>
+      ${society.map((s, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(s.label)}</td><td>${reportTextValue(s.details)}</td><td class="c">${reportTextValue(s.date)}</td><td class="c">${reportTextValue(s.score)}</td></tr>`).join('')}
+      <tr class="tr"><td colspan="4" class="c b">Total (Max 20)</td><td class="c">${societyScore > 0 ? societyScore.toFixed(1) : "&nbsp;"}</td></tr>
     </table>`}
 
     <h3>C5. Industry Interaction &amp; Linkages &nbsp;(Max 8)</h3>
     <table>
       <tr><th>SN</th><th>Activity</th><th>Industry Partner</th><th>Date</th><th>Self Score</th></tr>
-      ${industry.map((ind, i) => `<tr><td class="c">${i + 1}</td><td>${ind.activity || ind.name || '&nbsp;'}</td><td>${ind.partner || ind.details || '&nbsp;'}</td><td class="c">${ind.date || '&nbsp;'}</td><td class="c">${ind.score || '&nbsp;'}</td></tr>`).join('')}
-      <tr class="tr"><td colspan="4" class="c b">Total (Max 8)</td><td class="c">${industryScore.toFixed(1)}</td></tr>
+      ${industry.map((ind, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(ind.activity || ind.name)}</td><td>${reportTextValue(ind.partner || ind.details)}</td><td class="c">${reportTextValue(ind.date)}</td><td class="c">${reportTextValue(ind.score)}</td></tr>`).join('')}
+      <tr class="tr"><td colspan="4" class="c b">Total (Max 8)</td><td class="c">${industryScore > 0 ? industryScore.toFixed(1) : "&nbsp;"}</td></tr>
     </table>
 
     <h3>C6. Alumni Engagement &amp; Networking &nbsp;(Max 10)</h3>
     <table>
       <tr><th>SN</th><th>Activity</th><th>Details</th><th>Date</th><th>Self Score</th></tr>
-      ${alumniRows.map((r, i) => `<tr><td class="c">${i + 1}</td><td>${r.activity || '&nbsp;'}</td><td>${r.details || '&nbsp;'}</td><td class="c">${r.date || '&nbsp;'}</td><td class="c">${r.score || '&nbsp;'}</td></tr>`).join('')}
-      <tr class="tr"><td colspan="4" class="c b">Total (Max 10)</td><td class="c">${alumniScore.toFixed(1)}</td></tr>
+      ${alumniRows.map((r, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(r.activity)}</td><td>${reportTextValue(r.details)}</td><td class="c">${reportTextValue(r.date)}</td><td class="c">${reportTextValue(r.score)}</td></tr>`).join('')}
+      <tr class="tr"><td colspan="4" class="c b">Total (Max 10)</td><td class="c">${alumniScore > 0 ? alumniScore.toFixed(1) : "&nbsp;"}</td></tr>
     </table>
 
     <h3>C7. Student Placement Mentoring &amp; Career Development &nbsp;(Max 20)</h3>
     <table>
       <tr><th>SN</th><th>Activity Type</th><th>Student / Company Name</th><th>Date</th><th>Self Score</th></tr>
-      ${placementRows.map((r, i) => `<tr><td class="c">${i + 1}</td><td>${r.activityType || '&nbsp;'}</td><td>${r.name || '&nbsp;'}</td><td class="c">${r.date || '&nbsp;'}</td><td class="c">${r.score || '&nbsp;'}</td></tr>`).join('')}
-      <tr class="tr"><td colspan="4" class="c b">Total (Max 20)</td><td class="c">${placementScore.toFixed(1)}</td></tr>
+      ${placementRows.map((r, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(r.activityType)}</td><td>${reportTextValue(r.name)}</td><td class="c">${reportTextValue(r.date)}</td><td class="c">${reportTextValue(r.score)}</td></tr>`).join('')}
+      <tr class="tr"><td colspan="4" class="c b">Total (Max 20)</td><td class="c">${placementScore > 0 ? placementScore.toFixed(1) : "&nbsp;"}</td></tr>
     </table>
 
     <div class="pb"></div>
@@ -1281,38 +1283,38 @@ export default function StandardMyAppraisal({
     <h3>Part D. Annual Confidential Report &nbsp;(Max 50, Evaluator only)</h3>
     <table>
       <tr><th>SN</th><th>Parameter</th><th>Description / Indicators</th><th>Max Marks</th></tr>
-      ${partDParameters.map((row, i) => `<tr><td class="c">D${i + 1}</td><td>${row.parameter}</td><td>${row.description}</td><td class="c">${row.max}</td></tr>`).join('')}
+      ${partDParameters.map((row, i) => `<tr><td class="c">D${i + 1}</td><td>${reportTextValue(row.parameter)}</td><td>${reportTextValue(row.description)}</td><td class="c">${reportTextValue(row.max)}</td></tr>`).join('')}
       <tr class="tr"><td colspan="3" class="c b">Part D Total (Max: 50)</td><td class="c">${PART_D_MAX}</td></tr>
     </table>
 
     <div class="pb"></div>
-    <h3 style="text-align:center;font-size:13px">SUMMARY OF SELF SCORES - AY ${info.ay || ""}</h3>
+    <h3 style="text-align:center;font-size:13px">SUMMARY OF SELF SCORES - AY ${reportTextValue(info.ay)}</h3>
     <table class="st">
       <tr><th>Sr.No.</th><th>Criteria</th><th>Max Score</th><th>Faculty Score</th></tr>
       <tr><td colspan="4" class="b" style="background:#d9d9d9;text-align:center">Part A - Teaching Process</td></tr>
-      <tr><td class="c">A</td><td>Teaching &amp; Learning</td><td class="c">${effectivePartAMax}</td><td class="c">${partATotal.toFixed(1)}</td></tr>
-      <tr class="tr"><td colspan="2" class="c b">Part A Total</td><td class="c b">${effectivePartAMax}</td><td class="c b">${partATotal.toFixed(1)}</td></tr>
-      <tr class="tr"><td colspan="2" class="c b">Part A Marks Obtained (%)</td><td colspan="2" class="c b">${partAMarksPercentage}%</td></tr>
+      <tr><td class="c">A</td><td>Teaching &amp; Learning</td><td class="c">${effectivePartAMax}</td><td class="c">${partATotal > 0 ? partATotal.toFixed(1) : "&nbsp;"}</td></tr>
+      <tr class="tr"><td colspan="2" class="c b">Part A Total</td><td class="c b">${effectivePartAMax}</td><td class="c b">${partATotal > 0 ? partATotal.toFixed(1) : "&nbsp;"}</td></tr>
+      <tr class="tr"><td colspan="2" class="c b">Part A Marks Obtained (%)</td><td colspan="2" class="c b">${partATotal > 0 ? `${partAMarksPercentage}%` : "&nbsp;"}</td></tr>
       <tr><td colspan="4" class="b" style="background:#d9d9d9;text-align:center">Part B - Research and Academic Contribution</td></tr>
-      <tr><td class="c">1</td><td>Journal Publications</td><td class="c">100</td><td class="c">${journalScore.toFixed(1)}</td></tr>
-      <tr><td class="c">2</td><td>Books, Book Chapters &amp; Edited Volumes</td><td class="c">30</td><td class="c">${bookScore.toFixed(1)}</td></tr>
-      <tr><td class="c">3</td><td>Patents, Copyrights &amp; IP and Product Development</td><td class="c">40</td><td class="c">${patentScore.toFixed(1)}</td></tr>
-      <tr><td class="c">4</td><td>Funded Research Projects</td><td class="c">40</td><td class="c">${projectBScore.toFixed(1)}</td></tr>
-      <tr><td class="c">5</td><td>Research Guidance</td><td class="c">20</td><td class="c">${researchScore.toFixed(1)}</td></tr>
-      <tr><td class="c">6</td><td>Consultancy, Testing &amp; Training</td><td class="c">20</td><td class="c">${proposalScore.toFixed(1)}</td></tr>
-      <tr><td class="c">7</td><td>Conference / FDP Contributions - Organised</td><td class="c">20</td><td class="c">${confScore.toFixed(1)}</td></tr>
-      <tr><td class="c">8</td><td>Conference / FDP / Industry Training Attended</td><td class="c">20</td><td class="c">${b8Score.toFixed(1)}</td></tr>
-      <tr><td class="c">9</td><td>Research Awards, Fellowships &amp; Citations</td><td class="c">20</td><td class="c">${awardScore.toFixed(1)}</td></tr>
-      <tr><td class="c">10</td><td>Innovation, Start-ups &amp; Technology Transfer</td><td class="c">20</td><td class="c">${productScore.toFixed(1)}</td></tr>
-      <tr><td class="c">11</td><td>ICT Content, MOOCs &amp; E-Learning</td><td class="c">20</td><td class="c">${ictScore.toFixed(1)}</td></tr>
-      <tr class="tr"><td colspan="2" class="c b">Part B Total</td><td class="c b">${effectivePartBMax}</td><td class="c b">${partBTotal.toFixed(1)}</td></tr>
-      <tr class="tr"><td colspan="2" class="c b">Part B Marks Obtained (%)</td><td colspan="2" class="c b">${partBMarksPercentage}%</td></tr>
+      <tr><td class="c">1</td><td>Journal Publications</td><td class="c">100</td><td class="c">${journalScore > 0 ? journalScore.toFixed(1) : "&nbsp;"}</td></tr>
+      <tr><td class="c">2</td><td>Books, Book Chapters &amp; Edited Volumes</td><td class="c">30</td><td class="c">${bookScore > 0 ? bookScore.toFixed(1) : "&nbsp;"}</td></tr>
+      <tr><td class="c">3</td><td>Patents, Copyrights &amp; IP and Product Development</td><td class="c">40</td><td class="c">${patentScore > 0 ? patentScore.toFixed(1) : "&nbsp;"}</td></tr>
+      <tr><td class="c">4</td><td>Funded Research Projects</td><td class="c">40</td><td class="c">${projectBScore > 0 ? projectBScore.toFixed(1) : "&nbsp;"}</td></tr>
+      <tr><td class="c">5</td><td>Research Guidance</td><td class="c">20</td><td class="c">${researchScore > 0 ? researchScore.toFixed(1) : "&nbsp;"}</td></tr>
+      <tr><td class="c">6</td><td>Consultancy, Testing &amp; Training</td><td class="c">20</td><td class="c">${proposalScore > 0 ? proposalScore.toFixed(1) : "&nbsp;"}</td></tr>
+      <tr><td class="c">7</td><td>Conference / FDP Contributions - Organised</td><td class="c">20</td><td class="c">${confScore > 0 ? confScore.toFixed(1) : "&nbsp;"}</td></tr>
+      <tr><td class="c">8</td><td>Conference / FDP / Industry Training Attended</td><td class="c">20</td><td class="c">${b8Score > 0 ? b8Score.toFixed(1) : "&nbsp;"}</td></tr>
+      <tr><td class="c">9</td><td>Research Awards, Fellowships &amp; Citations</td><td class="c">20</td><td class="c">${awardScore > 0 ? awardScore.toFixed(1) : "&nbsp;"}</td></tr>
+      <tr><td class="c">10</td><td>Innovation, Start-ups &amp; Technology Transfer</td><td class="c">20</td><td class="c">${productScore > 0 ? productScore.toFixed(1) : "&nbsp;"}</td></tr>
+      <tr><td class="c">11</td><td>ICT Content, MOOCs &amp; E-Learning</td><td class="c">20</td><td class="c">${ictScore > 0 ? ictScore.toFixed(1) : "&nbsp;"}</td></tr>
+      <tr class="tr"><td colspan="2" class="c b">Part B Total</td><td class="c b">${effectivePartBMax}</td><td class="c b">${partBTotal > 0 ? partBTotal.toFixed(1) : "&nbsp;"}</td></tr>
+      <tr class="tr"><td colspan="2" class="c b">Part B Marks Obtained (%)</td><td colspan="2" class="c b">${partBTotal > 0 ? `${partBMarksPercentage}%` : "&nbsp;"}</td></tr>
       <tr><td colspan="4" class="b" style="background:#d9d9d9;text-align:center">Part C - Administrative Role &amp; University Development Contribution</td></tr>
-      <tr><td class="c">C</td><td>Administrative Contribution</td><td class="c">${PART_C_MAX}</td><td class="c">${partCTotal.toFixed(1)}</td></tr>
+      <tr><td class="c">C</td><td>Administrative Contribution</td><td class="c">${PART_C_MAX}</td><td class="c">${partCTotal > 0 ? partCTotal.toFixed(1) : "&nbsp;"}</td></tr>
       <tr><td colspan="4" class="b" style="background:#d9d9d9;text-align:center">Part D - Annual Confidential Report</td></tr>
-      <tr><td class="c">D</td><td>Annual Confidential Report (Evaluator only)</td><td class="c">${PART_D_MAX}</td><td class="c">N/A</td></tr>
-      <tr style="background:#bfbfbf;font-weight:bold;font-size:13px"><td colspan="2" class="c">Grand Total (Part A + Part B + Part C + Part D)</td><td class="c">${effectiveGrandMax}</td><td class="c">${grandTotal.toFixed(1)}</td></tr>
-      <tr style="background:#bfbfbf;font-weight:bold;font-size:13px"><td colspan="2" class="c">Marks Obtained (%)</td><td colspan="2" class="c">${totalMarksPercentage}%</td></tr>
+      <tr><td class="c">D</td><td>Annual Confidential Report (Evaluator only)</td><td class="c">${PART_D_MAX}</td><td class="c">&nbsp;</td></tr>
+      <tr style="background:#bfbfbf;font-weight:bold;font-size:13px"><td colspan="2" class="c">Grand Total (Part A + Part B + Part C + Part D)</td><td class="c">${effectiveGrandMax}</td><td class="c">${grandTotal > 0 ? grandTotal.toFixed(1) : "&nbsp;"}</td></tr>
+      <tr style="background:#bfbfbf;font-weight:bold;font-size:13px"><td colspan="2" class="c">Marks Obtained (%)</td><td colspan="2" class="c">${grandTotal > 0 ? `${totalMarksPercentage}%` : "&nbsp;"}</td></tr>
     </table>
 
     ${String(summaryOtherInfo ?? "").trim() ? `
@@ -1693,7 +1695,17 @@ export default function StandardMyAppraisal({
                                   ))}
                                 </select>
                               </td>
-                              <td style={TD}><TI val={r.details} onChange={(v) => setInnov(i, "details", v)} placeholder="Yes / No (with details)" /></td>
+                               <td style={TD}>
+                                 <select
+                                   value={r.details || ""}
+                                   onChange={(e) => setInnov(i, "details", e.target.value)}
+                                   style={{ width: "100%", height: 30, border: "1px solid #cbd5e1", borderRadius: 4, background: "#fff", fontFamily: "inherit", fontSize: 11 }}
+                                 >
+                                   <option value="">Select</option>
+                                   <option value="Yes">Yes</option>
+                                   <option value="No">No</option>
+                                 </select>
+                               </td>
                               <td style={TD}><DocCell id={`innov-${i}`} docs={docs} setDocs={setDocs} /></td>
                               <td style={TD}><ViewCell id={`innov-${i}`} docs={docs} /></td>
                               <td style={TDS}><TI val={r.score} onChange={(v) => setInnov(i, "score", v === "" ? "" : String(clampScore(v, A3_INNOVATIVE_ROW_MAX)))} numeric max={A3_INNOVATIVE_ROW_MAX} center /></td>
@@ -1761,7 +1773,17 @@ export default function StandardMyAppraisal({
                             <tr key={i} style={i % 2 === 1 ? { background: "#f8fafc" } : {}}>
                               <td style={TDC}>{i + 1}</td>
                               <td style={TD}><TI val={r.component} onChange={(v) => setObe(i, "component", v)} placeholder="CO-PO / attainment / corrective action" /></td>
-                              <td style={TD}><TI val={r.evidence} onChange={(v) => setObe(i, "evidence", v)} placeholder="Yes / No" /></td>
+                               <td style={TD}>
+                                 <select
+                                   value={r.evidence || ""}
+                                   onChange={(e) => setObe(i, "evidence", e.target.value)}
+                                   style={{ width: "100%", height: 30, border: "1px solid #cbd5e1", borderRadius: 4, background: "#fff", fontFamily: "inherit", fontSize: 11 }}
+                                 >
+                                   <option value="">Select</option>
+                                   <option value="Yes">Yes</option>
+                                   <option value="No">No</option>
+                                 </select>
+                               </td>
                               <td style={TD}><DocCell id={`obe-${i}`} docs={docs} setDocs={setDocs} /></td>
                               <td style={TD}><ViewCell id={`obe-${i}`} docs={docs} /></td>
                               <td style={TDS}><TI val={r.score} onChange={(v) => setObe(i, "score", v)} center numeric max={r.max || A5_OBE_MAX} /></td>
@@ -1861,7 +1883,17 @@ export default function StandardMyAppraisal({
                             <tr key={i} style={i % 2 === 1 ? { background: "#f8fafc" } : {}}>
                               <td style={TDC}>{i + 1}</td>
                               <td style={TD}><TI val={r.activity} onChange={(v) => setMentoring(i, "activity", v)} placeholder="Meeting / register / counselling outcome" /></td>
-                              <td style={TD}><TI val={r.evidence} onChange={(v) => setMentoring(i, "evidence", v)} placeholder="Yes / No" /></td>
+                              <td style={TD}>
+                                <select
+                                  value={r.evidence || ""}
+                                  onChange={(e) => setMentoring(i, "evidence", e.target.value)}
+                                  style={{ width: "100%", height: 30, border: "1px solid #cbd5e1", borderRadius: 4, background: "#fff", fontFamily: "inherit", fontSize: 11 }}
+                                >
+                                  <option value="">Select</option>
+                                  <option value="Yes">Yes</option>
+                                  <option value="No">No</option>
+                                </select>
+                              </td>
                               <td style={TD}><DocCell id={`mentor-${i}`} docs={docs} setDocs={setDocs} /></td>
                               <td style={TD}><ViewCell id={`mentor-${i}`} docs={docs} /></td>
                               <td style={TDS}><TI val={r.score} onChange={(v) => setMentoring(i, "score", v)} center numeric max={r.max || A7_MENTORING_MAX} /></td>
@@ -1879,9 +1911,6 @@ export default function StandardMyAppraisal({
                     {/* A8. Qualifications */}
                     <div style={{ marginBottom: 16, order: 8 }}>
                       <SubsectionTitle icon="award">A8. Professional Development & Qualification Enhancement - Max 10 marks</SubsectionTitle>
-                      <div style={{ fontSize: 11, color: "#64748b", marginBottom: 6 }}>
-                        Higher qualification achieved during the AY — 10 marks; add-on certification/MOOC — 5 marks each.
-                      </div>
                       <table style={T}>
                         <thead>
                           <tr>
@@ -1906,7 +1935,7 @@ export default function StandardMyAppraisal({
                                 />
                               </td>
                               <td style={TD}><TI val={r.awardingBody} onChange={(v) => setQual(i, "awardingBody", v)} placeholder="Awarding Body" /></td>
-                              <td style={TDC}><TI val={r.date} onChange={(v) => setQual(i, "date", v)} placeholder="DD/MM/YYYY" /></td>
+                              <td style={TDC}><TI val={r.date} onChange={(v) => setQual(i, "date", maskDateDDMMYYYY(v))} placeholder="DD/MM/YYYY" /></td>
                               <td style={TD}><DocCell id={`qual-${i}`} docs={docs} setDocs={setDocs} /></td>
                               <td style={TD}><ViewCell id={`qual-${i}`} docs={docs} /></td>
                               <td style={TDS}><TI val={r.score} onChange={(v) => setQual(i, "score", v)} center numeric max={SCORE_LIMITS.qualificationRow} /></td>
@@ -2016,7 +2045,18 @@ export default function StandardMyAppraisal({
                               <td style={TD}><TI val={r.event} onChange={(v) => setEvent(i, "event", v)} placeholder="Event / conference / workshop name" /></td>
                               <td style={TD}><TI val={r.role} onChange={(v) => setEvent(i, "role", v)} placeholder="Convener / coordinator / member" /></td>
                               <td style={TD}><TI val={r.date} onChange={(v) => setEvent(i, "date", maskDateDDMMYYYY(v))} placeholder="DD/MM/YYYY" /></td>
-                              <td style={TD}><TI val={r.level} onChange={(v) => setEvent(i, "level", v)} placeholder="University / National / International" /></td>
+                              <td style={TD}>
+                                 <select
+                                   value={r.level || ""}
+                                   onChange={(e) => setEvent(i, "level", e.target.value)}
+                                   style={{ width: "100%", height: 30, border: "1px solid #cbd5e1", borderRadius: 4, background: "#fff", fontSize: 11, fontFamily: "inherit" }}
+                                 >
+                                   <option value="">Select Level</option>
+                                   <option value="University">University</option>
+                                   <option value="National">National</option>
+                                   <option value="International">International</option>
+                                 </select>
+                               </td>
                               <td style={TD}><DocCell id={`event-${i}`} docs={docs} setDocs={setDocs} /></td>
                               <td style={TD}><ViewCell id={`event-${i}`} docs={docs} /></td>
                               <td style={TDS}><TI val={r.score} onChange={(v) => setEvent(i, "score", v)} center numeric max={C3_EVENT_MAX} /></td>
@@ -2380,7 +2420,17 @@ export default function StandardMyAppraisal({
                                   </select>
                                 </td>
                                 <td style={TD}><TI val={r.name} onChange={(v) => setRes(i, "name", v)} textOnly placeholder="Name of Student / Scholar" /></td>
-                                <td style={TD}><TI val={r.status || r.thesis} onChange={(v) => setRes(i, "status", v)} placeholder="Ongoing / Awarded" /></td>
+                                <td style={TD}>
+                                  <select
+                                    value={r.status || r.thesis || ""}
+                                    onChange={(event) => setRes(i, "status", event.target.value)}
+                                    style={{ width: "100%", height: 30, border: "1px solid #cbd5e1", borderRadius: 4, background: "#fff", fontSize: 11, fontFamily: "inherit" }}
+                                  >
+                                    <option value="">Select</option>
+                                    <option value="Ongoing">Ongoing</option>
+                                    <option value="Awarded">Awarded</option>
+                                  </select>
+                                </td>
                                 <td style={TD}><TI val={r.date} onChange={(v) => setRes(i, "date", maskDateDDMMYYYY(v))} placeholder="DD/MM/YYYY" /></td>
                                 <td style={TD}><DocCell id={`res-${i}`} docs={docs} setDocs={setDocs} /></td>
                                 <td style={TD}><ViewCell id={`res-${i}`} docs={docs} /></td>
@@ -2787,7 +2837,8 @@ export default function StandardMyAppraisal({
                     saved={Boolean(sectionSaveStatus[hodAppraisalTab])}
                     saving={savingSection === hodAppraisalTab}
                     locked={appraisalLocked}
-                    onSave={() => handleSaveCurrentSection(hodAppraisalTab)}
+                    onSaveDraft={() => handleSaveCurrentSection(hodAppraisalTab, false)}
+                    onSaveNext={() => handleSaveCurrentSection(hodAppraisalTab, true)}
                   />
                 )}
 

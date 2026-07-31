@@ -569,7 +569,7 @@ const DROPDOWN_FIELD_OPTIONS = {
   },
   research: {
     degree: ["PhD", "PG"],
-    status: ["Ongoing", "Awarded", "Submitted"],
+    status: ["Ongoing", "Awarded"],
   },
   consultancy: {
     nature: ["Consultancy", "Corporate Training", "Creative Commission", "Technical Advisory", "Testing / Retainership"],
@@ -611,7 +611,7 @@ const DROPDOWN_FIELD_OPTIONS = {
   },
   events: {
     role: ["Convener", "Co-Convener", "Organising Team Lead", "Member", "Coordinator"],
-    level: ["University / Institutional", "State / Regional", "National", "International"],
+    level: ["University", "National", "International"],
   },
   industry: {
     activity: ["MOU Signed", "Center of Excellence (CoE)", "Placement Drive", "Guest Lecture / Workshop", "Faculty Industry Attachment", "Joint Research Project"],
@@ -788,7 +788,7 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
               {rows.map((row, index) => {
                 const socRowLocked = section.key === "society" && societyRowLocked(row);
                 const rowReviewable = rowHasReviewableData(section.key, row);
-                const reviewerCanScoreRow = rowReviewable || currentRole === "director";
+                const reviewerCanScoreRow = rowReviewable || currentRole === "director" || currentRole === "vc";
                 const currentRowMax = reviewRowMaxForSection(section.key, row, section.max);
                 const displayScore = (value) => reviewerCanScoreRow && String(value ?? "").trim() ? clampScore(value, currentRowMax) : "";
                 return (
@@ -1061,7 +1061,7 @@ function InnovativeSection({ form, setForm, docs, setDocs, mode, locked, reviewe
                 <td style={tdStyle}><ViewCell id={`innov-${index}`} docs={docs} /></td>
                 <td style={tdCenter}>{mode === "self" ? <TI type="number" center max={4} readOnly={!editableSelf} value={row.score} onChange={(value) => updateSelfRow(index, "score", value)} /> : <RO value={row.score || form.innovScore} center />}</td>
                 {mode === "review" && previousRoles.map((role) => <td key={role} style={tdCenter}><RO value={rowReviewScore(role, row, index)} center /></td>)}
-                {mode === "review" && <td style={tdCenter}><TI type="number" center max={4} readOnly={reviewLocked || !(rowReviewable || reviewerRole === "director")} value={rowReviewScore(reviewerRole, row, index)} onChange={(value) => updateReview(index, value)} /></td>}
+                {mode === "review" && <td style={tdCenter}><TI type="number" center max={4} readOnly={reviewLocked || !(rowReviewable || reviewerRole === "director" || reviewerRole === "vc")} value={rowReviewScore(reviewerRole, row, index)} onChange={(value) => updateReview(index, value)} /></td>}
               </tr>
             );
           })}
@@ -1183,7 +1183,16 @@ function ObeSection({ form, setForm, docs, setDocs, mode, locked, reviewerRole, 
                   </td>
                   <td style={tdStyle}>
                     {mode === "self" ? (
-                      <TI value={row.evidence} textOnly readOnly={!editableSelf} onChange={(value) => updateSelfRow(index, "evidence", value)} placeholder="Yes / No" />
+                      <select
+                        value={row.evidence || ""}
+                        disabled={!editableSelf}
+                        onChange={(e) => updateSelfRow(index, "evidence", e.target.value)}
+                        style={{ width: "100%", height: 30, border: "1px solid #cbd5e1", borderRadius: 4, background: "#fff", fontFamily: "inherit", fontSize: 11 }}
+                      >
+                        <option value="">Select</option>
+                        <option value="Yes">Yes</option>
+                        <option value="No">No</option>
+                      </select>
                     ) : (
                       <RO value={row.evidence} />
                     )}
@@ -1198,7 +1207,7 @@ function ObeSection({ form, setForm, docs, setDocs, mode, locked, reviewerRole, 
                     )}
                   </td>
                   {mode === "review" && previousRoles.map((role) => <td key={role} style={tdCenter}><RO value={rowReviewScore(role, row, index)} center /></td>)}
-                  {mode === "review" && <td style={tdCenter}><TI type="number" center max={row.max || 20} readOnly={reviewLocked || !(rowReviewable || reviewerRole === "director")} value={rowReviewScore(reviewerRole, row, index)} onChange={(value) => updateReview(index, value)} /></td>}
+                  {mode === "review" && <td style={tdCenter}><TI type="number" center max={row.max || 20} readOnly={reviewLocked || !(rowReviewable || reviewerRole === "director" || reviewerRole === "vc")} value={rowReviewScore(reviewerRole, row, index)} onChange={(value) => updateReview(index, value)} /></td>}
                 </tr>
               );
             })}
@@ -1309,7 +1318,16 @@ function MentoringSection({ form, setForm, docs, setDocs, mode, locked, reviewer
                   </td>
                   <td style={tdStyle}>
                     {mode === "self" ? (
-                      <TI value={row.evidence} textOnly readOnly={!editableSelf} onChange={(value) => updateSelfRow(index, "evidence", value)} placeholder="Yes / No" />
+                      <select
+                        value={row.evidence || ""}
+                        disabled={!editableSelf}
+                        onChange={(e) => updateSelfRow(index, "evidence", e.target.value)}
+                        style={{ width: "100%", height: 30, border: "1px solid #cbd5e1", borderRadius: 4, background: "#fff", fontFamily: "inherit", fontSize: 11 }}
+                      >
+                        <option value="">Select</option>
+                        <option value="Yes">Yes</option>
+                        <option value="No">No</option>
+                      </select>
                     ) : (
                       <RO value={row.evidence} />
                     )}
@@ -1324,7 +1342,7 @@ function MentoringSection({ form, setForm, docs, setDocs, mode, locked, reviewer
                     )}
                   </td>
                   {mode === "review" && previousRoles.map((role) => <td key={role} style={tdCenter}><RO value={rowReviewScore(role, row, index)} center /></td>)}
-                  {mode === "review" && <td style={tdCenter}><TI type="number" center max={row.max || 10} readOnly={reviewLocked || !(rowReviewable || reviewerRole === "director")} value={rowReviewScore(reviewerRole, row, index)} onChange={(value) => updateReview(index, value)} /></td>}
+                  {mode === "review" && <td style={tdCenter}><TI type="number" center max={row.max || 10} readOnly={reviewLocked || !(rowReviewable || reviewerRole === "director" || reviewerRole === "vc")} value={rowReviewScore(reviewerRole, row, index)} onChange={(value) => updateReview(index, value)} /></td>}
                 </tr>
               );
             })}
@@ -2095,6 +2113,15 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
         <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, margin: "12px 0 14px", flexWrap: "wrap" }}>
           <span style={{ color: "#64748b", fontSize: 11, fontWeight: 700 }}>{draftStatus}</span>
           <button
+            type="button"
+            onClick={handleSaveDraft}
+            disabled={savingDraft}
+            style={{ ...smallButton(savingDraft ? "#94a3b8" : "#ffffff"), color: savingDraft ? "#94a3b8" : "#2563eb", border: "1.5px solid #2563eb" }}
+          >
+            {savingDraft ? "Saving..." : "Save as Draft"}
+          </button>
+          <button
+            type="button"
             onClick={handleSaveAndNext}
             disabled={savingDraft}
             style={smallButton(savingDraft ? "#94a3b8" : "#2563eb")}

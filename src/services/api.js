@@ -120,13 +120,34 @@ apiClient.interceptors.response.use(
     const data = error?.response?.data;
     const status = error?.response?.status;
 
+    let backendMessage = null;
+    if (typeof data === "string" && data.trim()) {
+      backendMessage = data.trim();
+    } else if (data && typeof data === "object") {
+      if (typeof data.user_message === "string" && data.user_message.trim()) {
+        backendMessage = data.user_message.trim();
+      } else if (typeof data.detail === "string" && data.detail.trim()) {
+        backendMessage = data.detail.trim();
+      } else if (Array.isArray(data.detail) && data.detail.length) {
+        backendMessage = data.detail
+          .map((d) => (typeof d === "string" ? d : d?.msg ? `${d.loc ? d.loc.filter((l) => l !== 'body').join('.') + ': ' : ''}${d.msg}` : JSON.stringify(d)))
+          .join("; ");
+      } else if (typeof data.message === "string" && data.message.trim()) {
+        backendMessage = data.message.trim();
+      } else if (typeof data.error === "string" && data.error.trim()) {
+        backendMessage = data.error.trim();
+      }
+    }
+
     const userMessage =
-      data?.user_message ??
+      backendMessage ||
       (status === 401
         ? "Invalid email or password."
         : status === 403
           ? "Your account is not verified or not authorized."
-          : "Something went wrong. Please try again.");
+          : error?.message && !error.message.includes("Request failed")
+            ? error.message
+            : "Something went wrong. Please try again.");
 
     error.message = userMessage;
     error.userMessage = userMessage;

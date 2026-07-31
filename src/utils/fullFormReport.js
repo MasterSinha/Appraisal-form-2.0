@@ -32,17 +32,26 @@ const scoreKeyForInnov = (role) =>
     vc: "innovVc",
   })[role] || "innovScore";
 
-const displayValue = (value) => {
-  const text = String(value ?? "").trim();
-  return text ? safeHtml(text) : "&nbsp;";
+export const isFilledValue = (value) => {
+  if (value === undefined || value === null) return false;
+  const str = String(value).trim();
+  if (!str) return false;
+  const lower = str.toLowerCase();
+  if (lower === "null" || lower === "undefined" || lower === "n/a" || lower === "na") return false;
+  return true;
+};
+
+export const displayValue = (value) => {
+  if (!isFilledValue(value)) return "&nbsp;";
+  return safeHtml(String(value).trim());
 };
 
 const firstFilled = (...values) =>
-  values.find((value) => String(value ?? "").trim() !== "") ?? "";
+  values.find((value) => isFilledValue(value)) ?? "";
 
 const displayWithOptionalYears = (value) => {
   const text = String(value ?? "").trim();
-  if (!text) return "&nbsp;";
+  if (!isFilledValue(text)) return "&nbsp;";
   return /year/i.test(text) ? safeHtml(text) : `${safeHtml(text)} years`;
 };
 
@@ -79,7 +88,7 @@ const splitExperienceValue = (info = {}) => {
     ["DYPIU", info.expDyp],
     ["Previous", info.expPrev],
     ["Total", info.expTotal],
-  ].filter(([, value]) => String(value ?? "").trim() !== "");
+  ].filter(([, value]) => isFilledValue(value));
   return parts
     .map(([label, value]) => `${label}: ${String(value).trim()}`)
     .join(" / ");
@@ -187,7 +196,7 @@ export const buildReviewRemarks = ({
       );
       return { label, remarks: value };
     })
-    .filter((item) => String(item.remarks ?? "").trim() !== "");
+    .filter((item) => isFilledValue(item.remarks));
 };
 
 const renderReviewRemarks = (sections = []) =>
@@ -198,7 +207,7 @@ const renderReviewRemarks = (sections = []) =>
     .map(
       (section) => `
     <h3>${safeHtml(section.label)}</h3>
-    <div class="remarks">${safeHtml(section.remarks || "No remarks recorded.")}</div>
+    <div class="remarks">${safeHtml(section.remarks || "")}</div>
   `,
     )
     .join("")}
@@ -206,7 +215,7 @@ const renderReviewRemarks = (sections = []) =>
     : "";
 
 const renderSummaryOtherInfo = (value) =>
-  String(value ?? "").trim()
+  isFilledValue(value)
     ? `<h3>Any other information not covered above</h3><div class="remarks">${safeHtml(value)}</div>`
     : "";
 
@@ -227,38 +236,45 @@ const roleColumnLabel = (role, roleLabel = (value) => value) =>
   role === "score" ? "Faculty Score" : `${safeHtml(roleLabel(role))} Score`;
 
 const displaySectionScore = (section, row, role) => {
-  if (section.key === "research" && role === "score")
-    return researchGuidanceScore(row).toFixed(1);
+  const val = row?.[role];
+  if (!isFilledValue(val)) return "";
+  if (section.key === "research" && role === "score") {
+    const rgs = researchGuidanceScore(row);
+    return isFilledValue(rgs) || rgs === 0 ? rgs.toFixed(1) : "";
+  }
   if (section.key === "feedback" && role === "score") {
-    const hasFeedback =
-      String(row?.fb1 ?? "").trim() !== "" ||
-      String(row?.fb2 ?? "").trim() !== "";
+    const hasFeedback = isFilledValue(row?.fb1) || isFilledValue(row?.fb2);
     return hasFeedback ? feedbackRowScore(row, section.max).toFixed(1) : "";
   }
-  if (role === "score")
-    return clampScore(
-      row?.[role],
-      rowMaxForSection(section.key, row, section.max),
-    );
-  return row?.[role];
+  if (role === "score") {
+    const score = clampScore(val, rowMaxForSection(section.key, row, section.max));
+    return isFilledValue(score) || score === 0 ? String(score) : "";
+  }
+  return String(val);
 };
 
 const sectionTotalScore = (section, rows, role) => {
-  if (!rows.length) return 0;
+  if (!rows || !rows.length) return "";
+  const hasAnyScore = rows.some((row) => isFilledValue(row?.[role]));
+  if (!hasAnyScore) return "";
   if (section.key === "feedback" && role === "score") {
-    return feedbackSectionScore(rows, section.max);
+    const score = feedbackSectionScore(rows, section.max);
+    return isFilledValue(score) || score === 0 ? score.toFixed(1) : "";
   }
   if (
     section.key === "lectures" ||
     section.key === "courseFile" ||
     section.key === "feedback"
-  )
-    return reviewSectionScore(section.key, rows, section.max, role);
+  ) {
+    const score = reviewSectionScore(section.key, rows, section.max, role);
+    return isFilledValue(score) || score === 0 ? score.toFixed(1) : "";
+  }
   const sum = rows.reduce(
     (acc, row) => acc + n(displaySectionScore(section, row, role)),
     0,
   );
-  return clampScore(sum, section.max);
+  const total = clampScore(sum, section.max);
+  return isFilledValue(total) || total === 0 ? total.toFixed(1) : "";
 };
 
 const renderSection = ({
@@ -301,7 +317,12 @@ const renderSection = ({
           ? `
       <tr class="tr">
         <td colspan="${totalColSpan}" class="c b">Total Score (Max ${safeHtml(section.max)})</td>
-        ${scoreRoles.map((role) => `<td class="c b">${sectionTotalScore(section, rows.length ? rows : [{}], role).toFixed(1)}</td>`).join("")}
+        ${scoreRoles
+          .map((role) => {
+            const tot = sectionTotalScore(section, rows.length ? rows : [{}], role);
+            return `<td class="c b">${tot ? safeHtml(tot) : "&nbsp;"}</td>`;
+          })
+          .join("")}
       </tr>`
           : ""
       }
@@ -928,11 +949,11 @@ export const generateStandardReport = async ({
   const teachingMax = 100;
   const researchGuidanceProjectMax = 75;
   const selfAcrExcluded = hideAcr;
-  const acrSummaryMax = selfAcrExcluded ? "N/A" : "50";
-  const acrSummaryScore = selfAcrExcluded ? 0 : acrScore;
-  const partAPercentage = percentOf(partATotal, effectivePartAMax);
-  const partBPercentage = percentOf(partBTotal, effectivePartBMax);
-  const totalPercentage = percentOf(grandTotal, effectiveGrandMax);
+  const acrSummaryMax = selfAcrExcluded ? "" : "50";
+  const acrSummaryScoreStr = selfAcrExcluded || !isFilledValue(acrScore) ? "&nbsp;" : n(acrScore).toFixed(1);
+  const partAPercentageStr = isFilledValue(partATotal) && n(partATotal) > 0 ? `${percentOf(partATotal, effectivePartAMax)}%` : "&nbsp;";
+  const partBPercentageStr = isFilledValue(partBTotal) && n(partBTotal) > 0 ? `${percentOf(partBTotal, effectivePartBMax)}%` : "&nbsp;";
+  const totalPercentageStr = isFilledValue(grandTotal) && n(grandTotal) > 0 ? `${percentOf(grandTotal, effectiveGrandMax)}%` : "&nbsp;";
   const win = window.open("", "_blank");
   if (!win) {
     alert("Please allow popups to generate the report.");
@@ -955,167 +976,167 @@ ${PRINT_REPORT_CSS}
   </style></head><body>
   <table class="ht"><tr>
     <td style="width:20%;text-align:left"><img class="logo" src="${logoSrc}" alt="DYPIU"/></td>
-    <td style="text-align:center"><h1>D Y PATIL INTERNATIONAL UNIVERSITY, AKURDI, PUNE</h1><h2>Faculty Appraisal Form - Academic Year ${info.ay || ""}</h2></td>
+    <td style="text-align:center"><h1>D Y PATIL INTERNATIONAL UNIVERSITY, AKURDI, PUNE</h1><h2>Faculty Appraisal Form - Academic Year ${displayValue(info.ay)}</h2></td>
     <td style="width:20%"></td>
   </tr></table>
   <table>
-    <tr><td class="b" style="width:35%">Name of Faculty</td><td>${info.name || "&nbsp;"}</td></tr>
+    <tr><td class="b" style="width:35%">Name of Faculty</td><td>${displayValue(info.name)}</td></tr>
     <tr><td class="b">Educational Qualifications</td><td>${displayValue(qualificationValue(info))}</td></tr>
-    <tr><td class="b">Present Designation</td><td>${info.desig || "&nbsp;"}</td></tr>
-    <tr><td class="b">School / Department</td><td>${info.school || "&nbsp;"}</td></tr>
+    <tr><td class="b">Present Designation</td><td>${displayValue(info.desig)}</td></tr>
+    <tr><td class="b">School / Department</td><td>${displayValue(info.school)}</td></tr>
     <tr><td class="b">Experience</td><td>${displayExperience(info)}</td></tr>
   </table>
   <h3 style="background:#d9d9d9;padding:4px;text-align:center;font-size:13px">PART A - Teaching Process &amp; Academic Activities</h3>
   <h3>(i) Lectures / Tutorials / Practicals (Max 50)</h3>
   <table><tr><th>SN</th><th>Semester</th><th>Course Code/Name</th><th>Classes as per Course Structure</th><th>Classes Actually Conducted</th><th>Self Score</th></tr>
-  ${lectures.map((l, i) => `<tr><td class="c">${i + 1}</td><td>${l.sem || "&nbsp;"}</td><td>${l.code || "&nbsp;"}</td><td class="c">${l.planned || "&nbsp;"}</td><td class="c">${l.conducted || "&nbsp;"}</td><td class="c">${l.score || "&nbsp;"}</td></tr>`).join("")}
-  <tr class="tr"><td colspan="5" class="c b">Total Score (Max 50)</td><td class="c">${totalLecScore.toFixed(1)}</td></tr></table>
+  ${lectures.map((l, i) => `<tr><td class="c">${i + 1}</td><td>${displayValue(l.sem)}</td><td>${displayValue(l.code)}</td><td class="c">${displayValue(l.planned)}</td><td class="c">${displayValue(l.conducted)}</td><td class="c">${displayValue(l.score)}</td></tr>`).join("")}
+  <tr class="tr"><td colspan="5" class="c b">Total Score (Max 50)</td><td class="c">${isFilledValue(totalLecScore) && totalLecScore > 0 ? totalLecScore.toFixed(1) : "&nbsp;"}</td></tr></table>
   <h3>(ii) Course File (Max 20)</h3>
   <table><tr><th>SN</th><th>Course/Paper</th><th>Title</th><th>Details</th><th>Self Score</th></tr>
-  ${courseFile.map((c, i) => `<tr><td class="c">${i + 1}</td><td>${c.course || "&nbsp;"}</td><td>${c.title || "&nbsp;"}</td><td>${c.details || "&nbsp;"}</td><td class="c">${c.score || "&nbsp;"}</td></tr>`).join("")}
-  <tr class="tr"><td colspan="4" class="c b">Total Score (Max 20)</td><td class="c">${courseFileScore.toFixed(1)}</td></tr></table>
+  ${courseFile.map((c, i) => `<tr><td class="c">${i + 1}</td><td>${displayValue(c.course)}</td><td>${displayValue(c.title)}</td><td>${displayValue(c.details)}</td><td class="c">${displayValue(c.score)}</td></tr>`).join("")}
+  <tr class="tr"><td colspan="4" class="c b">Total Score (Max 20)</td><td class="c">${isFilledValue(courseFileScore) && courseFileScore > 0 ? courseFileScore.toFixed(1) : "&nbsp;"}</td></tr></table>
   <h3>(iii) Innovative Teaching-Learning Methodologies (Max 10)</h3>
   <table><tr><th>SN</th><th>Methods Used</th><th>Details</th><th>Self Score</th></tr>
-  ${(innovRows || []).map((r, i) => `<tr><td class="c">${i + 1}</td><td>${r.method || r.details || "&nbsp;"}</td><td>${r.details || "&nbsp;"}</td><td class="c">${r.score || "&nbsp;"}</td></tr>`).join("")}
-  <tr class="tr"><td colspan="3" class="c b">Total Score (Max 10)</td><td class="c">${innovTotal.toFixed(1)}</td></tr></table>
+  ${(innovRows || []).map((r, i) => `<tr><td class="c">${i + 1}</td><td>${displayValue(r.method || r.details)}</td><td>${displayValue(r.details)}</td><td class="c">${displayValue(r.score)}</td></tr>`).join("")}
+  <tr class="tr"><td colspan="3" class="c b">Total Score (Max 10)</td><td class="c">${isFilledValue(innovTotal) && innovTotal > 0 ? innovTotal.toFixed(1) : "&nbsp;"}</td></tr></table>
   ${`<h3>(iv) Projects (Max 10)</h3>
   <table><tr><th>SN</th><th>Project Type</th><th>Self Score</th></tr>
-  ${projects.map((p, i) => `<tr><td class="c">${i + 1}</td><td>${p.label || "&nbsp;"}</td><td class="c">${clampScore(p.score, projectGuidanceRowMax(p)) || "&nbsp;"}</td></tr>`).join("")}
-  <tr class="tr"><td colspan="2" class="c b">Total Score (Max 10)</td><td class="c">${projects.reduce((a, p) => a + n(p.score), 0).toFixed(1)}</td></tr></table>`
+  ${projects.map((p, i) => `<tr><td class="c">${i + 1}</td><td>${displayValue(p.label)}</td><td class="c">${displayValue(clampScore(p.score, projectGuidanceRowMax(p)))}</td></tr>`).join("")}
+  <tr class="tr"><td colspan="2" class="c b">Total Score (Max 10)</td><td class="c">${projects.reduce((a, p) => a + n(p.score), 0) > 0 ? projects.reduce((a, p) => a + n(p.score), 0).toFixed(1) : "&nbsp;"}</td></tr></table>`
   }
   <h3>(v) Qualification Enhancement (Max 10)</h3>
   <table><tr><th>SN</th><th>Qualification / Category</th><th>Self Score</th></tr>
-  ${quals.map((q, i) => `<tr><td class="c">${i + 1}</td><td>${q.label || "&nbsp;"}</td><td class="c">${q.score || "&nbsp;"}</td></tr>`).join("")}
-  <tr class="tr"><td colspan="2" class="c b">Total Score (Max 10)</td><td class="c">${quals.reduce((a, q) => a + n(q.score), 0).toFixed(1)}</td></tr></table>
+  ${quals.map((q, i) => `<tr><td class="c">${i + 1}</td><td>${displayValue(q.label)}</td><td class="c">${displayValue(q.score)}</td></tr>`).join("")}
+  <tr class="tr"><td colspan="2" class="c b">Total Score (Max 10)</td><td class="c">${quals.reduce((a, q) => a + n(q.score), 0) > 0 ? quals.reduce((a, q) => a + n(q.score), 0).toFixed(1) : "&nbsp;"}</td></tr></table>
   <h3>B. Students' Feedback (Max 10)</h3>
   <table><tr><th>SN</th><th>Course Code/Name</th><th>First Feedback(%)</th><th>Second Feedback(%)</th><th>Average</th><th>Self Score</th></tr>
-  ${feedback.map((f, i) => `<tr><td class="c">${i + 1}</td><td>${f.code || "&nbsp;"}</td><td class="c">${f.fb1 || "&nbsp;"}</td><td class="c">${f.fb2 || "&nbsp;"}</td><td class="c">${f.fb1 || f.fb2 ? ((n(f.fb1) + n(f.fb2)) / ((f.fb1 ? 1 : 0) + (f.fb2 ? 1 : 0) || 1)).toFixed(2) : "&nbsp;"}</td><td class="c">${f.fb1 || f.fb2 ? ((n(f.fb1) + n(f.fb2)) / ((f.fb1 ? 1 : 0) + (f.fb2 ? 1 : 0) || 1) / 10).toFixed(2) : "&nbsp;"}</td></tr>`).join("")}
-  <tr class="tr"><td colspan="5" class="c b">Total (Max 10)</td><td class="c">${stuFeedbackScore.toFixed(1)}</td></tr></table>
+  ${feedback.map((f, i) => `<tr><td class="c">${i + 1}</td><td>${displayValue(f.code)}</td><td class="c">${displayValue(f.fb1)}</td><td class="c">${displayValue(f.fb2)}</td><td class="c">${isFilledValue(f.fb1) || isFilledValue(f.fb2) ? ((n(f.fb1) + n(f.fb2)) / ((isFilledValue(f.fb1) ? 1 : 0) + (isFilledValue(f.fb2) ? 1 : 0) || 1)).toFixed(2) : "&nbsp;"}</td><td class="c">${isFilledValue(f.fb1) || isFilledValue(f.fb2) ? ((n(f.fb1) + n(f.fb2)) / ((isFilledValue(f.fb1) ? 1 : 0) + (isFilledValue(f.fb2) ? 1 : 0) || 1) / 10).toFixed(2) : "&nbsp;"}</td></tr>`).join("")}
+  <tr class="tr"><td colspan="5" class="c b">Total (Max 10)</td><td class="c">${isFilledValue(stuFeedbackScore) && stuFeedbackScore > 0 ? stuFeedbackScore.toFixed(1) : "&nbsp;"}</td></tr></table>
   <h3 style="background:#d9d9d9;padding:4px;text-align:center;font-size:13px">PART C - Administrative Role &amp; University Development Contribution</h3>
   <h3>C2. Administration at School Level (Max 20)</h3>
   <table><tr><th>SN</th><th>Activity</th><th>Nature of Activity</th><th>Self Score</th></tr>
-  ${deptActs.map((d, i) => `<tr><td class="c">${i + 1}</td><td>${d.activity || "&nbsp;"}</td><td>${d.nature || "&nbsp;"}</td><td class="c">${d.score || "&nbsp;"}</td></tr>`).join("")}
-  <tr class="tr"><td colspan="3" class="c b">Total (Max 20)</td><td class="c">${deptScore.toFixed(1)}</td></tr></table>
+  ${deptActs.map((d, i) => `<tr><td class="c">${i + 1}</td><td>${displayValue(d.activity)}</td><td>${displayValue(d.nature)}</td><td class="c">${displayValue(d.score)}</td></tr>`).join("")}
+  <tr class="tr"><td colspan="3" class="c b">Total (Max 20)</td><td class="c">${isFilledValue(deptScore) && deptScore > 0 ? deptScore.toFixed(1) : "&nbsp;"}</td></tr></table>
   <h3>C1. Administration at University Level (Max 30)</h3>
   <table><tr><th>SN</th><th>Activity</th><th>Nature of Activity</th><th>Self Score</th></tr>
-  ${uniActs.map((u, i) => `<tr><td class="c">${i + 1}</td><td>${u.activity || "&nbsp;"}</td><td>${u.nature || "&nbsp;"}</td><td class="c">${u.score || "&nbsp;"}</td></tr>`).join("")}
-  <tr class="tr"><td colspan="3" class="c b">Total (Max 30)</td><td class="c">${uniScore.toFixed(1)}</td></tr></table>
+  ${uniActs.map((u, i) => `<tr><td class="c">${i + 1}</td><td>${displayValue(u.activity)}</td><td>${displayValue(u.nature)}</td><td class="c">${displayValue(u.score)}</td></tr>`).join("")}
+  <tr class="tr"><td colspan="3" class="c b">Total (Max 30)</td><td class="c">${isFilledValue(uniScore) && uniScore > 0 ? uniScore.toFixed(1) : "&nbsp;"}</td></tr></table>
   <h3>C4. Outreach, Extension &amp; Social Responsibility (Max 10)</h3>
   ${`<table><tr><th>SN</th><th>Activity</th><th>Details</th><th>Self Score</th></tr>
-  ${society.map((s, i) => `<tr><td class="c">${i + 1}</td><td>${s.label || "&nbsp;"}</td><td>${s.details || "&nbsp;"}</td><td class="c">${societyRowScore(s)}</td></tr>`).join("")}
-  <tr class="tr"><td colspan="3" class="c b">Total (Max 10)</td><td class="c">${societyScore.toFixed(1)}</td></tr></table>`
+  ${society.map((s, i) => `<tr><td class="c">${i + 1}</td><td>${displayValue(s.label)}</td><td>${displayValue(s.details)}</td><td class="c">${displayValue(societyRowScore(s))}</td></tr>`).join("")}
+  <tr class="tr"><td colspan="3" class="c b">Total (Max 10)</td><td class="c">${isFilledValue(societyScore) && societyScore > 0 ? societyScore.toFixed(1) : "&nbsp;"}</td></tr></table>`
   }
   <h3>C5. Industry Interaction &amp; Linkages (Max 5)</h3>
   <table><tr><th>SN</th><th>Name of Industry</th><th>Details of Activity</th><th>Self Score</th></tr>
-  ${industry.map((ind, i) => `<tr><td class="c">${i + 1}</td><td>${ind.name || "&nbsp;"}</td><td>${ind.details || "&nbsp;"}</td><td class="c">${ind.score || "&nbsp;"}</td></tr>`).join("")}
-  <tr class="tr"><td colspan="3" class="c b">Total (Max 5)</td><td class="c">${industryScore.toFixed(1)}</td></tr></table>
+  ${industry.map((ind, i) => `<tr><td class="c">${i + 1}</td><td>${displayValue(ind.name)}</td><td>${displayValue(ind.details)}</td><td class="c">${displayValue(ind.score)}</td></tr>`).join("")}
+  <tr class="tr"><td colspan="3" class="c b">Total (Max 5)</td><td class="c">${isFilledValue(industryScore) && industryScore > 0 ? industryScore.toFixed(1) : "&nbsp;"}</td></tr></table>
   <h3 style="background:#d9d9d9;padding:4px;text-align:center;font-size:13px">PART D - Annual Confidential Report</h3>
   <h3>D1. Annual Confidential Report (${selfAcrExcluded ? "Not counted in self score" : "Max 50"})</h3>
   <table><tr><th>SN</th><th>Parameter</th><th>Self Score</th></tr>
-  ${acr.map((a, i) => `<tr><td class="c">${i + 1}</td><td>${a.label || "&nbsp;"}</td><td class="c">${a.score || "&nbsp;"}</td></tr>`).join("")}
-  <tr class="tr"><td colspan="2" class="c b">Total (${selfAcrExcluded ? "Not counted in self score" : "Max 50"})</td><td class="c">${acrSummaryScore.toFixed(1)}</td></tr></table>
+  ${acr.map((a, i) => `<tr><td class="c">${i + 1}</td><td>${displayValue(a.label)}</td><td class="c">${displayValue(a.score)}</td></tr>`).join("")}
+  <tr class="tr"><td colspan="2" class="c b">Total (${selfAcrExcluded ? "Not counted in self score" : "Max 50"})</td><td class="c">${acrSummaryScoreStr}</td></tr></table>
   <table class="st">
     <tr><th>Part A Summary</th><th>Max</th><th>Faculty Score</th></tr>
-    <tr><td>Teaching Process (i+ii+iii+iv+v)</td><td class="c">${teachingMax}</td><td class="c">${teachingRaw.toFixed(1)}</td></tr>
-    <tr><td>Students' Feedback</td><td class="c">10</td><td class="c">${stuFeedbackScore.toFixed(1)}</td></tr>
-    <tr class="tr"><td class="b">PART A TOTAL</td><td class="c b">${effectivePartAMax}</td><td class="c b">${partATotal.toFixed(1)}</td></tr>
-    <tr class="tr"><td class="b">PART A MARKS OBTAINED (%)</td><td colspan="2" class="c b">${partAPercentage}%</td></tr>
+    <tr><td>Teaching Process (i+ii+iii+iv+v)</td><td class="c">${teachingMax}</td><td class="c">${teachingRaw > 0 ? teachingRaw.toFixed(1) : "&nbsp;"}</td></tr>
+    <tr><td>Students' Feedback</td><td class="c">10</td><td class="c">${stuFeedbackScore > 0 ? stuFeedbackScore.toFixed(1) : "&nbsp;"}</td></tr>
+    <tr class="tr"><td class="b">PART A TOTAL</td><td class="c b">${effectivePartAMax}</td><td class="c b">${partATotal > 0 ? partATotal.toFixed(1) : "&nbsp;"}</td></tr>
+    <tr class="tr"><td class="b">PART A MARKS OBTAINED (%)</td><td colspan="2" class="c b">${partAPercentageStr}</td></tr>
   </table>
   <table class="st">
     <tr><th>Part C Summary</th><th>Max</th><th>Faculty Score</th></tr>
-    <tr><td>Administration at University Level</td><td class="c">30</td><td class="c">${uniScore.toFixed(1)}</td></tr>
-    <tr><td>Administration at School Level</td><td class="c">20</td><td class="c">${deptScore.toFixed(1)}</td></tr>
-    <tr><td>Outreach, Extension &amp; Social Responsibility</td><td class="c">10</td><td class="c">${societyScore.toFixed(1)}</td></tr>
-    <tr><td>Industry Interaction &amp; Linkages</td><td class="c">5</td><td class="c">${industryScore.toFixed(1)}</td></tr>
+    <tr><td>Administration at University Level</td><td class="c">30</td><td class="c">${uniScore > 0 ? uniScore.toFixed(1) : "&nbsp;"}</td></tr>
+    <tr><td>Administration at School Level</td><td class="c">20</td><td class="c">${deptScore > 0 ? deptScore.toFixed(1) : "&nbsp;"}</td></tr>
+    <tr><td>Outreach, Extension &amp; Social Responsibility</td><td class="c">10</td><td class="c">${societyScore > 0 ? societyScore.toFixed(1) : "&nbsp;"}</td></tr>
+    <tr><td>Industry Interaction &amp; Linkages</td><td class="c">5</td><td class="c">${industryScore > 0 ? industryScore.toFixed(1) : "&nbsp;"}</td></tr>
   </table>
   <table class="st">
     <tr><th>Part D Summary</th><th>Max</th><th>Faculty Score</th></tr>
-    <tr><td>Annual Confidential Report</td><td class="c">${acrSummaryMax}</td><td class="c">${acrSummaryScore.toFixed(1)}</td></tr>
+    <tr><td>Annual Confidential Report</td><td class="c">${acrSummaryMax}</td><td class="c">${acrSummaryScoreStr}</td></tr>
   </table>
   <div class="pb"></div>
   <h3 style="background:#d9d9d9;padding:4px;text-align:center;font-size:13px">PART B - Research &amp; Academic Contributions</h3>
   <h3>1) Published Papers in Journals (Max 120)</h3>
   <table><tr><th>SN</th><th>Title with Page Nos.</th><th>Journal Details</th><th>ISSN/ISBN No.</th><th>Journal Indexing</th><th>Self Score</th></tr>
-  ${journals.map((j, i) => `<tr><td class="c">${i + 1}</td><td>${j.title || "&nbsp;"}</td><td>${j.journal || "&nbsp;"}</td><td class="c">${j.issn || "&nbsp;"}</td><td class="c">${j.index || "&nbsp;"}</td><td class="c">${j.score || "&nbsp;"}</td></tr>`).join("")}
-  <tr class="tr"><td colspan="5" class="c b">Total (Max 120)</td><td class="c">${journalScore.toFixed(1)}</td></tr></table>
+  ${journals.map((j, i) => `<tr><td class="c">${i + 1}</td><td>${displayValue(j.title)}</td><td>${displayValue(j.journal)}</td><td class="c">${displayValue(j.issn)}</td><td class="c">${displayValue(j.index)}</td><td class="c">${displayValue(j.score)}</td></tr>`).join("")}
+  <tr class="tr"><td colspan="5" class="c b">Total (Max 120)</td><td class="c">${journalScore > 0 ? journalScore.toFixed(1) : "&nbsp;"}</td></tr></table>
   <h3>2) Articles / Chapters in Books (Max 50)</h3>
   <table><tr><th>SN</th><th>Title</th><th>Book &amp; Publisher</th><th>ISBN</th><th>Type</th><th>Co-authors</th><th>First Author</th><th>Self Score</th></tr>
-  ${books.map((b, i) => `<tr><td class="c">${i + 1}</td><td>${b.title || "&nbsp;"}</td><td>${b.book || "&nbsp;"}</td><td class="c">${b.issn || "&nbsp;"}</td><td>${b.pub || "&nbsp;"}</td><td>${b.coauth || "&nbsp;"}</td><td class="c">${b.first || "&nbsp;"}</td><td class="c">${b.score || "&nbsp;"}</td></tr>`).join("")}
-  <tr class="tr"><td colspan="7" class="c b">Total (Max 50)</td><td class="c">${bookScore.toFixed(1)}</td></tr></table>
+  ${books.map((b, i) => `<tr><td class="c">${i + 1}</td><td>${displayValue(b.title)}</td><td>${displayValue(b.book)}</td><td class="c">${displayValue(b.issn)}</td><td>${displayValue(b.pub)}</td><td>${displayValue(b.coauth)}</td><td class="c">${displayValue(b.first)}</td><td class="c">${displayValue(b.score)}</td></tr>`).join("")}
+  <tr class="tr"><td colspan="7" class="c b">Total (Max 50)</td><td class="c">${bookScore > 0 ? bookScore.toFixed(1) : "&nbsp;"}</td></tr></table>
   <h3>3) ICT Mediated Teaching Learning Pedagogy (Max 20)</h3>
   <table><tr><th>SN</th><th>Title</th><th>Short Description</th><th>Type / Link</th><th>Quadrants</th><th>Self Score</th></tr>
-  ${ict.map((r, i) => `<tr><td class="c">${i + 1}</td><td>${r.title || "&nbsp;"}</td><td>${r.desc || "&nbsp;"}</td><td>${r.type || "&nbsp;"}</td><td class="c">${r.quad || "&nbsp;"}</td><td class="c">${r.score || "&nbsp;"}</td></tr>`).join("")}
-  <tr class="tr"><td colspan="5" class="c b">Total (Max 20)</td><td class="c">${ictScore.toFixed(1)}</td></tr></table>
+  ${ict.map((r, i) => `<tr><td class="c">${i + 1}</td><td>${displayValue(r.title)}</td><td>${displayValue(r.desc)}</td><td>${displayValue(r.type)}</td><td class="c">${displayValue(r.quad)}</td><td class="c">${displayValue(r.score)}</td></tr>`).join("")}
+  <tr class="tr"><td colspan="5" class="c b">Total (Max 20)</td><td class="c">${ictScore > 0 ? ictScore.toFixed(1) : "&nbsp;"}</td></tr></table>
   ${`<h3>4a) Research Guidance - PhD / PG (Max 30)</h3>
   <table><tr><th>SN</th><th>Degree</th><th>Name of Student</th><th>Thesis / Status</th><th>Self Score</th></tr>
-  ${research.map((r, i) => `<tr><td class="c">${i + 1}</td><td class="c">${r.degree || "&nbsp;"}</td><td>${r.name || "&nbsp;"}</td><td>${r.thesis || "&nbsp;"}</td><td class="c">${rgs(r).toFixed(1)}</td></tr>`).join("")}
-  <tr class="tr"><td colspan="4" class="c b">Total (Max 30)</td><td class="c">${researchScore.toFixed(1)}</td></tr></table>`
+  ${research.map((r, i) => `<tr><td class="c">${i + 1}</td><td class="c">${displayValue(r.degree)}</td><td>${displayValue(r.name)}</td><td>${displayValue(r.thesis)}</td><td class="c">${isFilledValue(rgs(r)) ? rgs(r).toFixed(1) : "&nbsp;"}</td></tr>`).join("")}
+  <tr class="tr"><td colspan="4" class="c b">Total (Max 30)</td><td class="c">${researchScore > 0 ? researchScore.toFixed(1) : "&nbsp;"}</td></tr></table>`
   }
   <h3>4b) Internal Research Projects (Max 15)</h3>
   <table><tr><th>SN</th><th>Title</th><th>Agency</th><th>Date</th><th>Amount</th><th>Role</th><th>Status</th><th>Self Score</th></tr>
-  ${projects2.map((p, i) => `<tr><td class="c">${i + 1}</td><td>${p.title || "&nbsp;"}</td><td>${p.agency || "&nbsp;"}</td><td class="c">${p.date || "&nbsp;"}</td><td class="c">${p.amount || "&nbsp;"}</td><td>${p.role || "&nbsp;"}</td><td>${p.status || "&nbsp;"}</td><td class="c">${p.score || "&nbsp;"}</td></tr>`).join("")}
-  <tr class="tr"><td colspan="7" class="c b">Total (Max 15)</td><td class="c">${projectBScore.toFixed(1)}</td></tr></table>
+  ${projects2.map((p, i) => `<tr><td class="c">${i + 1}</td><td>${displayValue(p.title)}</td><td>${displayValue(p.agency)}</td><td class="c">${displayValue(p.date)}</td><td class="c">${displayValue(p.amount)}</td><td>${displayValue(p.role)}</td><td>${displayValue(p.status)}</td><td class="c">${displayValue(p.score)}</td></tr>`).join("")}
+  <tr class="tr"><td colspan="7" class="c b">Total (Max 15)</td><td class="c">${projectBScore > 0 ? projectBScore.toFixed(1) : "&nbsp;"}</td></tr></table>
   <h3>4c) External Research Projects (Max 30)</h3>
   <table><tr><th>SN</th><th>Title</th><th>Agency</th><th>Date</th><th>Amount</th><th>Role</th><th>Status</th><th>Self Score</th></tr>
-  ${externalProjects.map((p, i) => `<tr><td class="c">${i + 1}</td><td>${p.title || "&nbsp;"}</td><td>${p.agency || "&nbsp;"}</td><td class="c">${p.date || "&nbsp;"}</td><td class="c">${p.amount || "&nbsp;"}</td><td>${p.role || "&nbsp;"}</td><td>${p.status || "&nbsp;"}</td><td class="c">${p.score || "&nbsp;"}</td></tr>`).join("")}
-  <tr class="tr"><td colspan="7" class="c b">Total (Max 30)</td><td class="c">${externalProjectScore.toFixed(1)}</td></tr></table>
+  ${externalProjects.map((p, i) => `<tr><td class="c">${i + 1}</td><td>${displayValue(p.title)}</td><td>${displayValue(p.agency)}</td><td class="c">${displayValue(p.date)}</td><td class="c">${displayValue(p.amount)}</td><td>${displayValue(p.role)}</td><td>${displayValue(p.status)}</td><td class="c">${displayValue(p.score)}</td></tr>`).join("")}
+  <tr class="tr"><td colspan="7" class="c b">Total (Max 30)</td><td class="c">${externalProjectScore > 0 ? externalProjectScore.toFixed(1) : "&nbsp;"}</td></tr></table>
   <h3>5a) Patents (IPR) (Max 40)</h3>
   <table><tr><th>SN</th><th>Title</th><th>Nat/Intl</th><th>Date of Filing</th><th>Status</th><th>File No.</th><th>Self Score</th></tr>
-  ${patents.map((p, i) => `<tr><td class="c">${i + 1}</td><td>${p.title || "&nbsp;"}</td><td class="c">${p.type || "&nbsp;"}</td><td class="c">${p.date || "&nbsp;"}</td><td>${p.status || "&nbsp;"}</td><td class="c">${p.fileNo || "&nbsp;"}</td><td class="c">${p.score || "&nbsp;"}</td></tr>`).join("")}
-  <tr class="tr"><td colspan="6" class="c b">Total (Max 40)</td><td class="c">${patentScore.toFixed(1)}</td></tr></table>
+  ${patents.map((p, i) => `<tr><td class="c">${i + 1}</td><td>${displayValue(p.title)}</td><td class="c">${displayValue(p.type)}</td><td class="c">${displayValue(p.date)}</td><td>${displayValue(p.status)}</td><td class="c">${displayValue(p.fileNo)}</td><td class="c">${displayValue(p.score)}</td></tr>`).join("")}
+  <tr class="tr"><td colspan="6" class="c b">Total (Max 40)</td><td class="c">${patentScore > 0 ? patentScore.toFixed(1) : "&nbsp;"}</td></tr></table>
   <h3>5b) Research Awards / Fellowships (Max 10)</h3>
   <table><tr><th>SN</th><th>Title of Award</th><th>Date</th><th>Awarding Agency</th><th>Level</th><th>Self Score</th></tr>
-  ${awards.map((a, i) => `<tr><td class="c">${i + 1}</td><td>${a.title || "&nbsp;"}</td><td class="c">${a.date || "&nbsp;"}</td><td>${a.agency || "&nbsp;"}</td><td>${a.level || "&nbsp;"}</td><td class="c">${a.score || "&nbsp;"}</td></tr>`).join("")}
-  <tr class="tr"><td colspan="5" class="c b">Total (Max 10)</td><td class="c">${awardScore.toFixed(1)}</td></tr></table>
+  ${awards.map((a, i) => `<tr><td class="c">${i + 1}</td><td>${displayValue(a.title)}</td><td class="c">${displayValue(a.date)}</td><td>${displayValue(a.agency)}</td><td>${displayValue(a.level)}</td><td class="c">${displayValue(a.score)}</td></tr>`).join("")}
+  <tr class="tr"><td colspan="5" class="c b">Total (Max 10)</td><td class="c">${awardScore > 0 ? awardScore.toFixed(1) : "&nbsp;"}</td></tr></table>
   <h3>6) Conferences / Seminars / Workshops (Max 30)</h3>
   <table><tr><th>SN</th><th>Title / Session</th><th>Type</th><th>Organization</th><th>Level</th><th>Self Score</th></tr>
-  ${confs.map((c, i) => `<tr><td class="c">${i + 1}</td><td>${c.title || "&nbsp;"}</td><td>${c.type || "&nbsp;"}</td><td>${c.org || "&nbsp;"}</td><td>${c.level || "&nbsp;"}</td><td class="c">${c.score || "&nbsp;"}</td></tr>`).join("")}
-  <tr class="tr"><td colspan="5" class="c b">Total (Max 30)</td><td class="c">${confScore.toFixed(1)}</td></tr></table>
+  ${confs.map((c, i) => `<tr><td class="c">${i + 1}</td><td>${displayValue(c.title)}</td><td>${displayValue(c.type)}</td><td>${displayValue(c.org)}</td><td>${displayValue(c.level)}</td><td class="c">${displayValue(c.score)}</td></tr>`).join("")}
+  <tr class="tr"><td colspan="5" class="c b">Total (Max 30)</td><td class="c">${confScore > 0 ? confScore.toFixed(1) : "&nbsp;"}</td></tr></table>
   <h3>7a) Submitted Research Proposals (Max 10)</h3>
   <table><tr><th>SN</th><th>Title of Proposal</th><th>Duration</th><th>Funding Agency</th><th>Grant Amount</th><th>Self Score</th></tr>
-  ${proposals.map((p, i) => `<tr><td class="c">${i + 1}</td><td>${p.title || "&nbsp;"}</td><td class="c">${p.duration || "&nbsp;"}</td><td>${p.agency || "&nbsp;"}</td><td class="c">${p.amount || "&nbsp;"}</td><td class="c">${p.score || "&nbsp;"}</td></tr>`).join("")}
-  <tr class="tr"><td colspan="5" class="c b">Total (Max 10)</td><td class="c">${proposalScore.toFixed(1)}</td></tr></table>
+  ${proposals.map((p, i) => `<tr><td class="c">${i + 1}</td><td>${displayValue(p.title)}</td><td class="c">${displayValue(p.duration)}</td><td>${displayValue(p.agency)}</td><td class="c">${displayValue(p.amount)}</td><td class="c">${displayValue(p.score)}</td></tr>`).join("")}
+  <tr class="tr"><td colspan="5" class="c b">Total (Max 10)</td><td class="c">${proposalScore > 0 ? proposalScore.toFixed(1) : "&nbsp;"}</td></tr></table>
   <h3>7b) Product Developed and Used by Students / Commercialized (Max 10)</h3>
   <table><tr><th>SN</th><th>Details of Product</th><th>Used / Commercialized</th><th>Self Score</th></tr>
-  ${products.map((p, i) => `<tr><td class="c">${i + 1}</td><td>${p.details || "&nbsp;"}</td><td>${p.usage || "&nbsp;"}</td><td class="c">${p.score || "&nbsp;"}</td></tr>`).join("")}
-  <tr class="tr"><td colspan="3" class="c b">Total (Max 10)</td><td class="c">${productScore.toFixed(1)}</td></tr></table>
+  ${products.map((p, i) => `<tr><td class="c">${i + 1}</td><td>${displayValue(p.details)}</td><td>${displayValue(p.usage)}</td><td class="c">${displayValue(p.score)}</td></tr>`).join("")}
+  <tr class="tr"><td colspan="3" class="c b">Total (Max 10)</td><td class="c">${productScore > 0 ? productScore.toFixed(1) : "&nbsp;"}</td></tr></table>
   <h3>8a) Attended FDP / Workshops (Max 10)</h3>
   <table><tr><th>SN</th><th>Program</th><th>Duration</th><th>Organized By</th><th>Self Score</th></tr>
-  ${fdps.map((f, i) => `<tr><td class="c">${i + 1}</td><td>${f.program || "&nbsp;"}</td><td class="c">${f.duration || "&nbsp;"}</td><td>${f.org || "&nbsp;"}</td><td class="c">${clampScore(f.score, SCORE_LIMITS.fdpRow) || "&nbsp;"}</td></tr>`).join("")}
-  <tr class="tr"><td colspan="4" class="c b">Total (Max 10)</td><td class="c">${fdpScore.toFixed(1)}</td></tr></table>
+  ${fdps.map((f, i) => `<tr><td class="c">${i + 1}</td><td>${displayValue(f.program)}</td><td class="c">${displayValue(f.duration)}</td><td>${displayValue(f.org)}</td><td class="c">${displayValue(clampScore(f.score, SCORE_LIMITS.fdpRow))}</td></tr>`).join("")}
+  <tr class="tr"><td colspan="4" class="c b">Total (Max 10)</td><td class="c">${fdpScore > 0 ? fdpScore.toFixed(1) : "&nbsp;"}</td></tr></table>
   <h3>8b) Industrial Training (Max 10)</h3>
   <table><tr><th>SN</th><th>Company / Industry</th><th>Duration</th><th>Nature of Training</th><th>Self Score</th></tr>
-  ${training.map((t, i) => `<tr><td class="c">${i + 1}</td><td>${t.company || "&nbsp;"}</td><td class="c">${t.duration || "&nbsp;"}</td><td>${t.nature || "&nbsp;"}</td><td class="c">${clampScore(t.score, SCORE_LIMITS.fdpRow) || "&nbsp;"}</td></tr>`).join("")}
-  <tr class="tr"><td colspan="4" class="c b">Total (Max 10)</td><td class="c">${trainScore.toFixed(1)}</td></tr></table>
+  ${training.map((t, i) => `<tr><td class="c">${i + 1}</td><td>${displayValue(t.company)}</td><td class="c">${displayValue(t.duration)}</td><td>${displayValue(t.nature)}</td><td class="c">${displayValue(clampScore(t.score, SCORE_LIMITS.fdpRow))}</td></tr>`).join("")}
+  <tr class="tr"><td colspan="4" class="c b">Total (Max 10)</td><td class="c">${trainScore > 0 ? trainScore.toFixed(1) : "&nbsp;"}</td></tr></table>
   <div class="pb"></div>
-  <h3 style="text-align:center;font-size:13px">SUMMARY OF SELF SCORES - AY ${info.ay || ""}</h3>
+  <h3 style="text-align:center;font-size:13px">SUMMARY OF SELF SCORES - AY ${displayValue(info.ay)}</h3>
   <table class="st">
     <tr><th>Sr.No.</th><th>Criteria</th><th>Max Score</th><th>Faculty Score</th></tr>
     <tr><td colspan="4" class="b" style="background:#d9d9d9;text-align:center">Part A - Teaching Process</td></tr>
-    <tr><td class="c">A</td><td>Teaching Process (i+ii+iii+iv+v)</td><td class="c">${teachingMax}</td><td class="c">${teachingRaw.toFixed(1)}</td></tr>
-    <tr><td class="c">B</td><td>Students' Feedback</td><td class="c">10</td><td class="c">${stuFeedbackScore.toFixed(1)}</td></tr>
-    <tr class="tr"><td colspan="2" class="c b">Part A Total</td><td class="c b">${effectivePartAMax}</td><td class="c b">${partATotal.toFixed(1)}</td></tr>
-    <tr class="tr"><td colspan="2" class="c b">Part A Marks Obtained (%)</td><td colspan="2" class="c b">${partAPercentage}%</td></tr>
+    <tr><td class="c">A</td><td>Teaching Process (i+ii+iii+iv+v)</td><td class="c">${teachingMax}</td><td class="c">${teachingRaw > 0 ? teachingRaw.toFixed(1) : "&nbsp;"}</td></tr>
+    <tr><td class="c">B</td><td>Students' Feedback</td><td class="c">10</td><td class="c">${stuFeedbackScore > 0 ? stuFeedbackScore.toFixed(1) : "&nbsp;"}</td></tr>
+    <tr class="tr"><td colspan="2" class="c b">Part A Total</td><td class="c b">${effectivePartAMax}</td><td class="c b">${partATotal > 0 ? partATotal.toFixed(1) : "&nbsp;"}</td></tr>
+    <tr class="tr"><td colspan="2" class="c b">Part A Marks Obtained (%)</td><td colspan="2" class="c b">${partAPercentageStr}</td></tr>
     <tr><td colspan="4" class="b" style="background:#d9d9d9;text-align:center">Part B - Research and Academic Contribution</td></tr>
-    <tr><td class="c">1</td><td>Research papers / journal publication</td><td class="c">120</td><td class="c">${journalScore.toFixed(1)}</td></tr>
-    <tr><td class="c">2</td><td>Books authored / edited / book chapter</td><td class="c">50</td><td class="c">${bookScore.toFixed(1)}</td></tr>
-    <tr><td class="c">3</td><td>ICT Teaching Learning Pedagogy</td><td class="c">20</td><td class="c">${ictScore.toFixed(1)}</td></tr>
-    <tr><td class="c">4</td><td>Research guidance / projects / consultancy</td><td class="c">${researchGuidanceProjectMax}</td><td class="c">${(researchScore + projectBScore + externalProjectScore).toFixed(1)}</td></tr>
-    <tr><td class="c">5</td><td>Patents, Awards, Fellowship</td><td class="c">50</td><td class="c">${(patentScore + awardScore).toFixed(1)}</td></tr>
-    <tr><td class="c">6</td><td>Conferences / paper presentations</td><td class="c">30</td><td class="c">${confScore.toFixed(1)}</td></tr>
-    <tr><td class="c">7</td><td>Research proposals / product development</td><td class="c">20</td><td class="c">${(proposalScore + productScore).toFixed(1)}</td></tr>
-    <tr><td class="c">8</td><td>Self Development (FDP / Industrial Training)</td><td class="c">10</td><td class="c">${(fdpScore + trainScore).toFixed(1)}</td></tr>
-    <tr class="tr"><td colspan="2" class="c b">Part B Total</td><td class="c b">${effectivePartBMax}</td><td class="c b">${partBTotal.toFixed(1)}</td></tr>
-    <tr class="tr"><td colspan="2" class="c b">Part B Marks Obtained (%)</td><td colspan="2" class="c b">${partBPercentage}%</td></tr>
+    <tr><td class="c">1</td><td>Research papers / journal publication</td><td class="c">120</td><td class="c">${journalScore > 0 ? journalScore.toFixed(1) : "&nbsp;"}</td></tr>
+    <tr><td class="c">2</td><td>Books authored / edited / book chapter</td><td class="c">50</td><td class="c">${bookScore > 0 ? bookScore.toFixed(1) : "&nbsp;"}</td></tr>
+    <tr><td class="c">3</td><td>ICT Teaching Learning Pedagogy</td><td class="c">20</td><td class="c">${ictScore > 0 ? ictScore.toFixed(1) : "&nbsp;"}</td></tr>
+    <tr><td class="c">4</td><td>Research guidance / projects / consultancy</td><td class="c">${researchGuidanceProjectMax}</td><td class="c">${(researchScore + projectBScore + externalProjectScore) > 0 ? (researchScore + projectBScore + externalProjectScore).toFixed(1) : "&nbsp;"}</td></tr>
+    <tr><td class="c">5</td><td>Patents, Awards, Fellowship</td><td class="c">50</td><td class="c">${(patentScore + awardScore) > 0 ? (patentScore + awardScore).toFixed(1) : "&nbsp;"}</td></tr>
+    <tr><td class="c">6</td><td>Conferences / paper presentations</td><td class="c">30</td><td class="c">${confScore > 0 ? confScore.toFixed(1) : "&nbsp;"}</td></tr>
+    <tr><td class="c">7</td><td>Research proposals / product development</td><td class="c">20</td><td class="c">${(proposalScore + productScore) > 0 ? (proposalScore + productScore).toFixed(1) : "&nbsp;"}</td></tr>
+    <tr><td class="c">8</td><td>Self Development (FDP / Industrial Training)</td><td class="c">10</td><td class="c">${(fdpScore + trainScore) > 0 ? (fdpScore + trainScore).toFixed(1) : "&nbsp;"}</td></tr>
+    <tr class="tr"><td colspan="2" class="c b">Part B Total</td><td class="c b">${effectivePartBMax}</td><td class="c b">${partBTotal > 0 ? partBTotal.toFixed(1) : "&nbsp;"}</td></tr>
+    <tr class="tr"><td colspan="2" class="c b">Part B Marks Obtained (%)</td><td colspan="2" class="c b">${partBPercentageStr}</td></tr>
     <tr><td colspan="4" class="b" style="background:#d9d9d9;text-align:center">Part C - Administrative Role &amp; University Development Contribution</td></tr>
-    <tr><td class="c">C1</td><td>Administration at University Level</td><td class="c">30</td><td class="c">${uniScore.toFixed(1)}</td></tr>
-    <tr><td class="c">C2</td><td>Administration at School Level</td><td class="c">20</td><td class="c">${deptScore.toFixed(1)}</td></tr>
-    <tr><td class="c">C4</td><td>Outreach, Extension &amp; Social Responsibility</td><td class="c">10</td><td class="c">${societyScore.toFixed(1)}</td></tr>
-    <tr><td class="c">C5</td><td>Industry Interaction &amp; Linkages</td><td class="c">5</td><td class="c">${industryScore.toFixed(1)}</td></tr>
+    <tr><td class="c">C1</td><td>Administration at University Level</td><td class="c">30</td><td class="c">${uniScore > 0 ? uniScore.toFixed(1) : "&nbsp;"}</td></tr>
+    <tr><td class="c">C2</td><td>Administration at School Level</td><td class="c">20</td><td class="c">${deptScore > 0 ? deptScore.toFixed(1) : "&nbsp;"}</td></tr>
+    <tr><td class="c">C4</td><td>Outreach, Extension &amp; Social Responsibility</td><td class="c">10</td><td class="c">${societyScore > 0 ? societyScore.toFixed(1) : "&nbsp;"}</td></tr>
+    <tr><td class="c">C5</td><td>Industry Interaction &amp; Linkages</td><td class="c">5</td><td class="c">${industryScore > 0 ? industryScore.toFixed(1) : "&nbsp;"}</td></tr>
     <tr><td colspan="4" class="b" style="background:#d9d9d9;text-align:center">Part D - Annual Confidential Report</td></tr>
-    <tr><td class="c">D1</td><td>Annual Confidential Report</td><td class="c">${acrSummaryMax}</td><td class="c">${acrSummaryScore.toFixed(1)}</td></tr>
-    <tr style="background:#bfbfbf;font-weight:bold;font-size:13px"><td colspan="2" class="c">Grand Total (Part A + Part B + Part C + Part D)</td><td class="c">${effectiveGrandMax}</td><td class="c">${grandTotal.toFixed(1)}</td></tr>
-    <tr style="background:#bfbfbf;font-weight:bold;font-size:13px"><td colspan="2" class="c">Marks Obtained (%)</td><td colspan="2" class="c">${totalPercentage}%</td></tr>
+    <tr><td class="c">D1</td><td>Annual Confidential Report</td><td class="c">${acrSummaryMax}</td><td class="c">${acrSummaryScoreStr}</td></tr>
+    <tr style="background:#bfbfbf;font-weight:bold;font-size:13px"><td colspan="2" class="c">Grand Total (Part A + Part B + Part C + Part D)</td><td class="c">${effectiveGrandMax}</td><td class="c">${grandTotal > 0 ? grandTotal.toFixed(1) : "&nbsp;"}</td></tr>
+    <tr style="background:#bfbfbf;font-weight:bold;font-size:13px"><td colspan="2" class="c">Marks Obtained (%)</td><td colspan="2" class="c">${totalPercentageStr}</td></tr>
   </table>
   ${renderSummaryOtherInfo(summaryOtherInfo)}
   ${buildSignaturePage({

@@ -1066,7 +1066,11 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  {["partA", "partB", "partC", "partD"].includes(sectionView) && !reviewLocked && (
 <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, margin: "12px 0 14px", flexWrap: "wrap" }}>
 <span style={{ color: "#64748b", fontSize: 11, fontWeight: 700 }}>{draftStatus}</span>
-<button onClick={handleSaveAndNext} disabled={savingDraft}
+<button type="button" onClick={handleSaveDraft} disabled={savingDraft}
+ style={{ padding: "8px 14px", background: "#fff", color: savingDraft ? "#94a3b8" : "#2563eb", border: "1.5px solid #2563eb", borderRadius: 7, cursor: savingDraft ? "not-allowed" : "pointer", fontWeight: 800, fontSize: 12, fontFamily: "inherit" }}>
+ {savingDraft ? "Saving..." : "Save as Draft"}
+</button>
+<button type="button" onClick={handleSaveAndNext} disabled={savingDraft}
  style={{ padding: "8px 14px", background: savingDraft ? "#94a3b8" : "#2563eb", color: "#fff", border: "none", borderRadius: 7, cursor: savingDraft ? "not-allowed" : "pointer", fontWeight: 800, fontSize: 12, fontFamily: "inherit" }}>
  {savingDraft ? "Saving..." : "Save & Next"}
 </button>
