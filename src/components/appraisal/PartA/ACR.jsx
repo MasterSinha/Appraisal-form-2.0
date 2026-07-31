@@ -4,6 +4,7 @@ import {
   SCORE_LIMITS,
   clampScore,
   courseFileRowScore,
+  createAcrRows,
   projectGuidanceRowMax,
   researchGuidanceScore,
   rowHasReviewableData,
@@ -26,24 +27,26 @@ import { n, RO } from "../../../features/faculty-appraisal/shared";
 import { DirectorInput as DirInput } from "../common/ReviewerInput";
 export default function ACR({ ctx }) {
  const { faculty, docs, lectures, courseFile, projects, quals, feedback, deptActs, uniActs, society, industry, acr, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, rows, get, set, reviewerLabel, reviewerScoreLabel, innovativeRows, getInnovHod, setInnovHod, acrDefaultScore } = ctx;
+ const isDirectorReview = reviewerLabel === "Director";
+ const acrRows = isDirectorReview ? createAcrRows(acr) : rows(acr);
  return (
 <>
 {/* G: ACR */}
 <SC title="D1. Annual Confidential Report (Max 50)" accent="#ef4444">
-<div style={{ fontSize: 11, color: "#64748b", marginBottom: 8 }}>ACR is assessed by {reviewerLabel} only - faculty does not fill scores.</div>
+<div style={{ fontSize: 11, color: "#64748b", marginBottom: 8 }}>ACR is assessed by Director only - faculty does not fill scores.</div>
 <table style={T}>
 <thead><tr>
 <th style={TH}>SN</th><th style={TH}>Parameter</th><th style={TH_HOD}>{reviewerScoreLabel}</th>
 </tr></thead>
 <tbody>
- {rows(acr).map((r, i) =>{
+ {acrRows.map((r, i) =>{
  const rawScore = get("acr", i, "hod");
  const scoreValue = String(rawScore ?? "").trim() ? clampScore(rawScore, SCORE_LIMITS.acrRow) : (acrDefaultScore ?? "");
  return (
 <tr key={i} style={i % 2 ? { background: "#f8fafc" } : {}}>
 <td style={TDC}>{i + 1}</td>
 <td style={TD}><RO val={r.label} /></td>
-<td style={TDS_HOD}><HodInput val={scoreValue} max={SCORE_LIMITS.acrRow} onChange={v =>set("acr", i, "hod", v)} /></td>
+<td style={TDS_HOD}><HodInput val={isDirectorReview ? scoreValue : ""} max={SCORE_LIMITS.acrRow} disabled={!isDirectorReview} onChange={v =>set("acr", i, "hod", v)} /></td>
 </tr>
  );})}
 </tbody>
