@@ -1364,24 +1364,6 @@ export default function NonEngineeringDeanDashboard() {
                     }}>
                       {school.icon}
                     </span>
-                    {school.pendingCount > 0 && (
-                      <span style={{
-                        position: "absolute",
-                        top: -5,
-                        right: -10,
-                        background: "#ef4444",
-                        color: "#ffffff",
-                        borderRadius: 10,
-                        padding: "2px 6px",
-                        fontSize: 10,
-                        fontWeight: 800,
-                        lineHeight: 1,
-                        boxShadow: "0 2px 6px rgba(239,68,68,0.4)",
-                        border: "2px solid #ffffff",
-                      }}>
-                        {school.pendingCount}
-                      </span>
-                    )}
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
                     <span style={{ fontSize: 13, fontWeight: 800, color: active ? "#4338ca" : "#1e293b" }}>
@@ -1391,6 +1373,11 @@ export default function NonEngineeringDeanDashboard() {
                   <span style={{ fontSize: 11, color: active ? "#6366f1" : "#64748b", fontWeight: 600, lineHeight: 1.25, maxWidth: 160, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                     {school.shortName}
                   </span>
+                  {school.pendingCount > 0 && (
+                    <span style={{ background: "#f59e0b", color: "#ffffff", borderRadius: 10, padding: "2px 8px", fontSize: 9, fontWeight: 900, lineHeight: 1.2, marginTop: 3 }}>
+                      {school.pendingCount}
+                    </span>
+                  )}
                 </button>
               );
             })}

@@ -1463,7 +1463,7 @@ export default function DeanDashboard() {
                     {school.shortName}
                   </span>
                   {pending > 0 && (
-                    <span style={{ background: "#f59e0b", color: "#ffffff", borderRadius: 8, padding: "1px 7px", fontSize: 9, fontWeight: 900 }}>
+                    <span style={{ background: "#f59e0b", color: "#ffffff", borderRadius: 10, padding: "2px 8px", fontSize: 9, fontWeight: 900, lineHeight: 1.2, marginTop: 3 }}>
                       {pending}
                     </span>
                   )}

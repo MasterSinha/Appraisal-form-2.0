@@ -69,7 +69,7 @@ function SummaryBox({
 <div style={{ background: "#f8fafc", border: "1px solid #f1f5f9", borderRadius: 8, padding: "10px 12px", minWidth: 0, display: "flex", flexDirection: "column" }}>
 <div style={{ fontWeight: 800, color: accent, fontSize: 11, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 6 }}>{remarksTitle || `${title} Remarks`}</div>
 <div style={{ color: "#334155", fontSize: 12, lineHeight: 1.55, whiteSpace: "pre-wrap", flex: 1, maxHeight: 80, overflow: "auto" }}>
- {String(remarks || "").trim() || <span style={{ color: "#cbd5e1" }}>â€”</span>}
+ {String(remarks || "").trim() || <span style={{ color: "#cbd5e1" }}>-</span>}
 </div>
 </div>
  )}
@@ -113,7 +113,7 @@ function RoleBadge({ role }) {
 </span>
  );
 }
-// RO â†’ imported from shared
+// RO imported from shared
 function ScoreValue({ val, center }) {
  const empty = val === undefined || val === null || val === "";
  return<span style={{ fontSize: 11, fontFamily: "inherit", color: "#1e293b", display: "block", textAlign: center ? "center" : "left" }}>{empty ?<span style={{ color: "#cbd5e1" }}>-</span>: val}</span>;
@@ -1073,15 +1073,15 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
 </div>
  )}
 
- {/* â”€â”€ Summary â”€â”€ */}
+ {/* Summary */}
  {sectionView === "summary" && (
 <div style={{ display: "grid", gap: 14 }}>
 
 
- {/* â‘¡ Self Score card */}
+ {/* Self Score card */}
 <SummaryBox title={personMode === "faculty" ? "Faculty Score" : "Self Score"} totals={facultyTotals} maxScores={facultyTotals.maxScores} accent="#0ea5e9" roleScoreLabel={`${personMode === "faculty" ? "Faculty submitted" : "Self"} score for the engineering appraisal form.`} />
 
- {/* â‘¢ Any Other Information */}
+ {/* Any Other Information */}
 <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 6px rgba(15,23,42,0.05)" }}>
 <div style={{ background: "#f8fafc", padding: "10px 16px", borderBottom: "1px solid #e2e8f0", display: "flex", alignItems: "center", gap: 8 }}>
 <div style={{ width: 3, height: 16, background: "#94a3b8", borderRadius: 2 }} />
@@ -1092,7 +1092,7 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
 </div>
 </div>
 
- {/* â‘£ Reviewer Scores section */}
+ {/* Reviewer Scores section */}
  {previousSummaryCards.length >0 && (
 <>
 <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "2px 0" }}>
@@ -1109,7 +1109,7 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
 </>
  )}
 
- {/* â‘¤ Final Scores â€” 2-column grid */}
+ {/* Final Scores - 2-column grid */}
 <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "2px 0" }}>
 <div style={{ flex: 1, height: 1, background: "linear-gradient(90deg,transparent,#e2e8f0)" }} />
 <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#fdf4ff", borderRadius: 20, padding: "4px 14px", border: "1px solid #e9d5ff" }}>
@@ -1123,7 +1123,7 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
 <SummaryBox title="Vice Chancellor Score" totals={reviewerSummaryTotals} maxScores={reviewerSummaryTotals.maxScores} accent="#7c3aed" roleScoreLabel="Vice Chancellor final score." />
 </div>
 
- {/* â‘¥ VC Remarks & Actions */}
+ {/* VC Remarks & Actions */}
 <div style={{ background: "#fff", border: "1px solid #a5b4fc", borderRadius: 16, overflow: "hidden", boxShadow: "0 8px 24px rgba(79,70,229,0.10)" }}>
 
  {/* Header strip */}
@@ -1147,7 +1147,7 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
 <div>
 <div style={{ fontSize: 10, fontWeight: 700, color: "#475569", marginBottom: 7, textTransform: "uppercase", letterSpacing: 0.6 }}>Your Remarks</div>
 <textarea value={remarks} readOnly={reviewLocked} onChange={e =>setRemarks(e.target.value)} rows={4}
- placeholder="Write your assessment remarks hereâ€¦"
+ placeholder="Write your assessment remarks here..."
  style={{ width: "100%", boxSizing: "border-box", border: "1px solid #cbd5e1", borderRadius: 10, padding: "12px 14px", fontFamily: "inherit", fontSize: 12, resize: "vertical", background: reviewLocked ? "#f8fafc" : "#fff", color: "#1e293b", outline: "none", lineHeight: 1.6 }} />
 </div>
 
@@ -1165,14 +1165,19 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
 <button onClick={onBack} style={{ padding: "9px 16px", background: "#fff", color: "#475569", border: "1px solid #cbd5e1", borderRadius: 9, cursor: "pointer", fontWeight: 700, fontSize: 12, fontFamily: "inherit" }}>Close</button>
 <button onClick={generateVcReport} disabled={!vcReviewCompleted}
- style={{ padding: "9px 16px", background: vcReviewCompleted ? "rgba(255,255,255,0.93)" : "rgba(255,255,255,0.08)", color: vcReviewCompleted ? "#4c1d95" : "#6b7280", border: "none", borderRadius: 9, cursor: vcReviewCompleted ? "pointer" : "not-allowed", fontWeight: 800, fontSize: 12, fontFamily: "inherit" }}>
- ðŸ“„ Generate Report
+ style={{ minWidth: 170, height: 42, padding: "0 20px", background: vcReviewCompleted ? "linear-gradient(135deg,#7c3aed,#581c87)" : "#cbd5e1", color: "#fff", border: "none", borderRadius: 8, cursor: vcReviewCompleted ? "pointer" : "not-allowed", fontWeight: 900, fontSize: 13, fontFamily: "inherit", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 9, boxShadow: vcReviewCompleted ? "0 10px 20px rgba(88,28,135,0.20)" : "none" }}>
+ <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+  <path d="M7 3h7l4 4v14H7V3Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+  <path d="M14 3v5h4" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+  <path d="M9 12h6M9 16h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+ </svg>
+ <span>Generate Report</span>
 </button>
  {!reviewLocked && (
 <>
 <button onClick={handleSaveDraft} disabled={savingDraft}
  style={{ padding: "9px 16px", background: savingDraft ? "rgba(255,255,255,0.08)" : "linear-gradient(135deg,#1d4ed8,#3b82f6)", color: "#fff", border: "none", borderRadius: 9, cursor: savingDraft ? "not-allowed" : "pointer", fontWeight: 700, fontSize: 12, fontFamily: "inherit", boxShadow: savingDraft ? "none" : "0 3px 12px rgba(37,99,235,0.4)" }}>
- {savingDraft ? "Savingâ€¦" : "Save Draft"}
+ {savingDraft ? "Saving..." : "Save Draft"}
 </button>
  {canReject && (
 <button onClick={() =>{ if (window.confirm("Reject this appraisal and send it back to the user for editing?")) { onSubmit(person.id, { partA, partB, partC, partD, total }, remarks, personMode, buildVcSectionScores(person, vcData), reviewConfirmed, "rejected"); } }}
@@ -1184,7 +1189,7 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
 <button onClick={() =>onSubmit(person.id, { partA, partB, partC, partD, total }, remarks, personMode, buildVcSectionScores(person, vcData), reviewConfirmed)}
  disabled={!reviewConfirmed || !remarks.trim()}
  style={{ padding: "9px 22px", background: (reviewConfirmed && remarks.trim()) ? "linear-gradient(135deg,#047857,#10b981)" : "rgba(255,255,255,0.06)", color: "#fff", border: "none", borderRadius: 9, cursor: (reviewConfirmed && remarks.trim()) ? "pointer" : "not-allowed", fontWeight: 900, fontSize: 12, fontFamily: "inherit", letterSpacing: 0.2, boxShadow: (reviewConfirmed && remarks.trim()) ? "0 4px 16px rgba(4,120,87,0.5)" : "none" }}>
- {finalisedByVc ? "Edit & Resubmit" : "âœ“ Submit VC Review"}
+ {finalisedByVc ? "Edit & Resubmit" : "Submit VC Review"}
 </button>
 </>
  )}
@@ -1264,12 +1269,12 @@ function PersonCard({ person, role, onReview, schoolColor, loading = false }) {
  {score >0 || tile.isVc ? (
 <>
 <div style={{ fontSize: 15, fontWeight: 900, color: tile.color, lineHeight: 1 }}>
- {score >0 ? score.toFixed(1) : "â€”"}<span style={{ fontSize: 8, color: "#cbd5e1", fontWeight: 600 }}>/{MAX_SCORES.GRAND_TOTAL}</span>
+ {score >0 ? score.toFixed(1) : "-"}<span style={{ fontSize: 8, color: "#cbd5e1", fontWeight: 600 }}>/{MAX_SCORES.GRAND_TOTAL}</span>
 </div>
 <ScoreBar score={score} max={MAX_SCORES.GRAND_TOTAL} color={tile.color} />
 </>
  ) : (
-<div style={{ fontSize: 15, fontWeight: 900, color: "#cbd5e1" }}>â€”</div>
+<div style={{ fontSize: 15, fontWeight: 900, color: "#cbd5e1" }}>-</div>
  )}
 </div>
  );
@@ -1280,17 +1285,17 @@ function PersonCard({ person, role, onReview, schoolColor, loading = false }) {
 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
  {remarkTiles.map((item) =>(
 <div key={item.label} style={{ background: item.bg, borderRadius: 7, padding: "6px 10px", fontSize: 10, color: item.color, borderLeft: `3px solid ${item.border}` }}>
-<span style={{ fontWeight: 800 }}>{item.label}:</span>{" "}{item.value.slice(0, 55)}{item.value.length >55 ? "â€¦" : ""}
+<span style={{ fontWeight: 800 }}>{item.label}:</span>{" "}{item.value.slice(0, 55)}{item.value.length >55 ? "..." : ""}
 </div>
  ))}
 </div>
  )}
 
 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #f1f5f9", paddingTop: 10 }}>
-<div style={{ fontSize: 9, color: "#94a3b8", letterSpacing: 0.2 }}>Submitted: {person.submittedOn || "â€”"}</div>
+<div style={{ fontSize: 9, color: "#94a3b8", letterSpacing: 0.2 }}>Submitted: {person.submittedOn || "-"}</div>
 <button className="vc-action-button" onClick={() =>onReview(person, personMode)} disabled={loading}
  style={{ fontSize: 11, padding: "7px 16px", background: loading ? "#94a3b8" : isVcReviewed(person) ? "linear-gradient(135deg,#1e293b,#334155)" : `linear-gradient(135deg,${cardColor},${cardColor}cc)`, color: "#fff", border: "none", borderRadius: 8, cursor: loading ? "wait" : "pointer", fontWeight: 800, fontFamily: "inherit", letterSpacing: 0.2, boxShadow: loading ? "none" : `0 4px 12px ${cardColor}44` }}>
- {loading ? "Openingâ€¦" : isVcReviewed(person) ? "View Review" : "Review Form"}
+ {loading ? "Opening..." : isVcReviewed(person) ? "View Review" : "Review Form"}
 </button>
 </div>
 </div>
@@ -1398,19 +1403,19 @@ function NonTeachingCard({ item, onReview }) {
 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
  {item.form?.roRemarks && (
 <div style={{ background: "#eff6ff", borderLeft: "3px solid #1d4ed8", borderRadius: 7, padding: "6px 10px", color: "#1e40af", fontSize: 10 }}>
-<span style={{ fontWeight: 800 }}>RO:</span>{" "}{item.form.roRemarks.slice(0, 70)}{item.form.roRemarks.length >70 ? "â€¦" : ""}
+<span style={{ fontWeight: 800 }}>RO:</span>{" "}{item.form.roRemarks.slice(0, 70)}{item.form.roRemarks.length >70 ? "..." : ""}
 </div>
  )}
  {item.form?.registrarRemarks && (
 <div style={{ background: "#ecfeff", borderLeft: "3px solid #155e75", borderRadius: 7, padding: "6px 10px", color: "#155e75", fontSize: 10 }}>
-<span style={{ fontWeight: 800 }}>Registrar:</span>{" "}{item.form.registrarRemarks.slice(0, 70)}{item.form.registrarRemarks.length >70 ? "â€¦" : ""}
+<span style={{ fontWeight: 800 }}>Registrar:</span>{" "}{item.form.registrarRemarks.slice(0, 70)}{item.form.registrarRemarks.length >70 ? "..." : ""}
 </div>
  )}
 </div>
  )}
 
 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #f1f5f9", paddingTop: 10 }}>
-<div style={{ fontSize: 9, color: "#94a3b8" }}>Submitted: {item.submittedOn || "â€”"}</div>
+<div style={{ fontSize: 9, color: "#94a3b8" }}>Submitted: {item.submittedOn || "-"}</div>
 <button className="vc-action-button" type="button" onClick={() =>onReview(item)} style={{ fontSize: 11, padding: "7px 16px", background: reviewed ? "linear-gradient(135deg,#1e293b,#334155)" : `linear-gradient(135deg,${cardColor},#0ea5e9)`, color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontWeight: 800, fontFamily: "inherit", boxShadow: `0 4px 12px ${cardColor}44` }}>
  {reviewed ? "View Review" : "Review Form"}
 </button>
@@ -1755,7 +1760,7 @@ export default function VCDashboard() {
 
 <button className="vc-sidebar-nav" onClick={() =>setReviewing(null)}
  style={{ background: "rgba(99,102,241,0.18)", border: "none", borderRadius: 8, padding: "10px 11px", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, width: "100%", fontFamily: "inherit", transition: "background 0.15s" }}>
-<span className="vc-sidebar-nav-icon" style={{ fontSize: 16 }}>ðŸ“‹</span>
+<span className="vc-sidebar-nav-icon" style={{ fontSize: 12, fontWeight: 900 }}>SR</span>
 <div style={{ flex: 1, textAlign: "left" }}>
 <div style={{ color: "#e2e8f0", fontWeight: 700, fontSize: 12 }}>School Reviews</div>
 <div style={{ color: "#64748b", fontSize: 10, marginTop: 1 }}>{totalPending} awaiting</div>
@@ -1822,7 +1827,7 @@ export default function VCDashboard() {
  style={{ width: "100%", display: "flex", alignItems: "center", gap: 9, background: "none", border: "1px solid #374151", borderRadius: 8, padding: "9px 11px", cursor: "pointer", fontFamily: "inherit" }}
  onMouseEnter={e =>e.currentTarget.style.background = "#1e293b"}
  onMouseLeave={e =>e.currentTarget.style.background = "none"}>
-<span style={{ fontSize: 15 }}>ðŸšª</span>
+<span style={{ fontSize: 12, fontWeight: 900 }}>OUT</span>
 <span style={{ color: "#f87171", fontWeight: 700, fontSize: 12 }}>Logout</span>
 </button>
 </aside>
@@ -1947,7 +1952,7 @@ export default function VCDashboard() {
  onClick={() =>setShowLogoutModal(false)}>
 <div style={{ background: "#fff", borderRadius: 20, padding: "36px 40px", maxWidth: 360, width: "90%", boxShadow: "0 32px 80px rgba(0,0,0,0.3)", display: "flex", flexDirection: "column", alignItems: "center", gap: 20, fontFamily: "inherit" }}
  onClick={e =>e.stopPropagation()}>
-<div style={{ width: 60, height: 60, borderRadius: "50%", background: "linear-gradient(135deg,#fee2e2,#fecaca)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, boxShadow: "0 8px 20px rgba(239,68,68,0.25)" }}>ðŸšª</div>
+<div style={{ width: 60, height: 60, borderRadius: "50%", background: "linear-gradient(135deg,#fee2e2,#fecaca)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 900, color: "#dc2626", boxShadow: "0 8px 20px rgba(239,68,68,0.25)" }}>OUT</div>
 <div style={{ textAlign: "center" }}>
 <div style={{ fontWeight: 900, fontSize: 18, color: "#0f172a", marginBottom: 8, letterSpacing: -0.3 }}>Confirm Logout</div>
 <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.7 }}>
