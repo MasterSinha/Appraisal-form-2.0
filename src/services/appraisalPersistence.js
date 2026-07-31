@@ -107,9 +107,25 @@ const normalizeDocsMap = (docs = {}) =>{
  );
 };
 
-const docsRowsToMap = (rows = []) =>{
+const normalizeDocFilterValue = (value) =>String(value ?? "").trim().toLowerCase();
+
+const rowMatchesDocumentScope = (row = {}, { facultyEmail = "", academicYear = "" } = {}) =>{
+ const targetEmail = normalizeDocFilterValue(facultyEmail);
+ const targetYear = normalizeDocFilterValue(academicYear);
+ const rowEmail = normalizeDocFilterValue(
+ row.faculty_email ?? row.facultyEmail ?? row.email ?? row.user_email ?? row.userEmail ?? row.submitter_email ?? row.submitterEmail
+ );
+ const rowYear = normalizeDocFilterValue(row.academic_year ?? row.academicYear ?? row.year);
+
+ if (targetEmail && rowEmail && rowEmail !== targetEmail) return false;
+ if (targetYear && rowYear && rowYear !== targetYear) return false;
+ return true;
+};
+
+const docsRowsToMap = (rows = [], scope = {}) =>{
  const groupedDocs = {};
  (rows || []).forEach((row) =>{
+ if (!rowMatchesDocumentScope(row, scope)) return;
  const section = row.section || row.doc_section || row.docSection || "";
  const rowNo = row.row_no ?? row.rowNo ?? row.row_number ?? row.rowNumber;
  const key = row.doc_key || row.docKey || row.document_key || row.documentKey || (section ? `${section}-${Math.max((Number(rowNo) || 1) - 1, 0)}` : "");
@@ -131,16 +147,16 @@ const mergeDocsMaps = (...sources) =>{
  return merged;
 };
 
-const submittedDocsFromResponse = (response) =>
+const submittedDocsFromResponse = (response, scope = {}) =>
  mergeDocsMaps(
  response?.payload?.docs,
  response?.docs,
  response?.payload?.form?.docs,
  response?.form?.docs,
- docsRowsToMap(response?.documents || response?.appraisal_documents || response?.appraisalDocuments || response?.payload?.documents || response?.payload?.appraisal_documents || response?.payload?.appraisalDocuments || []),
+ docsRowsToMap(response?.documents || response?.appraisal_documents || response?.appraisalDocuments || response?.payload?.documents || response?.payload?.appraisal_documents || response?.payload?.appraisalDocuments || [], scope),
  );
 
-const applySubmittedAppraisalToSetters = (submittedAppraisal, setters) =>{
+const applySubmittedAppraisalToSetters = (submittedAppraisal, setters, scope = {}) =>{
  if (!submittedAppraisal || !setters) return false;
  const submittedForm = normalizeFetchedForm(submittedFormFromResponse(submittedAppraisal));
  if (!submittedForm) return false;
@@ -155,7 +171,7 @@ const applySubmittedAppraisalToSetters = (submittedAppraisal, setters) =>{
  }
  });
 
- const submittedDocs = submittedDocsFromResponse(submittedAppraisal);
+ const submittedDocs = submittedDocsFromResponse(submittedAppraisal, scope);
  if (submittedDocs) {
  setters.setDocs?.(normalizeDocsMap(submittedDocs));
  } else {
@@ -325,7 +341,7 @@ export const loadAppraisalDocuments = async ({ facultyEmail, academicYear, setDo
  params: { academic_year: academicYear, faculty_email: facultyEmail },
  });
 
- setDocs(docsRowsToMap(data));
+ setDocs(docsRowsToMap(data, { facultyEmail, academicYear }));
  } catch {
  // non-fatal
  }
@@ -337,7 +353,7 @@ const fetchSubmittedDocsMap = async ({ facultyEmail, academicYear }) =>{
  const rows = await api.get("/appraisal-documents", {
  params: { academic_year: academicYear, faculty_email: facultyEmail },
  });
- return docsRowsToMap(rows);
+ return docsRowsToMap(rows, { facultyEmail, academicYear });
  } catch {
  return {};
  }
@@ -359,7 +375,7 @@ export const loadClosedAppraisal = async ({ facultyEmail, academicYear, setters 
 
  try {
  const submittedAppraisal = await fetchSavedAppraisal({ facultyEmail, academicYear });
- if (applySubmittedAppraisalToSetters(submittedAppraisal, setters)) {
+ if (applySubmittedAppraisalToSetters(submittedAppraisal, setters, { facultyEmail, academicYear })) {
  return submittedAppraisal;
  }
  } catch (err) {
@@ -410,12 +426,12 @@ const readSubmittedAppraisalResponse = async (data, facultyEmail, academicYear) 
  if (!data) {
  throw new Error(`No saved appraisal snapshot was found for ${facultyEmail} in academic year ${academicYear}. Check that the academic year matches the submitted record.`);
  }
- const normalized = normalizeFetchedAppraisal(data);
+ const normalized = normalizeFetchedAppraisal(data, { facultyEmail, academicYear });
  const form = normalized.payload?.form || normalized.form;
  if (!hasSubmittedFormData(form)) {
  throw new Error(`The saved appraisal snapshot for ${facultyEmail} does not contain submitted form section data. The user may need to resubmit the appraisal for academic year ${academicYear}.`);
  }
- const currentDocs = submittedDocsFromResponse(normalized) || {};
+ const currentDocs = submittedDocsFromResponse(normalized, { facultyEmail, academicYear }) || {};
  if (docsHaveFiles(currentDocs)) return normalized;
 
  const fallbackDocs = await fetchSubmittedDocsMap({ facultyEmail, academicYear });
@@ -1337,11 +1353,11 @@ const normalizeFetchedForm = (form = {}) =>{
  return normalizeInnovativeReviewScoreAliases(normalizeReviewScoreAliasesOnRows(normalized));
 };
 
-const normalizeFetchedAppraisal = (data = {}) =>{
+const normalizeFetchedAppraisal = (data = {}, scope = {}) =>{
  const reviews = reviewsFromAppraisalResponse(data);
  const payload = data.payload ? { ...data.payload } : null;
  const declaration = data.declaration || payload?.declaration || null;
- const docs = normalizeDocsMap(submittedDocsFromResponse(data) || {});
+ const docs = normalizeDocsMap(submittedDocsFromResponse(data, scope) || {});
  const withResponseInfo = (form = {}, ...sources) =>({
  ...form,
  info: normalizeInfo(form.info || {}, form, ...sources),
