@@ -198,6 +198,39 @@ const normalizeTotalsForSubmit = (totals = {}) =>({
  effective_grand_max: totals.effective_grand_max ?? totals.effectiveGrandMax,
 });
 
+const legacyTotalsForSubmit = (totals = {}) => {
+ const partATotal = totals.partATotal ?? totals.part_a_total ?? 0;
+ const partBTotal = totals.partBTotal ?? totals.part_b_total ?? 0;
+ const grandTotal = totals.grandTotal ?? totals.grand_total ?? (partATotal + partBTotal);
+ return {
+ partATotal,
+ partBTotal,
+ grandTotal,
+ part_a_total: partATotal,
+ part_b_total: partBTotal,
+ grand_total: grandTotal,
+ };
+};
+
+const legacyFormForSubmit = (form = {}) => {
+ const legacyForm = { ...form };
+ [
+ "obeRows",
+ "mentoringRows",
+ "eventRows",
+ "alumniRows",
+ "placementRows",
+ "acr",
+ "exhibitions",
+ "popularWritings",
+ "consultancyRows",
+ "startupRows",
+ ].forEach((key) => {
+ delete legacyForm[key];
+ });
+ return legacyForm;
+};
+
 const defaultAcrRows = () =>[
  { label: "Self-motivation & Proactiveness" },
  { label: "Punctuality" },
@@ -647,12 +680,16 @@ const reviewRowScore = (row, roleField, role) =>{
  const parsedRow = parseMaybeJson(row);
  if (parsedRow === undefined || parsedRow === null) return undefined;
  if (typeof parsedRow !== "object" || Array.isArray(parsedRow)) return parsedRow;
+ const directorAlias = roleField === "director" || role === "director"
+ ? firstPresent(parsedRow.dir, parsedRow.dir_score, parsedRow.dirScore, parsedRow.dir_marks, parsedRow.dirMarks)
+ : undefined;
  return firstPresent(
- parsedRow[roleField],
- parsedRow[role],
- parsedRow[`${roleField}_score`],
- parsedRow[`${role}_score`],
- parsedRow[`${roleField}_marks`],
+  parsedRow[roleField],
+  parsedRow[role],
+  directorAlias,
+  parsedRow[`${roleField}_score`],
+  parsedRow[`${role}_score`],
+  parsedRow[`${roleField}_marks`],
  parsedRow[`${role}_marks`],
  parsedRow.reviewScore,
  parsedRow.review_score,
@@ -890,6 +927,11 @@ const REVIEW_SCORE_ALIASES = {
  directorScore: "director",
  director_marks: "director",
  directorMarks: "director",
+ dir: "director",
+ dir_score: "director",
+ dirScore: "director",
+ dir_marks: "director",
+ dirMarks: "director",
  dean_score: "dean",
  deanScore: "dean",
  dean_marks: "dean",
@@ -1477,19 +1519,43 @@ export const submitAppraisal = async ({
  submitter_profile: submitterProfile || activeProfile,
  };
 
- try {
- await api.post("/appraisal/submit", {
+ await api.put("/appraisal/snapshot", {
+ academic_year: academicYear,
+ payload: {
+ form,
+ totals,
+ submitterProfile: submitterProfile || activeProfile,
+ submittedAt: new Date().toISOString(),
+ submitted: true,
+ },
+ docs: normalizeDocsMap(docs),
+ });
+
+ const submitWithWorkflow = {
  ...basePayload,
+ form: legacyFormForSubmit(basePayload.form),
+ totals: legacyTotalsForSubmit(totals),
  status: workflowStatus,
  workflow_status: workflowStatus,
  next_reviewer: nextReviewer,
  next_reviewer_role: nextReviewer,
  review_chain: reviewChain,
- });
- } catch (err) {
- if (![400, 422].includes(err?.response?.status)) throw err;
+ };
+
  try {
- await api.post("/appraisal/submit", basePayload);
+ await api.post("/appraisal/submit", submitWithWorkflow);
+ } catch (err) {
+ const canRetry = [400, 422, 500].includes(err?.response?.status || err?.statusCode);
+ if (!canRetry) throw err;
+
+ const legacyPayload = {
+ ...basePayload,
+ form: legacyFormForSubmit(basePayload.form),
+ totals: legacyTotalsForSubmit(totals),
+ };
+
+ try {
+ await api.post("/appraisal/submit", legacyPayload);
  } catch (fallbackErr) {
  throw fallbackErr?.message ? fallbackErr : err;
  }

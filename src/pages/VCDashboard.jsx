@@ -221,13 +221,17 @@ const vcRoleMeta = (role) =>VC_CHAIN_ROLE_META[role] || {
 
 const vcScoreForRole = (row = {}, role) =>{
  const field = vcRoleMeta(role).field;
+ const directorAlias = role === "director"
+ ? (row?.dir ?? row?.dir_score ?? row?.dirScore ?? row?.dir_marks ?? row?.dirMarks)
+ : undefined;
  return row?.[field] ??
- row?.[`${field}_score`] ??
- row?.[`${field}Score`] ??
- row?.[`${field}_marks`] ??
- row?.[`${field}Marks`] ??
- (role === "center_head" ? (row.center_head_score ?? row.centerHeadScore ?? row.center_head_marks ?? row.centerHeadMarks) : undefined) ??
- row?.[`${role}_score`] ??
+  row?.[`${field}_score`] ??
+  row?.[`${field}Score`] ??
+  row?.[`${field}_marks`] ??
+  row?.[`${field}Marks`] ??
+  directorAlias ??
+  (role === "center_head" ? (row.center_head_score ?? row.centerHeadScore ?? row.center_head_marks ?? row.centerHeadMarks) : undefined) ??
+  row?.[`${role}_score`] ??
  row?.[`${role}Score`] ??
  row?.[`${role}_marks`] ??
  row?.[`${role}Marks`];
