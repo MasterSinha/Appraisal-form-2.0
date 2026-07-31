@@ -65,7 +65,7 @@ import {
 import { canReviewerRejectProfile, getReviewChain, pendingStatusFor, profileFromsessionStorage, reviewedStatusFor, roleLabel, visiblePreviousReviewRoles, workflowValidationError, isAppraisalFinalisedByVc, isRejectedStatus, isPendingReviewStatusFor, hasActiveRejection, reviewListFrom } from "../utils/hierarchy";
 import { n, pct, RO, TI } from "../features/faculty-appraisal/shared";
 
-import { emptyDesignArtsForm, ALL_ARRAY_KEYS, titleCase, calculateDesignArtsTotals, getDesignArtsEffectiveMaxScores, validateDesignArtsBeforeSubmit, mergeForm, preserveSavedReviewScores, designArtsSchoolName, PART_A_SECTIONS, PART_B_SECTIONS, DesignArtsForm, DesignArtsAuthorityReviewPanel, SectionSelector, AccuracyCheckbox, CompactAuthoritySummaryCard, isReviewerReviewComplete, normalizeScoresForSubmit, summaryRow, b8summaryRow, SECTION_OPTIONS, SummaryBox, WorkflowTracker, ACCENT, ACCENT2, PART_A_MAX, PART_B_MAX, GRAND_MAX, userInitials } from "../features/faculty-appraisal";
+import { emptyDesignArtsForm, ALL_ARRAY_KEYS, titleCase, calculateDesignArtsTotals, getDesignArtsEffectiveMaxScores, validateDesignArtsBeforeSubmit, mergeForm, preserveSavedReviewScores, designArtsSchoolName, PART_A_SECTIONS, PART_B_SECTIONS, PART_C_SECTIONS, PART_D_SECTIONS, DesignArtsForm, DesignArtsAuthorityReviewPanel, SectionSelector, AccuracyCheckbox, CompactAuthoritySummaryCard, isReviewerReviewComplete, normalizeScoresForSubmit, summaryRow, b8summaryRow, SECTION_OPTIONS, SummaryBox, WorkflowTracker, ACCENT, ACCENT2, PART_A_MAX, PART_B_MAX, GRAND_MAX, userInitials } from "../features/faculty-appraisal";
 import { loadClosedAppraisal } from "../services/appraisalPersistence";
 
 function InlineSvgIcon({ paths, size = 16, strokeWidth = 2.2 }) {
@@ -458,7 +458,9 @@ export default function DesignArtsDashboard({ fixedRole }) {
     rowSum("exhibitions", 30),
     maxScores.partB
   );
-  const grandTotal = clampScore(partATotal + partBTotal, maxScores.grand);
+  const partCTotal = totals.partC;
+  const partDTotal = totals.partD;
+  const grandTotal = clampScore(partATotal + partBTotal + partCTotal + partDTotal, maxScores.grand);
   generateMediaCommReport({
   title: `${schoolDisplayName} Appraisal Report`,
   subtitle: `${roleLabel(role)} appraisal form`,
@@ -533,7 +535,7 @@ export default function DesignArtsDashboard({ fixedRole }) {
       showLogoutModal={showLogoutModal}
       onCancelLogout={() => setShowLogoutModal(false)}
       containerStyle={{ display: "flex", minHeight: "100vh", fontFamily: "inherit", background: "#f8fafc", color: "#111827" }}
-      mainStyle={{ flex: 1, padding: "40px", display: "flex", flexDirection: "column", gap: 24, overflowX: "auto", maxWidth: 1600, margin: "0 auto", width: "100%" }}
+      mainStyle={{ flex: 1, padding: "40px", display: "flex", flexDirection: "column", gap: 24, overflowX: "hidden", maxWidth: 1600, margin: "0 auto", width: "100%" }}
       sidebar={(
         <DashboardSidebar
           appInfo={APP_INFO}

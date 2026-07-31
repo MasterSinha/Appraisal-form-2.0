@@ -29,7 +29,7 @@ export default function ACR({ ctx }) {
  return (
 <>
 {/* G: ACR */}
-<SC title="G. Annual Confidential Report (Max 50)" accent="#ef4444">
+<SC title="D1. Annual Confidential Report (Max 50)" accent="#ef4444">
 <div style={{ fontSize: 11, color: "#64748b", marginBottom: 8 }}>ACR is assessed by {reviewerLabel} only - faculty does not fill scores.</div>
 <table style={T}>
 <thead><tr>

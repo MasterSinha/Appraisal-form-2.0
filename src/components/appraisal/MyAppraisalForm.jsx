@@ -15,18 +15,18 @@ import PartC from "./PartC/PartC";
 import PartD from "./PartD/PartD";
 
 const REVIEW_SECTION_MAX = {
-  lectures: 50,
+  lectures: 40,
   courseFile: 20,
   obeRows: 20,
   projects: 20,
   mentoringRows: 10,
   quals: 10,
   feedback: 10,
-  deptActs: 20,
-  uniActs: 30,
+  deptActs: 30,
+  uniActs: 50,
   eventRows: 20,
-  society: 10,
-  industry: 5,
+  society: 20,
+  industry: 8,
   alumniRows: 10,
   placementRows: 20,
   acr: 50,

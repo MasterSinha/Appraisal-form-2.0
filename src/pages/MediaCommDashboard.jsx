@@ -66,7 +66,7 @@ import {
 import { canReviewerRejectProfile, getReviewChain, pendingStatusFor, profileFromsessionStorage, reviewedStatusFor, roleLabel, visiblePreviousReviewRoles, workflowValidationError, isAppraisalFinalisedByVc, isRejectedStatus, isPendingReviewStatusFor, hasActiveRejection, reviewListFrom } from "../utils/hierarchy";
 import { n, pct, RO, TI } from "../features/faculty-appraisal/shared";
 
-import { emptyMediaForm, ALL_ARRAY_KEYS, titleCase, calculateMediaTotals, getMediaEffectiveMaxScores, validateMediaBeforeSubmit, mergeForm, preserveSavedReviewScores, PART_A_SECTIONS, PART_B_SECTIONS, MediaForm, MediaCommAuthorityReviewPanel, SectionSelector, AccuracyCheckbox, CompactAuthoritySummaryCard, isReviewerReviewComplete, normalizeScoresForSubmit, summaryRow, b8summaryRow, SECTION_OPTIONS, SummaryBox, WorkflowTracker, ACCENT, ACCENT2, userInitials } from "../features/faculty-appraisal";
+import { emptyMediaForm, ALL_ARRAY_KEYS, titleCase, calculateMediaTotals, getMediaEffectiveMaxScores, validateMediaBeforeSubmit, mergeForm, preserveSavedReviewScores, PART_A_SECTIONS, PART_B_SECTIONS, PART_C_SECTIONS, PART_D_SECTIONS, MediaForm, MediaCommAuthorityReviewPanel, SectionSelector, AccuracyCheckbox, CompactAuthoritySummaryCard, isReviewerReviewComplete, normalizeScoresForSubmit, summaryRow, b8summaryRow, SECTION_OPTIONS, SummaryBox, WorkflowTracker, ACCENT, ACCENT2, userInitials } from "../features/faculty-appraisal";
 import { loadClosedAppraisal } from "../services/appraisalPersistence";
 
 function InlineSvgIcon({ paths, size = 16, strokeWidth = 2.2 }) {
@@ -477,7 +477,9 @@ export default function MediaCommDashboard({ fixedRole }) {
   const maxScores = getMediaEffectiveMaxScores(form, { self: true });
   const partATotal = clampScore(lecScore + cfScore + innovScore + obeScore + mentoringScore + projScore + qualScore + fbScore, maxScores.partA);
   const partBTotal = clampScore(b1Score + b2Score + b3Score + b4Score + b5Score + b6Score + b7Score + b8Score + b9Score + b10Score + b11Score + b12Score, maxScores.partB);
-  const grandTotal = clampScore(partATotal + partBTotal, maxScores.grand);
+  const partCTotal = totals.partC;
+  const partDTotal = totals.partD;
+  const grandTotal = clampScore(partATotal + partBTotal + partCTotal + partDTotal, maxScores.grand);
  await generateMediaCommReport({
  title: `${currentSchoolCode} Faculty Appraisal Report`,
  subtitle: currentSchoolName,
@@ -487,7 +489,7 @@ export default function MediaCommDashboard({ fixedRole }) {
  partBSections: PART_B_SECTIONS,
  partCSections: PART_C_SECTIONS,
  partDSections: PART_D_SECTIONS,
- totals: { partA: partATotal, partB: partBTotal, partC: totals.partC, partD: totals.partD, total: grandTotal },
+ totals: { partA: partATotal, partB: partBTotal, partC: partCTotal, partD: partDTotal, total: grandTotal },
  hideAcr: false,
  maxScores,
  generatedBy: sessionStorage.getItem("name") || roleLabel(role),
@@ -552,7 +554,7 @@ export default function MediaCommDashboard({ fixedRole }) {
       showLogoutModal={showLogoutModal}
       onCancelLogout={() => setShowLogoutModal(false)}
       containerStyle={{ display: "flex", minHeight: "100vh", fontFamily: "inherit", background: "#f8fafc", color: "#111827" }}
-      mainStyle={{ flex: 1, padding: "40px", display: "flex", flexDirection: "column", gap: 16, overflowX: "auto", maxWidth: 1600, margin: "0 auto", width: "100%" }}
+      mainStyle={{ flex: 1, padding: "40px", display: "flex", flexDirection: "column", gap: 16, overflowX: "hidden", maxWidth: 1600, margin: "0 auto", width: "100%" }}
       sidebar={(
         <DashboardSidebar
           appInfo={APP_INFO}

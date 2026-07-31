@@ -9,6 +9,7 @@ import {
   rowHasReviewableData,
   societyRowLocked,
   societyRowScore,
+  qualificationRowDescription,
   ViewDocsCell,
   SectionCard as SC,
   T,
@@ -39,7 +40,7 @@ export default function Qualification({ ctx }) {
  {rows(quals).map((r, i) =>(
 <tr key={i} style={i % 2 ? { background: "#f8fafc" } : {}}>
 <td style={TDC}>{i + 1}</td>
-<td style={TD}><RO val={r.label} /></td>
+<td style={TD}><RO val={qualificationRowDescription(r)} /></td>
 <td style={TDV}><ViewDocsCell docKey={`qual-${i}`} docs={docs} /></td>
 <td style={TDS}><RO val={r.score} center /></td>
 <td style={TDS_HOD}><HodInput val={get("quals", i, "hod")} onChange={v =>set("quals", i, "hod", v)} max={SCORE_LIMITS.qualificationRow} /></td>

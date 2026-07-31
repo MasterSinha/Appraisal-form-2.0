@@ -292,19 +292,55 @@ export const isFilled = (value) =>String(value ?? "").trim() !== "";
 export const rowHasAnyValue = (row = {}, keys = []) =>
  keys.some((key) =>isFilled(row?.[key]));
 
+export const qualificationRowDescription = (row = {}) => {
+ const primary =
+ row.label ||
+ row.title ||
+ row.qualification_title ||
+ row.qualificationTitle ||
+ row.qualification ||
+ row.certification_title ||
+ row.certificationTitle ||
+ row.certification ||
+ row.name ||
+ "";
+ const details = [row.awardingBody || row.awarding_body || row.body, row.date].filter(isFilled);
+ if (!isFilled(primary)) return details.join(" - ");
+ return details.length ? `${primary} (${details.join(", ")})` : String(primary);
+};
+
 export const REVIEW_ROW_VALUE_KEYS = {
  lectures: ["sem", "code", "planned", "conducted"],
  courseFile: ["course", "title", "details"],
  obeRows: ["component", "evidence"],
  projects: ["label"],
  mentoringRows: ["activity", "evidence"],
- quals: ["label"],
+ quals: [
+ "label",
+ "title",
+ "qualification_title",
+ "qualificationTitle",
+ "qualification",
+ "certification_title",
+ "certificationTitle",
+ "certification",
+ "awarding_body",
+ "awardingBody",
+ "body",
+ "date",
+ "score",
+ "hod",
+ "director",
+ "dir",
+ "dean",
+ "vc",
+ ],
  feedback: ["code", "fb1", "fb2"],
  deptActs: ["activity", "nature", "period"],
  uniActs: ["activity", "nature", "period"],
  eventRows: ["event", "role", "date", "level"],
  society: ["label", "details", "date", "participated", "completed", "yesNo", "yes_no"],
- industry: ["name", "details", "date"],
+ industry: ["name", "details", "activity", "partner", "date"],
  alumniRows: ["activity", "details", "date"],
  placementRows: ["activityType", "name", "date"],
  acr: ["label"],

@@ -5,7 +5,7 @@ import { api } from "../services/api";
 import { Avatar, CompactSummaryCard, ScoreBar, StatusBadge } from "../components/dashboard/dashboardPrimitives";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import DashboardSidebar from "../components/dashboard/DashboardSidebar";
-import { ACR_DETAIL_POINTS, SOCIETY_LABELS, MAX_SCORES, APP_INFO, createAcrRows, fetchSavedAppraisal, loadAppraisalDocuments, loadSavedAppraisal, mergeFacultyInfo, saveAppraisalDraftSection, submitAppraisal, fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, INNOVATIVE_METHODS, SCORE_LIMITS, averageSectionScore, clampScore, clampReviewScore, courseFileAverageScore, courseFileRowScore, effectiveMaxScore, feedbackAverage, feedbackRowScore, feedbackSectionScore, innovativeSelectionsFromDetails, innovativeTeachingScore, isAllowedAttachmentFile, isValidDDMMYYYY, maskDateDDMMYYYY, normalizeAutoScores, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewSectionScore, rowHasReviewableData, scoreRemaining, selfEffectivePartAMax, societyRowLocked, societyRowScore, sumSectionScore, toggleInnovativeMethod, validateCompleteRows, generateStandardReport, standardSubmittedScoreSummary, AppraisalHeaderImage, SummaryOtherInfoField, summaryOtherInfoValueFrom, RejectionNotice, DocCell, ViewCell, ViewDocsCell, RowButtons as RowBtns, SectionSaveFooter, SectionCard as SC, T, TH, TH_HOD, TH_DIR, TH_DEAN, TD, TDC, TDS, TDS_HOD, TDS_DIR, TDS_DEAN, TDV, MyAppraisalSection, CreativeSchoolAuthorityReviewPanel, isCreativeSchool } from "../features/faculty-appraisal";
+import { ACR_DETAIL_POINTS, SOCIETY_LABELS, MAX_SCORES, APP_INFO, createAcrRows, fetchSavedAppraisal, loadAppraisalDocuments, loadSavedAppraisal, mergeFacultyInfo, saveAppraisalDraftSection, submitAppraisal, fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, INNOVATIVE_METHODS, SCORE_LIMITS, averageSectionScore, clampScore, clampReviewScore, courseFileAverageScore, courseFileRowScore, effectiveMaxScore, feedbackAverage, feedbackRowScore, feedbackSectionScore, innovativeSelectionsFromDetails, innovativeTeachingScore, isAllowedAttachmentFile, isValidDDMMYYYY, maskDateDDMMYYYY, normalizeAutoScores, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewSectionScore, rowHasReviewableData, scoreRemaining, selfEffectivePartAMax, societyRowLocked, societyRowScore, sumSectionScore, toggleInnovativeMethod, validateCompleteRows, generateStandardReport, standardSubmittedScoreSummary, qualificationRowDescription, AppraisalHeaderImage, SummaryOtherInfoField, summaryOtherInfoValueFrom, RejectionNotice, DocCell, ViewCell, ViewDocsCell, RowButtons as RowBtns, SectionSaveFooter, SectionCard as SC, T, TH, TH_HOD, TH_DIR, TH_DEAN, TD, TDC, TDS, TDS_HOD, TDS_DIR, TDS_DEAN, TDV, MyAppraisalSection, CreativeSchoolAuthorityReviewPanel, isCreativeSchool } from "../features/faculty-appraisal";
 import { DEAN_TRACKS, getSchoolKey, getSchoolsByDeanTrack } from "../constants/universityHierarchy";
 import { canReviewerRejectProfile, rejectedStatusFor, reviewedStatusFor, profileFromsessionStorage, workflowValidationError, roleLabel, isAppraisalFinalisedByVc, isRejectedStatus, isPendingReviewStatusFor, hasActiveRejection, reviewListFrom, getDeanTrack } from "../utils/hierarchy";
 import { n, pct, grade, RO, TI } from "../features/faculty-appraisal/shared";
@@ -82,7 +82,7 @@ function ReviewPanel({ faculty, onBack, onSubmit }) {
  ...row,
  hod: hodData.courseFile?.[i]?.hod ?? row.hod ?? "",
  }));
- const lec = reviewSectionScore("lectures", lectureReviewRows, 50, "hod");
+ const lec = reviewSectionScore("lectures", lectureReviewRows, 40, "hod");
  const cf = reviewSectionScore("courseFile", courseFileReviewRows, 20, "hod");
  const innov = getS("innovHod");
  const proj = (faculty.projects || []).reduce((a, _, i) =>a + get("projects", i, "hod"), 0);
@@ -92,12 +92,7 @@ function ReviewPanel({ faculty, onBack, onSubmit }) {
  hod: hodData.feedback?.[i]?.hod ?? row.hod ?? "",
  }));
  const fb = reviewSectionScore("feedback", feedbackReviewRows, 10, "hod");
- const dept = (faculty.deptActs || []).reduce((a, _, i) =>a + get("deptActs", i, "hod"), 0);
- const uni = (faculty.uniActs || []).reduce((a, _, i) =>a + get("uniActs", i, "hod"), 0);
- const soc = (faculty.society || []).reduce((a, row, i) =>a + (societyRowLocked(row) ? 0 : get("society", i, "hod")), 0);
- const ind = (faculty.industry || []).reduce((a, _, i) =>a + get("industry", i, "hod"), 0);
- const acrT = (faculty.acr || []).reduce((a, _, i) =>a + clampScore(get("acr", i, "hod"), SCORE_LIMITS.acrRow), 0);
- const partA = lec + cf + innov + proj + qual + fb + dept + uni + soc + ind + acrT;
+ const partA = lec + cf + innov + proj + qual + fb;
 
  const jour = (faculty.journals || []).reduce((a, _, i) =>a + get("journals", i, "hod"), 0);
  const bk = (faculty.books || []).reduce((a, _, i) =>a + get("books", i, "hod"), 0);
@@ -114,12 +109,21 @@ function ReviewPanel({ faculty, onBack, onSubmit }) {
  const train = clampScore((faculty.training || []).reduce((a, _, i) =>a + clampScore(get("training", i, "hod"), SCORE_LIMITS.fdpRow), 0), 10);
  const b8 = clampScore(fdp + train, 10);
  const partB = jour + bk + ictT + res + resProjects + externalResProjects + pat + awd + conf + prop + prod + b8;
+ const dept = (faculty.deptActs || []).reduce((a, _, i) =>a + get("deptActs", i, "hod"), 0);
+ const uni = (faculty.uniActs || []).reduce((a, _, i) =>a + get("uniActs", i, "hod"), 0);
+ const events = (faculty.eventRows || []).reduce((a, _, i) =>a + get("eventRows", i, "hod"), 0);
+ const soc = (faculty.society || []).reduce((a, row, i) =>a + (societyRowLocked(row) ? 0 : get("society", i, "hod")), 0);
+ const ind = (faculty.industry || []).reduce((a, _, i) =>a + get("industry", i, "hod"), 0);
+ const alumni = (faculty.alumniRows || []).reduce((a, _, i) =>a + get("alumniRows", i, "hod"), 0);
+ const placement = (faculty.placementRows || []).reduce((a, _, i) =>a + get("placementRows", i, "hod"), 0);
+ const partC = uni + dept + events + soc + ind + alumni + placement;
+ const partD = (faculty.acr || []).reduce((a, _, i) =>a + clampScore(get("acr", i, "hod"), SCORE_LIMITS.acrRow), 0);
 
- return { partA, partB, total: partA + partB };
+ return { partA, partB, partC, partD, total: partA + partB + partC + partD };
  };
 
- const { partA, partB, total } = calcHodScore();
- const g = grade(total, 575);
+ const { partA, partB, partC, partD, total } = calcHodScore();
+ const g = grade(total, 625);
  const facultySummary = standardSubmittedScoreSummary(faculty, {
  partA: faculty.lectures?.reduce((a, r) =>a + n(r.score), 0) || 0,
  partB: faculty.journals?.reduce((a, r) =>a + n(r.score), 0) || 0,
@@ -563,7 +567,7 @@ function DeanReviewScoreForm({ approval, deanData, setDeanData, sectionView = "p
  accent="#8b5cf6"
  sectionKey="quals"
  docPrefix="qual"
- columns={[{ label: "Description", render: (r) =>r.label }]}
+ columns={[{ label: "Description", render: qualificationRowDescription }]}
  />
 
 </div>)}
@@ -692,8 +696,8 @@ function DeanReviewScoreForm({ approval, deanData, setDeanData, sectionView = "p
  columns={[
  { label: "Title", render: (r) =>r.title },
  { label: "Publisher & ISBN", render: (r) =>r.book || r.publisherIsbn },
- { label: "Type (Book/Chapter/Editor/Translation)", render: (r) =>r.pub || r.type },
- { label: "Level (Intl./National/Local)", render: (r) =>r.level },
+ { label: "Type", render: (r) =>r.pub || r.type },
+ { label: "Level", render: (r) =>r.level },
  { label: "Co-authors from DYPIU", render: (r) =>r.coauth },
  ]}
  />

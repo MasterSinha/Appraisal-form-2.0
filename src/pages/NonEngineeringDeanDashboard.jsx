@@ -5,7 +5,7 @@ import { api } from "../services/api";
 import { Avatar, CompactSummaryCard, ScoreBar, StatusBadge } from "../components/dashboard/dashboardPrimitives";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import DashboardSidebar from "../components/dashboard/DashboardSidebar";
-import { ACR_DETAIL_POINTS, SOCIETY_LABELS, MAX_SCORES, APP_INFO, createAcrRows, fetchSavedAppraisal, loadAppraisalDocuments, loadSavedAppraisal, mergeFacultyInfo, saveAppraisalDraftSection, submitAppraisal, fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, INNOVATIVE_METHODS, SCORE_LIMITS, averageSectionScore, clampScore, clampReviewScore, courseFileAverageScore, courseFileRowScore, effectiveMaxScore, feedbackAverage, feedbackRowScore, feedbackSectionScore, innovativeSelectionsFromDetails, innovativeTeachingScore, isAllowedAttachmentFile, isValidDDMMYYYY, maskDateDDMMYYYY, normalizeAutoScores, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewSectionScore, rowHasReviewableData, scoreRemaining, selfEffectivePartAMax, societyRowLocked, societyRowScore, sumSectionScore, toggleInnovativeMethod, validateCompleteRows, generateStandardReport, standardSubmittedScoreSummary, AppraisalHeaderImage, SummaryOtherInfoField, summaryOtherInfoValueFrom, RejectionNotice, DocCell, ViewCell, ViewDocsCell, RowButtons as RowBtns, SectionSaveFooter, SectionCard as SC, T, TH, TH_HOD, TH_DIR, TH_DEAN, TD, TDC, TDS, TDS_HOD, TDS_DIR, TDS_DEAN, TDV, MyAppraisalSection, CreativeSchoolAuthorityReviewPanel, isCreativeSchool } from "../features/faculty-appraisal";
+import { ACR_DETAIL_POINTS, SOCIETY_LABELS, MAX_SCORES, APP_INFO, createAcrRows, fetchSavedAppraisal, loadAppraisalDocuments, loadSavedAppraisal, mergeFacultyInfo, saveAppraisalDraftSection, submitAppraisal, fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, INNOVATIVE_METHODS, SCORE_LIMITS, averageSectionScore, clampScore, clampReviewScore, courseFileAverageScore, courseFileRowScore, effectiveMaxScore, feedbackAverage, feedbackRowScore, feedbackSectionScore, innovativeSelectionsFromDetails, innovativeTeachingScore, isAllowedAttachmentFile, isValidDDMMYYYY, maskDateDDMMYYYY, normalizeAutoScores, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewSectionScore, rowHasReviewableData, scoreRemaining, selfEffectivePartAMax, societyRowLocked, societyRowScore, sumSectionScore, toggleInnovativeMethod, validateCompleteRows, generateStandardReport, standardSubmittedScoreSummary, qualificationRowDescription, AppraisalHeaderImage, SummaryOtherInfoField, summaryOtherInfoValueFrom, RejectionNotice, DocCell, ViewCell, ViewDocsCell, RowButtons as RowBtns, SectionSaveFooter, SectionCard as SC, T, TH, TH_HOD, TH_DIR, TH_DEAN, TD, TDC, TDS, TDS_HOD, TDS_DIR, TDS_DEAN, TDV, MyAppraisalSection, CreativeSchoolAuthorityReviewPanel, isCreativeSchool } from "../features/faculty-appraisal";
 import { DEAN_TRACKS, getSchoolKey, getSchoolsByDeanTrack } from "../constants/universityHierarchy";
 import { canReviewerRejectProfile, rejectedStatusFor, reviewedStatusFor, profileFromsessionStorage, workflowValidationError, roleLabel, isAppraisalFinalisedByVc, isRejectedStatus, isPendingReviewStatusFor, hasActiveRejection, reviewListFrom, getDeanTrack } from "../utils/hierarchy";
 import { n, pct, grade, RO, TI } from "../features/faculty-appraisal/shared";
@@ -28,9 +28,11 @@ const SCHOOL_VISUALS = {
 
 // --- Helpers ------------------------------------------------------------------
 const reviewerMaxScoresFromSubmitted = (summary) =>({
- partA: n(summary.partAMax) + 25,
+ partA: n(summary.partAMax),
  partB: n(summary.partBMax),
- grand: n(summary.grandMax) + 25,
+ partC: n(summary.partCMax),
+ partD: n(summary.partDMax) || 50,
+ grand: n(summary.partAMax) + n(summary.partBMax) + n(summary.partCMax) + (n(summary.partDMax) || 50),
 });
 const preserveScrollAfterStateUpdate = (update) =>{
  const x = window.scrollX || 0;
@@ -82,7 +84,7 @@ function ReviewPanel({ faculty, onBack, onSubmit }) {
  ...row,
  hod: hodData.courseFile?.[i]?.hod ?? row.hod ?? "",
  }));
- const lec = reviewSectionScore("lectures", lectureReviewRows, 50, "hod");
+ const lec = reviewSectionScore("lectures", lectureReviewRows, 40, "hod");
  const cf = reviewSectionScore("courseFile", courseFileReviewRows, 20, "hod");
  const innov = getS("innovHod");
  const proj = (faculty.projects || []).reduce((a, _, i) =>a + get("projects", i, "hod"), 0);
@@ -92,12 +94,7 @@ function ReviewPanel({ faculty, onBack, onSubmit }) {
  hod: hodData.feedback?.[i]?.hod ?? row.hod ?? "",
  }));
  const fb = reviewSectionScore("feedback", feedbackReviewRows, 10, "hod");
- const dept = (faculty.deptActs || []).reduce((a, _, i) =>a + get("deptActs", i, "hod"), 0);
- const uni = (faculty.uniActs || []).reduce((a, _, i) =>a + get("uniActs", i, "hod"), 0);
- const soc = (faculty.society || []).reduce((a, row, i) =>a + (societyRowLocked(row) ? 0 : get("society", i, "hod")), 0);
- const ind = (faculty.industry || []).reduce((a, _, i) =>a + get("industry", i, "hod"), 0);
- const acrT = (faculty.acr || []).reduce((a, _, i) =>a + clampScore(get("acr", i, "hod"), SCORE_LIMITS.acrRow), 0);
- const partA = lec + cf + innov + proj + qual + fb + dept + uni + soc + ind + acrT;
+ const partA = lec + cf + innov + proj + qual + fb;
 
  const jour = (faculty.journals || []).reduce((a, _, i) =>a + get("journals", i, "hod"), 0);
  const bk = (faculty.books || []).reduce((a, _, i) =>a + get("books", i, "hod"), 0);
@@ -114,12 +111,21 @@ function ReviewPanel({ faculty, onBack, onSubmit }) {
  const train = clampScore((faculty.training || []).reduce((a, _, i) =>a + clampScore(get("training", i, "hod"), SCORE_LIMITS.fdpRow), 0), 10);
  const b8 = clampScore(fdp + train, 10);
  const partB = jour + bk + ictT + res + resProjects + externalResProjects + pat + awd + conf + prop + prod + b8;
+ const dept = (faculty.deptActs || []).reduce((a, _, i) =>a + get("deptActs", i, "hod"), 0);
+ const uni = (faculty.uniActs || []).reduce((a, _, i) =>a + get("uniActs", i, "hod"), 0);
+ const events = (faculty.eventRows || []).reduce((a, _, i) =>a + get("eventRows", i, "hod"), 0);
+ const soc = (faculty.society || []).reduce((a, row, i) =>a + (societyRowLocked(row) ? 0 : get("society", i, "hod")), 0);
+ const ind = (faculty.industry || []).reduce((a, _, i) =>a + get("industry", i, "hod"), 0);
+ const alumni = (faculty.alumniRows || []).reduce((a, _, i) =>a + get("alumniRows", i, "hod"), 0);
+ const placement = (faculty.placementRows || []).reduce((a, _, i) =>a + get("placementRows", i, "hod"), 0);
+ const partC = uni + dept + events + soc + ind + alumni + placement;
+ const partD = (faculty.acr || []).reduce((a, _, i) =>a + clampScore(get("acr", i, "hod"), SCORE_LIMITS.acrRow), 0);
 
- return { partA, partB, total: partA + partB };
+ return { partA, partB, partC, partD, total: partA + partB + partC + partD };
  };
 
- const { partA, partB, total } = calcHodScore();
- const g = grade(total, 575);
+ const { partA, partB, partC, partD, total } = calcHodScore();
+ const g = grade(total, 625);
  const facultySummary = standardSubmittedScoreSummary(faculty, {
  partA: faculty.lectures?.reduce((a, r) =>a + n(r.score), 0) || 0,
  partB: faculty.journals?.reduce((a, r) =>a + n(r.score), 0) || 0,
@@ -220,9 +226,11 @@ function ReviewPanel({ faculty, onBack, onSubmit }) {
  );
 }
 
-const DEAN_REVIEW_PART_A_KEYS = ["lectures", "courseFile", "projects", "quals", "feedback", "deptActs", "uniActs", "society", "industry", "acr"];
+const DEAN_REVIEW_PART_A_KEYS = ["lectures", "courseFile", "projects", "obeRows", "mentoringRows", "quals", "feedback"];
 const DEAN_REVIEW_PART_B_KEYS = ["journals", "books", "ict", "research", "projects2", "externalProjects", "patents", "awards", "confs", "proposals", "products", "fdps", "training"];
-const DEAN_REVIEW_ARRAY_KEYS = [...DEAN_REVIEW_PART_A_KEYS, ...DEAN_REVIEW_PART_B_KEYS];
+const DEAN_REVIEW_PART_C_KEYS = ["uniActs", "deptActs", "eventRows", "society", "industry", "alumniRows", "placementRows"];
+const DEAN_REVIEW_PART_D_KEYS = ["acr"];
+const DEAN_REVIEW_ARRAY_KEYS = [...DEAN_REVIEW_PART_A_KEYS, ...DEAN_REVIEW_PART_B_KEYS, ...DEAN_REVIEW_PART_C_KEYS, ...DEAN_REVIEW_PART_D_KEYS];
 const REVIEW_SCORE_FIELDS = ["hod", "director", "dean", "vc"];
 const preserveSavedReviewScores = (form = {}, source = {}) =>{
  const merged = { ...form };
@@ -255,8 +263,8 @@ const preserveSavedReviewScores = (form = {}, source = {}) =>{
  }
  return merged;
 };
-const DEAN_SECTION_MAX = { lectures: 50, courseFile: 20, projects: 10, quals: 10, feedback: 10, deptActs: 20, uniActs: 30, society: 10, industry: 5, acr: 50, journals: 120, books: 50, ict: 20, research: 30, projects2: SCORE_LIMITS.researchInternalProjects, externalProjects: SCORE_LIMITS.researchExternalProjects, patents: 40, awards: 10, confs: 30, proposals: 10, products: 10, fdps: 10, training: 10 };
-const DEAN_ROW_MAX = { courseFile: () =>SCORE_LIMITS.courseFileRow, projects: projectGuidanceRowMax, quals: () =>SCORE_LIMITS.qualificationRow, feedback: () =>10, society: () =>SCORE_LIMITS.societyRow, acr: () =>SCORE_LIMITS.acrRow, research: researchGuidanceRowMax, fdps: () =>SCORE_LIMITS.fdpRow, training: () =>SCORE_LIMITS.fdpRow };
+const DEAN_SECTION_MAX = { lectures: 40, courseFile: 20, projects: 20, obeRows: 20, mentoringRows: 10, quals: 10, feedback: 10, deptActs: 30, uniActs: 50, eventRows: 20, society: 20, industry: 8, alumniRows: 10, placementRows: 20, acr: 50, journals: 120, books: 50, ict: 20, research: 30, projects2: SCORE_LIMITS.researchInternalProjects, externalProjects: SCORE_LIMITS.researchExternalProjects, patents: 40, awards: 10, confs: 30, proposals: 10, products: 10, fdps: 10, training: 10 };
+const DEAN_ROW_MAX = { courseFile: () =>SCORE_LIMITS.courseFileRow, projects: projectGuidanceRowMax, obeRows: (row) =>row.max || 20, mentoringRows: (row) =>row.max || 10, quals: () =>SCORE_LIMITS.qualificationRow, feedback: () =>10, uniActs: () =>50, deptActs: () =>30, eventRows: () =>20, society: () =>20, industry: () =>8, alumniRows: () =>10, placementRows: () =>20, acr: () =>SCORE_LIMITS.acrRow, research: researchGuidanceRowMax, fdps: () =>SCORE_LIMITS.fdpRow, training: () =>SCORE_LIMITS.fdpRow };
 
 const deanScorePayload = (approval, deanData) =>{
  const payload = {};
@@ -277,7 +285,7 @@ const deanScorePayload = (approval, deanData) =>{
  ...row,
  dean: clampReviewScore("innovRows", row, reviewInnovRows[index]?.dean ?? row.dean ?? "", 10),
  }));
- const innovTotal = reviewSectionScore("innovRows", mergedInnovRows, 10, "dean");
+ const innovTotal = reviewSectionScore("innovRows", mergedInnovRows, 20, "dean");
  payload.innovRows = mergedInnovRows;
  payload.innovativeTeaching = {
  dean: innovTotal ? String(innovTotal) : deanData.innovativeTeaching?.dean ?? approval.innovDean ?? "",
@@ -301,11 +309,13 @@ const deanScoreTotals = (payload) =>{
  const innovativeScore = Array.isArray(payload.innovRows) && payload.innovRows.length
  ? reviewSectionScore("innovRows", payload.innovRows, 10, "dean")
  : clampScore(payload.innovativeTeaching?.dean, 10);
- const partA = clampScore(sumDeanRows(payload, DEAN_REVIEW_PART_A_KEYS) + innovativeScore, 200);
+ const partA = clampScore(sumDeanRows(payload, DEAN_REVIEW_PART_A_KEYS) + innovativeScore, 150);
  const b8 = clampScore(sumDeanRows(payload, ["fdps"]) + sumDeanRows(payload, ["training"]), 10);
  const partBWithoutB8 = sumDeanRows(payload, DEAN_REVIEW_PART_B_KEYS.filter(k =>k !== "fdps" && k !== "training"));
  const cappedPartB = clampScore(partBWithoutB8 + b8, 375);
- return { partA, partB: cappedPartB, total: clampScore(partA + cappedPartB, 575) };
+ const partC = clampScore(sumDeanRows(payload, DEAN_REVIEW_PART_C_KEYS), 150);
+ const partD = clampScore(sumDeanRows(payload, DEAN_REVIEW_PART_D_KEYS), 50);
+ return { partA, partB: cappedPartB, partC, partD, total: clampScore(partA + cappedPartB + partC + partD, 625) };
 };
 
 function DeanScoreCell({ sectionKey, index, row, deanData, setDeanData }) {
@@ -338,7 +348,7 @@ function DeanInnovativeScoreCell({ row, index, rows, deanData, setDeanData }) {
  const updatedRows = [...baseRows];
  updatedRows[index] = { ...(updatedRows[index] || row), dean: clampedValue };
  const totalRows = updatedRows.map((item, rowIndex) =>({ ...item, ...(rowIndex === index ? row : {}) }));
- const total = reviewSectionScore("innovRows", totalRows, 10, "dean");
+ const total = reviewSectionScore("innovRows", totalRows, 20, "dean");
  return {
  ...prev,
  innovRows: updatedRows,
@@ -367,8 +377,8 @@ function ReviewTable({ title, accent = "#4338ca", sectionKey, columns, docPrefix
 
  return (
 <SC title={title} accent={accent}>
-<div style={{ overflowX: "auto" }}>
-<table style={T}>
+<div style={{ overflowX: "visible", width: "100%" }}>
+<table style={{ ...T, minWidth: 0, maxWidth: "100%" }}>
 <thead>
 <tr>
 <th style={TH}>SN</th>
@@ -387,7 +397,7 @@ function ReviewTable({ title, accent = "#4338ca", sectionKey, columns, docPrefix
 </td>
  ))}
  {hasDocs &&<td style={TDV}><ViewDocsCell docKey={`${docPrefix}-${index}`} docs={ctx.docs} /></td>}
-<td style={TDS}>{ctx.cell(sectionKey === "research" ? (row.degree || row.name || row.thesis || row.score ? researchGuidanceScore(row).toFixed(1) : "") : sectionKey === "society" ? (String(row.score ?? "").trim() ? societyRowScore(row) : "") : row.score, true)}</td>
+<td style={TDS}>{ctx.cell(sectionKey === "research" ? (row.degree || row.name || row.thesis || row.score ? researchGuidanceScore(row).toFixed(1) : "") : sectionKey === "society" ? (String(row.score ?? "").trim() ? clampScore(row.score, DEAN_ROW_MAX[sectionKey]?.(row) || DEAN_SECTION_MAX[sectionKey]) : "") : row.score, true)}</td>
 <td style={TDS_DEAN}><DeanScoreCell sectionKey={sectionKey} index={index} row={row} deanData={ctx.deanData} setDeanData={ctx.setDeanData} /></td>
 </tr>
  )) : (
@@ -499,23 +509,7 @@ function DeanReviewScoreForm({ approval, deanData, setDeanData, sectionView = "p
 </SC>
 
 <ReviewTable
- title="A6. Guided Students Project"
- accent="#8b5cf6"
- sectionKey="projects"
- docPrefix="proj"
- columns={[{ label: "Project Type / Description", render: (r) =>r.label }]}
- />
-
-<ReviewTable
- title="A8. Qualification Enhancement"
- accent="#8b5cf6"
- sectionKey="quals"
- docPrefix="qual"
- columns={[{ label: "Description", render: (r) =>r.label }]}
- />
-
-<ReviewTable
- title="A6. Student Feedback"
+ title="A4. Student Feedback"
  accent="#0ea5e9"
  sectionKey="feedback"
  columns={[
@@ -527,54 +521,41 @@ function DeanReviewScoreForm({ approval, deanData, setDeanData, sectionView = "p
  />
 
 <ReviewTable
- title="A7. Department Activities"
- accent="#f59e0b"
- sectionKey="deptActs"
- docPrefix="dept"
+ title="A5. Learning Outcomes Attainment & OBE Practice"
+ accent="#8b5cf6"
+ sectionKey="obeRows"
+ docPrefix="obe"
+ columns={[
+ { label: "Component", render: (r) =>r.component },
+ { label: "Evidence", render: (r) =>r.evidence },
+ ]}
+ />
+
+<ReviewTable
+ title="A6. Guided Students Project"
+ accent="#8b5cf6"
+ sectionKey="projects"
+ docPrefix="proj"
+ columns={[{ label: "Project Type / Description", render: (r) =>r.label }]}
+ />
+
+<ReviewTable
+ title="A7. Student Mentoring & Counselling"
+ accent="#8b5cf6"
+ sectionKey="mentoringRows"
+ docPrefix="ment"
  columns={[
  { label: "Activity", render: (r) =>r.activity },
- { label: "Nature", render: (r) =>r.nature },
+ { label: "Evidence", render: (r) =>r.evidence },
  ]}
  />
 
 <ReviewTable
- title="A8. University Activities"
- accent="#f59e0b"
- sectionKey="uniActs"
- docPrefix="uni"
- columns={[
- { label: "Activity", render: (r) =>r.activity },
- { label: "Nature", render: (r) =>r.nature },
- ]}
- />
-
-<ReviewTable
- title="A9. Contribution to Society"
- accent="#10b981"
- sectionKey="society"
- docPrefix="soc"
- columns={[
- { label: "Activity", render: (r) =>r.label },
- { label: "Details", render: (r) =>r.details },
- ]}
- />
-
-<ReviewTable
- title="A10. Industry Connect"
- accent="#10b981"
- sectionKey="industry"
- docPrefix="ind"
- columns={[
- { label: "Industry Name", render: (r) =>r.name },
- { label: "Details", render: (r) =>r.details },
- ]}
- />
-
-<ReviewTable
- title="A11. Annual Confidential Report (ACR)"
- accent="#ef4444"
- sectionKey="acr"
- columns={[{ label: "Parameter", render: (r) =>r.label }]}
+ title="A8. Qualification Enhancement"
+ accent="#8b5cf6"
+ sectionKey="quals"
+ docPrefix="qual"
+ columns={[{ label: "Description", render: qualificationRowDescription }]}
  />
 
 </>)}
@@ -605,8 +586,8 @@ function DeanReviewScoreForm({ approval, deanData, setDeanData, sectionView = "p
  columns={[
  { label: "Title", render: (r) =>r.title },
  { label: "Publisher & ISBN", render: (r) =>r.book || r.publisherIsbn },
- { label: "Type (Book/Chapter/Editor/Translation)", render: (r) =>r.pub || r.type },
- { label: "Level (Intl./National/Local)", render: (r) =>r.level },
+ { label: "Type", render: (r) =>r.pub || r.type },
+ { label: "Level", render: (r) =>r.level },
  { label: "Co-authors from DYPIU", render: (r) =>r.coauth },
  ]}
  />
@@ -739,6 +720,110 @@ function DeanReviewScoreForm({ approval, deanData, setDeanData, sectionView = "p
  ]}
  />
 </>)}
+ {sectionView === "partC" && (<>
+<div style={{ fontWeight: 800, fontSize: 13, color: "#1e293b", background: "#dcfce7", padding: "8px 14px", borderRadius: 6, marginBottom: 10, letterSpacing: 0.3 }}>
+ Part C - Administrative Role & University Development Contribution
+</div>
+
+<ReviewTable
+ title="C1. Administration at University Level"
+ accent="#0f766e"
+ sectionKey="uniActs"
+ docPrefix="uni"
+ columns={[
+ { label: "Activity", render: (r) =>r.activity },
+ { label: "Nature", render: (r) =>r.nature },
+ { label: "Period", render: (r) =>r.period, center: true },
+ ]}
+ />
+
+<ReviewTable
+ title="C2. Administration at School Level"
+ accent="#0f766e"
+ sectionKey="deptActs"
+ docPrefix="dept"
+ columns={[
+ { label: "Activity", render: (r) =>r.activity },
+ { label: "Nature", render: (r) =>r.nature },
+ { label: "Period", render: (r) =>r.period, center: true },
+ ]}
+ />
+
+<ReviewTable
+ title="C3. Event Organisation & Institutional Visibility"
+ accent="#0f766e"
+ sectionKey="eventRows"
+ docPrefix="event"
+ columns={[
+ { label: "Event / Contribution", render: (r) =>r.event },
+ { label: "Role", render: (r) =>r.role },
+ { label: "Date", render: (r) =>r.date, center: true },
+ { label: "Level", render: (r) =>r.level, center: true },
+ ]}
+ />
+
+<ReviewTable
+ title="C4. Outreach, Extension & Social Responsibility"
+ accent="#0f766e"
+ sectionKey="society"
+ docPrefix="soc"
+ columns={[
+ { label: "Activity", render: (r) =>r.label },
+ { label: "Details", render: (r) =>r.details },
+ { label: "Date", render: (r) =>r.date, center: true },
+ ]}
+ />
+
+<ReviewTable
+ title="C5. Industry Interaction & Linkages"
+ accent="#0f766e"
+ sectionKey="industry"
+ docPrefix="ind"
+ columns={[
+ { label: "Activity", render: (r) =>r.activity || r.name },
+ { label: "Industry Partner", render: (r) =>r.partner || r.details },
+ { label: "Date", render: (r) =>r.date, center: true },
+ ]}
+ />
+
+<ReviewTable
+ title="C6. Alumni Engagement & Networking"
+ accent="#0f766e"
+ sectionKey="alumniRows"
+ docPrefix="alumni"
+ columns={[
+ { label: "Activity", render: (r) =>r.activity },
+ { label: "Details", render: (r) =>r.details },
+ { label: "Date", render: (r) =>r.date, center: true },
+ ]}
+ />
+
+<ReviewTable
+ title="C7. Student Placement Mentoring & Career Development"
+ accent="#0f766e"
+ sectionKey="placementRows"
+ docPrefix="placement"
+ columns={[
+ { label: "Activity Type", render: (r) =>r.activityType },
+ { label: "Student / Company Name", render: (r) =>r.name },
+ { label: "Date", render: (r) =>r.date, center: true },
+ ]}
+ />
+</>)}
+ {sectionView === "partD" && (<>
+<div style={{ fontWeight: 800, fontSize: 13, color: "#1e293b", background: "#ffedd5", padding: "8px 14px", borderRadius: 6, marginBottom: 10, letterSpacing: 0.3 }}>
+ Part D - Annual Confidential Report
+</div>
+
+<ReviewTable
+ title="Part D. Annual Confidential Report (ACR)"
+ accent="#ef4444"
+ sectionKey="acr"
+ columns={[
+ { label: "Parameter", render: (r) =>r.label },
+ ]}
+ />
+</>)}
 </div>
 </DeanReviewTableContext.Provider>
  );
@@ -785,16 +870,25 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
  const deanScores = deanScoreTotals(sectionScores);
  const selfSummary = standardSubmittedScoreSummary(approval);
  const reviewerMaxScores = reviewerMaxScoresFromSubmitted(selfSummary);
- const hasSavedDeanScores = ["deanPartA", "deanPartB", "deanTotal"].some((key) =>String(approval?.[key] ?? "").trim() !== "");
+ const hasSavedDeanScores = ["deanPartA", "deanPartB", "deanPartC", "deanPartD", "deanTotal"].some((key) =>String(approval?.[key] ?? "").trim() !== "");
  const rawDisplayedDeanScores = reviewLocked && hasSavedDeanScores ? {
  partA: String(approval?.deanPartA ?? "").trim() !== "" ? n(approval?.deanPartA) : deanScores.partA,
  partB: String(approval?.deanPartB ?? "").trim() !== "" ? n(approval?.deanPartB) : deanScores.partB,
+ partC: String(approval?.deanPartC ?? "").trim() !== "" ? n(approval?.deanPartC) : deanScores.partC,
+ partD: String(approval?.deanPartD ?? "").trim() !== "" ? n(approval?.deanPartD) : deanScores.partD,
  total: String(approval?.deanTotal ?? "").trim() !== "" ? n(approval?.deanTotal) : deanScores.total,
  } : deanScores;
+ const displayedDeanPartA = clampScore(rawDisplayedDeanScores.partA, reviewerMaxScores.partA);
+ const displayedDeanPartB = clampScore(rawDisplayedDeanScores.partB, reviewerMaxScores.partB);
+ const displayedDeanPartC = clampScore(rawDisplayedDeanScores.partC, reviewerMaxScores.partC);
+ const displayedDeanPartD = clampScore(rawDisplayedDeanScores.partD, reviewerMaxScores.partD);
+ const hasSavedDeanTotal = reviewLocked && String(approval?.deanTotal ?? "").trim() !== "";
  const displayedDeanScores = {
- partA: clampScore(rawDisplayedDeanScores.partA, reviewerMaxScores.partA),
- partB: clampScore(rawDisplayedDeanScores.partB, reviewerMaxScores.partB),
- total: clampScore(rawDisplayedDeanScores.total || rawDisplayedDeanScores.partA + rawDisplayedDeanScores.partB, reviewerMaxScores.grand),
+ partA: displayedDeanPartA,
+ partB: displayedDeanPartB,
+ partC: displayedDeanPartC,
+ partD: displayedDeanPartD,
+ total: clampScore(hasSavedDeanTotal ? rawDisplayedDeanScores.total : displayedDeanPartA + displayedDeanPartB + displayedDeanPartC + displayedDeanPartD, reviewerMaxScores.grand),
  };
  const titleMap = {
  directorApprovals: "Director's Appraisal Review",
@@ -827,6 +921,8 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
  reviewerRole: "dean",
  partAScore: displayedDeanScores.partA,
  partBScore: displayedDeanScores.partB,
+ partCScore: displayedDeanScores.partC,
+ partDScore: displayedDeanScores.partD,
  totalScore: displayedDeanScores.total,
  remarks,
  sectionScores,
@@ -976,7 +1072,7 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
 <button
  onClick={() =>{
  if (window.confirm("Reject this appraisal and send it back to the user for editing?")) {
- onSubmit(approval.id, deanScores, remarks, sectionScores, reviewConfirmed, "rejected");
+ onSubmit(approval.id, displayedDeanScores, remarks, sectionScores, reviewConfirmed, "rejected");
  }
  }}
  disabled={!reviewConfirmed || !remarks.trim()}
@@ -985,7 +1081,7 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
  Reject Form
 </button>
  )}
-<button onClick={() =>onSubmit(approval.id, deanScores, remarks, sectionScores, reviewConfirmed)} disabled={!reviewConfirmed || !remarks.trim()} style={{ flex: 1, padding: "12px 16px", borderRadius: 10, border: "none", background: (reviewConfirmed && remarks.trim()) ? "#0f172a" : "#64748b", color: "#f8fafc", fontWeight: 700, cursor: (reviewConfirmed && remarks.trim()) ? "pointer" : "not-allowed" }}>Approve & Forward</button>
+<button onClick={() =>onSubmit(approval.id, displayedDeanScores, remarks, sectionScores, reviewConfirmed)} disabled={!reviewConfirmed || !remarks.trim()} style={{ flex: 1, padding: "12px 16px", borderRadius: 10, border: "none", background: (reviewConfirmed && remarks.trim()) ? "#0f172a" : "#64748b", color: "#f8fafc", fontWeight: 700, cursor: (reviewConfirmed && remarks.trim()) ? "pointer" : "not-allowed" }}>Approve & Forward</button>
 </>
  )}
 </div>
@@ -1149,7 +1245,7 @@ export default function NonEngineeringDeanDashboard() {
 
       const status = decision === "rejected" ? rejectedStatusFor("dean") : reviewedStatusFor("dean");
       const markReviewed = (entry) => entry.id === id
-        ? { ...entry, ...sectionScores, innovDean: sectionScores?.innovativeTeaching?.dean ?? entry.innovDean, status, workflowStatus: status, deanPartA: scores.partA, deanPartB: scores.partB, deanTotal: scores.total, deanRemarks: remarks }
+        ? { ...entry, ...sectionScores, innovDean: sectionScores?.innovativeTeaching?.dean ?? entry.innovDean, status, workflowStatus: status, deanPartA: scores.partA, deanPartB: scores.partB, deanPartC: scores.partC, deanPartD: scores.partD, deanTotal: scores.total, deanRemarks: remarks }
         : entry;
 
       if (activeRoleTab === "facultyApprovals") {
@@ -1179,7 +1275,7 @@ export default function NonEngineeringDeanDashboard() {
       showLogoutModal={showLogoutModal}
       onCancelLogout={() => setShowLogoutModal(false)}
       containerStyle={{ display: "flex", minHeight: "100vh", fontFamily: "inherit", background: "#f4f6fa", color: "#1e293b" }}
-      mainStyle={{ flex: 1, padding: "24px 30px", display: "flex", flexDirection: "column", gap: 18, overflowX: "auto" }}
+      mainStyle={{ flex: 1, padding: "24px 30px", display: "flex", flexDirection: "column", gap: 18, overflowX: "hidden" }}
       sidebar={(
         <DashboardSidebar
           appInfo={APP_INFO}

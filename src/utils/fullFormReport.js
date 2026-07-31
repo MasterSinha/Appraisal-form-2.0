@@ -268,14 +268,18 @@ const renderSection = ({
   scoreRoles = ["score"],
   roleLabel,
   showTotal = false,
-}) => `
+}) => {
+  const showDocuments = Boolean(section.doc) && section.key !== "acr" && section.showDocuments !== false;
+  const totalColSpan = section.fields.length + 1 + (showDocuments ? 1 : 0);
+
+  return `
   <h3>${safeHtml(section.title)} <span>(Max ${safeHtml(section.max)})</span></h3>
   <table>
     <thead>
       <tr>
         <th>SN</th>
         ${section.fields.map(([, label]) => `<th>${safeHtml(label)}</th>`).join("")}
-        <th>Documents</th>
+        ${showDocuments ? "<th>Documents</th>" : ""}
         ${scoreRoles.map((role) => `<th>${roleColumnLabel(role, roleLabel)}</th>`).join("")}
       </tr>
     </thead>
@@ -286,7 +290,7 @@ const renderSection = ({
         <tr>
           <td class="center">${index + 1}</td>
           ${section.fields.map(([key]) => `<td>${displayValue(row?.[key])}</td>`).join("")}
-          <td>${docsFor(docs, `${section.doc}-${index}`)}</td>
+          ${showDocuments ? `<td>${docsFor(docs, `${section.doc}-${index}`)}</td>` : ""}
           ${scoreRoles.map((role) => `<td class="center">${displayValue(displaySectionScore(section, row, role))}</td>`).join("")}
         </tr>
       `,
@@ -296,13 +300,14 @@ const renderSection = ({
         showTotal
           ? `
       <tr class="tr">
-        <td colspan="${section.fields.length + 2}" class="c b">Total Score (Max ${safeHtml(section.max)})</td>
+        <td colspan="${totalColSpan}" class="c b">Total Score (Max ${safeHtml(section.max)})</td>
         ${scoreRoles.map((role) => `<td class="c b">${sectionTotalScore(section, rows.length ? rows : [{}], role).toFixed(1)}</td>`).join("")}
       </tr>`
           : ""
       }
     </tbody>
   </table>`;
+};
 
 const buildSignaturePage = ({
   facultyName = "",
@@ -655,6 +660,8 @@ export const generateMediaCommReport = async ({
   docs = {},
   partASections = [],
   partBSections = [],
+  partCSections = [],
+  partDSections = [],
   totals = {},
   maxScores = {},
   generatedBy = "",
@@ -984,24 +991,26 @@ ${PRINT_REPORT_CSS}
   <table><tr><th>SN</th><th>Course Code/Name</th><th>First Feedback(%)</th><th>Second Feedback(%)</th><th>Average</th><th>Self Score</th></tr>
   ${feedback.map((f, i) => `<tr><td class="c">${i + 1}</td><td>${f.code || "&nbsp;"}</td><td class="c">${f.fb1 || "&nbsp;"}</td><td class="c">${f.fb2 || "&nbsp;"}</td><td class="c">${f.fb1 || f.fb2 ? ((n(f.fb1) + n(f.fb2)) / ((f.fb1 ? 1 : 0) + (f.fb2 ? 1 : 0) || 1)).toFixed(2) : "&nbsp;"}</td><td class="c">${f.fb1 || f.fb2 ? ((n(f.fb1) + n(f.fb2)) / ((f.fb1 ? 1 : 0) + (f.fb2 ? 1 : 0) || 1) / 10).toFixed(2) : "&nbsp;"}</td></tr>`).join("")}
   <tr class="tr"><td colspan="5" class="c b">Total (Max 10)</td><td class="c">${stuFeedbackScore.toFixed(1)}</td></tr></table>
-  <h3>C. Departmental / School Activities (Max 20)</h3>
+  <h3 style="background:#d9d9d9;padding:4px;text-align:center;font-size:13px">PART C - Administrative Role &amp; University Development Contribution</h3>
+  <h3>C2. Administration at School Level (Max 20)</h3>
   <table><tr><th>SN</th><th>Activity</th><th>Nature of Activity</th><th>Self Score</th></tr>
   ${deptActs.map((d, i) => `<tr><td class="c">${i + 1}</td><td>${d.activity || "&nbsp;"}</td><td>${d.nature || "&nbsp;"}</td><td class="c">${d.score || "&nbsp;"}</td></tr>`).join("")}
   <tr class="tr"><td colspan="3" class="c b">Total (Max 20)</td><td class="c">${deptScore.toFixed(1)}</td></tr></table>
-  <h3>D. University Level Activities (Max 30)</h3>
+  <h3>C1. Administration at University Level (Max 30)</h3>
   <table><tr><th>SN</th><th>Activity</th><th>Nature of Activity</th><th>Self Score</th></tr>
   ${uniActs.map((u, i) => `<tr><td class="c">${i + 1}</td><td>${u.activity || "&nbsp;"}</td><td>${u.nature || "&nbsp;"}</td><td class="c">${u.score || "&nbsp;"}</td></tr>`).join("")}
   <tr class="tr"><td colspan="3" class="c b">Total (Max 30)</td><td class="c">${uniScore.toFixed(1)}</td></tr></table>
-  <h3>E. Contribution to Society (Max 10)</h3>
+  <h3>C4. Outreach, Extension &amp; Social Responsibility (Max 10)</h3>
   ${`<table><tr><th>SN</th><th>Activity</th><th>Details</th><th>Self Score</th></tr>
   ${society.map((s, i) => `<tr><td class="c">${i + 1}</td><td>${s.label || "&nbsp;"}</td><td>${s.details || "&nbsp;"}</td><td class="c">${societyRowScore(s)}</td></tr>`).join("")}
   <tr class="tr"><td colspan="3" class="c b">Total (Max 10)</td><td class="c">${societyScore.toFixed(1)}</td></tr></table>`
   }
-  <h3>F. Industry Connect Activity (Max 5)</h3>
+  <h3>C5. Industry Interaction &amp; Linkages (Max 5)</h3>
   <table><tr><th>SN</th><th>Name of Industry</th><th>Details of Activity</th><th>Self Score</th></tr>
   ${industry.map((ind, i) => `<tr><td class="c">${i + 1}</td><td>${ind.name || "&nbsp;"}</td><td>${ind.details || "&nbsp;"}</td><td class="c">${ind.score || "&nbsp;"}</td></tr>`).join("")}
   <tr class="tr"><td colspan="3" class="c b">Total (Max 5)</td><td class="c">${industryScore.toFixed(1)}</td></tr></table>
-  <h3>G. Annual Confidential Report (${selfAcrExcluded ? "Not counted in self score" : "Max 50"})</h3>
+  <h3 style="background:#d9d9d9;padding:4px;text-align:center;font-size:13px">PART D - Annual Confidential Report</h3>
+  <h3>D1. Annual Confidential Report (${selfAcrExcluded ? "Not counted in self score" : "Max 50"})</h3>
   <table><tr><th>SN</th><th>Parameter</th><th>Self Score</th></tr>
   ${acr.map((a, i) => `<tr><td class="c">${i + 1}</td><td>${a.label || "&nbsp;"}</td><td class="c">${a.score || "&nbsp;"}</td></tr>`).join("")}
   <tr class="tr"><td colspan="2" class="c b">Total (${selfAcrExcluded ? "Not counted in self score" : "Max 50"})</td><td class="c">${acrSummaryScore.toFixed(1)}</td></tr></table>
@@ -1009,13 +1018,19 @@ ${PRINT_REPORT_CSS}
     <tr><th>Part A Summary</th><th>Max</th><th>Faculty Score</th></tr>
     <tr><td>Teaching Process (i+ii+iii+iv+v)</td><td class="c">${teachingMax}</td><td class="c">${teachingRaw.toFixed(1)}</td></tr>
     <tr><td>Students' Feedback</td><td class="c">10</td><td class="c">${stuFeedbackScore.toFixed(1)}</td></tr>
-    <tr><td>Departmental Activities</td><td class="c">20</td><td class="c">${deptScore.toFixed(1)}</td></tr>
-    <tr><td>University Activity</td><td class="c">30</td><td class="c">${uniScore.toFixed(1)}</td></tr>
-    <tr><td>Contribution to Society</td><td class="c">10</td><td class="c">${societyScore.toFixed(1)}</td></tr>
-    <tr><td>Industry Connect</td><td class="c">5</td><td class="c">${industryScore.toFixed(1)}</td></tr>
-    <tr><td>Annual Confidential Report</td><td class="c">${acrSummaryMax}</td><td class="c">${acrSummaryScore.toFixed(1)}</td></tr>
     <tr class="tr"><td class="b">PART A TOTAL</td><td class="c b">${effectivePartAMax}</td><td class="c b">${partATotal.toFixed(1)}</td></tr>
     <tr class="tr"><td class="b">PART A MARKS OBTAINED (%)</td><td colspan="2" class="c b">${partAPercentage}%</td></tr>
+  </table>
+  <table class="st">
+    <tr><th>Part C Summary</th><th>Max</th><th>Faculty Score</th></tr>
+    <tr><td>Administration at University Level</td><td class="c">30</td><td class="c">${uniScore.toFixed(1)}</td></tr>
+    <tr><td>Administration at School Level</td><td class="c">20</td><td class="c">${deptScore.toFixed(1)}</td></tr>
+    <tr><td>Outreach, Extension &amp; Social Responsibility</td><td class="c">10</td><td class="c">${societyScore.toFixed(1)}</td></tr>
+    <tr><td>Industry Interaction &amp; Linkages</td><td class="c">5</td><td class="c">${industryScore.toFixed(1)}</td></tr>
+  </table>
+  <table class="st">
+    <tr><th>Part D Summary</th><th>Max</th><th>Faculty Score</th></tr>
+    <tr><td>Annual Confidential Report</td><td class="c">${acrSummaryMax}</td><td class="c">${acrSummaryScore.toFixed(1)}</td></tr>
   </table>
   <div class="pb"></div>
   <h3 style="background:#d9d9d9;padding:4px;text-align:center;font-size:13px">PART B - Research &amp; Academic Contributions</h3>
@@ -1079,11 +1094,6 @@ ${PRINT_REPORT_CSS}
     <tr><td colspan="4" class="b" style="background:#d9d9d9;text-align:center">Part A - Teaching Process</td></tr>
     <tr><td class="c">A</td><td>Teaching Process (i+ii+iii+iv+v)</td><td class="c">${teachingMax}</td><td class="c">${teachingRaw.toFixed(1)}</td></tr>
     <tr><td class="c">B</td><td>Students' Feedback</td><td class="c">10</td><td class="c">${stuFeedbackScore.toFixed(1)}</td></tr>
-    <tr><td class="c">C</td><td>Departmental Activities</td><td class="c">20</td><td class="c">${deptScore.toFixed(1)}</td></tr>
-    <tr><td class="c">D</td><td>University Activity</td><td class="c">30</td><td class="c">${uniScore.toFixed(1)}</td></tr>
-    <tr><td class="c">E</td><td>Contribution to Society</td><td class="c">10</td><td class="c">${societyScore.toFixed(1)}</td></tr>
-    <tr><td class="c">F</td><td>Industry Connect</td><td class="c">5</td><td class="c">${industryScore.toFixed(1)}</td></tr>
-    <tr><td class="c">G</td><td>Annual Confidential Report</td><td class="c">${acrSummaryMax}</td><td class="c">${acrSummaryScore.toFixed(1)}</td></tr>
     <tr class="tr"><td colspan="2" class="c b">Part A Total</td><td class="c b">${effectivePartAMax}</td><td class="c b">${partATotal.toFixed(1)}</td></tr>
     <tr class="tr"><td colspan="2" class="c b">Part A Marks Obtained (%)</td><td colspan="2" class="c b">${partAPercentage}%</td></tr>
     <tr><td colspan="4" class="b" style="background:#d9d9d9;text-align:center">Part B - Research and Academic Contribution</td></tr>
@@ -1097,7 +1107,14 @@ ${PRINT_REPORT_CSS}
     <tr><td class="c">8</td><td>Self Development (FDP / Industrial Training)</td><td class="c">10</td><td class="c">${(fdpScore + trainScore).toFixed(1)}</td></tr>
     <tr class="tr"><td colspan="2" class="c b">Part B Total</td><td class="c b">${effectivePartBMax}</td><td class="c b">${partBTotal.toFixed(1)}</td></tr>
     <tr class="tr"><td colspan="2" class="c b">Part B Marks Obtained (%)</td><td colspan="2" class="c b">${partBPercentage}%</td></tr>
-    <tr style="background:#bfbfbf;font-weight:bold;font-size:13px"><td colspan="2" class="c">Grand Total (Part A + Part B)</td><td class="c">${effectiveGrandMax}</td><td class="c">${grandTotal.toFixed(1)}</td></tr>
+    <tr><td colspan="4" class="b" style="background:#d9d9d9;text-align:center">Part C - Administrative Role &amp; University Development Contribution</td></tr>
+    <tr><td class="c">C1</td><td>Administration at University Level</td><td class="c">30</td><td class="c">${uniScore.toFixed(1)}</td></tr>
+    <tr><td class="c">C2</td><td>Administration at School Level</td><td class="c">20</td><td class="c">${deptScore.toFixed(1)}</td></tr>
+    <tr><td class="c">C4</td><td>Outreach, Extension &amp; Social Responsibility</td><td class="c">10</td><td class="c">${societyScore.toFixed(1)}</td></tr>
+    <tr><td class="c">C5</td><td>Industry Interaction &amp; Linkages</td><td class="c">5</td><td class="c">${industryScore.toFixed(1)}</td></tr>
+    <tr><td colspan="4" class="b" style="background:#d9d9d9;text-align:center">Part D - Annual Confidential Report</td></tr>
+    <tr><td class="c">D1</td><td>Annual Confidential Report</td><td class="c">${acrSummaryMax}</td><td class="c">${acrSummaryScore.toFixed(1)}</td></tr>
+    <tr style="background:#bfbfbf;font-weight:bold;font-size:13px"><td colspan="2" class="c">Grand Total (Part A + Part B + Part C + Part D)</td><td class="c">${effectiveGrandMax}</td><td class="c">${grandTotal.toFixed(1)}</td></tr>
     <tr style="background:#bfbfbf;font-weight:bold;font-size:13px"><td colspan="2" class="c">Marks Obtained (%)</td><td colspan="2" class="c">${totalPercentage}%</td></tr>
   </table>
   ${renderSummaryOtherInfo(summaryOtherInfo)}

@@ -34,7 +34,7 @@ export default function BooksTable({ ctx }) {
 <table style={T}>
 <thead><tr>
 <th style={TH}>SN</th><th style={TH}>Title</th><th style={TH}>Publisher & ISBN</th>
-<th style={TH}>Type (Book/Chapter/Editor/Translation)</th><th style={TH}>Level (Intl./National/Local)</th><th style={TH}>Co-authors from DYPIU</th>
+<th style={TH}>Type</th><th style={TH}>Level</th><th style={TH}>Co-authors from DYPIU</th>
 <th style={TH}>View Docs</th><th style={TH}>Faculty Score</th><th style={TH_HOD}>{reviewerScoreLabel}</th>
 </tr></thead>
 <tbody>

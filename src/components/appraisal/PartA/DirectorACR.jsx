@@ -34,7 +34,7 @@ export default function DirectorACR({ ctx }) {
  return (
 <>
 {/* G: ACR */}
-<SC title="G. Annual Confidential Report (Max 50)" accent="#ef4444">
+<SC title="D1. Annual Confidential Report (Max 50)" accent="#ef4444">
 <div style={{ fontSize: 11, color: "#64748b", marginBottom: 8 }}>ACR is assessed by Director only. Scores open with the predefined value and can be adjusted during review.</div>
 <table style={T}>
 <thead><tr>

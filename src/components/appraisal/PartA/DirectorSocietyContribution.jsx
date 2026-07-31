@@ -28,12 +28,12 @@ export default function DirectorSocietyContribution({ ctx }) {
  const { faculty, docs, lectures, courseFile, projects, quals, feedback, deptActs, uniActs, society, industry, acr, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, rows, getDir, setDir, getInnovDir, setInnovDir, innovativeRows } = ctx;
  return (
 <>
-{/* E: Society */}
-<SC title="E. Contribution to Society (Max 10, Max 5 per row)" accent="#10b981">
+{/* C4: Outreach */}
+<SC title="C4. Outreach, Extension & Social Responsibility (Max 20)" accent="#0f766e">
 <table style={T}>
 <thead><tr>
-<th style={TH}>SN</th><th style={TH}>Activity</th><th style={TH}>Details</th>
-<th style={TH}>View Docs</th><th style={TH}>Faculty Score (Max 5)</th><th style={TH_DIR}>Director Score</th>
+<th style={TH}>SN</th><th style={TH}>Activity</th><th style={TH}>Details</th><th style={TH}>Date</th>
+<th style={TH}>View Docs</th><th style={TH}>Faculty Score</th><th style={TH_DIR}>Director Score</th>
 </tr></thead>
 <tbody>
  {rows(society).map((r, i) =>(
@@ -41,9 +41,10 @@ export default function DirectorSocietyContribution({ ctx }) {
 <td style={TDC}>{i + 1}</td>
 <td style={TD}><RO val={r.label} /></td>
 <td style={TD}><RO val={r.details} /></td>
+<td style={TD}><RO val={r.date} /></td>
 <td style={TDV}><ViewDocsCell docKey={`soc-${i}`} docs={docs} /></td>
-<td style={TDS}><RO val={String(r.score ?? "").trim() ? societyRowScore(r) : ""} center /></td>
-<td style={TDS_DIR}><DirInput val={societyRowLocked(r) ? "0" : getDir("society", i, "dir")} max={SCORE_LIMITS.societyRow} disabled={societyRowLocked(r)} onChange={v =>setDir("society", i, "dir", v)} /></td>
+<td style={TDS}><RO val={String(r.score ?? "").trim() ? clampScore(r.score, 20) : ""} center /></td>
+<td style={TDS_DIR}><DirInput val={societyRowLocked(r) ? "0" : getDir("society", i, "dir")} max={20} disabled={societyRowLocked(r)} onChange={v =>setDir("society", i, "dir", v)} /></td>
 </tr>
  ))}
 </tbody>

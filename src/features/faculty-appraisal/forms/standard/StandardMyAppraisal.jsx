@@ -213,7 +213,11 @@ const rawAttachmentUrl = (file) =>
 const attachmentFileName = (file, fallbackName, usedNames) => {
   const rawUrl = rawAttachmentUrl(file) || "";
   const rawName = typeof file === "object" && file?.name ? file.name : rawUrl.split(/[/?#]/).filter(Boolean).pop() || fallbackName;
-  const cleaned = String(rawName || fallbackName).replace(/[<>:"/\\|?*\x00-\x1f]/g, "_").trim() || fallbackName;
+  const cleaned = String(rawName || fallbackName)
+    .split("")
+    .map((char) => (char.charCodeAt(0) < 32 || /[<>:"/\\|?*]/.test(char) ? "_" : char))
+    .join("")
+    .trim() || fallbackName;
   if (!usedNames.has(cleaned)) {
     usedNames.add(cleaned);
     return cleaned;
@@ -2254,8 +2258,8 @@ export default function StandardMyAppraisal({
                             <th style={{ ...TH, width: 30 }}>SN</th>
                             <th style={TH}>Title</th>
                             <th style={TH}>Publisher & ISBN</th>
-                            <th style={TH}>Type (Book/Chapter/Editor/Translation)</th>
-                            <th style={TH}>Level (Intl./National/Local)</th>
+                            <th style={TH}>Type</th>
+                            <th style={TH}>Level</th>
                             <th style={TH}>Co-authors from DYPIU</th>
                             <th style={TH}>Attachment</th>
                             <th style={TH}>View Docs</th>

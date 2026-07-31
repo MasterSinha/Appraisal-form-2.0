@@ -28,22 +28,23 @@ export default function DirectorIndustryConnect({ ctx }) {
  const { faculty, docs, lectures, courseFile, projects, quals, feedback, deptActs, uniActs, society, industry, acr, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, rows, getDir, setDir, getInnovDir, setInnovDir, innovativeRows } = ctx;
  return (
 <>
-{/* F: Industry */}
-<SC title="F. Industry Connect (Max 5)" accent="#10b981">
+{/* C5: Industry interaction */}
+<SC title="C5. Industry Interaction & Linkages (Max 8)" accent="#0f766e">
 <table style={T}>
 <thead><tr>
-<th style={TH}>SN</th><th style={TH}>Industry Name</th><th style={TH}>Details</th>
+<th style={TH}>SN</th><th style={TH}>Activity</th><th style={TH}>Industry Partner</th><th style={TH}>Date</th>
 <th style={TH}>View Docs</th><th style={TH}>Faculty Score</th><th style={TH_DIR}>Director Score</th>
 </tr></thead>
 <tbody>
  {rows(industry).map((r, i) =>(
 <tr key={i}>
 <td style={TDC}>{i + 1}</td>
-<td style={TD}><RO val={r.name} /></td>
-<td style={TD}><RO val={r.details} /></td>
+<td style={TD}><RO val={r.activity || r.name} /></td>
+<td style={TD}><RO val={r.partner || r.details} /></td>
+<td style={TD}><RO val={r.date} /></td>
 <td style={TDV}><ViewDocsCell docKey={`ind-${i}`} docs={docs} /></td>
 <td style={TDS}><RO val={r.score} center /></td>
-<td style={TDS_DIR}><DirInput val={getDir("industry", i, "dir")} onChange={v =>setDir("industry", i, "dir", v)} /></td>
+<td style={TDS_DIR}><DirInput val={getDir("industry", i, "dir")} max={8} onChange={v =>setDir("industry", i, "dir", v)} /></td>
 </tr>
  ))}
 </tbody>

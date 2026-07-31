@@ -280,7 +280,7 @@ export const PART_A_SECTIONS = [
 
 export const PART_B_SECTIONS = [
   { key: "journals", title: "B1. Journal Publications / Academic Research Papers", max: 60, doc: "jour", fields: [["title", "Title (with page nos.)"], ["journal", "Journal Details"], ["doi", "DOI No."], ["index", "Indexing (Q1/Q2/Q3/Q4)"], ["impact", "Impact Factor"], ["coAuthors", "Co-authors"], ["firstAuthor", "First Author?"]] },
-  { key: "books", title: "B2. Books, Book Chapters & Edited Volumes", max: 30, doc: "book", fields: [["title", "Title"], ["publisher", "Publisher & ISBN"], ["type", "Type (Book/Chapter/Editor/Translation)"], ["level", "Level (Intl./National/Local)"], ["coAuthors", "Co-authors from DYPIU"]] },
+  { key: "books", title: "B2. Books, Book Chapters & Edited Volumes", max: 30, doc: "book", fields: [["title", "Title"], ["publisher", "Publisher & ISBN"], ["type", "Type"], ["level", "Level"], ["coAuthors", "Co-authors from DYPIU"]] },
   { key: "popularWritings", title: "B3 (Part 1). Popular Writing — Newspaper & Magazine Articles, Columns & Reviews", max: 40, doc: "pop", fields: [["title", "Title of Article / Column"], ["pubName", "Publication Name & Date"], ["type", "Type (Article/Column/Review/Op-ed)"], ["circulation", "Circulation (Local/Regional/National/Intl.)"]] },
   { key: "ipr", title: "B3 (Part 2). Patents, Copyrights, IP & Creative Product Development", max: 40, doc: "ipr", fields: [["title", "Title"], ["scope", "National / International"], ["status", "Status (Published/Granted)"], ["fileNo", "Filing / Grant No. & Date"]] },
   { key: "externalProjects", title: "B4. Funded Research / Creative Projects & Grants", max: 20, doc: "ext", fields: [["title", "Title of Project / Grant"], ["agency", "Funding Agency"], ["date", "Sanction Date"], ["amount", "Amount (₹)"], ["role", "PI / Co-PI"], ["status", "Status"]] },
@@ -642,13 +642,31 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
     if (section.key === "feedback" && scoreKey === "score") return feedbackSectionScore(sourceRows, section.max);
     return scoreSectionRows(section.key, sourceRows, section.max, scoreKey);
   };
+  const renderHeaderLabel = (label) => {
+    const text = String(label);
+    return (
+      <span style={{ display: "block", maxWidth: "100%", whiteSpace: "normal", overflowWrap: "anywhere", wordBreak: "break-word", lineHeight: 1.25 }}>
+        {text}
+      </span>
+    );
+  };
+  const columnWidthFor = (key) => {
+    if (section.key !== "books") return undefined;
+    return {
+      title: "14%",
+      publisher: "14%",
+      type: "15%",
+      level: "14%",
+      coAuthors: "14%",
+    }[key];
+  };
 
   if (section.key === "acr" && mode === "self") {
     const acrRows = createAcrRows(rows);
     const acrTotal = scoreSectionRows(section.key, acrRows, section.max);
     return (
-      <SectionShell title="(xi) Annual Confidential Report (ACR) - Max 50 marks" max={section.max} earned={acrTotal} accent={ACCENT2} showScoreSummary={false}>
-        <div style={{ overflowX: "auto" }}>
+      <SectionShell title="Part D - Annual Confidential Report (ACR) - Max 50 marks" max={section.max} earned={acrTotal} accent={ACCENT2} showScoreSummary={false}>
+        <div style={{ overflowX: "visible", width: "100%" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
             <thead>
               <tr>
@@ -752,16 +770,16 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
   return (
     <SectionShell title={section.title} max={section.max} earned={earned} accent={ACCENT2}>
       <>
-        <div style={{ overflowX: "auto" }}>
+        <div style={{ overflowX: "visible", width: "100%" }}>
           <table style={tableStyle}>
             <thead>
               <tr>
-                <th style={{ ...thStyle, width: 46 }}>SN</th>
-                {section.fields.map(([, label]) => <th key={label} style={thStyle}>{label}</th>)}
+                <th style={{ ...thStyle, width: section.key === "books" ? "5%" : 46 }}>SN</th>
+                {section.fields.map(([key, label]) => <th key={label} style={{ ...thStyle, width: columnWidthFor(key) }}>{renderHeaderLabel(label)}</th>)}
                 {section.key === "feedback" && <th style={thStyle}>Average</th>}
-                <th style={thStyle}>Attachment</th>
-                <th style={thStyle}>View Docs</th>
-                <th style={thStyle}>Faculty Score</th>
+                <th style={{ ...thStyle, width: section.key === "books" ? "9%" : undefined }}>Attachment</th>
+                <th style={{ ...thStyle, width: section.key === "books" ? "8%" : undefined }}>View Docs</th>
+                <th style={{ ...thStyle, width: section.key === "books" ? "7%" : undefined }}>Faculty Score</th>
                 {mode === "review" && previousRoles.map((role) => <th key={role} style={thStyle}>{roleLabel(role)} Score</th>)}
                 {mode === "review" && <th style={thStyle}>{roleLabel(currentRole)} Score</th>}
               </tr>
@@ -1136,7 +1154,7 @@ function ObeSection({ form, setForm, docs, setDocs, mode, locked, reviewerRole, 
       <div style={{ fontSize: 11, fontStyle: "italic", color: "#475569", marginBottom: 8 }}>
         CO-PO mapping — 5 marks; attainment computation — 10 marks; corrective action taken — 5 marks.
       </div>
-      <div style={{ overflowX: "auto" }}>
+      <div style={{ overflowX: "visible", width: "100%" }}>
         <table style={tableStyle}>
           <thead>
             <tr>
@@ -1262,7 +1280,7 @@ function MentoringSection({ form, setForm, docs, setDocs, mode, locked, reviewer
 
   return (
     <SectionShell title="A7. Student Mentoring & Counselling (Max: 10)" max={10} earned={facultyScore}>
-      <div style={{ overflowX: "auto" }}>
+      <div style={{ overflowX: "visible", width: "100%" }}>
         <table style={tableStyle}>
           <thead>
             <tr>
@@ -1464,7 +1482,7 @@ function PartD({ sectionTableProps }) {
       </div>
 
       {/* Table */}
-      <div style={{ overflowX: "auto" }}>
+      <div style={{ overflowX: "visible", width: "100%" }}>
         <table style={tableStyle}>
           <thead>
             <tr>
@@ -1855,7 +1873,7 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
   const facultyTotals = calculateCreativeSchoolTotals(form, "score");
   const totals = calculateCreativeSchoolTotals(reviewerForm, reviewerRole);
   const reviewCompleted = panelReadOnly || isReviewerReviewComplete(person, reviewerRole);
-  const savedReviewerTotalKeys = [`${reviewerRole}PartA`, `${reviewerRole}PartB`, `${reviewerRole}Total`];
+  const savedReviewerTotalKeys = [`${reviewerRole}PartA`, `${reviewerRole}PartB`, `${reviewerRole}PartC`, `${reviewerRole}PartD`, `${reviewerRole}Total`];
   const hasSavedReviewerTotals = savedReviewerTotalKeys.some((key) => String(person?.[key] ?? "").trim() !== "");
   const reviewerSummaryTotals = panelReadOnly && hasSavedReviewerTotals ? {
     ...totals,
@@ -1869,6 +1887,8 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
     return {
       partA: n(person?.[`${prefix}PartA`]),
       partB: n(person?.[`${prefix}PartB`]),
+      partC: n(person?.[`${prefix}PartC`]),
+      partD: n(person?.[`${prefix}PartD`]),
       total: n(rawTotal),
       maxScores: totals.maxScores,
       hasTotal: rawTotal !== undefined && rawTotal !== null && String(rawTotal).trim() !== "",
@@ -1963,6 +1983,8 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
     const maxScores = getCreativeSchoolEffectiveMaxScores(reviewerForm);
     const partATotal = panelReadOnly && String(person?.[`${reviewerRole}PartA`] ?? "").trim() !== "" ? n(person?.[`${reviewerRole}PartA`]) : totals.partA;
     const partBTotal = panelReadOnly && String(person?.[`${reviewerRole}PartB`] ?? "").trim() !== "" ? n(person?.[`${reviewerRole}PartB`]) : totals.partB;
+    const partCTotal = panelReadOnly && String(person?.[`${reviewerRole}PartC`] ?? "").trim() !== "" ? n(person?.[`${reviewerRole}PartC`]) : totals.partC;
+    const partDTotal = panelReadOnly && String(person?.[`${reviewerRole}PartD`] ?? "").trim() !== "" ? n(person?.[`${reviewerRole}PartD`]) : totals.partD;
     const grandTotal = panelReadOnly && String(person?.[`${reviewerRole}Total`] ?? "").trim() !== "" ? n(person?.[`${reviewerRole}Total`]) : totals.total;
     const b8Score = clampScore(rowSum("fdps", 20) + rowSum("training", 20), 20);
     generateMediaCommReport({
@@ -1972,7 +1994,9 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
       docs,
       partASections: PART_A_SECTIONS,
       partBSections: getPartBSectionsForSchool(reviewerForm?.info?.school || person),
-      totals: { partA: partATotal, partB: partBTotal, total: grandTotal },
+      partCSections: PART_C_SECTIONS,
+      partDSections: PART_D_SECTIONS,
+      totals: { partA: partATotal, partB: partBTotal, partC: partCTotal, partD: partDTotal, total: grandTotal },
       maxScores,
       generatedBy: sessionStorage.getItem("name") || roleLabel(reviewerRole),
       remarksSections: buildReviewRemarks({
@@ -1993,7 +2017,6 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
         ...summaryRow(applicability, "uniActs", { id: "A(viii)", label: "University Level Activities", max: 30, score: rowSum("uniActs", 30) }),
         ...summaryRow(applicability, "society", { id: "A(ix)", label: "Contribution to Society", max: 10, score: rowSum("society", 10) }),
         ...summaryRow(applicability, "industry", { id: "A(x)", label: "Industry Connect", max: 5, score: rowSum("industry", 5) }),
-        ...summaryRow(applicability, "acr", { id: "A(xi)", label: "Annual Confidential Report (ACR)", max: 50, score: rowSum("acr", 50) }),
         { isTotal: true, label: "Part A Total", max: maxScores.partA, score: partATotal },
         { isHeader: true, label: "Part B - Research & Academic Contributions" },
         ...summaryRow(applicability, "journals", { id: "B1(i)", label: "Published Papers in Journals", max: 80, score: rowSum("journals", 80) }),
