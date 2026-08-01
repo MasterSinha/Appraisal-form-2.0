@@ -72,10 +72,14 @@ const emptyWorkflow = {
   approvalSteps: [],
 };
 
-function Avatar({ name, color = ACCENT, size = 38 }) {
+function Avatar({ name, src, color = ACCENT, size = 38 }) {
   return (
-    <div style={{ width: size, height: size, borderRadius: "50%", background: `linear-gradient(135deg,${color},${color}99)`, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: size * 0.34, flexShrink: 0 }}>
-      {initials(name)}
+    <div style={{ width: size, height: size, borderRadius: "50%", background: `linear-gradient(135deg,${color},${color}99)`, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: size * 0.34, flexShrink: 0, overflow: "hidden" }}>
+      {src ? (
+        <img src={src} alt="Profile" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+      ) : (
+        initials(name)
+      )}
     </div>
   );
 }
@@ -637,7 +641,12 @@ export function NonTeachingAppraisalForm({ role = sessionStorage.getItem("role")
     <div style={{ minHeight: "100vh", display: "flex", background: "#f1f5f9", fontFamily: "inherit", color: "#0f172a" }}>
       <aside style={{ width: 230, height: "100vh", position: "fixed", left: 0, top: 0, zIndex: 20, boxSizing: "border-box", background: "#0f172a", padding: "18px 14px 110px", color: "#e2e8f0", display: "flex", flexDirection: "column", gap: 12, borderRight: "1px solid rgba(255,255,255,0.06)", boxShadow: "2px 0 16px rgba(15,23,42,0.14)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <Avatar name={sessionStorage.getItem("name") || "Staff"} color={accent} />
+          <Avatar
+            name={sessionStorage.getItem("name") || "Staff"}
+            src={sessionStorage.getItem("profilePictureUrl") || sessionStorage.getItem("profile_picture_url") || sessionStorage.getItem("avatarUrl") || ""}
+            color={accent}
+            size={48}
+          />
           <div>
             <div style={{ fontWeight: 800, fontSize: 13 }}>{sessionStorage.getItem("name") || "Staff"}</div>
             <div style={{ color: "#94a3b8", fontSize: 10 }}>{nonTeachingRoleLabel(normalizedRole)}</div>
@@ -964,7 +973,7 @@ export function NonTeachingAuthorityReviewPanel({ item, reviewerRole, onBack, on
     <div>
       <div style={{ background: "#0f172a", borderRadius: 10, padding: "14px 18px", marginBottom: 14, display: "flex", alignItems: "center", gap: 12 }}>
         <button type="button" onClick={onBack} style={{ background: "#1e293b", color: "#cbd5e1", border: "none", borderRadius: 6, padding: "7px 12px", cursor: "pointer", fontFamily: "inherit" }}>Back</button>
-        <Avatar name={item.name} color={item.avatarColor || accent} />
+        <Avatar name={item.name} src={item.avatarUrl} color={item.avatarColor || accent} size={50} />
         <div style={{ flex: 1 }}>
           <div style={{ color: "#f8fafc", fontSize: 15, fontWeight: 800 }}>{item.name}</div>
           <div style={{ color: "#94a3b8", fontSize: 11 }}>{item.roleLabel} | {item.designation} | {item.employeeId}</div>
@@ -1152,7 +1161,12 @@ export function NonTeachingReviewDashboard({ reviewerRole, title, subtitle, acce
     <div style={{ minHeight: "100vh", display: "flex", background: "#f1f5f9", color: "#0f172a", fontFamily: "inherit" }}>
       <aside style={{ width: 244, height: "100vh", position: "fixed", left: 0, top: 0, zIndex: 20, boxSizing: "border-box", background: "#0f172a", color: "#e2e8f0", display: "flex", flexDirection: "column", padding: "18px 14px 86px", gap: 12, borderRight: "1px solid rgba(255,255,255,0.06)", boxShadow: "2px 0 16px rgba(15,23,42,0.14)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <Avatar name={sessionStorage.getItem("name") || title} color={accent} />
+          <Avatar
+            name={sessionStorage.getItem("name") || title}
+            src={sessionStorage.getItem("profilePictureUrl") || sessionStorage.getItem("profile_picture_url") || sessionStorage.getItem("avatarUrl") || ""}
+            color={accent}
+            size={48}
+          />
           <div>
             <div style={{ fontSize: 13, fontWeight: 900 }}>{title}</div>
             <div style={{ color: "#94a3b8", fontSize: 10 }}>{subtitle}</div>

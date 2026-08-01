@@ -1091,7 +1091,7 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  {/* Header */}
 <div style={{ background: "#0f172a", padding: "14px 20px", display: "flex", alignItems: "center", gap: 14, marginBottom: 16, borderRadius: 10 }}>
 <button onClick={onBack} style={{ background: "#1e293b", border: "none", color: "#94a3b8", cursor: "pointer", borderRadius: 6, padding: "6px 12px", fontSize: 12, fontFamily: "inherit" }}>Back</button>
-<Avatar initials={person.avatar} color={person.avatarColor || "#7c3aed"} size={40} />
+<Avatar initials={person.avatar} src={person.avatarUrl} color={person.avatarColor || "#7c3aed"} size={50} />
 <div style={{ flex: 1 }}>
 <div style={{ color: "#f1f5f9", fontWeight: 700, fontSize: 15 }}>{person.name}</div>
 <div style={{ color: "#64748b", fontSize: 11 }}>{person.designation} - {person.employeeId}</div>
@@ -1290,7 +1290,7 @@ function PersonCard({ person, role, onReview, schoolColor, loading = false }) {
 <div style={{ padding: "14px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
  {/* Header row */}
 <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-<Avatar initials={person.avatar} color={person.avatarColor || cardColor} size={42} />
+<Avatar initials={person.avatar} src={person.avatarUrl} color={person.avatarColor || cardColor} size={54} />
 <div style={{ flex: 1, minWidth: 0 }}>
 <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2, flexWrap: "wrap" }}>
 <span style={{ fontSize: 13, fontWeight: 800, color: "#0f172a" }}>{person.name}</span>
@@ -1418,7 +1418,7 @@ function NonTeachingCard({ item, onReview }) {
 
 <div style={{ padding: "14px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
 <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-<Avatar initials={item.avatar} color={item.avatarColor || cardColor} size={42} />
+<Avatar initials={item.avatar} src={item.avatarUrl} color={item.avatarColor || cardColor} size={54} />
 <div style={{ flex: 1, minWidth: 0 }}>
 <div style={{ fontSize: 13, fontWeight: 800, color: "#0f172a" }}>{item.name}</div>
 <div style={{ fontSize: 10, color: "#64748b", marginTop: 2 }}>{item.roleLabel} Â· {item.designation}</div>
@@ -1857,7 +1857,12 @@ export default function VCDashboard() {
  title="Edit profile"
  style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", padding: 0, width: "100%", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
  >
-<Avatar initials={(sessionStorage.getItem("name") || "U").split(" ").map(w =>w[0]).join("").toUpperCase()} color="#7c3aed" size={34} />
+<Avatar
+  initials={(sessionStorage.getItem("name") || "U").split(" ").map(w =>w[0]).join("").toUpperCase()}
+  src={sessionStorage.getItem("profilePictureUrl") || sessionStorage.getItem("profile_picture_url") || sessionStorage.getItem("avatarUrl") || ""}
+  color="#7c3aed"
+  size={44}
+/>
 <div>
 <div style={{ color: "#e2e8f0", fontSize: 11, fontWeight: 700 }}>{sessionStorage.getItem("name") || "Vice Chancellor"}</div>
 <div style={{ color: "#475569", fontSize: 9 }}>Vice Chancellor - {APP_INFO.SHORT_NAME}</div>

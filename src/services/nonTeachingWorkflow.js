@@ -162,6 +162,36 @@ const initialsFor = (name = "", fallback = "U") =>
     .slice(0, 2)
     .toUpperCase() || "U";
 
+const profileImageFrom = (item = {}) =>
+  firstNonEmpty(
+    item.profile_picture_url,
+    item.profilePictureUrl,
+    item.avatar_url,
+    item.avatarUrl,
+    item.photo_url,
+    item.photoUrl,
+    item.picture_url,
+    item.pictureUrl,
+    item.profile?.profile_picture_url,
+    item.profile?.profilePictureUrl,
+    item.staffProfile?.profile_picture_url,
+    item.staffProfile?.profilePictureUrl,
+    item.staff_profile?.profile_picture_url,
+    item.staff_profile?.profilePictureUrl,
+    item.submitterProfile?.profile_picture_url,
+    item.submitterProfile?.profilePictureUrl,
+    item.submitter_profile?.profile_picture_url,
+    item.submitter_profile?.profilePictureUrl,
+    item.payload?.submitterProfile?.profile_picture_url,
+    item.payload?.submitterProfile?.profilePictureUrl,
+    item.payload?.submitter_profile?.profile_picture_url,
+    item.payload?.submitter_profile?.profilePictureUrl,
+    item.form?.profile_picture_url,
+    item.form?.profilePictureUrl,
+    item.form?.info?.profile_picture_url,
+    item.form?.info?.profilePictureUrl,
+  );
+
 const normalizeDocsMap = (docs = {}) => {
   if (!docs || typeof docs !== "object") return {};
   return Object.fromEntries(
@@ -912,6 +942,9 @@ export const decorateNonTeachingRow = (row, profile = {}) => {
     reports_to_registrar: reportsToRegistrar,
     reportsToRegistrar,
     avatar: initialsFor(name, row.staff_email),
+    avatarUrl: profileImageFrom({ ...row, profile, form }),
+    profile_picture_url: profileImageFrom({ ...row, profile, form }),
+    profilePictureUrl: profileImageFrom({ ...row, profile, form }),
     avatarColor:
       role === "registrar"
         ? "#7c3aed"
@@ -984,6 +1017,9 @@ const normalizeNonTeachingQueueItem = (item = {}) => {
     reports_to_registrar: reportsToRegistrar,
     reportsToRegistrar,
     avatar: item.avatar || initialsFor(name, staffEmail),
+    avatarUrl: profileImageFrom({ ...item, form }),
+    profile_picture_url: profileImageFrom({ ...item, form }),
+    profilePictureUrl: profileImageFrom({ ...item, form }),
     avatarColor: item.avatarColor ||
       (role === "registrar" ? "#7c3aed" : role === "reporting_officer" ? "#0891b2" : "#1d4ed8"),
     status,

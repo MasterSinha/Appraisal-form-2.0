@@ -37,6 +37,40 @@ const initialsFor = (name, fallback = "U") =>
     .slice(0, 2)
     .toUpperCase();
 
+const profileImageFrom = (item = {}) =>
+  firstValue(
+    item.profile_picture_url,
+    item.profilePictureUrl,
+    item.avatar_url,
+    item.avatarUrl,
+    item.photo_url,
+    item.photoUrl,
+    item.picture_url,
+    item.pictureUrl,
+    item.profile?.profile_picture_url,
+    item.profile?.profilePictureUrl,
+    item.profile?.avatar_url,
+    item.profile?.avatarUrl,
+    item.facultyProfile?.profile_picture_url,
+    item.facultyProfile?.profilePictureUrl,
+    item.faculty_profile?.profile_picture_url,
+    item.faculty_profile?.profilePictureUrl,
+    item.submitterProfile?.profile_picture_url,
+    item.submitterProfile?.profilePictureUrl,
+    item.submitter_profile?.profile_picture_url,
+    item.submitter_profile?.profilePictureUrl,
+    item.payload?.submitterProfile?.profile_picture_url,
+    item.payload?.submitterProfile?.profilePictureUrl,
+    item.payload?.submitter_profile?.profile_picture_url,
+    item.payload?.submitter_profile?.profilePictureUrl,
+    item.payload?.profile_picture_url,
+    item.payload?.profilePictureUrl,
+    item.form?.profile_picture_url,
+    item.form?.profilePictureUrl,
+    item.info?.profile_picture_url,
+    item.info?.profilePictureUrl,
+  );
+
 const roleColor = (role) =>
   role === "hod" || role === "center_head" ? "#f59e0b"
   : role === "director" ? "#3b82f6"
@@ -70,6 +104,8 @@ const subjectProfileFromItem = (item = {}) => {
     ...item,
     email: firstValue(item.email, item.faculty_email, item.facultyEmail, item.username),
     full_name: firstValue(item.name, item.full_name, item.fullName, item.profile?.full_name),
+    profile_picture_url: profileImageFrom(item),
+    profilePictureUrl: profileImageFrom(item),
     appraisal_role: role,
     role,
     school: firstValue(
@@ -406,6 +442,9 @@ const normalizeQueueItem = (item = {}) => {
     vcPartDMax: numberValue(firstValue(item.vc_part_d_max, item.vcPartDMax)),
     vcTotalMax: numberValue(firstValue(item.vc_total_max, item.vcTotalMax)),
     avatar: initialsFor(firstValue(item.name, item.full_name, email), email),
+    avatarUrl: profileImageFrom(item),
+    profile_picture_url: profileImageFrom(item),
+    profilePictureUrl: profileImageFrom(item),
     avatarColor: roleColor(appraisalRole),
     hodTotal: numberValue(reviewSummary.hodTotal),
     hodPartA: numberValue(reviewSummary.hodPartA),

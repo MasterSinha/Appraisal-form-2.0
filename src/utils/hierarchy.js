@@ -297,6 +297,10 @@ export const profileFromsessionStorage = () => ({
   teaching_experience: getItem("experience") || "",
   experience: getItem("experience") || "",
   employee_id: getItem("employeeId") || "",
+  profile_picture_url: getItem("profilePictureUrl") || getItem("profile_picture_url") || getItem("avatarUrl") || "",
+  profilePictureUrl: getItem("profilePictureUrl") || getItem("profile_picture_url") || getItem("avatarUrl") || "",
+  avatar_url: getItem("profilePictureUrl") || getItem("profile_picture_url") || getItem("avatarUrl") || "",
+  avatarUrl: getItem("profilePictureUrl") || getItem("profile_picture_url") || getItem("avatarUrl") || "",
   reports_to_registrar: getItem("reports_to_registrar") === "true" || getItem("reportsToRegistrar") === "true",
   reportsToRegistrar: getItem("reports_to_registrar") === "true" || getItem("reportsToRegistrar") === "true",
 });

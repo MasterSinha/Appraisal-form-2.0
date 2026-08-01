@@ -120,6 +120,7 @@ function ProfileLoader() {
           school: profile.school || "",
           experience: profile.teaching_experience || "",
           phone: profile.phone || "",
+          avatarUrl: profile.profile_picture_url || profile.profilePictureUrl || profile.avatar_url || profile.avatarUrl || profile.photo_url || profile.photoUrl || "",
           avatar: name.trim().split(/\s+/).map(n => n[0]).join("").substring(0, 2).toUpperCase() || "U",
           ay,
           cycles,

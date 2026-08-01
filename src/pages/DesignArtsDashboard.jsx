@@ -788,7 +788,11 @@ export default function DesignArtsDashboard({ fixedRole }) {
 <div key={item.id} style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", borderLeft: `4px solid ${reviewComplete ? "#22c55e" : ACCENT}`, overflow: "hidden" }}>
  {/* - Name / role / action row - */}
 <div style={{ padding: "14px 18px", display: "flex", alignItems: "center", gap: 14 }}>
-<div style={{ width: 42, height: 42, borderRadius: "50%", background: `linear-gradient(135deg,${ACCENT},${ACCENT2})`, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 13, flexShrink: 0, letterSpacing: 0.5 }}>{initials}</div>
+<div style={{ width: 56, height: 56, borderRadius: "50%", background: `linear-gradient(135deg,${ACCENT},${ACCENT2})`, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 17, flexShrink: 0, letterSpacing: 0.5, overflow: "hidden" }}>
+{item.avatarUrl ? (
+<img src={item.avatarUrl} alt="Profile" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+) : initials}
+</div>
 <div style={{ flex: 1, minWidth: 0 }}>
 <div style={{ fontWeight: 800, fontSize: 14, color: "#0f172a", marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</div>
 <div style={{ fontSize: 12, color: "#64748b" }}>{titleCase(item.appraisalRole)} - {designArtsSchoolName(item)}</div>

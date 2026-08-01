@@ -1,5 +1,5 @@
 ﻿/* eslint-disable no-unused-vars */
-import { useEffect, useMemo, useState } from "react";
+import { cloneElement, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { APP_INFO } from "../constants/formConfig";
 import {
@@ -25,11 +25,25 @@ const EP_CSS = `
   .ep-inp { transition: border-color .15s, box-shadow .15s; }
   .ep-inp:hover:not(:disabled) { border-color: #93c5fd; }
   .ep-inp:focus { outline: none; border-color: #2563eb !important; box-shadow: 0 0 0 3px rgba(37,99,235,.10) !important; }
+  .ep-input-shell { transition: border-color .15s, box-shadow .15s; }
+  .ep-input-shell:hover { border-color: #93c5fd !important; }
+  .ep-input-shell:focus-within { border-color: #2563eb !important; box-shadow: 0 0 0 3px rgba(37,99,235,.10) !important; }
   .ep-cancel:hover { background: #f8fafc !important; border-color: #94a3b8 !important; color: #0f172a !important; }
   .ep-save:hover:not(:disabled) { background: #1d4ed8 !important; box-shadow: 0 4px 14px rgba(37,99,235,.35) !important; }
   .ep-save:active:not(:disabled) { transform: translateY(1px); }
   .ep-back:hover { color: #2563eb !important; }
-  @media (max-width: 620px) { .ep-grid { grid-template-columns: 1fr !important; } }
+  .ep-photo-btn:hover { border-color: #2563eb !important; color: #2563eb !important; background: #eff6ff !important; }
+  .ep-edit-hero:hover { background: #eff6ff !important; border-color: #93c5fd !important; }
+  @media (max-width: 980px) {
+    .ep-hero { grid-template-columns: 1fr !important; }
+    .ep-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; border-left: none !important; padding-left: 0 !important; }
+    .ep-profile-cards { grid-template-columns: 1fr !important; }
+    .ep-page { height: auto !important; overflow-y: auto !important; }
+  }
+  @media (max-width: 620px) {
+    .ep-grid, .ep-stat-grid { grid-template-columns: 1fr !important; }
+    .ep-hero-left { flex-direction: column !important; align-items: flex-start !important; }
+  }
 `;
 
 function CssInjector() {
@@ -74,13 +88,84 @@ const initialsFromName = (name = "") =>
   String(name || "U").trim().split(/\s+/).map((p) => p[0]).join("").slice(0, 2).toUpperCase() || "U";
 
 // - Sub-components -
-function SectionHead({ title, badge, badgeColor = "#64748b", badgeBack = "#f1f5f9" }) {
+const ICONS = {
+  users: ["M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2", "M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z", "M22 21v-2a4 4 0 0 0-3-3.87", "M16 3.13a4 4 0 0 1 0 7.75"],
+  user: ["M20 21a8 8 0 0 0-16 0", "M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"],
+  id: ["M4 5h16v14H4z", "M8 9h4", "M8 13h8", "M8 17h5", "M15 9h1"],
+  cap: ["M22 10 12 5 2 10l10 5 10-5Z", "M6 12v5c3 2 9 2 12 0v-5"],
+  briefcase: ["M10 6V5a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v1", "M3 7h18v12H3z", "M3 12h18"],
+  clock: ["M12 8v5l3 2", "M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"],
+  calendar: ["M8 2v4", "M16 2v4", "M3 10h18", "M5 4h14a2 2 0 0 1 2 2v14H3V6a2 2 0 0 1 2-2Z"],
+  shield: ["M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z", "m9 12 2 2 4-4"],
+  phone: ["M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.08 4.18 2 2 0 0 1 4.06 2h3a2 2 0 0 1 2 1.72c.12.9.33 1.78.62 2.63a2 2 0 0 1-.45 2.11L8 9.7a16 16 0 0 0 6.3 6.3l1.24-1.23a2 2 0 0 1 2.11-.45c.85.29 1.73.5 2.63.62A2 2 0 0 1 22 16.92Z"],
+  building: ["M3 21h18", "M6 21V7l8-4v18", "M18 21V9l-4-2", "M9 9h1", "M9 13h1", "M9 17h1"],
+  edit: ["M12 20h9", "M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z"],
+};
+
+function IconGlyph({ name, size = 18, strokeWidth = 2.2 }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 22, paddingBottom: 16, borderBottom: "1px solid #f1f5f9" }}>
-      <span style={{ fontSize: 13, fontWeight: 700, color: "#0f172a", letterSpacing: "-0.01em" }}>{title}</span>
-      <span style={{ fontSize: 10, fontWeight: 700, background: badgeBack, color: badgeColor, borderRadius: 20, padding: "3px 10px", letterSpacing: "0.04em", textTransform: "uppercase" }}>
-        {badge}
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {(ICONS[name] || ICONS.user).map((d) => <path key={d} d={d} />)}
+    </svg>
+  );
+}
+
+function SoftIcon({ name, color = "#2563eb", bg = "#eff6ff", size = 46 }) {
+  return (
+    <span style={{ width: size, height: size, borderRadius: size > 42 ? 16 : 12, background: bg, color, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: "inset 0 0 0 1px rgba(37,99,235,0.08)" }}>
+      <IconGlyph name={name} size={Math.round(size * 0.45)} />
+    </span>
+  );
+}
+
+function HeroStat({ icon, label, value, color = "#2563eb", bg = "#eef2ff" }) {
+  return (
+    <div style={{ minHeight: 72, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 7, textAlign: "center", borderLeft: "1px solid #e5e7eb", padding: "0 18px" }}>
+      <SoftIcon name={icon} color={color} bg={bg} size={38} />
+      <div style={{ display: "grid", gap: 3 }}>
+        <div style={{ fontSize: 10, fontWeight: 900, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.6 }}>{label}</div>
+        <div style={{ color: label === "Account Status" ? "#22c55e" : "#111827", fontSize: 14, fontWeight: 900, whiteSpace: "nowrap" }}>{value || "-"}</div>
+      </div>
+    </div>
+  );
+}
+
+function SectionHead({ title, badge, badgeColor = "#64748b", badgeBack = "#f1f5f9", icon = "user", iconColor = "#2563eb", iconBg = "#eff6ff", actions }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, marginBottom: 22 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+        <SoftIcon name={icon} color={iconColor} bg={iconBg} size={44} />
+        <span style={{ fontSize: 20, fontWeight: 900, color: "#0f172a", letterSpacing: 0 }}>{title}</span>
+      </div>
+      {actions || (
+        <span style={{ fontSize: 10, fontWeight: 700, background: badgeBack, color: badgeColor, borderRadius: 20, padding: "3px 10px", letterSpacing: "0.04em", textTransform: "uppercase" }}>
+          {badge}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function IconInput({ icon, children }) {
+  const input = cloneElement(children, {
+    style: {
+      ...children.props.style,
+      height: 42,
+      border: "none",
+      borderRadius: 0,
+      padding: "0 12px",
+      background: "transparent",
+      boxShadow: "none",
+      outline: "none",
+    },
+  });
+
+  return (
+    <div className="ep-input-shell" style={{ height: 42, display: "flex", alignItems: "center", border: "1.5px solid #dbe3ef", borderRadius: 9, background: "#fff", overflow: "hidden" }}>
+      <span style={{ width: 42, height: "100%", display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#64748b", background: "#f8fafc", borderRight: "1px solid #e5e7eb", flexShrink: 0 }}>
+        <IconGlyph name={icon} size={17} />
       </span>
+      {input}
     </div>
   );
 }
@@ -113,9 +198,9 @@ function InputField({ label, required, hint, wide, children }) {
 const CARD = {
   background: "#fff",
   border: "1px solid #e5e7eb",
-  borderRadius: 14,
-  padding: "24px 28px",
-  boxShadow: "0 1px 3px rgba(15,23,42,.05), 0 4px 16px rgba(15,23,42,.04)",
+  borderRadius: 16,
+  padding: "20px 24px 16px",
+  boxShadow: "0 12px 34px rgba(15,23,42,.06)",
 };
 
 const INP = {
@@ -134,6 +219,8 @@ const INP = {
 // - Main Component -
 export default function EditProfile() {
   const navigate = useNavigate();
+  const fileInputRef = useRef(null);
+  const editableCardRef = useRef(null);
   const initialRole = normalizeRole(sessionStorage.getItem("role"), "faculty");
   const initialSchool = canonicalSchoolValue(sessionStorage.getItem("school"));
   const initialDepartment = isNonTeachingRole(initialRole)
@@ -149,6 +236,7 @@ export default function EditProfile() {
     qualification: sessionStorage.getItem("qualification") || "",
     experience: sessionStorage.getItem("experience") || "",
     phone: sessionStorage.getItem("phone") || "",
+    profilePictureUrl: sessionStorage.getItem("profilePictureUrl") || sessionStorage.getItem("profile_picture_url") || sessionStorage.getItem("avatarUrl") || "",
     school: initialSchool,
     department: initialDepartment,
     role: initialRole,
@@ -184,6 +272,36 @@ export default function EditProfile() {
     });
   };
 
+  const handlePhotoChange = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setError("Please choose an image file for the profile picture.");
+      event.target.value = "";
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setError("Profile picture must be 2 MB or smaller.");
+      event.target.value = "";
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setError("");
+      setFormData((prev) => ({ ...prev, profilePictureUrl: String(reader.result || "") }));
+    };
+    reader.onerror = () => {
+      setError("Unable to read the selected image. Please try another file.");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removePhoto = () => {
+    setFormData((prev) => ({ ...prev, profilePictureUrl: "" }));
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError("");
@@ -214,13 +332,14 @@ export default function EditProfile() {
         qualification: sanitizeText(formData.qualification),
         experience: sanitizeText(formData.experience),
         phone: sanitizeText(formData.phone),
+        profilePictureUrl: formData.profilePictureUrl,
         role,
         school: nonTeaching ? "" : school,
         department,
       };
       const profilePayload = buildProfilePayload(cleanFormData, APP_INFO.DEFAULT_AY);
       const savedProfile = await updateProfile(profilePayload);
-      storeUserSession({ profile: savedProfile || profilePayload, fallbackEmail: email });
+      storeUserSession({ profile: { ...profilePayload, ...(savedProfile || {}) }, fallbackEmail: email });
       setMessage("Profile updated successfully.");
       setTimeout(() => navigate("/dashboard", { replace: true }), 450);
     } catch (err) {
@@ -232,70 +351,119 @@ export default function EditProfile() {
 
   const initials = initialsFromName(formData.name);
   const roleLabel = ROLE_LABEL[formData.role] || "User";
+  const schoolLabel = isNonTeaching
+    ? formData.department || "Department / Office"
+    : formData.department || formData.school || "-";
+  const experienceLabel = formData.experience ? `${formData.experience} Years` : "-";
 
   return (
-    <div style={{ minHeight: "100vh", background: "#fff", fontFamily: "inherit", color: "#0f172a" }}>
+    <div className="ep-page" style={{ height: "100vh", overflowY: "hidden", background: "#f8fafc", fontFamily: "inherit", color: "#0f172a" }}>
       <CssInjector />
 
       {/* - Sticky white navbar - */}
       <nav style={{ position: "sticky", top: 0, zIndex: 40, background: "#fff", borderBottom: "1px solid #e5e7eb", boxShadow: "0 1px 4px rgba(15,23,42,.06)" }}>
-        <div style={{ maxWidth: 840, margin: "0 auto", padding: "0 24px", height: 56, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ maxWidth: 1240, margin: "0 auto", padding: "0 32px", height: 64, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           {/* Brand */}
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 34, height: 34, borderRadius: 9, background: "linear-gradient(135deg,#6366f1,#2563eb)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 11, letterSpacing: 0.5 }}>FA</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 11, background: "linear-gradient(135deg,#6366f1,#2563eb)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 900, fontSize: 13, letterSpacing: 0.5, boxShadow: "0 10px 24px rgba(37,99,235,.22)" }}>FA</div>
             <div>
-              <div style={{ fontWeight: 700, fontSize: 13, color: "#0f172a", lineHeight: 1.1 }}>{APP_INFO.PORTAL_NAME}</div>
-              <div style={{ fontSize: 10, color: "#9ca3af", marginTop: 2 }}>{APP_INFO.UNIVERSITY_NAME}</div>
+              <div style={{ fontWeight: 900, fontSize: 16, color: "#0f172a", lineHeight: 1.1 }}>{APP_INFO.PORTAL_NAME}</div>
+              <div style={{ fontSize: 12, color: "#64748b", marginTop: 3 }}>{APP_INFO.UNIVERSITY_NAME}</div>
             </div>
           </div>
           {/* Back link */}
           <button
             className="ep-back"
             onClick={() => navigate("/dashboard")}
-            style={{ display: "flex", alignItems: "center", gap: 5, border: "none", background: "transparent", color: "#64748b", fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "inherit", padding: "6px 0", transition: "color .15s" }}
+            style={{ display: "flex", alignItems: "center", gap: 8, border: "none", background: "transparent", color: "#2563eb", fontWeight: 800, fontSize: 14, cursor: "pointer", fontFamily: "inherit", padding: "6px 0", transition: "color .15s" }}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 5l-7 7 7 7" /></svg>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 5l-7 7 7 7" /></svg>
             Back to Dashboard
           </button>
         </div>
       </nav>
 
       {/* - Main content - */}
-      <main style={{ maxWidth: 840, margin: "0 auto", padding: "40px 24px 80px" }}>
+      <main style={{ maxWidth: 1240, margin: "0 auto", padding: "18px 32px 22px" }}>
 
         {/* - Profile hero - */}
-        <div style={{ display: "flex", alignItems: "center", gap: 20, marginBottom: 36 }}>
-          {/* Avatar */}
-          <div style={{ position: "relative", flexShrink: 0 }}>
-            <div style={{ width: 78, height: 78, borderRadius: "50%", background: "linear-gradient(135deg,#6366f1,#2563eb)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 24, letterSpacing: 1, boxShadow: "0 4px 18px rgba(99,102,241,.3)" }}>
-              {initials}
+        <div className="ep-hero" style={{ display: "grid", gridTemplateColumns: "minmax(340px, 1fr) minmax(520px, 1.12fr)", alignItems: "center", gap: 22, marginBottom: 16, position: "relative", overflow: "hidden", background: "#fff", borderRadius: 22, border: "1px solid #e5e7eb", padding: "20px 28px", boxShadow: "0 14px 42px rgba(15,23,42,.06)" }}>
+          <div style={{ position: "absolute", right: -44, top: -60, width: 210, height: 210, borderRadius: "50%", background: "linear-gradient(135deg,rgba(99,102,241,.08),rgba(124,58,237,.16))" }} />
+          <button
+            type="button"
+            className="ep-edit-hero"
+            onClick={() => editableCardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            style={{ position: "absolute", top: 16, right: 22, height: 38, display: "flex", alignItems: "center", gap: 8, border: "1px solid #bfdbfe", borderRadius: 10, background: "#fff", color: "#2563eb", padding: "0 16px", fontWeight: 800, fontSize: 12, cursor: "pointer", fontFamily: "inherit", zIndex: 2 }}
+          >
+            <IconGlyph name="edit" size={16} />
+            Edit Profile
+          </button>
+
+          <div className="ep-hero-left" style={{ display: "flex", alignItems: "center", gap: 20, minWidth: 0, position: "relative", zIndex: 1 }}>
+            <div style={{ position: "relative", flexShrink: 0 }}>
+              <div style={{ width: 96, height: 96, borderRadius: "50%", background: "linear-gradient(135deg,#6366f1,#2563eb)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 900, fontSize: 32, letterSpacing: 1, boxShadow: "0 12px 28px rgba(37,99,235,.25)", overflow: "hidden", border: "4px solid #fff" }}>
+                {formData.profilePictureUrl ? (
+                  <img src={formData.profilePictureUrl} alt="Profile" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                ) : (
+                  initials
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                title="Change profile picture"
+                style={{ position: "absolute", bottom: 5, right: 3, width: 28, height: 28, borderRadius: "50%", background: "#22c55e", border: "3px solid #fff", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 5px 14px rgba(34,197,94,.32)" }}
+              >
+                <IconGlyph name="edit" size={13} />
+              </button>
+              <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePhotoChange} style={{ display: "none" }} />
             </div>
-            <div style={{ position: "absolute", bottom: 2, right: 2, width: 18, height: 18, borderRadius: "50%", background: "#22c55e", border: "2.5px solid #fff" }} />
-          </div>
-          {/* Name + tags */}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <h1 style={{ margin: "0 0 8px", fontSize: 24, fontWeight: 800, color: "#0f172a", lineHeight: 1.15, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-              {formData.name || "Your Profile"}
-            </h1>
-            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 7 }}>
-              <span style={{ fontSize: 12, fontWeight: 600, color: "#2563eb", background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 20, padding: "3px 11px" }}>
-                {roleLabel}
-              </span>
-              {formData.school && !isNonTeaching && (
-                <span style={{ fontSize: 12, fontWeight: 500, color: "#166534", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 20, padding: "3px 11px" }}>
-                  {formData.school}
+            <div style={{ minWidth: 0, paddingRight: 20 }}>
+              <h1 style={{ margin: "0 0 10px", fontSize: 25, fontWeight: 900, color: "#0f172a", lineHeight: 1.08, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {formData.name || "Your Profile"}
+              </h1>
+              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                <span style={{ fontSize: 12, fontWeight: 800, color: "#2563eb", background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 20, padding: "4px 12px" }}>
+                  {roleLabel}
                 </span>
-              )}
-              {formData.email && (
-                <span style={{ fontSize: 12, color: "#64748b" }}>{formData.email}</span>
-              )}
+                {formData.school && !isNonTeaching && (
+                  <span style={{ fontSize: 12, fontWeight: 800, color: "#15803d", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 20, padding: "4px 12px" }}>
+                    {formData.school}
+                  </span>
+                )}
+                {formData.email && <span style={{ fontSize: 12, color: "#64748b" }}>{formData.email}</span>}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, color: "#64748b", fontSize: 13, fontWeight: 700 }}>
+                <SoftIcon name="building" color="#7c3aed" bg="#f3e8ff" size={24} />
+                <span>{schoolLabel}</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 12 }}>
+                <button
+                  type="button"
+                  className="ep-photo-btn"
+                  onClick={() => fileInputRef.current?.click()}
+                  style={{ height: 34, padding: "0 14px", borderRadius: 999, border: "1px solid #dbe3ef", background: "#fff", color: "#475569", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}
+                >
+                  {formData.profilePictureUrl ? "Change Photo" : "Upload Photo"}
+                </button>
+                {formData.profilePictureUrl && (
+                  <button
+                    type="button"
+                    onClick={removePhoto}
+                    style={{ height: 34, padding: "0 12px", borderRadius: 999, border: "1px solid #fecaca", background: "#fff5f5", color: "#b91c1c", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
             </div>
           </div>
-          {/* Divider line decoration */}
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 3, flexShrink: 0 }}>
-            <div style={{ width: 36, height: 3, borderRadius: 2, background: "linear-gradient(90deg,#6366f1,#2563eb)" }} />
-            <div style={{ width: 24, height: 3, borderRadius: 2, background: "#bfdbfe" }} />
-            <div style={{ width: 14, height: 3, borderRadius: 2, background: "#dbeafe" }} />
+
+          <div className="ep-stat-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(100px, 1fr))", alignItems: "stretch", paddingLeft: 6, position: "relative", zIndex: 1 }}>
+            <HeroStat icon="id" label="Employee ID" value={formData.employeeId} color="#2563eb" bg="#eef2ff" />
+            <HeroStat icon="cap" label="Qualification" value={formData.qualification} color="#4f46e5" bg="#eef2ff" />
+            <HeroStat icon="briefcase" label="Experience" value={experienceLabel} color="#2563eb" bg="#eef2ff" />
+            <HeroStat icon="shield" label="Account Status" value="Active" color="#16a34a" bg="#dcfce7" />
           </div>
         </div>
 
@@ -315,123 +483,132 @@ export default function EditProfile() {
             </div>
           )}
 
-          {/* - Card 1: Account Information (read-only) - */}
-          <div style={CARD}>
-            <SectionHead title="Account Information" badge="Read-only" badgeColor="#64748b" badgeBack="#f1f5f9" />
-            <div className="ep-grid" style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 18 }}>
-              <FrozenField label="Staff Type" value={STAFF_TYPE_LABEL[formData.staffType]} />
-              <FrozenField label="Role" value={ROLE_LABEL[formData.role] || formData.role} />
-              {!isNonTeaching && (
-                <FrozenField label="School" value={formData.school} wide />
-              )}
-              {(needsDepartment || isNonTeaching) && (
-                <FrozenField
-                  label={isNonTeaching ? "Department / Office" : "SoEMR Department"}
-                  value={formData.department}
-                />
-              )}
-              <FrozenField label="Email Address" value={formData.email} />
-              <FrozenField label="Full Name" value={formData.name} />
-            </div>
-          </div>
-
-          {/* - Card 2: Editable Details - */}
-          <div style={{ ...CARD, marginTop: 20 }}>
-            <SectionHead title="Personal Details" badge="Editable" badgeColor="#2563eb" badgeBack="#eff6ff" />
-            <div className="ep-grid" style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 18 }}>
-              <InputField label="Employee ID" required hint="e.g. EMP001 - letters, numbers, / - _">
-                <input
-                  className="ep-inp"
-                  style={INP}
-                  name="employeeId"
-                  value={formData.employeeId}
-                  onChange={handleChange}
-                  required
-                  maxLength={30}
-                  placeholder="EMP001"
-                />
-              </InputField>
-
-              <InputField label="Designation" required hint="e.g. Assistant Professor">
-                <input
-                  className="ep-inp"
-                  style={INP}
-                  name="designation"
-                  value={formData.designation}
-                  onChange={handleChange}
-                  required
-                  maxLength={100}
-                  placeholder="Assistant Professor"
-                />
-              </InputField>
-
-              <InputField label="Qualification" hint="e.g. Ph.D, M.Tech">
-                <input
-                  className="ep-inp"
-                  style={INP}
-                  name="qualification"
-                  value={formData.qualification}
-                  onChange={handleChange}
-                  maxLength={100}
-                  placeholder="Ph.D, M.Tech"
-                />
-              </InputField>
-
-              <InputField label="Experience (years)" hint="0 to 80 years">
-                <input
-                  className="ep-inp"
-                  style={INP}
-                  name="experience"
-                  value={formData.experience}
-                  onChange={handleChange}
-                  inputMode="decimal"
-                  maxLength={4}
-                  placeholder="e.g. 10"
-                />
-              </InputField>
-
-              <InputField label="Phone" hint="+91 98765 43210" wide>
-                <input
-                  className="ep-inp"
-                  style={INP}
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  inputMode="tel"
-                  maxLength={20}
-                  placeholder="+91 98765 43210"
-                />
-              </InputField>
-            </div>
-
-            {/* - Actions - */}
-            <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, marginTop: 30, paddingTop: 22, borderTop: "1px solid #f1f5f9" }}>
-              <button
-                type="button"
-                className="ep-cancel"
-                onClick={() => navigate("/dashboard")}
-                style={{ border: "1.5px solid #e2e8f0", background: "#fff", color: "#475569", borderRadius: 9, padding: "0 22px", height: 40, cursor: "pointer", fontWeight: 600, fontFamily: "inherit", fontSize: 13, transition: "all .15s" }}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={saving}
-                className="ep-save"
-                style={{ display: "flex", alignItems: "center", gap: 7, border: "none", background: saving ? "#93c5fd" : "#2563eb", color: "#fff", borderRadius: 9, padding: "0 24px", height: 40, cursor: saving ? "wait" : "pointer", fontWeight: 700, fontFamily: "inherit", fontSize: 13, transition: "all .18s", boxShadow: saving ? "none" : "0 2px 8px rgba(37,99,235,.25)" }}
-              >
-                {saving ? (
-                  <>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ animation: "spin 1s linear infinite" }}><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    Save Profile
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
-                  </>
+          <div className="ep-profile-cards" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18, alignItems: "stretch" }}>
+            {/* - Card 1: Account Information (read-only) - */}
+            <div style={{ ...CARD, height: "100%", boxSizing: "border-box" }}>
+              <SectionHead title="Account Information" badge="Read-only" badgeColor="#2563eb" badgeBack="#eff6ff" icon="users" iconColor="#2563eb" iconBg="#eff6ff" />
+              <div className="ep-grid" style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 18 }}>
+                <FrozenField label="Staff Type" value={STAFF_TYPE_LABEL[formData.staffType]} />
+                <FrozenField label="Role" value={ROLE_LABEL[formData.role] || formData.role} />
+                {!isNonTeaching && (
+                  <FrozenField label="School" value={formData.school} wide />
                 )}
-              </button>
+                {(needsDepartment || isNonTeaching) && (
+                  <FrozenField
+                    label={isNonTeaching ? "Department / Office" : "SoEMR Department"}
+                    value={formData.department}
+                  />
+                )}
+                <FrozenField label="Email Address" value={formData.email} />
+                <FrozenField label="Full Name" value={formData.name} />
+              </div>
+            </div>
+
+            {/* - Card 2: Editable Details - */}
+            <div ref={editableCardRef} style={{ ...CARD, height: "100%", boxSizing: "border-box", display: "flex", flexDirection: "column" }}>
+              <SectionHead
+                title="Personal Details"
+                badge="Editable"
+                badgeColor="#7c3aed"
+                badgeBack="#f3e8ff"
+                icon="user"
+                iconColor="#7c3aed"
+                iconBg="#f3e8ff"
+              />
+              <div className="ep-grid" style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 18 }}>
+                <InputField label="Employee ID" required hint="e.g. EMP001 - letters, numbers, / - _">
+                  <IconInput icon="id">
+                    <input
+                      name="employeeId"
+                      value={formData.employeeId}
+                      onChange={handleChange}
+                      required
+                      maxLength={30}
+                      placeholder="EMP001"
+                    />
+                  </IconInput>
+                </InputField>
+
+                <InputField label="Designation" required hint="e.g. Assistant Professor">
+                  <IconInput icon="briefcase">
+                    <input
+                      name="designation"
+                      value={formData.designation}
+                      onChange={handleChange}
+                      required
+                      maxLength={100}
+                      placeholder="Assistant Professor"
+                    />
+                  </IconInput>
+                </InputField>
+
+                <InputField label="Qualification" hint="e.g. Ph.D, M.Tech">
+                  <IconInput icon="cap">
+                    <input
+                      name="qualification"
+                      value={formData.qualification}
+                      onChange={handleChange}
+                      maxLength={100}
+                      placeholder="Ph.D, M.Tech"
+                    />
+                  </IconInput>
+                </InputField>
+
+                <InputField label="Experience (years)" hint="0 to 80 years">
+                  <IconInput icon="clock">
+                    <input
+                      name="experience"
+                      value={formData.experience}
+                      onChange={handleChange}
+                      inputMode="decimal"
+                      maxLength={4}
+                      placeholder="e.g. 10"
+                    />
+                  </IconInput>
+                </InputField>
+
+                <InputField label="Phone" hint="+91 98765 43210" wide>
+                  <IconInput icon="phone">
+                    <input
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleChange}
+                      inputMode="tel"
+                      maxLength={20}
+                      placeholder="+91 98765 43210"
+                    />
+                  </IconInput>
+                </InputField>
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, marginTop: 10, paddingTop: 8, borderTop: "1px solid #eef2f7" }}>
+                <button
+                  type="button"
+                  className="ep-cancel"
+                  onClick={() => navigate("/dashboard")}
+                  style={{ border: "1.5px solid #e2e8f0", background: "#fff", color: "#475569", borderRadius: 9, padding: "0 18px", height: 38, cursor: "pointer", fontWeight: 700, fontFamily: "inherit", fontSize: 12, transition: "all .15s" }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="ep-save"
+                  style={{ display: "flex", alignItems: "center", gap: 7, border: "none", background: saving ? "#93c5fd" : "#2563eb", color: "#fff", borderRadius: 9, padding: "0 20px", height: 38, cursor: saving ? "wait" : "pointer", fontWeight: 800, fontFamily: "inherit", fontSize: 12, transition: "all .18s", boxShadow: saving ? "none" : "0 2px 8px rgba(37,99,235,.25)", whiteSpace: "nowrap" }}
+                >
+                  {saving ? (
+                    <>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ animation: "spin 1s linear infinite" }}><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      Save Profile
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
 

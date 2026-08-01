@@ -138,7 +138,12 @@ export default function DashboardSidebar({
         title="Edit profile"
         style={{ display: "flex", alignItems: "center", gap: 11, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 14, padding: 12, width: "100%", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
       >
-        <Avatar initials={(sessionStorage.getItem("name") || "U").split(" ").map((name) => name[0]).join("").toUpperCase()} color="#6d28d9" size={36} />
+        <Avatar
+          initials={(sessionStorage.getItem("name") || "U").split(" ").map((name) => name[0]).join("").toUpperCase()}
+          src={sessionStorage.getItem("profilePictureUrl") || sessionStorage.getItem("profile_picture_url") || sessionStorage.getItem("avatarUrl") || ""}
+          color="#6d28d9"
+          size={46}
+        />
         <div style={{ flex: 1 }}>
           <div style={{ color: "#f9fafb", fontSize: 12, fontWeight: 800 }}>{(sessionStorage.getItem("name") || "User").split(" ").slice(0, 2).join(" ")}</div>
           <div style={{ color: "#9ca3af", fontSize: 10.5, marginTop: 2 }}>{profileSubtitle}</div>
