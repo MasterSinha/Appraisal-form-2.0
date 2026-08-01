@@ -437,7 +437,7 @@ export default function DesignArtsDashboard({ fixedRole }) {
  const rowSum = (key, max) =>scoreSectionRows(key, form[key] || [], max, "score");
  const lecScore = scoreSectionRows("lectures", form.lectures || [], 40, "score");
  const cfScore = scoreSectionRows("courseFile", form.courseFile || [], 20, "score");
- const innovScore = clampScore(Array.isArray(form.innovRows) ? form.innovRows.reduce((t, r) =>t + clampScore(r.score, SCORE_LIMITS.innovativeRow), 0) : innovativeTeachingScore(form.innovDetails, form.innovScore, 10), 10);
+ const innovScore = clampScore(Array.isArray(form.innovRows) ? form.innovRows.reduce((t, r) =>t + clampScore(r.score, r.max || 4), 0) : innovativeTeachingScore(form.innovDetails, form.innovScore, 10), 10);
  const obeScore = scoreSectionRows("obeRows", form.obeRows || [], 20, "score");
  const mentoringScore = scoreSectionRows("mentoringRows", form.mentoringRows || [], 10, "score");
  const maxScores = getDesignArtsEffectiveMaxScores(form, { self: true });

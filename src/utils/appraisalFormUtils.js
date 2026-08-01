@@ -124,7 +124,7 @@ export const societyRowLocked = () =>
  false;
 
 export const societyRowScore = (row = {}) =>
- clampScore(toNumber(row.score), SCORE_LIMITS.societyRow);
+ clampScore(toNumber(row.score), row.max || SCORE_LIMITS.societyRow);
 
 export const effectiveMaxScore = (baseMax) =>
  toNumber(baseMax);
@@ -183,11 +183,11 @@ export const rowMaxForSection = (sectionKey, row = {}, sectionMax = 0) =>{
  if (sectionKey === "projects") return projectGuidanceRowMax(row);
  if (sectionKey === "quals") return SCORE_LIMITS.qualificationRow;
  if (sectionKey === "feedback") return 10;
- if (sectionKey === "society") return SCORE_LIMITS.societyRow;
+ if (sectionKey === "society") return row.max || SCORE_LIMITS.societyRow;
  if (sectionKey === "acr") return SCORE_LIMITS.acrRow;
  if (sectionKey === "research") return researchGuidanceRowMax(row);
- if (sectionKey === "projects2" || sectionKey === "internalProjects") return SCORE_LIMITS.researchInternalProjects;
- if (sectionKey === "externalProjects") return SCORE_LIMITS.researchExternalProjects;
+ if (sectionKey === "projects2" || sectionKey === "internalProjects") return row.max || SCORE_LIMITS.researchInternalProjects;
+ if (sectionKey === "externalProjects") return row.max || SCORE_LIMITS.researchExternalProjects;
  if (sectionKey === "fdps" || sectionKey === "training") return SCORE_LIMITS.fdpRow;
  return sectionMax;
 };
@@ -207,7 +207,7 @@ export const scoreSectionRows = (sectionKey, rows = [], maxScore, scoreKey = "sc
  });
  if (sectionKey === "society") {
  return sumCalculatedSectionScore(rows, maxScore, (row) =>
- societyRowLocked(row) ? 0 : clampScore(row?.[scoreKey], SCORE_LIMITS.societyRow),
+ societyRowLocked(row) ? 0 : clampScore(row?.[scoreKey], row.max || SCORE_LIMITS.societyRow),
  );
  }
  return sumSectionScore(rows, maxScore, scoreKey, (row) =>rowMaxForSection(sectionKey, row, maxScore));
@@ -219,7 +219,13 @@ const hasScoreValue = (row = {}, key = "score") =>
 const innovRowsScore = (rows = []) =>{
  const hasAnyScore = rows.some((row) =>hasScoreValue(row));
  if (!hasAnyScore) return "";
- return String(clampScore(rows.reduce((total, row) =>total + clampScore(row?.score, SCORE_LIMITS.innovativeRow), 0), 10));
+ const explicitSectionMax = rows
+ .map((row) =>toNumber(row?.sectionMax || row?.section_max))
+ .find((value) =>value >0);
+ const effectiveMax = rows.some((row) =>row?.max)
+ ? (explicitSectionMax || clampScore(rows.reduce((total, row) =>total + toNumber(row?.max), 0), 20))
+ : 10;
+ return String(clampScore(rows.reduce((total, row) =>total + clampScore(row?.score, row?.max || SCORE_LIMITS.innovativeRow), 0), effectiveMax));
 };
 
 export const normalizeAutoScores = (form = {}) =>({
@@ -240,7 +246,7 @@ export const normalizeAutoScores = (form = {}) =>({
  society: (form.society || []).map((row) =>{
  return {
  ...row,
- score: String(clampScore(toNumber(row.score), SCORE_LIMITS.societyRow) || ""),
+ score: String(clampScore(toNumber(row.score), row.max || SCORE_LIMITS.societyRow) || ""),
  };
  }),
  research: (form.research || []).map((row) =>{
@@ -258,7 +264,7 @@ export const normalizeAutoScores = (form = {}) =>({
  })),
  projects2: (form.projects2 || []).map((row) =>({
  ...row,
- score: String(clampScore(row.score, SCORE_LIMITS.researchInternalProjects) || ""),
+ score: String(clampScore(row.score, row.max || SCORE_LIMITS.researchInternalProjects) || ""),
  })),
  internalProjects: (form.internalProjects || []).map((row) =>({
  ...row,
@@ -266,7 +272,7 @@ export const normalizeAutoScores = (form = {}) =>({
  })),
  externalProjects: (form.externalProjects || []).map((row) =>({
  ...row,
- score: String(clampScore(row.score, SCORE_LIMITS.researchExternalProjects) || ""),
+ score: String(clampScore(row.score, row.max || SCORE_LIMITS.researchExternalProjects) || ""),
  })),
  quals: (form.quals || []).map((row) =>({
  ...row,
@@ -379,7 +385,7 @@ export const rowHasReviewableData = (sectionKey, row = {}) => {
 
 export const reviewRowMaxForSection = (sectionKey, row = {}, sectionMax = 0) =>
  sectionKey === "innovRows"
- ? SCORE_LIMITS.innovativeRow
+ ? row.max || SCORE_LIMITS.innovativeRow
  : rowMaxForSection(sectionKey, row, sectionMax);
 
 export const clampReviewScore = (sectionKey, row = {}, value, sectionMax = 0) =>{
@@ -392,6 +398,14 @@ export const clampReviewScore = (sectionKey, row = {}, value, sectionMax = 0) =>
 export const reviewSectionScore = (sectionKey, rows = [], maxScore = 0, scoreKey = "score") =>{
  const reviewableRows = rows.filter((row) =>rowHasReviewableData(sectionKey, row));
  if (!reviewableRows.length) return 0;
+ const explicitSectionMax = sectionKey === "innovRows"
+ ? reviewableRows.map((row) =>toNumber(row?.sectionMax || row?.section_max)).find((value) =>value >0)
+ : 0;
+ const effectiveMaxScore = sectionKey === "innovRows" && explicitSectionMax
+ ? explicitSectionMax
+ : sectionKey === "innovRows" && toNumber(maxScore) >= 20 && reviewableRows.some((row) =>row?.max)
+ ? Math.max(toNumber(maxScore), clampScore(reviewableRows.reduce((total, row) =>total + toNumber(row.max), 0), 20))
+ : maxScore;
 
  if (sectionKey === "feedback") {
  const scoredRows = reviewableRows.filter((row) => isFilled(row?.[scoreKey]));
@@ -400,7 +414,7 @@ export const reviewSectionScore = (sectionKey, rows = [], maxScore = 0, scoreKey
  const rowMax = reviewRowMaxForSection(sectionKey, row, maxScore);
  return sum + (rowMax ? clampScore(row?.[scoreKey], rowMax) : toNumber(row?.[scoreKey]));
  }, 0);
- return clampScore(total / scoredRows.length, maxScore);
+ return clampScore(total / scoredRows.length, effectiveMaxScore);
  }
 
  return clampScore(
@@ -408,7 +422,7 @@ export const reviewSectionScore = (sectionKey, rows = [], maxScore = 0, scoreKey
  const rowMax = reviewRowMaxForSection(sectionKey, row, maxScore);
  return sum + (rowMax ? clampScore(row?.[scoreKey], rowMax) : toNumber(row?.[scoreKey]));
  }, 0),
- maxScore,
+ effectiveMaxScore,
  );
 };
 

@@ -84,7 +84,7 @@ const INNOVATIVE_METHOD_OPTIONS = [
 
 const LEGACY_INNOVATIVE_METHODS = new Set(INNOVATIVE_METHOD_OPTIONS.map((method) => method.value));
 
-const blankInnovativeRow = () => ({ method: "", details: "", score: "" });
+const blankInnovativeRow = () => ({ method: "", details: "", score: "", max: A3_INNOVATIVE_ROW_MAX });
 
 const sanitizeInnovativeRows = (rows) => {
   if (!Array.isArray(rows)) return [blankInnovativeRow()];
@@ -97,7 +97,8 @@ const sanitizeInnovativeRows = (rows) => {
     if (hasLegacyPreset && index < INNOVATIVE_METHOD_OPTIONS.length && LEGACY_INNOVATIVE_METHODS.has(method) && !hasEnteredData) return false;
     return method || hasEnteredData;
   });
-  return cleaned.length ? cleaned : [blankInnovativeRow()];
+  const normalizedRows = cleaned.map((row) => ({ ...row, max: row.max || A3_INNOVATIVE_ROW_MAX }));
+  return normalizedRows.length ? normalizedRows : [blankInnovativeRow()];
 };
 
 const textEncoder = new TextEncoder();
@@ -523,8 +524,8 @@ export default function StandardMyAppraisal({
   }));
   const [innovScore, setInnovScore] = useState("");
   const [innovDetails, setInnovDetails] = useState("");
-  const [innovRows, setInnovRows] = useState([{ method: "", details: "", score: "" }]);
-  const setInnov = (i, k, v) => setInnovRows((p) => p.map((r, j) => j === i ? { ...r, [k]: v } : r));
+  const [innovRows, setInnovRows] = useState([blankInnovativeRow()]);
+  const setInnov = (i, k, v) => setInnovRows((p) => p.map((r, j) => j === i ? { ...r, max: r.max || A3_INNOVATIVE_ROW_MAX, [k]: v } : r));
   const [projects, setProjects] = useState([
     { label: "", score: "", hod: "", director: "" },
   ]);
@@ -566,9 +567,9 @@ export default function StandardMyAppraisal({
   const setEvent = (i, k, v) => setEventRows((p) => p.map((r, j) => j === i ? { ...r, [k]: v } : r));
 
   const [society, setSociety] = useState([
-    { label: "", details: "", date: "", score: "", hod: "", director: "" },
+    { label: "", details: "", date: "", score: "", hod: "", director: "", max: C4_OUTREACH_MAX },
   ]);
-  const setSoc = (i, k, v) => setSociety((p) => p.map((r, j) => j === i ? { ...r, [k]: v } : r));
+  const setSoc = (i, k, v) => setSociety((p) => p.map((r, j) => j === i ? { ...r, max: r.max || C4_OUTREACH_MAX, [k]: v } : r));
 
   const [industry, setIndustry] = useState([
     { activity: "", partner: "", date: "", name: "", details: "", score: "", hod: "", director: "" },
@@ -615,9 +616,9 @@ export default function StandardMyAppraisal({
   }));
 
   const [projects2, setProjects2] = useState([
-    { title: "", agency: "", date: "", amount: "", role: "", status: "", score: "", hod: "" },
+    { title: "", agency: "", date: "", amount: "", role: "", status: "", score: "", hod: "", max: B4_PROJECT_MAX },
   ]);
-  const setPrj2 = (i, k, v) => setProjects2((p) => p.map((r, j) => j === i ? { ...r, [k]: v } : r));
+  const setPrj2 = (i, k, v) => setProjects2((p) => p.map((r, j) => j === i ? { ...r, max: r.max || B4_PROJECT_MAX, [k]: v } : r));
 
   const [externalProjects, setExternalProjects] = useState([
     { title: "", agency: "", date: "", amount: "", role: "", status: "", score: "", hod: "" },
@@ -790,7 +791,7 @@ export default function StandardMyAppraisal({
   const validateSelfAppraisalRows = () => {
     const sections = [
       { label: "A(i). Lectures", rows: lectures, fields: ["sem", "code", "planned", "conducted", "score"] },
-      { label: "A(ii). Course File", rows: courseFile, fields: ["course", "title", "details"] },
+      { label: "A(ii). Course File", rows: courseFile, fields: ["course", "title", "details", "score"] },
       { label: "A(iii). Innovative Teaching Methods", rows: innovRows, fields: ["method", "details", "score"] },
       { label: "A5. Learning Outcomes Attainment & OBE Practice", rows: obeRows, fields: ["component", "score"], isRowActive: evidenceClaimedOrScored },
       { label: "A6. Student Project Guidance", rows: projects, fields: ["label", "score"], rowMax: A6_PROJECT_GUIDANCE_MAX, maxScore: A6_PROJECT_GUIDANCE_MAX },
@@ -806,16 +807,16 @@ export default function StandardMyAppraisal({
       { label: "C7. Student Placement Mentoring & Career Development", rows: placementRows, fields: ["activityType", "name", "date", "score"] },
       { label: "B1. Journals", rows: journals, fields: ["title", "journal", "score"] },
       { label: "B2. Books / Chapters", rows: books, fields: ["title", "book", "pub", "score"] },
-      { label: "B3. Patents, Copyrights & IP and Product Development", rows: patents, fields: ["title", "type", "date", "status", "fileNo", "score"] },
+      { label: "B3. Patents, Copyrights & IP and Product Development", rows: patents, fields: ["title", "type", "status", "fileNo", "score"] },
       { label: "B4. Funded Research Projects", rows: projects2, fields: ["title", "agency", "date", "amount", "role", "status", "score"] },
-      { label: "B5. Research Guidance", rows: research, fields: ["degree", "name", "thesis"] },
-      { label: "B6. Consultancy, Testing & Training", rows: proposals, fields: ["title", "duration", "agency", "amount", "score"] },
-      { label: "B7. Conference / FDP Contributions - Organised", rows: confs, fields: ["title", "type", "org", "level", "score"] },
+      { label: "B5. Research Guidance", rows: research, fields: ["degree", "name", "status", "date", "score"] },
+      { label: "B6. Consultancy, Testing & Training", rows: proposals, fields: ["agency", "duration", "amount", "score"] },
+      { label: "B7. Conference / FDP Contributions - Organised", rows: confs, fields: ["title", "role", "date", "level", "score"] },
       { label: "B8. Conference / FDP / Industry Training Attended", rows: fdps, fields: ["program", "duration", "org", "score"], rowMax: B8_ATTENDED_MAX, maxScore: B8_ATTENDED_MAX },
       { label: "B8. Industrial Training", rows: training, fields: ["company", "duration", "nature", "score"], rowMax: B8_ATTENDED_MAX, maxScore: B8_ATTENDED_MAX },
       { label: "B9. Research Awards, Fellowships & Citations", rows: awards, fields: ["title", "date", "agency", "level", "score"] },
-      { label: "B10. Innovation, Start-ups & Technology Transfer", rows: products, fields: ["details", "usage", "score"] },
-      { label: "B11. ICT Content, MOOCs & E-Learning", rows: ict, fields: ["title", "desc", "type", "quad", "score"] },
+      { label: "B10. Innovation, Start-ups & Technology Transfer", rows: products, fields: ["details", "role", "status", "score"] },
+      { label: "B11. ICT Content, MOOCs & E-Learning", rows: ict, fields: ["title", "type", "quad", "score"] },
     ];
     const errors = validateCompleteRows(sections, docs);
     [...projects2, ...externalProjects].forEach((row, index) => {
@@ -828,7 +829,7 @@ export default function StandardMyAppraisal({
   const validateSelfAppraisalSectionRows = (section) => {
     const partASections = [
       { label: "A(i). Lectures", rows: lectures, fields: ["sem", "code", "planned", "conducted", "score"] },
-      { label: "A(ii). Course File", rows: courseFile, fields: ["course", "title", "details"] },
+      { label: "A(ii). Course File", rows: courseFile, fields: ["course", "title", "details", "score"] },
       { label: "A(iii). Innovative Teaching Methods", rows: innovRows, fields: ["method", "details", "score"] },
       { label: "A5. Learning Outcomes Attainment & OBE Practice", rows: obeRows, fields: ["component", "score"], isRowActive: evidenceClaimedOrScored },
       { label: "A6. Student Project Guidance", rows: projects, fields: ["label", "score"], rowMax: A6_PROJECT_GUIDANCE_MAX, maxScore: A6_PROJECT_GUIDANCE_MAX },
@@ -848,16 +849,16 @@ export default function StandardMyAppraisal({
     const partBSections = [
       { label: "B1. Journals", rows: journals, fields: ["title", "journal", "issn", "index", "score"] },
       { label: "B2. Books / Chapters", rows: books, fields: ["title", "book", "issn", "pub", "coauth", "first", "score"] },
-      { label: "B3. Patents, Copyrights & IP and Product Development", rows: patents, fields: ["title", "type", "date", "status", "fileNo", "score"] },
+      { label: "B3. Patents, Copyrights & IP and Product Development", rows: patents, fields: ["title", "type", "status", "fileNo", "score"] },
       { label: "B4. Funded Research Projects", rows: projects2, fields: ["title", "agency", "date", "amount", "role", "status", "score"] },
-      { label: "B5. Research Guidance", rows: research, fields: ["degree", "name", "thesis"] },
-      { label: "B6. Consultancy, Testing & Training", rows: proposals, fields: ["title", "duration", "agency", "amount", "score"] },
-      { label: "B7. Conference / FDP Contributions - Organised", rows: confs, fields: ["title", "type", "org", "level", "score"] },
+      { label: "B5. Research Guidance", rows: research, fields: ["degree", "name", "status", "date", "score"] },
+      { label: "B6. Consultancy, Testing & Training", rows: proposals, fields: ["agency", "duration", "amount", "score"] },
+      { label: "B7. Conference / FDP Contributions - Organised", rows: confs, fields: ["title", "role", "date", "level", "score"] },
       { label: "B8. Conference / FDP / Industry Training Attended", rows: fdps, fields: ["program", "duration", "org", "score"], rowMax: B8_ATTENDED_MAX, maxScore: B8_ATTENDED_MAX },
       { label: "B8. Industrial Training", rows: training, fields: ["company", "duration", "nature", "score"], rowMax: B8_ATTENDED_MAX, maxScore: B8_ATTENDED_MAX },
       { label: "B9. Research Awards, Fellowships & Citations", rows: awards, fields: ["title", "date", "agency", "level", "score"] },
-      { label: "B10. Innovation, Start-ups & Technology Transfer", rows: products, fields: ["details", "usage", "score"] },
-      { label: "B11. ICT Content, MOOCs & E-Learning", rows: ict, fields: ["title", "desc", "type", "quad", "score"] },
+      { label: "B10. Innovation, Start-ups & Technology Transfer", rows: products, fields: ["details", "role", "status", "score"] },
+      { label: "B11. ICT Content, MOOCs & E-Learning", rows: ict, fields: ["title", "type", "quad", "score"] },
     ];
     const sectionMap = { partA: partASections, partB: partBSections, partC: partCSections, partD: [] };
     const errors = validateCompleteRows(sectionMap[section] || partASections, docs);
@@ -882,7 +883,7 @@ export default function StandardMyAppraisal({
     });
   };
 
-  const buildSelfDraftForm = (saveStatus = sectionSaveStatus) => normalizeAutoScores({ info, lectures, courseFile, innovDetails: innovRows.map((row) => row.method).filter(Boolean).join(", "), innovScore: innovScoreComputed, innovRows, projects, obeRows, mentoringRows, quals, feedback, deptActs, uniActs, eventRows, society, industry, alumniRows, placementRows, acr, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, exhibitions, summaryOtherInfo, sectionSaveStatus: saveStatus });
+  const buildSelfDraftForm = (saveStatus = sectionSaveStatus) => normalizeAutoScores({ info, lectures, courseFile, innovDetails: innovRows.map((row) => row.method).filter(Boolean).join(", "), innovScore: innovScoreComputed, innovRows: innovRows.map((row) => ({ ...row, max: row.max || A3_INNOVATIVE_ROW_MAX })), projects, obeRows, mentoringRows, quals, feedback, deptActs, uniActs, eventRows, society: society.map((row) => ({ ...row, max: row.max || C4_OUTREACH_MAX })), industry, alumniRows, placementRows, acr, journals, books, ict, research, projects2: projects2.map((row) => ({ ...row, max: row.max || B4_PROJECT_MAX })), externalProjects, patents, awards, confs, proposals, products, fdps, training, exhibitions, summaryOtherInfo, sectionSaveStatus: saveStatus });
 
   const markSnapshotLocked = () => {
     setAppraisalLocked(true);
@@ -1706,7 +1707,7 @@ export default function StandardMyAppraisal({
                           </tr>
                         </tbody>
                       </table>
-                      <RowBtns onAdd={() => setInnovRows((p) => [...p, { method: "", details: "", score: "" }])} onDel={() => setInnovRows((p) => p.length > 1 ? p.slice(0, -1) : p)} canDel={innovRows.length > 1} />
+                      <RowBtns onAdd={() => setInnovRows((p) => [...p, blankInnovativeRow()])} onDel={() => setInnovRows((p) => p.length > 1 ? p.slice(0, -1) : p)} canDel={innovRows.length > 1} />
                     </div>
 
                     {/* A4. Student Feedback */}
@@ -2102,7 +2103,7 @@ export default function StandardMyAppraisal({
                             </tr>
                           </tbody>
                         </table>
-                        <RowBtns onAdd={() => setSociety((p) => [...p, { label: "", details: "", date: "", score: "" }])} onDel={() => setSociety((p) => p.length > 1 ? p.slice(0, -1) : p)} canDel={society.length > 1} />
+                        <RowBtns onAdd={() => setSociety((p) => [...p, { label: "", details: "", date: "", score: "", max: C4_OUTREACH_MAX }])} onDel={() => setSociety((p) => p.length > 1 ? p.slice(0, -1) : p)} canDel={society.length > 1} />
                       </>
                     </div>
 
@@ -2505,7 +2506,7 @@ export default function StandardMyAppraisal({
                           </tr>
                         </tbody>
                       </table>
-                      <RowBtns onAdd={() => setProjects2((p) => [...p, { title: "", agency: "", date: "", amount: "", role: "", status: "", score: "" }])} onDel={() => setProjects2((p) => p.length > 1 ? p.slice(0, -1) : p)} canDel={projects2.length > 1} />
+                      <RowBtns onAdd={() => setProjects2((p) => [...p, { title: "", agency: "", date: "", amount: "", role: "", status: "", score: "", max: B4_PROJECT_MAX }])} onDel={() => setProjects2((p) => p.length > 1 ? p.slice(0, -1) : p)} canDel={projects2.length > 1} />
                     </div>
 
                     {/* Legacy external projects retained only for old saved data */}

@@ -526,7 +526,7 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
  const rowReviewable = rowHasReviewableData("innovRows", row);
  const previousInnovScore = (role) =>{
  const value = row[role] ?? "";
- return String(value ?? "").trim() ? clampScore(value, SCORE_LIMITS.innovativeRow) : "";
+ return String(value ?? "").trim() ? clampScore(value, row.max || SCORE_LIMITS.innovativeRow) : "";
  };
  return (
 <tr key={`innov-${index}`}>
@@ -534,12 +534,12 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
 <td style={TD}><RO val={row.method || person.innovDetails} /></td>
 <td style={TD}><RO val={row.details} /></td>
 <td style={TDV}><ViewDocsCell docKey={index === 0 ? ["innov", "innov-0"] : `innov-${index}`} docs={docs} /></td>
-<td style={TDS}><ScoreValue val={String(row.score ?? "").trim() ? clampScore(row.score, SCORE_LIMITS.innovativeRow) : ""} center /></td>
+<td style={TDS}><ScoreValue val={String(row.score ?? "").trim() ? clampScore(row.score, row.max || SCORE_LIMITS.innovativeRow) : ""} center /></td>
  {reviewRoles.map((role) =>{
  const meta = vcRoleMeta(role);
  return<td key={role} style={meta.cellStyle}><ScoreValue val={previousInnovScore(role)} center /></td>;
  })}
-<td style={TDS_VC}><VCInput val={String(getInnovVc(index) ?? "").trim() ? clampScore(getInnovVc(index), SCORE_LIMITS.innovativeRow) : ""} max={SCORE_LIMITS.innovativeRow} disabled={!rowReviewable} onChange={v =>setInnovVc(index, v)} /></td>
+<td style={TDS_VC}><VCInput val={String(getInnovVc(index) ?? "").trim() ? clampScore(getInnovVc(index), row.max || SCORE_LIMITS.innovativeRow) : ""} max={row.max || SCORE_LIMITS.innovativeRow} disabled={!rowReviewable} onChange={v =>setInnovVc(index, v)} /></td>
 </tr>
  );
  })}</tbody></table>

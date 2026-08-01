@@ -27,7 +27,6 @@ const scoreText = (value) =>{
 
 const REVIEW_ARRAY_KEYS = ["lectures", "courseFile", "obeRows", "projects", "mentoringRows", "quals", "feedback", "deptActs", "uniActs", "eventRows", "society", "industry", "alumniRows", "placementRows", "acr", "journals", "books", "ict", "research", "projects2", "patents", "awards", "confs", "proposals", "products", "fdps"];
 const REVIEW_SECTION_MAX = { lectures: 40, courseFile: 20, obeRows: 20, projects: 20, mentoringRows: 10, quals: 10, feedback: 10, deptActs: 30, uniActs: 50, eventRows: 20, society: 20, industry: 8, alumniRows: 10, placementRows: 20, acr: 50, journals: 100, books: 30, ict: 20, research: 20, projects2: 40, patents: 40, awards: 20, confs: 20, proposals: 20, products: 20, fdps: 20 };
-const DIRECTOR_ACR_DEFAULT_SCORE = 5;
 const REVIEW_SCORE_FIELDS = ["hod", "director", "dean", "vc"];
 const clampDirectorReviewScore = (section, row, value, maxScore) =>{
  if (String(value ?? "").trim() === "") return "";
@@ -76,7 +75,7 @@ const buildDirectorSectionScores = (faculty, dirData) =>{
  payload[key] = rows.map((row, index) =>({
  ...row,
  director: key === "acr"
- ? clampDirectorReviewScore(key, row, dirData[key]?.[index]?.dir ?? dirData[key]?.[index]?.director ?? row.director ?? DIRECTOR_ACR_DEFAULT_SCORE, REVIEW_SECTION_MAX[key] || 0)
+ ? clampDirectorReviewScore(key, row, dirData[key]?.[index]?.dir ?? dirData[key]?.[index]?.director ?? row.director ?? "", REVIEW_SECTION_MAX[key] || 0)
  : key === "society" && societyRowLocked(row)
  ? "0"
  : clampDirectorReviewScore(key, row, dirData[key]?.[index]?.dir ?? row.director ?? "", REVIEW_SECTION_MAX[key] || 0),
@@ -240,11 +239,7 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
 
  // Compute Director total from dirData
  const calcDirScore = () =>{
- const getD = (section, idx, field) =>{
- const value = getDRaw(section, idx, field);
- if (section === "acr" && String(value ?? "").trim() === "") return DIRECTOR_ACR_DEFAULT_SCORE;
- return n(value);
- };
+ const getD = (section, idx, field) => n(getDRaw(section, idx, field));
  const getDRaw = (section, idx, field) =>{
  let value;
  if (dirData[section]) {

@@ -61,7 +61,8 @@ const DIRECTOR_REVIEW_SECTION_MAX = {
  products: 20,
  fdps: 20,
 };
-const DIRECTOR_ACR_DEFAULT_SCORE = 5;
+const STANDARD_INNOVATIVE_ROW_MAX = 4;
+const STANDARD_INNOVATIVE_SECTION_MAX = 20;
 const clampDirectorReviewScore = (section, row, value, maxScore) => {
  if (String(value ?? "").trim() === "") return "";
  if (section !== "acr" && clampReviewScore(section, row, value, maxScore) === "") return "";
@@ -111,15 +112,15 @@ export default function MyAppraisalForm({ faculty, hodData, setHodData, reviewer
  const getInnovHod = (index) =>hodData.innovRows?.[index]?.hod ?? innovativeRows[index]?.hod ?? "";
  const setInnovHod = (index, value) =>{
  const sourceRow = innovativeRows[index] || {};
- const nextValue = clampReviewScore("innovRows", sourceRow, value, 10);
+ const nextValue = clampReviewScore("innovRows", { ...sourceRow, max: sourceRow.max || STANDARD_INNOVATIVE_ROW_MAX }, value, STANDARD_INNOVATIVE_SECTION_MAX);
  setHodData(prev =>{
  const sourceRows = Array.isArray(prev.innovRows) && prev.innovRows.length ? prev.innovRows : JSON.parse(JSON.stringify(innovativeRows));
- const nextRows = sourceRows.map((row, rowIndex) =>rowIndex === index ? { ...row, hod: nextValue } : row);
- const total = reviewSectionScore("innovRows", nextRows.map((row, rowIndex) =>({ ...innovativeRows[rowIndex], ...row })), 10, "hod");
+ const nextRows = sourceRows.map((row, rowIndex) =>rowIndex === index ? { ...row, max: row.max || STANDARD_INNOVATIVE_ROW_MAX, hod: nextValue } : row);
+ const total = reviewSectionScore("innovRows", nextRows.map((row, rowIndex) =>({ ...innovativeRows[rowIndex], max: innovativeRows[rowIndex]?.max || STANDARD_INNOVATIVE_ROW_MAX, ...row })), STANDARD_INNOVATIVE_SECTION_MAX, "hod");
  return { ...prev, innovRows: nextRows, innovHod: total ? String(total) : "" };
  });
  };
- const ctx = { faculty, docs, lectures, courseFile, obeRows, projects, mentoringRows, quals, feedback, deptActs, uniActs, eventRows, society, industry, alumniRows, placementRows, acr, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, rows, get, set, reviewerLabel, reviewerScoreLabel, innovativeRows, getInnovHod, setInnovHod };
+ const ctx = { faculty, docs, lectures, courseFile, obeRows, projects, mentoringRows, quals, feedback, deptActs, uniActs, eventRows, society, industry, alumniRows, placementRows, acr, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, rows, get, set, reviewerLabel, reviewerScoreLabel, innovativeRows: innovativeRows.map((row) => ({ ...row, max: row.max || STANDARD_INNOVATIVE_ROW_MAX })), getInnovHod, setInnovHod, innovativeRowMax: STANDARD_INNOVATIVE_ROW_MAX, innovativeSectionMax: STANDARD_INNOVATIVE_SECTION_MAX };
 
  return (
 <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
@@ -183,7 +184,6 @@ export function DirectorFacultyReviewForm({ faculty, hodData, setHodData, dirDat
  } else {
  value = faculty[section]?.[idx]?.director ?? "";
  }
- if (section === "acr" && String(value ?? "").trim() === "") return DIRECTOR_ACR_DEFAULT_SCORE;
  return value;
  };
 
@@ -196,17 +196,17 @@ export function DirectorFacultyReviewForm({ faculty, hodData, setHodData, dirDat
  const getInnovDir = (index) =>dirData.innovRows?.[index]?.director ?? dirData.innovRows?.[index]?.dir ?? innovativeRows[index]?.director ?? "";
  const setInnovDir = (index, value) =>{
  const sourceRow = innovativeRows[index] || {};
- const nextValue = clampDirectorReviewScore("innovRows", sourceRow, value, 10);
+ const nextValue = clampDirectorReviewScore("innovRows", { ...sourceRow, max: sourceRow.max || STANDARD_INNOVATIVE_ROW_MAX }, value, STANDARD_INNOVATIVE_SECTION_MAX);
  setDirData(prev =>{
  const sourceRows = Array.isArray(prev.innovRows) && prev.innovRows.length ? prev.innovRows : JSON.parse(JSON.stringify(innovativeRows));
- const nextRows = sourceRows.map((row, rowIndex) =>rowIndex === index ? { ...row, director: nextValue } : row);
- const total = reviewSectionScore("innovRows", nextRows.map((row, rowIndex) =>({ ...innovativeRows[rowIndex], ...row })), 10, "director");
+ const nextRows = sourceRows.map((row, rowIndex) =>rowIndex === index ? { ...row, max: row.max || STANDARD_INNOVATIVE_ROW_MAX, director: nextValue } : row);
+ const total = reviewSectionScore("innovRows", nextRows.map((row, rowIndex) =>({ ...innovativeRows[rowIndex], max: innovativeRows[rowIndex]?.max || STANDARD_INNOVATIVE_ROW_MAX, ...row })), STANDARD_INNOVATIVE_SECTION_MAX, "director");
  return { ...prev, innovRows: nextRows, innovDir: total ? String(total) : "" };
  });
  };
  const setDirector = (section, idx, _field, val) => setDir(section, idx, "dir", val);
  const getDirector = (section, idx, field) => getDir(section, idx, field === "hod" ? "dir" : field);
- const ctx = { faculty, docs, lectures, courseFile, obeRows, projects, mentoringRows, quals, feedback, deptActs, uniActs, eventRows, society, industry, alumniRows, placementRows, acr, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, rows, get: getDirector, set: setDirector, getDir, setDir, getInnovDir, setInnovDir, innovativeRows, reviewerScoreLabel: "Director Score", reviewerLabel: "Director", acrDefaultScore: DIRECTOR_ACR_DEFAULT_SCORE };
+ const ctx = { faculty, docs, lectures, courseFile, obeRows, projects, mentoringRows, quals, feedback, deptActs, uniActs, eventRows, society, industry, alumniRows, placementRows, acr, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, rows, get: getDirector, set: setDirector, getDir, setDir, getInnovDir, setInnovDir, innovativeRows: innovativeRows.map((row) => ({ ...row, max: row.max || STANDARD_INNOVATIVE_ROW_MAX })), reviewerScoreLabel: "Director Score", reviewerLabel: "Director", innovativeRowMax: STANDARD_INNOVATIVE_ROW_MAX, innovativeSectionMax: STANDARD_INNOVATIVE_SECTION_MAX };
 
  return (
 <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>

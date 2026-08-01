@@ -344,8 +344,8 @@ function DeanInnovativeScoreCell({ row, index, rows, deanData, setDeanData }) {
  };
  return (
 <DeanInput
- val={String(value ?? "").trim() ? clampScore(value, SCORE_LIMITS.innovativeRow) : ""}
- max={SCORE_LIMITS.innovativeRow}
+ val={String(value ?? "").trim() ? clampScore(value, row.max || SCORE_LIMITS.innovativeRow) : ""}
+ max={row.max || SCORE_LIMITS.innovativeRow}
  disabled={locked}
  onChange={update}
  />
@@ -481,7 +481,7 @@ function DeanReviewScoreForm({ approval, deanData, setDeanData, sectionView = "p
 <td style={TD}><RO val={row.method || approval.innovDetails} /></td>
 <td style={TD}><RO val={row.details} /></td>
 <td style={TDV}><ViewDocsCell docKey={index === 0 ? ["innov", "innov-0"] : `innov-${index}`} docs={docs} /></td>
-<td style={TDS}><RO val={String(row.score ?? "").trim() ? clampScore(row.score, SCORE_LIMITS.innovativeRow) : ""} center /></td>
+<td style={TDS}><RO val={String(row.score ?? "").trim() ? clampScore(row.score, row.max || SCORE_LIMITS.innovativeRow) : ""} center /></td>
 <td style={TDS_DEAN}><DeanInnovativeScoreCell row={row} index={index} rows={innovativeRows} deanData={deanData} setDeanData={setDeanData} /></td>
 </tr>
  ))}

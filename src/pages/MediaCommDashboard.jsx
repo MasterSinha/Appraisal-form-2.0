@@ -450,7 +450,7 @@ export default function MediaCommDashboard({ fixedRole }) {
   const cfScore = scoreSectionRows("courseFile", form.courseFile || [], 20, "score");
  const innovScore = clampScore(
  Array.isArray(form.innovRows)
- ? form.innovRows.reduce((t, r) =>t + clampScore(r.score, SCORE_LIMITS.innovativeRow), 0)
+ ? form.innovRows.reduce((t, r) =>t + clampScore(r.score, r.max || 4), 0)
  : innovativeTeachingScore(form.innovDetails, form.innovScore, 10),
  10,
  );

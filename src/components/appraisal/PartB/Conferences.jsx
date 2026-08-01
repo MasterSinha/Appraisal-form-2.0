@@ -46,7 +46,7 @@ export default function Conferences({ ctx }) {
 <td style={TD}><RO val={r.level || r.org} /></td>
 <td style={TDV}><ViewDocsCell docKey={`conf-${i}`} docs={docs} /></td>
 <td style={TDS}><RO val={r.score} center /></td>
-<td style={TDS_HOD}><HodInput val={get("confs", i, "hod")} onChange={v =>set("confs", i, "hod", v)} /></td>
+<td style={TDS_HOD}><HodInput val={get("confs", i, "hod")} max={20} onChange={v =>set("confs", i, "hod", v)} /></td>
 </tr>
  ))}
 </tbody>

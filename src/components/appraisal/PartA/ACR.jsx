@@ -26,7 +26,7 @@ import {
 import { n, RO } from "../../../features/faculty-appraisal/shared";
 import { DirectorInput as DirInput } from "../common/ReviewerInput";
 export default function ACR({ ctx }) {
- const { faculty, docs, lectures, courseFile, projects, quals, feedback, deptActs, uniActs, society, industry, acr, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, rows, get, set, reviewerLabel, reviewerScoreLabel, innovativeRows, getInnovHod, setInnovHod, acrDefaultScore } = ctx;
+ const { faculty, docs, lectures, courseFile, projects, quals, feedback, deptActs, uniActs, society, industry, acr, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, rows, get, set, reviewerLabel, reviewerScoreLabel, innovativeRows, getInnovHod, setInnovHod } = ctx;
  const isDirectorReview = reviewerLabel === "Director";
  const acrRows = isDirectorReview ? createAcrRows(acr) : rows(acr);
  return (
@@ -41,7 +41,7 @@ export default function ACR({ ctx }) {
 <tbody>
  {acrRows.map((r, i) =>{
  const rawScore = get("acr", i, "hod");
- const scoreValue = String(rawScore ?? "").trim() ? clampScore(rawScore, SCORE_LIMITS.acrRow) : (acrDefaultScore ?? "");
+ const scoreValue = String(rawScore ?? "").trim() ? clampScore(rawScore, SCORE_LIMITS.acrRow) : "";
  return (
 <tr key={i} style={i % 2 ? { background: "#f8fafc" } : {}}>
 <td style={TDC}>{i + 1}</td>

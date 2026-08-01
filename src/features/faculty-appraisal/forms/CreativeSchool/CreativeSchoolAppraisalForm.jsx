@@ -83,6 +83,8 @@ export const PART_B_MAX = 350;
 export const PART_C_MAX = 150;
 export const PART_D_MAX = 50;
 export const GRAND_MAX = 700;
+const CREATIVE_INNOVATIVE_ROW_MAX = 4;
+const CREATIVE_INNOVATIVE_SECTION_MAX = 10;
 
 export const titleCase = (value) => String(value || "").charAt(0).toUpperCase() + String(value || "").slice(1);
 
@@ -176,6 +178,12 @@ export const getPartBSectionsForSchool = (...sources) => {
   });
 };
 
+const withCreativeInnovativeLimits = (row = {}) => ({
+  ...row,
+  max: row.max || CREATIVE_INNOVATIVE_ROW_MAX,
+  sectionMax: row.sectionMax || row.section_max || CREATIVE_INNOVATIVE_SECTION_MAX,
+});
+
 export const isReviewerReviewComplete = (item = {}, reviewerRole = "") => {
   const status = String(item?.status || item?.workflowStatus || item?.workflow_status || "");
   if (isPendingReviewStatusFor([item?.status, item?.workflowStatus, item?.workflow_status], reviewerRole)) return false;
@@ -222,7 +230,7 @@ export const emptyCreativeSchoolForm = (defaultSchool = "SoD - School of Design"
   courseFile: [{ course: "", title: "", details: "", score: "" }],
   innovDetails: "",
   innovScore: "",
-  innovRows: [{ method: "", details: "", score: "" }],
+  innovRows: [{ method: "", details: "", score: "", max: CREATIVE_INNOVATIVE_ROW_MAX, sectionMax: CREATIVE_INNOVATIVE_SECTION_MAX }],
   obeRows: defaultObeRows(),
   mentoringRows: defaultMentoringRows(),
   projects: [{ label: "", score: "" }],
@@ -231,7 +239,7 @@ export const emptyCreativeSchoolForm = (defaultSchool = "SoD - School of Design"
   uniActs: [{ activity: "", durationCat: "", period: "", score: "" }],
   deptActs: [{ activity: "", durationCat: "", period: "", score: "" }],
   events: [{ event: "", role: "", date: "", level: "", score: "" }],
-  society: [{ activity: "", details: "", date: "", score: "" }],
+  society: [{ activity: "", details: "", date: "", score: "", max: 10 }],
   industry: [{ activity: "", partner: "", date: "", score: "" }],
   alumni: [{ activity: "", details: "", date: "", score: "" }],
   placements: [{ type: "", name: "", date: "", score: "" }],
@@ -240,7 +248,7 @@ export const emptyCreativeSchoolForm = (defaultSchool = "SoD - School of Design"
   popularWritings: [{ title: "", pubName: "", type: "", circulation: "", media: "", film: "", score: "" }],
   books: [{ title: "", book: "", isbn: "", publisher: "", coAuthors: "", first: "", score: "" }],
   ipr: [{ title: "", scope: "", status: "", fileNo: "", score: "" }],
-  externalProjects: [{ title: "", agency: "", date: "", amount: "", role: "", status: "", score: "" }],
+  externalProjects: [{ title: "", agency: "", date: "", amount: "", role: "", status: "", score: "", max: 20 }],
   research: [{ degree: "", name: "", thesis: "", score: "" }],
   consultancy: [{ title: "", agency: "", date: "", amount: "", role: "", status: "", score: "" }],
   confs: [{ title: "", type: "", org: "", level: "", score: "" }],
@@ -315,7 +323,7 @@ export const preserveSavedReviewScores = (form = {}, source = {}) => {
   merged.info = mergeFacultyInfo(form.info, source, form);
   ALL_ARRAY_KEYS.forEach((key) => {
     if (!Array.isArray(form[key])) return;
-    const sourceRows = Array.isArray(source[key]) ? source[key] : [];
+    const sourceRows = sourceRowsForKey(source, key);
     merged[key] = form[key].map((row, index) => {
       const sourceRow = sourceRows[index] || {};
       const next = { ...row };
@@ -361,8 +369,8 @@ export const calculateCreativeSchoolTotals = (form, scoreKey = "score") => {
   const lecturesScore = scoreSectionRows("lectures", form.lectures || [], 40, scoreKey);
   const courseFileScore = scoreSectionRows("courseFile", form.courseFile || [], 20, scoreKey);
   const innovativeScore = scoreKey === "score" && Array.isArray(form.innovRows)
-    ? clampScore(form.innovRows.reduce((total, row) => total + clampScore(row.score, SCORE_LIMITS.innovativeRow), 0), 20)
-    : scoreKey === "score" ? innovativeTeachingScore(form.innovDetails, form.innovScore, 20) : clampScore(form[scoreKeyForInnov(scoreKey)], 20);
+    ? clampScore(form.innovRows.reduce((total, row) => total + clampScore(row.score, row.max || CREATIVE_INNOVATIVE_ROW_MAX), 0), CREATIVE_INNOVATIVE_SECTION_MAX)
+    : scoreKey === "score" ? innovativeTeachingScore(form.innovDetails, form.innovScore, CREATIVE_INNOVATIVE_SECTION_MAX) : clampScore(form[scoreKeyForInnov(scoreKey)], CREATIVE_INNOVATIVE_SECTION_MAX);
   const obeScore = scoreSectionRows("obeRows", form.obeRows || [], 20, scoreKey);
   const mentoringScore = scoreSectionRows("mentoringRows", form.mentoringRows || [], 10, scoreKey);
 
@@ -408,14 +416,154 @@ const uid = () => Date.now() + Math.random();
 const ensureIds = (rows) => Array.isArray(rows) ? rows.map((row) => (row._id ? row : { ...row, _id: uid() })) : rows;
 const cloneRows = (rows) => (rows || []).map((row) => ({ ...row, _id: row._id || uid() }));
 
+const firstPresent = (row, keys = []) => {
+  for (const key of keys) {
+    const value = row?.[key];
+    if (String(value ?? "").trim() !== "") return value;
+  }
+  return "";
+};
+
+const sourceRowsForKey = (source = {}, key) => {
+  if (Array.isArray(source[key]) && source[key].length > 0) return source[key];
+  const aliases = {
+    events: ["eventRows"],
+    alumni: ["alumniRows"],
+    placements: ["placementRows"],
+    popularWritings: ["popularWritingRows"],
+    externalProjects: ["fundedProjects"],
+    confs: ["conferenceRows"],
+    consultancy: ["consultancyRows", "creativeCommissions"],
+    innovation: ["products", "startupRows", "innovationRows"],
+  }[key] || [];
+  for (const alias of aliases) {
+    if (Array.isArray(source[alias]) && source[alias].length > 0) return source[alias];
+  }
+  return [];
+};
+
+const withFallbackValue = (next, source, target, aliases) => {
+  if (String(next[target] ?? "").trim() !== "") return next;
+  const value = firstPresent(source, aliases);
+  return String(value ?? "").trim() !== "" ? { ...next, [target]: value } : next;
+};
+
+const normalizeCreativeRow = (key, row = {}, index = 0) => {
+  let next = { ...row };
+
+  if (key === "innovRows") {
+    next = withFallbackValue(next, row, "method", ["method", "methods_used", "methodsUsed", "method_used", "methodUsed", "title"]);
+    next = withFallbackValue(next, row, "details", ["details", "description", "proof", "evidence"]);
+    return {
+      ...next,
+      max: next.max || CREATIVE_INNOVATIVE_ROW_MAX,
+      sectionMax: next.sectionMax || next.section_max || CREATIVE_INNOVATIVE_SECTION_MAX,
+    };
+  }
+
+  if (key === "obeRows") {
+    const fallback = defaultObeRows()[index] || {};
+    next = { ...fallback, ...next };
+    next = withFallbackValue(next, row, "component", ["component", "activity", "title", "label", "particular"]);
+    next = withFallbackValue(next, row, "evidence", ["evidence", "details", "proof", "attached"]);
+    return next;
+  }
+
+  if (key === "mentoringRows") {
+    const fallback = defaultMentoringRows()[index] || {};
+    next = { ...fallback, ...next };
+    next = withFallbackValue(next, row, "activity", ["activity", "component", "title", "label", "particular"]);
+    next = withFallbackValue(next, row, "evidence", ["evidence", "details", "proof", "attached"]);
+    return next;
+  }
+
+  const fieldAliases = {
+    quals: {
+      title: ["title", "label", "qualification", "qualificationTitle", "certification", "certificationTitle", "name"],
+      body: ["body", "details", "awardingBody", "awarding_body", "agency", "institution", "institute", "university"],
+      date: ["date", "completionDate", "awardDate"],
+    },
+    popularWritings: {
+      pubName: ["pubName", "publication", "publicationName", "publisher", "journal", "magazine"],
+      type: ["type", "category"],
+      circulation: ["circulation", "level", "scope"],
+    },
+    ipr: {
+      scope: ["scope", "type", "level"],
+      fileNo: ["fileNo", "filingNo", "filing_no", "applicationNo", "grantNo", "patentNo"],
+    },
+    research: {
+      status: ["status", "thesis", "stage"],
+      date: ["date", "awardDate", "registrationDate"],
+    },
+    consultancy: {
+      client: ["client", "organisation", "organization", "agency", "company", "title"],
+      nature: ["nature", "type", "role", "status", "details"],
+    },
+    externalProjects: {
+      date: ["date", "sanctionDate", "sanction_date", "projectDate", "project_date"],
+      status: ["status", "projectStatus", "project_status"],
+    },
+    confs: {
+      role: ["role", "type", "org", "organisedBy"],
+      date: ["date", "duration"],
+      level: ["level", "scope"],
+    },
+    events: {
+      event: ["event", "activity", "title", "name"],
+      role: ["role", "responsibility"],
+      date: ["date", "period"],
+      level: ["level", "scope"],
+    },
+    alumni: {
+      activity: ["activity", "event", "title", "type"],
+      details: ["details", "description", "name", "role"],
+      date: ["date", "period"],
+    },
+    placements: {
+      type: ["type", "activityType", "activity", "event"],
+      name: ["name", "student", "company", "organisation", "organization", "details"],
+      date: ["date", "period"],
+    },
+    ict: {
+      platform: ["platform", "type", "desc", "description"],
+      reach: ["reach", "quad", "quadrant", "views"],
+    },
+    innovation: {
+      role: ["role", "details", "nature"],
+      status: ["status", "impact", "usage", "used"],
+    },
+  };
+
+  Object.entries(fieldAliases[key] || {}).forEach(([target, aliases]) => {
+    next = withFallbackValue(next, row, target, aliases);
+  });
+  if (key === "society") return { ...next, max: next.max || 10 };
+  if (key === "externalProjects") return { ...next, max: next.max || 20 };
+  return next;
+};
+
+const normalizeRowsForKey = (key, rows) => {
+  const sourceRows = Array.isArray(rows) ? rows : [];
+  if (key === "obeRows" || key === "mentoringRows") {
+    const defaults = key === "obeRows" ? defaultObeRows() : defaultMentoringRows();
+    const fixedRows = defaults.map((defaultRow, index) =>
+      normalizeCreativeRow(key, { ...defaultRow, ...(sourceRows[index] || {}) }, index)
+    );
+    const extraRows = sourceRows.slice(defaults.length).map((row, index) => normalizeCreativeRow(key, row, defaults.length + index));
+    return ensureIds([...fixedRows, ...extraRows]);
+  }
+  return ensureIds(sourceRows.map((row, index) => normalizeCreativeRow(key, row, index)));
+};
+
 export const mergeForm = (base, incoming = {}) => {
   const merged = { ...base, ...incoming };
   ALL_ARRAY_KEYS.forEach((key) => {
-    merged[key] = ensureIds(
-      Array.isArray(incoming[key]) && incoming[key].length > 0
-        ? incoming[key]
-        : (Array.isArray(base[key]) && base[key].length > 0 ? base[key] : [{ _id: uid() }])
-    );
+    const incomingRows = sourceRowsForKey(incoming, key);
+    const rows = incomingRows.length
+      ? incomingRows
+      : (Array.isArray(base[key]) && base[key].length > 0 ? base[key] : [{ _id: uid() }]);
+    merged[key] = normalizeRowsForKey(key, rows);
   });
   merged.info = { ...base.info, ...(incoming.info || {}) };
   merged.acr = createAcrRows(incoming.acr || base.acr);
@@ -463,8 +611,8 @@ export const validateCreativeSchoolBeforeSubmit = (form, docs = {}, sectionView 
       rows: innovRows,
       fields: ["method", "details", "score"],
       docPrefix: "innov",
-      rowMax: SCORE_LIMITS.innovativeRow,
-      maxScore: 10,
+      rowMax: CREATIVE_INNOVATIVE_ROW_MAX,
+      maxScore: CREATIVE_INNOVATIVE_SECTION_MAX,
     }], docs));
   }
 
@@ -944,40 +1092,40 @@ function InnovativeSection({ form, setForm, docs, setDocs, mode, locked, reviewe
   const currentScore = scoreKeyForInnov(reviewerRole);
   const editableSelf = mode === "self" && !locked;
   const reviewLocked = mode === "review" && locked;
-  const innovRows = Array.isArray(form.innovRows) && form.innovRows.length ? form.innovRows : [{ method: form.innovDetails || "", details: form.innovDetails || "", score: form.innovScore || "" }];
+  const innovRows = (Array.isArray(form.innovRows) && form.innovRows.length ? form.innovRows : [{ method: form.innovDetails || "", details: form.innovDetails || "", score: form.innovScore || "" }]).map(withCreativeInnovativeLimits);
   const visibleInnovRows = innovRows;
   const selectedInnovativeMethods = new Set(visibleInnovRows.map((row) => String(row.method ?? "").trim()).filter(Boolean));
   const innovativeMethodOptionsForRow = (currentMethod) =>
     INNOVATIVE_METHOD_OPTIONS.filter((option) => option.value === currentMethod || !selectedInnovativeMethods.has(option.value));
-  const facultyScore = clampScore(innovRows.reduce((total, row) => total + clampScore(row.score, 4), 0), 10);
+  const facultyScore = clampScore(innovRows.reduce((total, row) => total + clampScore(row.score, row.max || CREATIVE_INNOVATIVE_ROW_MAX), 0), CREATIVE_INNOVATIVE_SECTION_MAX);
   const rowReviewScore = (role, row, index) => {
     if (!rowHasReviewableData("innovRows", row) && role !== "director") return "";
     const value = reviewData.innovRows?.[index]?.[role] ?? row[role] ?? "";
-    return String(value ?? "").trim() ? clampScore(value, 4) : "";
+    return String(value ?? "").trim() ? clampScore(value, row.max || CREATIVE_INNOVATIVE_ROW_MAX) : "";
   };
   const roleInnovTotal = (role) => {
     const total = reviewSectionScore("innovRows", visibleInnovRows.map((row, index) => ({
       ...row,
       [role]: reviewData.innovRows?.[index]?.[role] ?? row[role] ?? "",
-    })), 10, role);
+    })), CREATIVE_INNOVATIVE_SECTION_MAX, role);
     return total || form[scoreKeyForInnov(role)] || "";
   };
   const currentInnovTotal = () => reviewSectionScore("innovRows", visibleInnovRows.map((row, index) => ({
     ...row,
     [reviewerRole]: reviewData.innovRows?.[index]?.[reviewerRole] ?? row[reviewerRole] ?? "",
-  })), 10, reviewerRole);
+  })), CREATIVE_INNOVATIVE_SECTION_MAX, reviewerRole);
   const updateReview = (index, value) => {
     const sourceRow = visibleInnovRows[index] || {};
     const nextValue = reviewerRole === "director"
-      ? clampDirectorReviewScore("innovRows", sourceRow, value, 4)
-      : clampReviewScore("innovRows", sourceRow, value, 4);
+      ? clampDirectorReviewScore("innovRows", sourceRow, value, CREATIVE_INNOVATIVE_SECTION_MAX)
+      : clampReviewScore("innovRows", sourceRow, value, CREATIVE_INNOVATIVE_SECTION_MAX);
     setReviewData((prev) => {
       const sourceRows = Array.isArray(prev.innovRows) && prev.innovRows.length ? prev.innovRows : cloneRows(visibleInnovRows);
       const nextRows = sourceRows.map((row, rowIndex) => rowIndex === index ? { ...row, [reviewerRole]: nextValue } : row);
       const total = reviewSectionScore("innovRows", nextRows.map((row, rowIndex) => ({
         ...visibleInnovRows[rowIndex],
         ...row,
-      })), 10, reviewerRole);
+      })), CREATIVE_INNOVATIVE_SECTION_MAX, reviewerRole);
       return {
         ...prev,
         innovRows: nextRows,
@@ -988,17 +1136,17 @@ function InnovativeSection({ form, setForm, docs, setDocs, mode, locked, reviewe
   const updateSelfRow = (index, field, value) => {
     setForm((prev) => {
       const baseRows = Array.isArray(prev.innovRows) && prev.innovRows.length ? prev.innovRows : [{ method: prev.innovDetails || "", details: prev.innovDetails || "", score: prev.innovScore || "" }];
-      const nextRows = baseRows.map((row, rowIndex) => rowIndex === index ? { ...row, [field]: value } : row);
+      const nextRows = baseRows.map((row, rowIndex) => rowIndex === index ? withCreativeInnovativeLimits({ ...row, [field]: value }) : withCreativeInnovativeLimits(row));
       const hasAnyScore = nextRows.some((row) => String(row.score ?? "").trim() !== "");
       const nextScore = hasAnyScore
-        ? String(clampScore(nextRows.reduce((total, row) => total + clampScore(row.score, 4), 0), 10))
+        ? String(clampScore(nextRows.reduce((total, row) => total + clampScore(row.score, row.max || CREATIVE_INNOVATIVE_ROW_MAX), 0), CREATIVE_INNOVATIVE_SECTION_MAX))
         : "";
       return { ...prev, innovRows: nextRows, innovDetails: nextRows.map((row) => row.method).filter(Boolean).join(", "), innovScore: nextScore };
     });
   };
   const addInnovRow = () => setForm((prev) => {
     const baseRows = Array.isArray(prev.innovRows) && prev.innovRows.length ? prev.innovRows : [{ method: prev.innovDetails || "", details: prev.innovDetails || "", score: prev.innovScore || "" }];
-    return { ...prev, innovRows: [...baseRows, { method: "", details: "", score: "" }] };
+    return { ...prev, innovRows: [...baseRows.map(withCreativeInnovativeLimits), withCreativeInnovativeLimits({ method: "", details: "", score: "" })] };
   });
   const deleteInnovRow = () => setForm((prev) => {
     const baseRows = Array.isArray(prev.innovRows) && prev.innovRows.length ? prev.innovRows : [{ method: prev.innovDetails || "", details: prev.innovDetails || "", score: prev.innovScore || "" }];
@@ -1062,9 +1210,9 @@ function InnovativeSection({ form, setForm, docs, setDocs, mode, locked, reviewe
                 </td>
                 <td style={tdStyle}><DocCell id={`innov-${index}`} docs={docs} setDocs={setDocs} readOnly={!editableSelf} /></td>
                 <td style={tdStyle}><ViewCell id={`innov-${index}`} docs={docs} /></td>
-                <td style={tdCenter}>{mode === "self" ? <TI type="number" center max={4} readOnly={!editableSelf} value={row.score} onChange={(value) => updateSelfRow(index, "score", value)} /> : <RO value={row.score || form.innovScore} center />}</td>
+                <td style={tdCenter}>{mode === "self" ? <TI type="number" center max={row.max || CREATIVE_INNOVATIVE_ROW_MAX} readOnly={!editableSelf} value={row.score} onChange={(value) => updateSelfRow(index, "score", value)} /> : <RO value={row.score || form.innovScore} center />}</td>
                 {mode === "review" && previousRoles.map((role) => <td key={role} style={tdCenter}><RO value={rowReviewScore(role, row, index)} center /></td>)}
-                {mode === "review" && <td style={tdCenter}><TI type="number" center max={4} readOnly={reviewLocked || !(rowReviewable || reviewerRole === "director" || reviewerRole === "vc")} value={rowReviewScore(reviewerRole, row, index)} onChange={(value) => updateReview(index, value)} /></td>}
+                {mode === "review" && <td style={tdCenter}><TI type="number" center max={row.max || CREATIVE_INNOVATIVE_ROW_MAX} readOnly={reviewLocked || !(rowReviewable || reviewerRole === "director" || reviewerRole === "vc")} value={rowReviewScore(reviewerRole, row, index)} onChange={(value) => updateReview(index, value)} /></td>}
               </tr>
             );
           })}
@@ -1860,15 +2008,15 @@ function buildCreativeSchoolSectionScores(person, reviewData, reviewerRole) {
           : reviewRows[index]?.[reviewerRole] ?? row[reviewerRole] ?? "",
     }));
   });
-  const innovRows = Array.isArray(person.innovRows) ? person.innovRows : [];
+  const innovRows = Array.isArray(person.innovRows) ? person.innovRows.map(withCreativeInnovativeLimits) : [];
   const reviewInnovRows = Array.isArray(reviewData.innovRows) ? reviewData.innovRows : [];
   const mergedInnovRows = innovRows.map((row, index) => ({
     ...row,
     [reviewerRole]: reviewerRole === "director"
-      ? clampDirectorReviewScore("innovRows", row, reviewInnovRows[index]?.[reviewerRole] ?? row[reviewerRole] ?? "", 10)
-      : clampReviewScore("innovRows", row, reviewInnovRows[index]?.[reviewerRole] ?? row[reviewerRole] ?? "", 10),
+      ? clampDirectorReviewScore("innovRows", row, reviewInnovRows[index]?.[reviewerRole] ?? row[reviewerRole] ?? "", CREATIVE_INNOVATIVE_SECTION_MAX)
+      : clampReviewScore("innovRows", row, reviewInnovRows[index]?.[reviewerRole] ?? row[reviewerRole] ?? "", CREATIVE_INNOVATIVE_SECTION_MAX),
   }));
-  const innovTotal = reviewSectionScore("innovRows", mergedInnovRows, 10, reviewerRole);
+  const innovTotal = reviewSectionScore("innovRows", mergedInnovRows, CREATIVE_INNOVATIVE_SECTION_MAX, reviewerRole);
   payload.innovRows = mergedInnovRows;
   payload.innovativeTeaching = {
     [reviewerRole]: innovTotal ? String(innovTotal) : reviewData.innovativeTeaching?.[reviewerRole] ?? person[scoreKeyForInnov(reviewerRole)] ?? "",
@@ -1909,12 +2057,12 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
       }));
     });
     merged.innovRows = (form.innovRows || []).map((row, index) => ({
-      ...row,
+      ...withCreativeInnovativeLimits(row),
       [reviewerRole]: reviewerRole === "director"
-        ? clampDirectorReviewScore("innovRows", row, reviewData.innovRows?.[index]?.[reviewerRole] ?? row[reviewerRole] ?? "", 10)
-        : clampReviewScore("innovRows", row, reviewData.innovRows?.[index]?.[reviewerRole] ?? row[reviewerRole] ?? "", 10),
+        ? clampDirectorReviewScore("innovRows", withCreativeInnovativeLimits(row), reviewData.innovRows?.[index]?.[reviewerRole] ?? row[reviewerRole] ?? "", CREATIVE_INNOVATIVE_SECTION_MAX)
+        : clampReviewScore("innovRows", withCreativeInnovativeLimits(row), reviewData.innovRows?.[index]?.[reviewerRole] ?? row[reviewerRole] ?? "", CREATIVE_INNOVATIVE_SECTION_MAX),
     }));
-    const innovTotal = reviewSectionScore("innovRows", merged.innovRows, 10, reviewerRole);
+    const innovTotal = reviewSectionScore("innovRows", merged.innovRows, CREATIVE_INNOVATIVE_SECTION_MAX, reviewerRole);
     merged[scoreKeyForInnov(reviewerRole)] = innovTotal ? String(innovTotal) : reviewData.innovativeTeaching?.[reviewerRole] ?? form[scoreKeyForInnov(reviewerRole)] ?? "";
     return merged;
   }, [form, reviewData, reviewerRole]);
@@ -2166,7 +2314,12 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
     const rowSum = (key, max) => scoreSectionRows(key, reviewerForm[key] || [], max, "score");
     const lecScore = scoreSectionRows("lectures", reviewerForm.lectures || [], 40, "score");
     const cfScore = scoreSectionRows("courseFile", reviewerForm.courseFile || [], 20, "score");
-    const innovScore = clampScore(Array.isArray(reviewerForm.innovRows) ? reviewerForm.innovRows.reduce((t, r) => t + clampScore(r.score, SCORE_LIMITS.innovativeRow), 0) : innovativeTeachingScore(reviewerForm.innovDetails, reviewerForm.innovScore, 10), 10);
+    const innovScore = clampScore(
+      Array.isArray(reviewerForm.innovRows)
+        ? reviewerForm.innovRows.reduce((t, r) => t + clampScore(r.score, r.max || CREATIVE_INNOVATIVE_ROW_MAX), 0)
+        : innovativeTeachingScore(reviewerForm.innovDetails, reviewerForm.innovScore, CREATIVE_INNOVATIVE_SECTION_MAX),
+      CREATIVE_INNOVATIVE_SECTION_MAX
+    );
     const maxScores = getCreativeSchoolEffectiveMaxScores(reviewerForm);
     const partATotal = panelReadOnly && String(person?.[`${reviewerRole}PartA`] ?? "").trim() !== "" ? n(person?.[`${reviewerRole}PartA`]) : totals.partA;
     const partBTotal = panelReadOnly && String(person?.[`${reviewerRole}PartB`] ?? "").trim() !== "" ? n(person?.[`${reviewerRole}PartB`]) : totals.partB;
