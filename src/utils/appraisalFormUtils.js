@@ -169,12 +169,10 @@ export const feedbackRowScore = (row = {}, maxScore = 10) =>
  clampScore(feedbackAverage(row) / 10, maxScore);
 
 export const feedbackSectionScore = (rows = [], maxScore = 10) =>{
- const filled = rows.filter((row) =>
- ["code", "fb1", "fb2"].some((key) =>String(row?.[key] ?? "").trim() !== ""),
- );
+ const filled = rows.filter((row) =>String(row?.score ?? "").trim() !== "");
  if (!filled.length) return 0;
  return clampScore(
- filled.reduce((total, row) =>total + feedbackRowScore(row, maxScore), 0) / filled.length,
+ filled.reduce((total, row) =>total + clampScore(row?.score, maxScore), 0),
  maxScore,
  );
 };
@@ -218,9 +216,6 @@ export const scoreSectionRows = (sectionKey, rows = [], maxScore, scoreKey = "sc
 const hasScoreValue = (row = {}, key = "score") =>
  String(row?.[key] ?? "").trim() !== "";
 
-const hasFeedbackScoreValues = (row = {}) =>
- ["fb1", "fb2"].some((key) =>String(row?.[key] ?? "").trim() !== "");
-
 const innovRowsScore = (rows = []) =>{
  const hasAnyScore = rows.some((row) =>hasScoreValue(row));
  if (!hasAnyScore) return "";
@@ -240,7 +235,7 @@ export const normalizeAutoScores = (form = {}) =>({
  })),
  feedback: (form.feedback || []).map((row) =>({
  ...row,
- score: hasFeedbackScoreValues(row) ? feedbackRowScore(row, 10).toFixed(1) : "",
+ score: String(row.score ?? "").trim() ? String(clampScore(row.score, 10)) : "",
  })),
  society: (form.society || []).map((row) =>{
  return {

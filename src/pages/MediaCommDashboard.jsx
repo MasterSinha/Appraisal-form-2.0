@@ -429,6 +429,7 @@ export default function MediaCommDashboard({ fixedRole }) {
  const data = await fetchSavedAppraisal({
  facultyEmail: item.email,
  academicYear: item.academic_year || item.academicYear || item.info?.ay || APP_INFO.DEFAULT_AY || "2026-2027",
+ reviewerRole: role,
  });
  const submittedForm = data?.payload?.form || data?.form || {};
  const submittedDocs = data?.payload?.docs || data?.docs || {};

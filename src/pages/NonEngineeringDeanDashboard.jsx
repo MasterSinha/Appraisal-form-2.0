@@ -2,7 +2,7 @@
 import { createContext, useContext, useState, useRef, useEffect } from "react";
 import MyAppraisalForm from "../components/appraisal";
 import { api } from "../services/api";
-import { Avatar, CompactSummaryCard, ScoreBar, StatusBadge } from "../components/dashboard/dashboardPrimitives";
+import { Avatar, ScoreCard, ScoreBar, StatusBadge } from "../components/dashboard/dashboardPrimitives";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import DashboardSidebar from "../components/dashboard/DashboardSidebar";
 import { ACR_DETAIL_POINTS, SOCIETY_LABELS, MAX_SCORES, APP_INFO, createAcrRows, fetchSavedAppraisal, loadAppraisalDocuments, loadSavedAppraisal, mergeFacultyInfo, saveAppraisalDraftSection, submitAppraisal, fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, INNOVATIVE_METHODS, SCORE_LIMITS, averageSectionScore, clampScore, clampReviewScore, courseFileAverageScore, courseFileRowScore, effectiveMaxScore, feedbackAverage, feedbackRowScore, feedbackSectionScore, innovativeSelectionsFromDetails, innovativeTeachingScore, isAllowedAttachmentFile, isValidDDMMYYYY, maskDateDDMMYYYY, normalizeAutoScores, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewSectionScore, rowHasReviewableData, scoreRemaining, selfEffectivePartAMax, societyRowLocked, societyRowScore, sumSectionScore, toggleInnovativeMethod, validateCompleteRows, generateStandardReport, standardSubmittedScoreSummary, qualificationRowDescription, AppraisalHeaderImage, SummaryOtherInfoField, summaryOtherInfoValueFrom, RejectionNotice, DocCell, ViewCell, ViewDocsCell, RowButtons as RowBtns, SectionSaveFooter, SectionCard as SC, T, TH, TH_HOD, TH_DIR, TH_DEAN, TD, TDC, TDS, TDS_HOD, TDS_DIR, TDS_DEAN, TDV, MyAppraisalSection, CreativeSchoolAuthorityReviewPanel, isCreativeSchool } from "../features/faculty-appraisal";
@@ -178,39 +178,25 @@ function ReviewPanel({ faculty, onBack, onSubmit }) {
 
  {sectionView === "summary" && (
 <div style={{ background: "#fff", borderRadius: 10, padding: "22px 24px", boxShadow: "0 1px 6px rgba(0,0,0,.06)" }}>
-<h3 style={{ margin: "0 0 16px", color: "#0f172a", fontSize: 15 }}>HOD Remarks & Final Submission</h3>
-
- {/* Score Summary */}
-<table style={{ ...T, marginBottom: 18 }}>
-<thead><tr>
-<th style={TH}>Section</th><th style={TH}>Max</th>
-<th style={TH}>Faculty Score</th><th style={TH_HOD}>HOD Score</th>
-</tr></thead>
-<tbody>
- {[
- ["Part A - Teaching & Activities", facultySummary.partAMax, facultySummary.partA, partA],
- ["Part B - Research & Contributions", facultySummary.partBMax, facultySummary.partB, partB],
- ].map(([label, max, fac, hod]) =>(
-<tr key={label}>
-<td style={TD}>{label}</td>
-<td style={TDC}>{max}</td>
-<td style={TDS}>{fac.toFixed(1)}</td>
-<td style={{ ...TDS_HOD, fontWeight: 700, color: "#312e81" }}>{hod.toFixed(1)}</td>
-</tr>
- ))}
-<tr style={{ background: "#d1fae5", fontWeight: 700 }}>
-<td style={TD}>Grand Total</td>
-<td style={TDC}>{facultySummary.grandMax}</td>
-<td style={TDS}>{facultySummary.total.toFixed(1)}</td>
-<td style={{ ...TDS_HOD, color: "#065f46", fontSize: 14 }}>{total.toFixed(1)}</td>
-</tr>
-</tbody>
-</table>
-
-<label style={{ fontWeight: 700, fontSize: 13, color: "#334155", display: "block", marginBottom: 6 }}>HOD Remarks</label>
+<div style={{ display: "grid", gap: 10, marginBottom: 16 }}>
+<ScoreCard
+ title="Faculty Score"
+ totals={{ partA: facultySummary.partA, partB: facultySummary.partB, total: facultySummary.total }}
+ maxScores={{ partA: facultySummary.partAMax, partB: facultySummary.partBMax, grand: facultySummary.grandMax }}
+/>
+<ScoreCard
+ title="HOD Score"
+ totals={{ partA, partB, total }}
+ maxScores={{ partA: facultySummary.partAMax, partB: facultySummary.partBMax, grand: facultySummary.grandMax }}
+ remarksTitle="HOD Remarks"
+ isFinal
+ remarksContent={(
 <textarea value={remarks} onChange={e =>setRemarks(e.target.value)} rows={4}
  placeholder="Enter your remarks, observations, and recommendations for this faculty member..."
- style={{ width: "100%", border: "1px solid #e2e8f0", borderRadius: 7, padding: "10px 12px", fontSize: 12, fontFamily: "inherit", resize: "vertical", boxSizing: "border-box", marginBottom: 16 }} />
+ style={{ width: "100%", border: "1px solid #e2e8f0", borderRadius: 7, padding: "10px 12px", fontSize: 12, fontFamily: "inherit", resize: "vertical", boxSizing: "border-box" }} />
+ )}
+/>
+</div>
 
 <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
 <button onClick={onBack} style={{ padding: "9px 22px", background: "#f1f5f9", color: "#475569", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 700, fontSize: 12, fontFamily: "inherit" }}>Cancel</button>
@@ -866,6 +852,46 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
  const deanScores = deanScoreTotals(sectionScores);
  const selfSummary = standardSubmittedScoreSummary(approval);
  const reviewerMaxScores = reviewerMaxScoresFromSubmitted(selfSummary);
+ const subjectRole = (approval.appraisalRole || approval.appraisal_role || approval.role || "faculty").toLowerCase();
+ const isSoemrFaculty = subjectRole === "faculty" && getSchoolKey(approval.school || approval.schoolName || approval.info?.school || "") === "SoEMR";
+ const roleTotalsFor = (prefix) =>({
+ partA: n(approval[`${prefix}PartA`]),
+ partB: n(approval[`${prefix}PartB`]),
+ partC: n(approval[`${prefix}PartC`]),
+ partD: n(approval[`${prefix}PartD`]),
+ total: n(approval[`${prefix}Total`]),
+ });
+ const deanSummaryCards = [
+ ...(subjectRole === "faculty" ? [{
+ key: "self",
+ title: "Faculty Score",
+ subtitle: "Self score for the non-engineering appraisal form.",
+ totals: { partA: selfSummary.partA, partB: selfSummary.partB, partC: selfSummary.partC, partD: selfSummary.partD, total: selfSummary.total },
+ maxScores: { partA: selfSummary.partAMax, partB: selfSummary.partBMax, partC: selfSummary.partCMax, partD: selfSummary.partDMax, grand: selfSummary.grandMax },
+ accent: "#0ea5e9",
+ extraContent: <SummaryOtherInfoField value={summaryOtherInfoValueFrom(approval)} readOnly rows={4} />,
+ }] : []),
+ ...(isSoemrFaculty ? [{
+ key: "hod",
+ title: "HOD Score",
+ subtitle: "HOD score for the non-engineering appraisal form.",
+ totals: roleTotalsFor("hod"),
+ maxScores: reviewerMaxScores,
+ accent: "#0f766e",
+ remarksTitle: "HOD Remarks",
+ remarksContent: <div style={{ color: "#334155", fontSize: 12, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{approval.hodRemarks || "-"}</div>,
+ }] : []),
+ ...(["faculty", "hod"].includes(subjectRole) ? [{
+ key: "director",
+ title: "Director Score",
+ subtitle: "Director score for the non-engineering appraisal form.",
+ totals: roleTotalsFor("director"),
+ maxScores: reviewerMaxScores,
+ accent: "#0f766e",
+ remarksTitle: "Director Remarks",
+ remarksContent: <div style={{ color: "#334155", fontSize: 12, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{approval.directorRemarks || "-"}</div>,
+ }] : []),
+ ];
  const hasSavedDeanScores = ["deanPartA", "deanPartB", "deanPartC", "deanPartD", "deanTotal"].some((key) =>String(approval?.[key] ?? "").trim() !== "");
  const rawDisplayedDeanScores = reviewLocked && hasSavedDeanScores ? {
  partA: String(approval?.deanPartA ?? "").trim() !== "" ? n(approval?.deanPartA) : deanScores.partA,
@@ -1021,22 +1047,18 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
 
  {sectionView === "summary" && (
 <>
-<div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 14, display: "grid", gap: 10, boxShadow: "0 1px 6px rgba(0,0,0,.06)", marginBottom: 14 }}>
-<CompactSummaryCard
- title="Faculty Score"
- subtitle="Faculty submitted score for the non-engineering appraisal form."
- totals={{ partA: selfSummary.partA, partB: selfSummary.partB, total: selfSummary.total }}
- maxScores={{ partA: selfSummary.partAMax, partB: selfSummary.partBMax, grand: selfSummary.grandMax }}
- accent="#0ea5e9"
-/>
-<SummaryOtherInfoField value={summaryOtherInfoValueFrom(approval)} readOnly rows={4} />
-<CompactSummaryCard
+<div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 14, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 14, boxShadow: "0 1px 6px rgba(0,0,0,.06)", marginBottom: 14 }}>
+{deanSummaryCards.map((card) =>(
+<ScoreCard key={card.key} {...card} />
+))}
+<ScoreCard
  title="Dean Score"
  subtitle="Dean score for the non-engineering appraisal form."
  totals={displayedDeanScores}
  maxScores={reviewerMaxScores}
- accent="#4c1d95"
  remarksTitle="Dean Remarks"
+ isFinal
+ accent="#7c3aed"
  remarksContent={(
 <textarea value={remarks} onChange={(e) =>setRemarks(e.target.value)} rows={4} readOnly={reviewLocked}
  style={{ width: "100%", border: "none", padding: 0, fontFamily: "inherit", fontSize: 12, color: "#334155", resize: "vertical", background: "transparent", outline: "none" }}
@@ -1512,6 +1534,7 @@ export default function NonEngineeringDeanDashboard() {
                             const data = await fetchSavedAppraisal({
                               facultyEmail: faculty.email,
                               academicYear: faculty.academic_year || faculty.academicYear || APP_INFO.DEFAULT_AY || "2026-2027",
+                              reviewerRole: "dean",
                             });
                             const form = data?.payload?.form || data?.form || {};
                             const docs = data?.payload?.docs || data?.docs || {};

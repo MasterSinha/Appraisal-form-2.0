@@ -20,7 +20,6 @@ import {
   clampScore,
   effectiveMaxScore,
   feedbackAverage,
-  feedbackRowScore,
   feedbackSectionScore,
   isValidDDMMYYYY,
   maskDateDDMMYYYY,
@@ -1098,7 +1097,7 @@ export default function StandardMyAppraisal({
     <h3>A4. Student Feedback Score &nbsp;(Max 10)</h3>
     <table>
       <tr><th>SN</th><th>Course Code / Name</th><th>First Feedback(%)</th><th>Second Feedback(%)</th><th>Average</th><th>Self Score</th></tr>
-      ${feedback.map((f, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(f.code)}</td><td class="c">${reportTextValue(f.fb1)}</td><td class="c">${reportTextValue(f.fb2)}</td><td class="c">${(f.fb1 || f.fb2) ? ((n(f.fb1) + n(f.fb2)) / ((f.fb1 ? 1 : 0) + (f.fb2 ? 1 : 0) || 1)).toFixed(2) : '&nbsp;'}</td><td class="c">${(f.fb1 || f.fb2) ? (((n(f.fb1) + n(f.fb2)) / ((f.fb1 ? 1 : 0) + (f.fb2 ? 1 : 0) || 1)) / 10).toFixed(2) : '&nbsp;'}</td></tr>`).join('')}
+      ${feedback.map((f, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(f.code)}</td><td class="c">${reportTextValue(f.fb1)}</td><td class="c">${reportTextValue(f.fb2)}</td><td class="c">${(f.fb1 || f.fb2) ? ((n(f.fb1) + n(f.fb2)) / ((f.fb1 ? 1 : 0) + (f.fb2 ? 1 : 0) || 1)).toFixed(2) : '&nbsp;'}</td><td class="c">${reportTextValue(f.score)}</td></tr>`).join('')}
       <tr class="tr"><td colspan="5" class="c b">Total (Max 10)</td><td class="c">${stuFeedbackScore > 0 ? stuFeedbackScore.toFixed(1) : "&nbsp;"}</td></tr>
     </table>
 
@@ -1295,18 +1294,8 @@ export default function StandardMyAppraisal({
       <tr><td class="c">A</td><td>Teaching &amp; Learning</td><td class="c">${effectivePartAMax}</td><td class="c">${partATotal > 0 ? partATotal.toFixed(1) : "&nbsp;"}</td></tr>
       <tr class="tr"><td colspan="2" class="c b">Part A Total</td><td class="c b">${effectivePartAMax}</td><td class="c b">${partATotal > 0 ? partATotal.toFixed(1) : "&nbsp;"}</td></tr>
       <tr class="tr"><td colspan="2" class="c b">Part A Marks Obtained (%)</td><td colspan="2" class="c b">${partATotal > 0 ? `${partAMarksPercentage}%` : "&nbsp;"}</td></tr>
-      <tr><td colspan="4" class="b" style="background:#d9d9d9;text-align:center">Part B - Research and Academic Contribution</td></tr>
-      <tr><td class="c">1</td><td>Journal Publications</td><td class="c">100</td><td class="c">${journalScore > 0 ? journalScore.toFixed(1) : "&nbsp;"}</td></tr>
-      <tr><td class="c">2</td><td>Books, Book Chapters &amp; Edited Volumes</td><td class="c">30</td><td class="c">${bookScore > 0 ? bookScore.toFixed(1) : "&nbsp;"}</td></tr>
-      <tr><td class="c">3</td><td>Patents, Copyrights &amp; IP and Product Development</td><td class="c">40</td><td class="c">${patentScore > 0 ? patentScore.toFixed(1) : "&nbsp;"}</td></tr>
-      <tr><td class="c">4</td><td>Funded Research Projects</td><td class="c">40</td><td class="c">${projectBScore > 0 ? projectBScore.toFixed(1) : "&nbsp;"}</td></tr>
-      <tr><td class="c">5</td><td>Research Guidance</td><td class="c">20</td><td class="c">${researchScore > 0 ? researchScore.toFixed(1) : "&nbsp;"}</td></tr>
-      <tr><td class="c">6</td><td>Consultancy, Testing &amp; Training</td><td class="c">20</td><td class="c">${proposalScore > 0 ? proposalScore.toFixed(1) : "&nbsp;"}</td></tr>
-      <tr><td class="c">7</td><td>Conference / FDP Contributions - Organised</td><td class="c">20</td><td class="c">${confScore > 0 ? confScore.toFixed(1) : "&nbsp;"}</td></tr>
-      <tr><td class="c">8</td><td>Conference / FDP / Industry Training Attended</td><td class="c">20</td><td class="c">${b8Score > 0 ? b8Score.toFixed(1) : "&nbsp;"}</td></tr>
-      <tr><td class="c">9</td><td>Research Awards, Fellowships &amp; Citations</td><td class="c">20</td><td class="c">${awardScore > 0 ? awardScore.toFixed(1) : "&nbsp;"}</td></tr>
-      <tr><td class="c">10</td><td>Innovation, Start-ups &amp; Technology Transfer</td><td class="c">20</td><td class="c">${productScore > 0 ? productScore.toFixed(1) : "&nbsp;"}</td></tr>
-      <tr><td class="c">11</td><td>ICT Content, MOOCs &amp; E-Learning</td><td class="c">20</td><td class="c">${ictScore > 0 ? ictScore.toFixed(1) : "&nbsp;"}</td></tr>
+      <tr><td colspan="4" class="b" style="background:#d9d9d9;text-align:center">Part B - Research &amp; Innovation</td></tr>
+      <tr><td class="c">B</td><td>Research &amp; Innovation</td><td class="c">${effectivePartBMax}</td><td class="c">${partBTotal > 0 ? partBTotal.toFixed(1) : "&nbsp;"}</td></tr>
       <tr class="tr"><td colspan="2" class="c b">Part B Total</td><td class="c b">${effectivePartBMax}</td><td class="c b">${partBTotal > 0 ? partBTotal.toFixed(1) : "&nbsp;"}</td></tr>
       <tr class="tr"><td colspan="2" class="c b">Part B Marks Obtained (%)</td><td colspan="2" class="c b">${partBTotal > 0 ? `${partBMarksPercentage}%` : "&nbsp;"}</td></tr>
       <tr><td colspan="4" class="b" style="background:#d9d9d9;text-align:center">Part C - Administrative Role &amp; University Development Contribution</td></tr>
@@ -1723,10 +1712,18 @@ export default function StandardMyAppraisal({
                     {/* A4. Student Feedback */}
                     <div style={{ marginBottom: 16, order: 4 }}>
                       <SubsectionTitle icon="chart">A4. Student Feedback Score - Max 10 marks</SubsectionTitle>
-                      <table style={T}>
+                      <table style={{ ...T, tableLayout: "fixed" }}>
+                        <colgroup>
+                          <col style={{ width: "6%" }} />
+                          <col style={{ width: "32%" }} />
+                          <col style={{ width: "18%" }} />
+                          <col style={{ width: "18%" }} />
+                          <col style={{ width: "13%" }} />
+                          <col style={{ width: "13%" }} />
+                        </colgroup>
                         <thead>
                           <tr>
-                            <th style={{ ...TH, width: 30 }}>SN</th>
+                            <th style={TH}>SN</th>
                             <th style={TH}>Course Code / Name</th>
                             <th style={TH}>First Feedback(%)</th>
                             <th style={TH}>Second Feedback(%)</th>
@@ -1742,7 +1739,7 @@ export default function StandardMyAppraisal({
                               <td style={TDC}><TI val={r.fb1} onChange={(v) => setFb(i, "fb1", v)} center numeric max={SCORE_LIMITS.feedbackAverage} deferClampWhileTyping placeholder="0-100" /></td>
                               <td style={TDC}><TI val={r.fb2} onChange={(v) => setFb(i, "fb2", v)} center numeric max={SCORE_LIMITS.feedbackAverage} deferClampWhileTyping placeholder="0-100" /></td>
                               <td style={{ ...TDC, fontWeight: 700, color: "#0ea5e9" }}>{r.fb1 || r.fb2 ? feedbackAverage(r).toFixed(2) : ""}</td>
-                              <td style={TDS}>{r.fb1 || r.fb2 ? feedbackRowScore(r, 10).toFixed(1) : ""}</td>
+                              <td style={TDS}><TI val={r.score} onChange={(v) => setFb(i, "score", v)} center numeric max={A4_FEEDBACK_MAX} deferClampWhileTyping placeholder="0-10" /></td>
                             </tr>
                           ))}
                           <tr style={{ background: "#eff6ff" }}>

@@ -8,12 +8,39 @@ import {
   projectGuidanceRowMax,
 } from "./appraisalFormUtils";
 
-import { feedbackRowScore, feedbackSectionScore } from "./appraisalFormUtils";
-
 const n = (value) => parseFloat(value) || 0;
 const percentOf = (score, max) => {
   const maximum = n(max);
   return maximum > 0 ? ((n(score) / maximum) * 100).toFixed(2) : "0.00";
+};
+
+const collapsePartBSummaryRows = (rows) => {
+  if (!Array.isArray(rows)) return rows;
+  const nextRows = [];
+  let insidePartB = false;
+
+  rows.forEach((row) => {
+    const label = String(row?.label || "");
+    if (row?.isHeader && /^part b\b/i.test(label)) {
+      nextRows.push({ ...row, label: "Part B - Research & Innovation" });
+      insidePartB = true;
+      return;
+    }
+    if (insidePartB) {
+      if (row?.isTotal && /^part b\b/i.test(label)) {
+        nextRows.push({ id: "B", label: "Research & Innovation", max: row.max, score: row.score });
+        nextRows.push(row);
+        insidePartB = false;
+      } else if (row?.isHeader) {
+        insidePartB = false;
+        nextRows.push(row);
+      }
+      return;
+    }
+    nextRows.push(row);
+  });
+
+  return nextRows;
 };
 
 export const safeHtml = (value) =>
@@ -242,10 +269,6 @@ const displaySectionScore = (section, row, role) => {
     const rgs = researchGuidanceScore(row);
     return isFilledValue(rgs) || rgs === 0 ? rgs.toFixed(1) : "";
   }
-  if (section.key === "feedback" && role === "score") {
-    const hasFeedback = isFilledValue(row?.fb1) || isFilledValue(row?.fb2);
-    return hasFeedback ? feedbackRowScore(row, section.max).toFixed(1) : "";
-  }
   if (role === "score") {
     const score = clampScore(val, rowMaxForSection(section.key, row, section.max));
     return isFilledValue(score) || score === 0 ? String(score) : "";
@@ -257,10 +280,6 @@ const sectionTotalScore = (section, rows, role) => {
   if (!rows || !rows.length) return "";
   const hasAnyScore = rows.some((row) => isFilledValue(row?.[role]));
   if (!hasAnyScore) return "";
-  if (section.key === "feedback" && role === "score") {
-    const score = feedbackSectionScore(rows, section.max);
-    return isFilledValue(score) || score === 0 ? score.toFixed(1) : "";
-  }
   if (
     section.key === "lectures" ||
     section.key === "courseFile" ||
@@ -720,12 +739,13 @@ export const generateMediaCommReport = async ({
   const partAPercentage = percentOf(displayPartA, displayPartAMax);
   const partBPercentage = percentOf(displayPartB, maxScores.partB);
   const totalPercentage = percentOf(displayGrand, displayGrandMax);
-  const rowsToRender =
+  const rowsToRender = collapsePartBSummaryRows(
     hideAcr && Array.isArray(detailedSummaryRows)
       ? detailedSummaryRows.filter(
           (r) => !/annual confidential report|acr/i.test(r.label || ""),
         )
-      : detailedSummaryRows;
+      : detailedSummaryRows,
+  );
 
   const html = `<!doctype html>
 <html>
@@ -947,7 +967,6 @@ export const generateStandardReport = async ({
 }) => {
   const n = (v) => parseFloat(v) || 0;
   const teachingMax = 100;
-  const researchGuidanceProjectMax = 75;
   const selfAcrExcluded = hideAcr;
   const acrSummaryMax = selfAcrExcluded ? "" : "50";
   const acrSummaryScoreStr = selfAcrExcluded || !isFilledValue(acrScore) ? "&nbsp;" : n(acrScore).toFixed(1);
@@ -1010,7 +1029,7 @@ ${PRINT_REPORT_CSS}
   <tr class="tr"><td colspan="2" class="c b">Total Score (Max 10)</td><td class="c">${quals.reduce((a, q) => a + n(q.score), 0) > 0 ? quals.reduce((a, q) => a + n(q.score), 0).toFixed(1) : "&nbsp;"}</td></tr></table>
   <h3>B. Students' Feedback (Max 10)</h3>
   <table><tr><th>SN</th><th>Course Code/Name</th><th>First Feedback(%)</th><th>Second Feedback(%)</th><th>Average</th><th>Self Score</th></tr>
-  ${feedback.map((f, i) => `<tr><td class="c">${i + 1}</td><td>${displayValue(f.code)}</td><td class="c">${displayValue(f.fb1)}</td><td class="c">${displayValue(f.fb2)}</td><td class="c">${isFilledValue(f.fb1) || isFilledValue(f.fb2) ? ((n(f.fb1) + n(f.fb2)) / ((isFilledValue(f.fb1) ? 1 : 0) + (isFilledValue(f.fb2) ? 1 : 0) || 1)).toFixed(2) : "&nbsp;"}</td><td class="c">${isFilledValue(f.fb1) || isFilledValue(f.fb2) ? ((n(f.fb1) + n(f.fb2)) / ((isFilledValue(f.fb1) ? 1 : 0) + (isFilledValue(f.fb2) ? 1 : 0) || 1) / 10).toFixed(2) : "&nbsp;"}</td></tr>`).join("")}
+  ${feedback.map((f, i) => `<tr><td class="c">${i + 1}</td><td>${displayValue(f.code)}</td><td class="c">${displayValue(f.fb1)}</td><td class="c">${displayValue(f.fb2)}</td><td class="c">${isFilledValue(f.fb1) || isFilledValue(f.fb2) ? ((n(f.fb1) + n(f.fb2)) / ((isFilledValue(f.fb1) ? 1 : 0) + (isFilledValue(f.fb2) ? 1 : 0) || 1)).toFixed(2) : "&nbsp;"}</td><td class="c">${displayValue(f.score)}</td></tr>`).join("")}
   <tr class="tr"><td colspan="5" class="c b">Total (Max 10)</td><td class="c">${isFilledValue(stuFeedbackScore) && stuFeedbackScore > 0 ? stuFeedbackScore.toFixed(1) : "&nbsp;"}</td></tr></table>
   <h3 style="background:#d9d9d9;padding:4px;text-align:center;font-size:13px">PART C - Administrative Role &amp; University Development Contribution</h3>
   <h3>C2. Administration at School Level (Max 20)</h3>
@@ -1117,15 +1136,8 @@ ${PRINT_REPORT_CSS}
     <tr><td class="c">B</td><td>Students' Feedback</td><td class="c">10</td><td class="c">${stuFeedbackScore > 0 ? stuFeedbackScore.toFixed(1) : "&nbsp;"}</td></tr>
     <tr class="tr"><td colspan="2" class="c b">Part A Total</td><td class="c b">${effectivePartAMax}</td><td class="c b">${partATotal > 0 ? partATotal.toFixed(1) : "&nbsp;"}</td></tr>
     <tr class="tr"><td colspan="2" class="c b">Part A Marks Obtained (%)</td><td colspan="2" class="c b">${partAPercentageStr}</td></tr>
-    <tr><td colspan="4" class="b" style="background:#d9d9d9;text-align:center">Part B - Research and Academic Contribution</td></tr>
-    <tr><td class="c">1</td><td>Research papers / journal publication</td><td class="c">120</td><td class="c">${journalScore > 0 ? journalScore.toFixed(1) : "&nbsp;"}</td></tr>
-    <tr><td class="c">2</td><td>Books authored / edited / book chapter</td><td class="c">50</td><td class="c">${bookScore > 0 ? bookScore.toFixed(1) : "&nbsp;"}</td></tr>
-    <tr><td class="c">3</td><td>ICT Teaching Learning Pedagogy</td><td class="c">20</td><td class="c">${ictScore > 0 ? ictScore.toFixed(1) : "&nbsp;"}</td></tr>
-    <tr><td class="c">4</td><td>Research guidance / projects / consultancy</td><td class="c">${researchGuidanceProjectMax}</td><td class="c">${(researchScore + projectBScore + externalProjectScore) > 0 ? (researchScore + projectBScore + externalProjectScore).toFixed(1) : "&nbsp;"}</td></tr>
-    <tr><td class="c">5</td><td>Patents, Awards, Fellowship</td><td class="c">50</td><td class="c">${(patentScore + awardScore) > 0 ? (patentScore + awardScore).toFixed(1) : "&nbsp;"}</td></tr>
-    <tr><td class="c">6</td><td>Conferences / paper presentations</td><td class="c">30</td><td class="c">${confScore > 0 ? confScore.toFixed(1) : "&nbsp;"}</td></tr>
-    <tr><td class="c">7</td><td>Research proposals / product development</td><td class="c">20</td><td class="c">${(proposalScore + productScore) > 0 ? (proposalScore + productScore).toFixed(1) : "&nbsp;"}</td></tr>
-    <tr><td class="c">8</td><td>Self Development (FDP / Industrial Training)</td><td class="c">10</td><td class="c">${(fdpScore + trainScore) > 0 ? (fdpScore + trainScore).toFixed(1) : "&nbsp;"}</td></tr>
+    <tr><td colspan="4" class="b" style="background:#d9d9d9;text-align:center">Part B - Research &amp; Innovation</td></tr>
+    <tr><td class="c">B</td><td>Research &amp; Innovation</td><td class="c">${effectivePartBMax}</td><td class="c">${partBTotal > 0 ? partBTotal.toFixed(1) : "&nbsp;"}</td></tr>
     <tr class="tr"><td colspan="2" class="c b">Part B Total</td><td class="c b">${effectivePartBMax}</td><td class="c b">${partBTotal > 0 ? partBTotal.toFixed(1) : "&nbsp;"}</td></tr>
     <tr class="tr"><td colspan="2" class="c b">Part B Marks Obtained (%)</td><td colspan="2" class="c b">${partBPercentageStr}</td></tr>
     <tr><td colspan="4" class="b" style="background:#d9d9d9;text-align:center">Part C - Administrative Role &amp; University Development Contribution</td></tr>

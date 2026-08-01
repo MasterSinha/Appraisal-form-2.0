@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import { DirectorFacultyReviewForm } from "../components/appraisal";
 import { api } from "../services/api";
-import { Avatar, CompactSummaryCard, ScoreBar, StatusBadge } from "../components/dashboard/dashboardPrimitives";
+import { Avatar, ScoreCard, ScoreBar, StatusBadge } from "../components/dashboard/dashboardPrimitives";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import DashboardSidebar from "../components/dashboard/DashboardSidebar";
 import { ACR_DETAIL_POINTS, SOCIETY_LABELS, MAX_SCORES, APP_INFO, createAcrRows, fetchSavedAppraisal, loadAppraisalDocuments, loadSavedAppraisal, mergeFacultyInfo, saveAppraisalDraftSection, submitAppraisal, fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, INNOVATIVE_METHODS, SCORE_LIMITS, averageSectionScore, clampScore, clampReviewScore, courseFileAverageScore, courseFileRowScore, effectiveMaxScore, feedbackAverage, feedbackRowScore, feedbackSectionScore, innovativeSelectionsFromDetails, innovativeTeachingScore, isAllowedAttachmentFile, isValidDDMMYYYY, maskDateDDMMYYYY, normalizeAutoScores, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewSectionScore, rowHasReviewableData, scoreRemaining, selfEffectivePartAMax, societyRowLocked, societyRowScore, sumSectionScore, toggleInnovativeMethod, validateCompleteRows, generateStandardReport, standardSubmittedScoreSummary, AppraisalHeaderImage, SummaryOtherInfoField, summaryOtherInfoValueFrom, RejectionNotice, DocCell, ViewCell, ViewDocsCell, RowButtons as RowBtns, SectionSaveFooter, SectionCard as SC, T, TH, TH_HOD, TH_DIR, TD, TDC, TDS, TDS_HOD, TDS_DIR, TDV, MyAppraisalSection, CreativeSchoolAuthorityReviewPanel, isCreativeSchool } from "../features/faculty-appraisal";
@@ -395,6 +395,8 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
  partA: faculty.lectures?.reduce((a, r) =>a + n(r.score), 0) || 0,
  partB: faculty.journals?.reduce((a, r) =>a + n(r.score), 0) || 0,
  });
+ const directorSubjectRole = (faculty.appraisalRole || faculty.appraisal_role || faculty.role || "faculty").toLowerCase();
+ const showHodSummaryCard = directorSubjectRole === "faculty" && getSchoolKey(faculty.school || faculty.schoolName || faculty.info?.school || "") === "SoEMR";
 
  return (
 <div style={{ display: "flex", flexDirection: "column", gap: 0, minHeight: "100%" }}>
@@ -479,22 +481,34 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
  )}
 
  {sectionView === "summary" && (
-<div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 14, display: "grid", gap: 10, boxShadow: "0 1px 6px rgba(0,0,0,.06)" }}>
-<CompactSummaryCard
- title="Faculty Score"
- subtitle="Faculty submitted score for the engineering appraisal form."
+<div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 14, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 14, boxShadow: "0 1px 6px rgba(0,0,0,.06)" }}>
+<ScoreCard
+ title={directorSubjectRole === "faculty" ? "Faculty Score" : "Self Score"}
+ subtitle="Self score for the engineering appraisal form."
  totals={{ partA: facultySummary.partA, partB: facultySummary.partB, partC: facultySummary.partC, partD: facultySummary.partD, total: facultySummary.total }}
  maxScores={{ partA: facultySummary.partAMax, partB: facultySummary.partBMax, partC: facultySummary.partCMax, partD: facultySummary.partDMax, grand: facultySummary.grandMax }}
  accent="#0ea5e9"
+ extraContent={<SummaryOtherInfoField value={summaryOtherInfoValueFrom(faculty)} readOnly rows={4} />}
 />
-<SummaryOtherInfoField value={summaryOtherInfoValueFrom(faculty)} readOnly rows={4} />
-<CompactSummaryCard
+{showHodSummaryCard && (
+<ScoreCard
+ title="HOD Score"
+ subtitle="HOD score for the engineering appraisal form."
+ totals={{ partA, partB, partC, partD, total }}
+ maxScores={reviewerMaxScores}
+ remarksTitle="HOD Remarks"
+ accent="#0f766e"
+ remarksContent={<div style={{ color: "#334155", fontSize: 12, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{hodRemarks || "-"}</div>}
+/>
+)}
+<ScoreCard
  title="Director Score"
  subtitle="Director score for the engineering appraisal form."
  totals={{ partA: dirPartA, partB: dirPartB, partC: dirPartC, partD: dirPartD, total: dirTotal }}
  maxScores={reviewerMaxScores}
- accent="#0ea5e9"
  remarksTitle="Director Remarks"
+ isFinal
+ accent="#7c3aed"
  remarksContent={(
 <textarea value={dirRemarks} onChange={e =>setDirRemarks(e.target.value)} rows={4} readOnly={reviewLocked}
  placeholder="Enter your director remarks, observations, and recommendations..."
@@ -818,6 +832,7 @@ return (
  const data = await fetchSavedAppraisal({
  facultyEmail: item.email,
  academicYear: item.academic_year || item.academicYear || APP_INFO.DEFAULT_AY || "2026-2027",
+ reviewerRole: "director",
  });
  const form = data?.payload?.form || data?.form || {};
  const docs = data?.payload?.docs || data?.docs || {};

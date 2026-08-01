@@ -1,7 +1,7 @@
 /* eslint-disable no-unused-vars, react-hooks/set-state-in-effect */
  import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Avatar, LogoutConfirmModal } from "../components/dashboard/dashboardPrimitives";
+import { Avatar, LogoutConfirmModal, ScoreCard } from "../components/dashboard/dashboardPrimitives";
 import { fetchNonTeachingQueueForRole, isNonTeachingReviewComplete } from "../services/nonTeachingWorkflow";
 import { fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, fetchSavedAppraisal, mergeFacultyInfo, ACR_DETAIL_POINTS, MAX_SCORES, APP_INFO, createAcrRows, buildReviewRemarks, openFullFormReport, SummaryOtherInfoField, summaryOtherInfoValueFrom, SCORE_LIMITS, clampScore, clampReviewScore, effectiveMaxScore, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewRowMaxForSection, reviewSectionScore, rowHasReviewableData, selfEffectivePartAMax, societyRowLocked, societyRowScore, standardReviewSummary, qualificationRowDescription, AppraisalHeaderImage, ViewDocsCell, SectionCard as SC, CreativeSchoolAuthorityReviewPanel, isCreativeSchool } from "../features/faculty-appraisal";
 
@@ -857,7 +857,22 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  hasTotal: hasScoreValue(rawTotal),
  };
  };
- const previousSummaryCards = previousRoles.map((role) =>{
+ const personSchoolKey = getSchoolKey(person.school || person.schoolName || person.info?.school || "");
+ const isSoemrFacultyReview = personMode === "faculty" && personSchoolKey === "SoEMR";
+ const vcSummaryRoles = (() =>{
+ const roles = [];
+ if (personMode === "faculty") {
+ if (previousRoles.includes("center_head")) roles.push("center_head");
+ else if (isSoemrFacultyReview && previousRoles.includes("hod")) roles.push("hod");
+ if (previousRoles.includes("director")) roles.push("director");
+ if (previousRoles.includes("dean")) roles.push("dean");
+ return roles;
+ }
+ if (personMode === "hod") return ["director", "dean"].filter((role) =>previousRoles.includes(role));
+ if (personMode === "director") return previousRoles.includes("dean") ? ["dean"] : [];
+ return [];
+ })();
+ const previousSummaryCards = vcSummaryRoles.map((role) =>{
  const meta = vcRoleMeta(role);
  return {
  role,
@@ -1002,6 +1017,73 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  }),
  { label: "Average Score", val: vcAverageBeforeVc(person, personMode, previousRoles), color: "#f59e0b" },
  ];
+ const showAverageColumn = true;
+ const vcComparisonColumns = [
+ { key: "self", label: "Self", totals: facultyTotals, maxScores: facultyTotals.maxScores },
+ ...previousSummaryCards.map(({ role, meta, totals }) =>({ key: role, label: meta.shortLabel, totals, maxScores: totals.maxScores })),
+ ...(showAverageColumn ? [{ key: "average", label: "Average", totals: averageSummaryTotals, maxScores: averageSummaryTotals.maxScores }] : []),
+ { key: "vc", label: "VC", totals: reviewerSummaryTotals, maxScores: reviewerSummaryTotals.maxScores, final: true },
+ ];
+ const vcComparisonRows = [
+ { key: "partA", label: "Part A - Teaching & Learning", icon: "A" },
+ { key: "partB", label: "Part B - Research & Innovation", icon: "B" },
+ { key: "partC", label: "Part C - Administrative Contribution", icon: "C" },
+ { key: "partD", label: "Part D - Annual Confidential Report", icon: "D" },
+ { key: "total", label: "Grand Total", icon: "Σ" },
+ ];
+ const vcPartColors = { partA: "#6d5dfc", partB: "#0f9f9a", partC: "#ef6f61", partD: "#f59e0b", total: "#059669" };
+ const vcSummaryCards = [
+ {
+ key: "self",
+ title: personMode === "faculty" ? "Self Score" : "Self Score",
+ subtitle: "Self score for the engineering appraisal form.",
+ totals: facultyTotals,
+ maxScores: facultyTotals.maxScores,
+ accent: "#0ea5e9",
+ extraContent: <SummaryOtherInfoField value={summaryOtherInfoValueFrom(person)} readOnly rows={4} />,
+ },
+ ...previousSummaryCards.map(({ role, meta, totals, remarks: roleRemarks }) =>({
+ key: role,
+ title: `${meta.shortLabel} Score`,
+ subtitle: `${meta.shortLabel} score for the engineering appraisal form.`,
+ totals,
+ maxScores: totals.maxScores,
+ accent: meta.remarksColor || meta.color,
+ remarksTitle: `${meta.shortLabel} Remarks`,
+ remarksContent: <div style={{ color: "#334155", fontSize: 12, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{String(roleRemarks || "").trim() || "-"}</div>,
+ })),
+ ...(showAverageColumn ? [{
+ key: "average",
+ title: "Average Score",
+ subtitle: "Average across all reviewers.",
+ totals: averageSummaryTotals,
+ maxScores: averageSummaryTotals.maxScores,
+ accent: "#f59e0b",
+ partsLayout: "horizontal",
+ cardStyle: { gridColumn: "1 / -1" },
+ }] : []),
+ {
+ key: "vc",
+ title: "Vice Chancellor Score",
+ subtitle: "Vice Chancellor final score.",
+ totals: reviewerSummaryTotals,
+ maxScores: reviewerSummaryTotals.maxScores,
+ accent: "#7c3aed",
+ isFinal: true,
+ cardStyle: { gridColumn: "1 / -1" },
+ sideContent: (
+ <div style={{ background: "#f8fbff", border: "1px solid #e9d5ff", borderRadius: 10, padding: "12px 14px", display: "grid", gap: 9, alignContent: "start" }}>
+ <div>
+ <div style={{ color: "#5b21b6", fontSize: 12, fontWeight: 900, textTransform: "uppercase", letterSpacing: 0.5 }}>Vice Chancellor Remarks</div>
+ <div style={{ color: "#64748b", fontSize: 11, marginTop: 2 }}>Enter your assessment remarks and confirm before submitting</div>
+ </div>
+ <textarea value={remarks} readOnly={reviewLocked} onChange={e =>setRemarks(e.target.value)} rows={8}
+ placeholder="Write your assessment remarks here..."
+ style={{ width: "100%", minHeight: 210, boxSizing: "border-box", border: "1px solid #cbd5e1", borderRadius: 10, padding: "12px 14px", fontFamily: "inherit", fontSize: 12, resize: "vertical", background: reviewLocked ? "#f8fafc" : "#fff", color: "#1e293b", outline: "none", lineHeight: 1.6 }} />
+ </div>
+ ),
+ },
+ ];
 
  return (
 <div style={{ display: "flex", flexDirection: "column" }}>
@@ -1086,49 +1168,10 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
 <div style={{ display: "grid", gap: 14 }}>
 
 
- {/* Self Score card */}
-<SummaryBox title={personMode === "faculty" ? "Faculty Score" : "Self Score"} totals={facultyTotals} maxScores={facultyTotals.maxScores} accent="#0ea5e9" roleScoreLabel={`${personMode === "faculty" ? "Faculty submitted" : "Self"} score for the engineering appraisal form.`} />
-
- {/* Any Other Information */}
-<div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 6px rgba(15,23,42,0.05)" }}>
-<div style={{ background: "#f8fafc", padding: "10px 16px", borderBottom: "1px solid #e2e8f0", display: "flex", alignItems: "center", gap: 8 }}>
-<div style={{ width: 3, height: 16, background: "#94a3b8", borderRadius: 2 }} />
-<span style={{ fontWeight: 800, fontSize: 11, color: "#475569", textTransform: "uppercase", letterSpacing: 0.7 }}>Any Other Information Not Covered Above</span>
-</div>
-<div style={{ padding: "12px 16px" }}>
-<SummaryOtherInfoField value={summaryOtherInfoValueFrom(person)} readOnly rows={5} />
-</div>
-</div>
-
- {/* Reviewer Scores section */}
- {previousSummaryCards.length >0 && (
-<>
-<div style={{ display: "flex", alignItems: "center", gap: 12, margin: "2px 0" }}>
-<div style={{ flex: 1, height: 1, background: "linear-gradient(90deg,transparent,#e2e8f0)" }} />
-<div style={{ display: "flex", alignItems: "center", gap: 6, background: "#f1f5f9", borderRadius: 20, padding: "4px 14px", border: "1px solid #e2e8f0" }}>
-<div style={{ width: 6, height: 6, borderRadius: "50%", background: "#94a3b8" }} />
-<span style={{ fontSize: 10, fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.8 }}>Reviewer Scores</span>
-</div>
-<div style={{ flex: 1, height: 1, background: "linear-gradient(90deg,#e2e8f0,transparent)" }} />
-</div>
- {previousSummaryCards.map(({ role, meta, totals, remarks: roleRemarks }) =>(
-<SummaryBox key={role} title={`${meta.shortLabel} Score`} totals={totals} maxScores={totals.maxScores} accent={meta.remarksColor || meta.color} roleScoreLabel={`${meta.shortLabel} score for the engineering appraisal form.`} remarks={roleRemarks} remarksTitle={`${meta.shortLabel} Remarks`} />
- ))}
-</>
- )}
-
- {/* Final Scores - 2-column grid */}
-<div style={{ display: "flex", alignItems: "center", gap: 12, margin: "2px 0" }}>
-<div style={{ flex: 1, height: 1, background: "linear-gradient(90deg,transparent,#e2e8f0)" }} />
-<div style={{ display: "flex", alignItems: "center", gap: 6, background: "#fdf4ff", borderRadius: 20, padding: "4px 14px", border: "1px solid #e9d5ff" }}>
-<div style={{ width: 6, height: 6, borderRadius: "50%", background: "#a78bfa" }} />
-<span style={{ fontSize: 10, fontWeight: 800, color: "#6d28d9", textTransform: "uppercase", letterSpacing: 0.8 }}>Final Assessment</span>
-</div>
-<div style={{ flex: 1, height: 1, background: "linear-gradient(90deg,#e2e8f0,transparent)" }} />
-</div>
-<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-<SummaryBox title="Average Score" totals={averageSummaryTotals} maxScores={averageSummaryTotals.maxScores} accent="#f59e0b" roleScoreLabel="Average across all reviewers." />
-<SummaryBox title="Vice Chancellor Score" totals={reviewerSummaryTotals} maxScores={reviewerSummaryTotals.maxScores} accent="#7c3aed" roleScoreLabel="Vice Chancellor final score." />
+<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(330px, 1fr))", gap: 16 }}>
+{vcSummaryCards.map((card) =>(
+<ScoreCard key={card.key} {...card} />
+))}
 </div>
 
  {/* VC Remarks & Actions */}
@@ -1137,8 +1180,8 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  {/* Header strip */}
 <div style={{ padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #c7d2fe", background: "#f5f7ff" }}>
 <div>
-<div style={{ fontSize: 15, fontWeight: 900, color: "#1e293b", letterSpacing: -0.3 }}>Vice Chancellor Final Remarks</div>
-<div style={{ fontSize: 10, color: "#64748b", marginTop: 3 }}>Enter your assessment remarks and confirm before submitting</div>
+<div style={{ fontSize: 15, fontWeight: 900, color: "#1e293b", letterSpacing: -0.3 }}>Review Confirmation</div>
+<div style={{ fontSize: 10, color: "#64748b", marginTop: 3 }}>Confirm before submitting the final assessment</div>
 </div>
 <div style={{ display: "flex", gap: 10, alignItems: "stretch" }}>
 <div style={{ background: "#fff", border: "1px solid #c7d2fe", borderRadius: 10, padding: "7px 16px", textAlign: "center" }}>
@@ -1150,14 +1193,6 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
 
  {/* Body */}
 <div style={{ padding: "18px 20px", display: "grid", gap: 14 }}>
-
- {/* Textarea */}
-<div>
-<div style={{ fontSize: 10, fontWeight: 700, color: "#475569", marginBottom: 7, textTransform: "uppercase", letterSpacing: 0.6 }}>Your Remarks</div>
-<textarea value={remarks} readOnly={reviewLocked} onChange={e =>setRemarks(e.target.value)} rows={4}
- placeholder="Write your assessment remarks here..."
- style={{ width: "100%", boxSizing: "border-box", border: "1px solid #cbd5e1", borderRadius: 10, padding: "12px 14px", fontFamily: "inherit", fontSize: 12, resize: "vertical", background: reviewLocked ? "#f8fafc" : "#fff", color: "#1e293b", outline: "none", lineHeight: 1.6 }} />
-</div>
 
  {/* Confirmation checkbox */}
  {!reviewLocked && (
@@ -1711,6 +1746,7 @@ export default function VCDashboard() {
  const data = await fetchSavedAppraisal({
  facultyEmail: person.email,
  academicYear,
+ reviewerRole: "vc",
  });
  const form = data?.payload?.form || data?.form || {};
  const docs = data?.payload?.docs || data?.docs || {};
