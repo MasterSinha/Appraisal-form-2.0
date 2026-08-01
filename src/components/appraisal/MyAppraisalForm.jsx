@@ -140,7 +140,7 @@ export default function MyAppraisalForm({ faculty, hodData, setHodData, reviewer
 }
 
 // - Faculty Form in Director Review Mode -
-export function DirectorFacultyReviewForm({ faculty, hodData, setHodData, dirData, setDirData, sectionView = "partA" }) {
+export function DirectorFacultyReviewForm({ faculty, hodData, setHodData, dirData, setDirData, sectionView = "partA", reviewLocked = false }) {
  const set = (section, idx, field, val) =>{
  setHodData(prev =>{
  const updated = { ...prev };
@@ -158,7 +158,11 @@ export function DirectorFacultyReviewForm({ faculty, hodData, setHodData, dirDat
  const setDir = (section, idx, field, val) =>{
  setDirData(prev =>{
  const updated = { ...prev };
- if (!updated[section]) updated[section] = JSON.parse(JSON.stringify(faculty[section] || []));
+ if (!updated[section]) {
+ updated[section] = section === "acr" && !reviewLocked
+ ? createAcrRows(faculty[section]).map((row) =>({ label: row.label }))
+ : JSON.parse(JSON.stringify(faculty[section] || []));
+ }
  const sourceRows = section === "acr" ? createAcrRows(faculty[section]) : (faculty[section] || []);
  const nextVal = field === "dir" && idx !== null
  ? clampDirectorReviewScore(section, sourceRows[idx] || {}, val, DIRECTOR_REVIEW_SECTION_MAX[section] || 0)
@@ -182,6 +186,7 @@ export function DirectorFacultyReviewForm({ faculty, hodData, setHodData, dirDat
  const source = faculty[section];
  value = Array.isArray(source) ? (source[0]?.director ?? "") : (source?.director ?? "");
  } else {
+ if (section === "acr" && !reviewLocked) return "";
  value = faculty[section]?.[idx]?.director ?? "";
  }
  return value;

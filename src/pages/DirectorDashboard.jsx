@@ -75,7 +75,7 @@ const buildDirectorSectionScores = (faculty, dirData) =>{
  payload[key] = rows.map((row, index) =>({
  ...row,
  director: key === "acr"
- ? clampDirectorReviewScore(key, row, dirData[key]?.[index]?.dir ?? dirData[key]?.[index]?.director ?? row.director ?? "", REVIEW_SECTION_MAX[key] || 0)
+ ? clampDirectorReviewScore(key, row, dirData[key]?.[index]?.dir ?? dirData[key]?.[index]?.director ?? "", REVIEW_SECTION_MAX[key] || 0)
  : key === "society" && societyRowLocked(row)
  ? "0"
  : clampDirectorReviewScore(key, row, dirData[key]?.[index]?.dir ?? row.director ?? "", REVIEW_SECTION_MAX[key] || 0),
@@ -247,6 +247,7 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
  value = idx === null ? (Array.isArray(s) ? s[0]?.[field] : s[field]) : s[idx]?.[field];
  } else {
  const source = faculty[section];
+ if (section === "acr" && !reviewLocked) return "";
  value = idx === null ? (Array.isArray(source) ? source[0]?.director : source?.director) : source?.[idx]?.director;
  }
  return value;
@@ -449,7 +450,7 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
 
  {["partA", "partB", "partC", "partD"].includes(sectionView) && (
 <fieldset disabled={reviewLocked} style={{ border: "none", padding: 0, margin: 0 }}>
-<DirectorFacultyReviewForm faculty={faculty} hodData={hodData} setHodData={setHodData} dirData={dirData} setDirData={setDirData} sectionView={sectionView} />
+<DirectorFacultyReviewForm faculty={faculty} hodData={hodData} setHodData={setHodData} dirData={dirData} setDirData={setDirData} sectionView={sectionView} reviewLocked={reviewLocked} />
 </fieldset>
  )}
 

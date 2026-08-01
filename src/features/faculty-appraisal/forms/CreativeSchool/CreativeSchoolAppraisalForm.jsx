@@ -1607,14 +1607,27 @@ function PartD({ sectionTableProps }) {
   const rows = form.acr || [];
   const acrRows = createAcrRows(rows);
   const currentRole = reviewerRole;
+  const currentRoleAcrRows = mode === "review" && !locked && !Array.isArray(reviewData?.acr)
+    ? acrRows.map((row) => {
+      const next = { ...row };
+      delete next[currentRole];
+      if (currentRole === "director") delete next.dir;
+      return next;
+    })
+    : (reviewData?.acr || rows);
 
   const partDScore = mode === "review"
-    ? scoreSectionRows("acr", reviewData?.acr || rows, 50, currentRole)
+    ? scoreSectionRows("acr", currentRoleAcrRows, 50, currentRole)
     : 0;
 
   const updateReviewScore = (index, value) => {
     setReviewData((prev) => {
-      const source = prev.acr || cloneRows(rows);
+      const source = prev.acr || cloneRows(acrRows.map((row) => {
+        const next = { ...row };
+        delete next[currentRole];
+        if (currentRole === "director") delete next.dir;
+        return next;
+      }));
       const nextRows = source.map((row, rowIndex) => {
         if (rowIndex !== index) return row;
         const sourceRow = rows[rowIndex] || row;
@@ -1670,7 +1683,11 @@ function PartD({ sectionTableProps }) {
           <tbody>
             {ACR_PARAM_DETAILS.map((param, index) => {
               const row = acrRows[index] || {};
-              const reviewRow = reviewData?.acr?.[index] || row;
+              const hasCurrentReviewData = Array.isArray(reviewData?.acr);
+              const reviewRow = hasCurrentReviewData ? (reviewData.acr[index] || {}) : row;
+              const currentRoleScore = locked
+                ? (reviewRow[currentRole] ?? row[currentRole] ?? "")
+                : hasCurrentReviewData ? (reviewRow[currentRole] ?? "") : "";
               return (
                 <tr key={param.id} style={{ background: index % 2 === 1 ? "#f8fafc" : "#ffffff" }}>
                   <td style={tdCenter}>{param.id}</td>
@@ -1689,7 +1706,7 @@ function PartD({ sectionTableProps }) {
                         center
                         max={10}
                         readOnly={locked}
-                        value={reviewRow[currentRole] ?? row[currentRole] ?? ""}
+                        value={currentRoleScore}
                         onChange={(val) => updateReviewScore(index, val)}
                       />
                     </td>
