@@ -88,7 +88,7 @@ export const RESEARCH_MULTIPLIERS = {
 
 
 export const APP_INFO = {
-  UNIVERSITY_NAME: "University Name",
+  UNIVERSITY_NAME: "D Y Patil International University, Pune",
   UNIVERSITY_LOCATION: "City, Country",
   DEFAULT_AY: "2026-2027",
   PORTAL_NAME: "Faculty Appraisal Portal",
