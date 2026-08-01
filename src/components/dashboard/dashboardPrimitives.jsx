@@ -41,6 +41,7 @@ export function ScoreCard({
   partsLayout = "vertical",
   cardStyle = {},
   isFinal = false,
+  compact = false,
   accent = "#0ea5e9",
 }) {
   const parts = [
@@ -54,15 +55,15 @@ export function ScoreCard({
   const horizontalParts = partsLayout === "horizontal";
   const marksPanel = (
     <>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: compact ? 10 : 14 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
-          <span style={{ width: 40, height: 40, borderRadius: 10, background: `${accent}16`, border: `1px solid ${accent}30`, color: accent, display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: 900, flexShrink: 0 }}>{title.slice(0, 1)}</span>
+          <span style={{ width: compact ? 34 : 40, height: compact ? 34 : 40, borderRadius: 10, background: `${accent}16`, border: `1px solid ${accent}30`, color: accent, display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: 900, flexShrink: 0 }}>{title.slice(0, 1)}</span>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 15, fontWeight: 900, color: "#0f172a" }}>{title}</div>
+            <div style={{ fontSize: compact ? 14 : 15, fontWeight: 900, color: "#0f172a" }}>{title}</div>
             {subtitle && <div style={{ fontSize: 11, color: "#64748b", marginTop: 2, lineHeight: 1.25 }}>{subtitle}</div>}
           </div>
         </div>
-        <div style={{ border: `1px solid ${accent}35`, background: `${accent}10`, borderRadius: 10, padding: "7px 12px", fontSize: 15, fontWeight: 900, color: accent, whiteSpace: "nowrap" }}>
+        <div style={{ border: `1px solid ${accent}35`, background: `${accent}10`, borderRadius: 10, padding: compact ? "6px 10px" : "7px 12px", fontSize: compact ? 14 : 15, fontWeight: 900, color: accent, whiteSpace: "nowrap" }}>
           {scoreValue(totals.total)}<span style={{ fontSize: 11, color: "#94a3b8" }}> /{totalMax}</span>
         </div>
       </div>
@@ -73,8 +74,8 @@ export function ScoreCard({
           const value = totals[key];
           const max = maxScores[key] ?? 0;
           return (
-            <div key={key} style={{ padding: "12px 13px", borderBottom: horizontalParts ? "none" : "1px solid #edf2f7", borderRight: horizontalParts ? "1px solid #edf2f7" : "none", background: "#fff" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, marginBottom: 7 }}>
+            <div key={key} style={{ padding: compact ? "8px 12px" : "12px 13px", borderBottom: horizontalParts ? "none" : "1px solid #edf2f7", borderRight: horizontalParts ? "1px solid #edf2f7" : "none", background: "#fff" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, marginBottom: compact ? 5 : 7 }}>
                 <span style={{ color: "#475569", fontSize: 11, fontWeight: 900, textTransform: "uppercase", letterSpacing: 0.4 }}>{label}</span>
                 <span style={{ color, fontSize: 14, fontWeight: 900, whiteSpace: "nowrap" }}>{scoreValue(value)}<span style={{ fontSize: 10, color: "#94a3b8" }}> /{max}</span></span>
               </div>
@@ -84,8 +85,8 @@ export function ScoreCard({
             </div>
           );
         })}
-        <div style={{ padding: "12px 13px", background: "#fff" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, marginBottom: 7 }}>
+        <div style={{ padding: compact ? "8px 12px" : "12px 13px", background: "#fff" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, marginBottom: compact ? 5 : 7 }}>
             <span style={{ color: "#475569", fontSize: 11, fontWeight: 900, textTransform: "uppercase", letterSpacing: 0.4 }}>Total</span>
             <span style={{ color: "#059669", fontSize: 15, fontWeight: 900, whiteSpace: "nowrap" }}>{scoreValue(totals.total)}<span style={{ fontSize: 10, color: "#94a3b8" }}> /{totalMax}</span></span>
           </div>
@@ -104,17 +105,19 @@ export function ScoreCard({
         border: isFinal ? "1.5px solid #7c3aed" : "1px solid #dbe3ef",
         borderLeft: `4px solid ${isFinal ? "#7c3aed" : accent}`,
         borderRadius: 12,
-        padding: 16,
-        display: "grid",
-        gap: 14,
+        padding: compact ? 12 : 16,
+        display: "flex",
+        flexDirection: "column",
+        gap: compact ? 10 : 14,
         boxShadow: isFinal ? "0 14px 34px rgba(124,58,237,0.12)" : "0 10px 26px rgba(15,23,42,0.06)",
-        alignContent: "start",
+        height: "100%",
+        minHeight: 0,
         ...cardStyle,
       }}
     >
       {sideContent ? (
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(320px, 0.9fr) minmax(320px, 1.1fr)", gap: 14, alignItems: "stretch" }}>
-          <div style={{ display: "grid", gap: 14, alignContent: "start" }}>
+        <div className="score-card-side-layout" style={{ display: "grid", gridTemplateColumns: "minmax(320px, 0.9fr) minmax(320px, 1.1fr)", gap: 14, alignItems: "stretch", flex: 1, minHeight: 0 }}>
+          <div style={{ display: "grid", gap: compact ? 10 : 14, alignContent: "start" }}>
             {marksPanel}
             {extraContent}
           </div>
@@ -123,14 +126,14 @@ export function ScoreCard({
       ) : (
         <>
           {marksPanel}
-          {extraContent}
+          {extraContent && <div className="score-card-extra-slot">{extraContent}</div>}
         </>
       )}
 
       {hasRemarks && (
-        <div style={{ background: isFinal ? "#fff" : "#f8fafc", border: isFinal ? "1px solid #e9d5ff" : "1px solid #e2e8f0", borderRadius: 10, padding: "11px 12px" }}>
+        <div className="score-card-remarks-slot" style={{ background: isFinal ? "#fff" : "#f8fafc", border: isFinal ? "1px solid #e9d5ff" : "1px solid #e2e8f0", borderRadius: 10, padding: compact ? "9px 11px" : "11px 12px" }}>
           <div style={{ fontSize: 11, fontWeight: 850, color: isFinal ? "#5b21b6" : "#475569", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 7 }}>{remarksTitle || `${title} Remarks`}</div>
-          {remarksContent}
+          <div className="score-card-remarks-content">{remarksContent}</div>
         </div>
       )}
     </div>

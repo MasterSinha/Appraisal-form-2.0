@@ -474,7 +474,7 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
 </div>
 
  {/* Faculty Info */}
-<FacultyInfoSection info={info} />
+{sectionView === "partA" && <FacultyInfoSection info={info} />}
 
  {sectionView === "partA" && (<div className="review-part-stack">
 <div className="review-part-stack__title">PART A - Teaching &amp; Academic Activities</div>
@@ -1032,6 +1032,7 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  { key: "total", label: "Grand Total", icon: "Σ" },
  ];
  const vcPartColors = { partA: "#6d5dfc", partB: "#0f9f9a", partC: "#ef6f61", partD: "#f59e0b", total: "#059669" };
+ const compactReferenceCards = ["faculty", "director", "dean"].includes(personMode);
  const vcSummaryCards = [
  {
  key: "self",
@@ -1040,7 +1041,8 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  totals: facultyTotals,
  maxScores: facultyTotals.maxScores,
  accent: "#0ea5e9",
- extraContent: <SummaryOtherInfoField value={summaryOtherInfoValueFrom(person)} readOnly rows={4} />,
+ compact: compactReferenceCards,
+ extraContent: <SummaryOtherInfoField value={summaryOtherInfoValueFrom(person)} readOnly rows={compactReferenceCards ? 2 : 4} />,
  },
  ...previousSummaryCards.map(({ role, meta, totals, remarks: roleRemarks }) =>({
  key: role,
@@ -1049,6 +1051,7 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  totals,
  maxScores: totals.maxScores,
  accent: meta.remarksColor || meta.color,
+ compact: compactReferenceCards,
  remarksTitle: `${meta.shortLabel} Remarks`,
  remarksContent: <div style={{ color: "#334155", fontSize: 12, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{String(roleRemarks || "").trim() || "-"}</div>,
  })),
@@ -1059,8 +1062,9 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  totals: averageSummaryTotals,
  maxScores: averageSummaryTotals.maxScores,
  accent: "#f59e0b",
- partsLayout: "horizontal",
- cardStyle: { gridColumn: "1 / -1" },
+ partsLayout: personMode === "dean" ? "vertical" : "horizontal",
+ compact: personMode === "dean",
+ cardStyle: personMode === "dean" ? undefined : { gridColumn: "1 / -1" },
  }] : []),
  {
  key: "vc",
@@ -1084,6 +1088,18 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  ),
  },
  ];
+ const splitDirectorSummaryRows = personMode === "director";
+ const splitDeanSummaryRows = personMode === "dean";
+ const splitReferenceCards = splitDirectorSummaryRows
+ ? vcSummaryCards.filter((card) =>["self", "dean"].includes(card.key))
+ : splitDeanSummaryRows
+ ? vcSummaryCards.filter((card) =>["self", "average"].includes(card.key))
+ : [];
+ const splitRemainingCards = splitDirectorSummaryRows
+ ? vcSummaryCards.filter((card) =>!["self", "dean"].includes(card.key))
+ : splitDeanSummaryRows
+ ? vcSummaryCards.filter((card) =>!["self", "average"].includes(card.key))
+ : vcSummaryCards;
 
  return (
 <div style={{ display: "flex", flexDirection: "column" }}>
@@ -1168,44 +1184,41 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
 <div style={{ display: "grid", gap: 14 }}>
 
 
-<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(330px, 1fr))", gap: 16 }}>
+{(splitDirectorSummaryRows || splitDeanSummaryRows) ? (
+<>
+<div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 16, width: "100%" }}>
+{splitReferenceCards.map((card) =>(
+<ScoreCard key={card.key} {...card} cardStyle={{ ...(card.cardStyle || {}), width: "100%", minWidth: 0 }} />
+))}
+</div>
+<div style={{ display: "grid", gap: 16, width: "100%" }}>
+{splitRemainingCards.map((card) =>(
+<ScoreCard key={card.key} {...card} />
+))}
+</div>
+</>
+) : (
+<div
+ className={`vc-summary-card-grid ${isSoemrFacultyReview ? "vc-summary-card-grid--soemr-faculty" : ""} ${personMode === "dean" ? "vc-summary-card-grid--dean" : ""}`}
+ style={{ display: "grid", gap: 16, gridTemplateColumns: (personMode === "dean" || isSoemrFacultyReview) ? "repeat(2, minmax(330px, 1fr))" : undefined }}
+>
 {vcSummaryCards.map((card) =>(
 <ScoreCard key={card.key} {...card} />
 ))}
 </div>
+)}
 
- {/* VC Remarks & Actions */}
-<div style={{ background: "#fff", border: "1px solid #a5b4fc", borderRadius: 16, overflow: "hidden", boxShadow: "0 8px 24px rgba(79,70,229,0.10)" }}>
-
- {/* Header strip */}
-<div style={{ padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #c7d2fe", background: "#f5f7ff" }}>
-<div>
-<div style={{ fontSize: 15, fontWeight: 900, color: "#1e293b", letterSpacing: -0.3 }}>Review Confirmation</div>
-<div style={{ fontSize: 10, color: "#64748b", marginTop: 3 }}>Confirm before submitting the final assessment</div>
-</div>
-<div style={{ display: "flex", gap: 10, alignItems: "stretch" }}>
-<div style={{ background: "#fff", border: "1px solid #c7d2fe", borderRadius: 10, padding: "7px 16px", textAlign: "center" }}>
-<div style={{ fontSize: 8, fontWeight: 800, color: "#6366f1", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 2 }}>VC Total</div>
-<div style={{ fontSize: 18, fontWeight: 900, color: "#4338ca", lineHeight: 1 }}>{oneDecimal(reviewerSummaryTotals.total)}<span style={{ fontSize: 10, color: "#94a3b8", fontWeight: 500 }}>/{reviewerSummaryTotals.maxScores.grand}</span></div>
-</div>
-</div>
-</div>
-
- {/* Body */}
-<div style={{ padding: "18px 20px", display: "grid", gap: 14 }}>
-
- {/* Confirmation checkbox */}
+ {/* VC Actions */}
+<div style={{ display: "grid", gap: 10 }}>
  {!reviewLocked && (
-<label style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 14px", background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: 10, color: "#334155", fontSize: 12, lineHeight: 1.65, cursor: "pointer" }}>
-<input type="checkbox" checked={reviewConfirmed} onChange={e =>setReviewConfirmed(e.target.checked)} style={{ marginTop: 3, accentColor: "#a78bfa", flexShrink: 0, width: 14, height: 14 }} />
+<label style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: 8, color: "#334155", fontSize: 12, lineHeight: 1.5, cursor: "pointer" }}>
+<input type="checkbox" checked={reviewConfirmed} onChange={e =>setReviewConfirmed(e.target.checked)} style={{ margin: 0, accentColor: "#7c3aed", flexShrink: 0 }} />
 <span>I have verified all the details and confirm that the information provided is correct. I am responsible for the accuracy of this data.</span>
 </label>
  )}
-
- {/* Footer: status + buttons */}
-<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, paddingTop: 4, borderTop: "1px solid #c7d2fe", flexWrap: "wrap" }}>
+<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
 <span style={{ color: "#64748b", fontSize: 11, fontStyle: "italic" }}>{draftStatus}</span>
-<div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+<div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", justifyContent: "flex-end", marginLeft: "auto" }}>
 <button onClick={onBack} style={{ padding: "9px 16px", background: "#fff", color: "#475569", border: "1px solid #cbd5e1", borderRadius: 9, cursor: "pointer", fontWeight: 700, fontSize: 12, fontFamily: "inherit" }}>Close</button>
 <button onClick={generateVcReport} disabled={!vcReviewCompleted}
  style={{ minWidth: 170, height: 42, padding: "0 20px", background: vcReviewCompleted ? "linear-gradient(135deg,#7c3aed,#581c87)" : "#cbd5e1", color: "#fff", border: "none", borderRadius: 8, cursor: vcReviewCompleted ? "pointer" : "not-allowed", fontWeight: 900, fontSize: 13, fontFamily: "inherit", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 9, boxShadow: vcReviewCompleted ? "0 10px 20px rgba(88,28,135,0.20)" : "none" }}>
@@ -1225,18 +1238,17 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  {canReject && (
 <button onClick={() =>{ if (window.confirm("Reject this appraisal and send it back to the user for editing?")) { onSubmit(person.id, { partA, partB, partC, partD, total }, remarks, personMode, buildVcSectionScores(person, vcData), reviewConfirmed, "rejected"); } }}
  disabled={!reviewConfirmed || !remarks.trim()}
- style={{ padding: "9px 16px", background: (reviewConfirmed && remarks.trim()) ? "linear-gradient(135deg,#b91c1c,#ef4444)" : "rgba(255,255,255,0.06)", color: "#fff", border: "none", borderRadius: 9, cursor: (reviewConfirmed && remarks.trim()) ? "pointer" : "not-allowed", fontWeight: 700, fontSize: 12, fontFamily: "inherit", boxShadow: (reviewConfirmed && remarks.trim()) ? "0 3px 12px rgba(185,28,28,0.4)" : "none" }}>
+ style={{ padding: "9px 16px", background: (reviewConfirmed && remarks.trim()) ? "linear-gradient(135deg,#b91c1c,#ef4444)" : "#cbd5e1", color: "#fff", border: "none", borderRadius: 9, cursor: (reviewConfirmed && remarks.trim()) ? "pointer" : "not-allowed", fontWeight: 700, fontSize: 12, fontFamily: "inherit", boxShadow: (reviewConfirmed && remarks.trim()) ? "0 3px 12px rgba(185,28,28,0.4)" : "none" }}>
  Reject Form
 </button>
  )}
 <button onClick={() =>onSubmit(person.id, { partA, partB, partC, partD, total }, remarks, personMode, buildVcSectionScores(person, vcData), reviewConfirmed)}
  disabled={!reviewConfirmed || !remarks.trim()}
- style={{ padding: "9px 22px", background: (reviewConfirmed && remarks.trim()) ? "linear-gradient(135deg,#047857,#10b981)" : "rgba(255,255,255,0.06)", color: "#fff", border: "none", borderRadius: 9, cursor: (reviewConfirmed && remarks.trim()) ? "pointer" : "not-allowed", fontWeight: 900, fontSize: 12, fontFamily: "inherit", letterSpacing: 0.2, boxShadow: (reviewConfirmed && remarks.trim()) ? "0 4px 16px rgba(4,120,87,0.5)" : "none" }}>
+ style={{ padding: "9px 22px", background: (reviewConfirmed && remarks.trim()) ? "linear-gradient(135deg,#047857,#10b981)" : "#cbd5e1", color: "#fff", border: "none", borderRadius: 9, cursor: (reviewConfirmed && remarks.trim()) ? "pointer" : "not-allowed", fontWeight: 900, fontSize: 12, fontFamily: "inherit", letterSpacing: 0.2, boxShadow: (reviewConfirmed && remarks.trim()) ? "0 4px 16px rgba(4,120,87,0.5)" : "none" }}>
  {finalisedByVc ? "Edit & Resubmit" : "Submit VC Review"}
 </button>
 </>
- )}
-</div>
+)}
 </div>
 </div>
 </div>

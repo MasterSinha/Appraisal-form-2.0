@@ -1063,8 +1063,87 @@ a[aria-label^="View "]:hover {
   }
 }
 
+.director-review-summary-grid--direct {
+  grid-template-columns: minmax(320px, 0.82fr) minmax(620px, 1.35fr);
+}
+
+.director-review-summary-grid--with-hod {
+  grid-template-columns: repeat(2, minmax(320px, 1fr));
+}
+
+.hod-review-summary-grid {
+  grid-template-columns: minmax(320px, 0.82fr) minmax(620px, 1.35fr);
+}
+
+.dean-review-summary-grid {
+  grid-template-columns: repeat(3, minmax(300px, 1fr));
+}
+
+.dean-review-summary-grid--two {
+  grid-template-columns: repeat(2, minmax(320px, 1fr));
+}
+
+.score-card-extra-slot,
+.score-card-remarks-slot {
+  flex: 1;
+  min-height: 0;
+}
+
+.score-card-extra-slot {
+  display: grid;
+}
+
+.score-card-extra-slot > label {
+  height: 100%;
+}
+
+.score-card-extra-slot textarea {
+  min-height: 100%;
+  height: 100%;
+}
+
+.score-card-remarks-slot {
+  display: flex;
+  flex-direction: column;
+}
+
+.score-card-remarks-content {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+}
+
+.score-card-remarks-content > textarea {
+  min-height: 100%;
+  height: 100%;
+}
+
+.vc-summary-card-grid {
+  grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
+}
+
+.vc-summary-card-grid--soemr-faculty {
+  grid-template-columns: repeat(2, minmax(330px, 1fr));
+}
+
+.vc-summary-card-grid--director {
+  grid-template-columns: repeat(2, minmax(330px, 1fr));
+}
+
+.vc-summary-card-grid--dean {
+  grid-template-columns: repeat(2, minmax(330px, 1fr));
+}
+
 @media (max-width: 1180px) {
   .appraisal-status-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .director-review-summary-grid--direct,
+  .hod-review-summary-grid,
+  .dean-review-summary-grid,
+  .vc-summary-card-grid,
+  .score-card-side-layout {
     grid-template-columns: 1fr !important;
   }
 }

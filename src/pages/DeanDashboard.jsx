@@ -871,6 +871,7 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
  const selfSummary = standardSubmittedScoreSummary(approval);
  const subjectRole = (approval.appraisalRole || approval.appraisal_role || approval.role || "faculty").toLowerCase();
  const isSoemrFaculty = subjectRole === "faculty" && getSchoolKey(approval.school || approval.schoolName || approval.info?.school || "") === "SoEMR";
+ const useTwoCardDeanSummary = subjectRole === "hod" || (subjectRole === "faculty" && !isSoemrFaculty);
  const roleTotalsFor = (prefix) =>({
  partA: n(approval[`${prefix}PartA`]),
  partB: n(approval[`${prefix}PartB`]),
@@ -879,10 +880,10 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
  total: n(approval[`${prefix}Total`]),
  });
  const deanSummaryCards = [
- ...(subjectRole === "faculty" ? [{
+ ...(["faculty", "hod"].includes(subjectRole) ? [{
  key: "self",
- title: "Faculty Score",
- subtitle: "Self score for the engineering appraisal form.",
+ title: subjectRole === "hod" ? "HOD Self Score" : "Faculty Score",
+ subtitle: subjectRole === "hod" ? "Self score for the HOD appraisal form." : "Self score for the engineering appraisal form.",
  totals: { partA: selfSummary.partA, partB: selfSummary.partB, partC: selfSummary.partC, partD: selfSummary.partD, total: selfSummary.total },
  maxScores: { partA: selfSummary.partAMax, partB: selfSummary.partBMax, partC: selfSummary.partCMax, partD: selfSummary.partDMax, grand: selfSummary.grandMax },
  accent: "#0ea5e9",
@@ -1002,23 +1003,6 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
 </div>
 </div>
 
-<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginBottom: 20 }}>
- {[
- { label: "Employee ID", value: approval.employeeId },
- { label: "Submitted", value: approval.submittedOn },
- { label: "Self Part A", value: `${selfSummary.partA.toFixed(1)} / ${selfSummary.partAMax}` },
- { label: "Self Part B", value: `${selfSummary.partB.toFixed(1)} / ${selfSummary.partBMax}` },
- { label: "Self Part C", value: `${selfSummary.partC.toFixed(1)} / ${selfSummary.partCMax}` },
- { label: "Self Part D", value: `${selfSummary.partD.toFixed(1)} / ${selfSummary.partDMax}` },
- { label: "Self Total", value: `${selfSummary.total.toFixed(1)} / ${selfSummary.grandMax}` },
- { label: "Dean Total", value: displayedDeanScores.total.toFixed(1) },
- ].map((item) =>(
-<div key={item.label} style={{ background: "#f8fafc", borderRadius: 12, padding: "18px 16px" }}>
-<div style={{ fontSize: 10, color: "#64748b", fontWeight: 700, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.7 }}>{item.label}</div>
-<div style={{ fontSize: 16, fontWeight: 800, color: "#0f172a" }}>{item.value}</div>
-</div>
- ))}
-</div>
  {finalisedByVc && (
 <div style={{ background: "#ecfdf5", border: "1px solid #86efac", color: "#065f46", borderRadius: 8, padding: "10px 12px", fontSize: 12, fontWeight: 700, marginBottom: 14 }}>
  This appraisal has been finalised by the VC.
@@ -1069,7 +1053,7 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
 
  {sectionView === "summary" && (
 <>
-<div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 14, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 14, boxShadow: "0 1px 6px rgba(0,0,0,.06)", marginBottom: 14 }}>
+<div className={`dean-review-summary-grid ${useTwoCardDeanSummary ? "dean-review-summary-grid--two" : ""}`} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 14, display: "grid", gap: 14, boxShadow: "0 1px 6px rgba(0,0,0,.06)", marginBottom: 14 }}>
 {deanSummaryCards.map((card) =>(
 <ScoreCard key={card.key} {...card} />
 ))}
@@ -1078,13 +1062,18 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
  subtitle="Dean score for the engineering appraisal form."
  totals={displayedDeanScores}
  maxScores={reviewerMaxScores}
- remarksTitle="Dean Remarks"
  isFinal
  accent="#7c3aed"
- remarksContent={(
-<textarea value={remarks} onChange={(e) =>setRemarks(e.target.value)} rows={4} readOnly={reviewLocked}
- style={{ width: "100%", border: "none", padding: 0, fontFamily: "inherit", fontSize: 12, color: "#334155", resize: "vertical", background: "transparent", outline: "none" }}
+ cardStyle={{ gridColumn: "1 / -1" }}
+ sideContent={(
+<div style={{ background: "#eff6ff", border: "2px solid #93c5fd", borderRadius: 10, padding: "14px 15px", display: "flex", flexDirection: "column", minWidth: 0, boxShadow: "0 0 0 4px rgba(147,197,253,0.16), 0 14px 28px rgba(37,99,235,0.08)" }}>
+<div style={{ fontSize: 11, fontWeight: 900, color: "#1d4ed8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 5 }}>Dean Remarks Required</div>
+<div style={{ color: "#1e40af", fontSize: 11, fontWeight: 700, marginBottom: 10 }}>Please enter remarks before submitting the review.</div>
+<textarea value={remarks} onChange={(e) =>setRemarks(e.target.value)} rows={8} readOnly={reviewLocked}
+ placeholder="Enter dean remarks, observations, and recommendations..."
+ style={{ width: "100%", flex: 1, minHeight: 178, border: "1px solid #bfdbfe", borderRadius: 8, padding: "10px 11px", fontFamily: "inherit", fontSize: 12, lineHeight: 1.5, color: "#334155", resize: "vertical", background: "#fff", outline: "none", boxSizing: "border-box" }}
  />
+</div>
  )}
 />
 </div>
@@ -1094,12 +1083,12 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
  {sectionView === "summary" && (
 <>
  {!reviewLocked && (
-<label style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 14px", background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: 8, marginBottom: 14, color: "#334155", fontSize: 12, lineHeight: 1.5, cursor: "pointer" }}>
+<label style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: 8, marginBottom: 14, color: "#334155", fontSize: 12, lineHeight: 1.5, cursor: "pointer" }}>
 <input
  type="checkbox"
  checked={reviewConfirmed}
  onChange={(e) =>setReviewConfirmed(e.target.checked)}
- style={{ marginTop: 3 }}
+ style={{ margin: 0, flexShrink: 0 }}
  />
 <span>I have verified all the details and confirm that the information provided is correct. I am responsible for the accuracy of this data.</span>
 </label>
@@ -1107,14 +1096,14 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
 
 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
 <span style={{ color: "#64748b", fontSize: 11, fontWeight: 700 }}>{draftStatus}</span>
-<div style={{ display: "flex", gap: 12, flex: 1, justifyContent: "flex-end", flexWrap: "wrap" }}>
-<button onClick={onBack} style={{ flex: 1, padding: "12px 16px", borderRadius: 10, border: "1px solid #cbd5e1", background: "#f8fafc", color: "#475569", fontWeight: 700, cursor: "pointer" }}>{reviewLocked ? "Close" : "Cancel"}</button>
+<div style={{ display: "flex", gap: 12, justifyContent: "flex-end", flexWrap: "wrap", marginLeft: "auto" }}>
+<button onClick={onBack} style={{ padding: "12px 22px", borderRadius: 10, border: "1px solid #cbd5e1", background: "#f8fafc", color: "#475569", fontWeight: 700, cursor: "pointer" }}>{reviewLocked ? "Close" : "Cancel"}</button>
  {!reviewLocked && (
 <>
 <button
  onClick={handleSaveDraft}
  disabled={savingDraft}
- style={{ flex: 1, padding: "12px 16px", borderRadius: 10, border: "none", background: savingDraft ? "#94a3b8" : "#2563eb", color: "#f8fafc", fontWeight: 700, cursor: savingDraft ? "not-allowed" : "pointer" }}
+ style={{ padding: "12px 22px", borderRadius: 10, border: "none", background: savingDraft ? "#94a3b8" : "#2563eb", color: "#f8fafc", fontWeight: 700, cursor: savingDraft ? "not-allowed" : "pointer" }}
 >
  {savingDraft ? "Saving..." : "Save Draft"}
 </button>
@@ -1126,12 +1115,12 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
  }
  }}
  disabled={!reviewConfirmed || !remarks.trim()}
- style={{ flex: 1, padding: "12px 16px", borderRadius: 10, border: "none", background: (reviewConfirmed && remarks.trim()) ? "#dc2626" : "#94a3b8", color: "#f8fafc", fontWeight: 700, cursor: (reviewConfirmed && remarks.trim()) ? "pointer" : "not-allowed" }}
+ style={{ padding: "12px 22px", borderRadius: 10, border: "none", background: (reviewConfirmed && remarks.trim()) ? "#dc2626" : "#94a3b8", color: "#f8fafc", fontWeight: 700, cursor: (reviewConfirmed && remarks.trim()) ? "pointer" : "not-allowed" }}
 >
  Reject Form
 </button>
  )}
-<button onClick={() =>onSubmit(approval.id, deanScores, remarks, sectionScores, reviewConfirmed)} disabled={!reviewConfirmed || !remarks.trim()} style={{ flex: 1, padding: "12px 16px", borderRadius: 10, border: "none", background: (reviewConfirmed && remarks.trim()) ? "#0f172a" : "#64748b", color: "#f8fafc", fontWeight: 700, cursor: (reviewConfirmed && remarks.trim()) ? "pointer" : "not-allowed" }}>Approve & Forward</button>
+<button onClick={() =>onSubmit(approval.id, deanScores, remarks, sectionScores, reviewConfirmed)} disabled={!reviewConfirmed || !remarks.trim()} style={{ padding: "12px 22px", borderRadius: 10, border: "none", background: (reviewConfirmed && remarks.trim()) ? "#0f172a" : "#64748b", color: "#f8fafc", fontWeight: 700, cursor: (reviewConfirmed && remarks.trim()) ? "pointer" : "not-allowed" }}>Approve & Forward</button>
 </>
  )}
 </div>

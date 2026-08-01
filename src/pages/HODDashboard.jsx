@@ -354,7 +354,7 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false, revi
  )}
 
  {sectionView === "summary" && (
-<div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 14, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 14, boxShadow: "0 1px 6px rgba(0,0,0,.06)" }}>
+<div className="hod-review-summary-grid" style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 14, display: "grid", gap: 14, boxShadow: "0 1px 6px rgba(0,0,0,.06)" }}>
 <ScoreCard
  title="Faculty Score"
  subtitle="Self score for the engineering appraisal form."
@@ -368,31 +368,34 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false, revi
  subtitle={`${reviewerLabel} score for the engineering appraisal form.`}
  totals={{ partA, partB, partC, partD, total }}
  maxScores={reviewerMaxScores}
- remarksTitle={`${reviewerLabel} Remarks`}
  isFinal
  accent="#7c3aed"
- remarksContent={(
-<textarea value={remarks} onChange={e =>setRemarks(e.target.value)} rows={4} readOnly={reviewLocked}
+ sideContent={(
+<div style={{ background: "#eff6ff", border: "2px solid #93c5fd", borderRadius: 10, padding: "14px 15px", display: "flex", flexDirection: "column", minWidth: 0, boxShadow: "0 0 0 4px rgba(147,197,253,0.16), 0 14px 28px rgba(37,99,235,0.08)" }}>
+<div style={{ fontSize: 11, fontWeight: 900, color: "#1d4ed8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 5 }}>{reviewerLabel} Remarks Required</div>
+<div style={{ color: "#1e40af", fontSize: 11, fontWeight: 700, marginBottom: 10 }}>Please enter remarks before submitting the review.</div>
+<textarea value={remarks} onChange={e =>setRemarks(e.target.value)} rows={8} readOnly={reviewLocked}
  placeholder="Enter your remarks, observations, and recommendations for this faculty member..."
- style={{ width: "100%", border: "none", padding: 0, fontSize: 12, fontFamily: "inherit", resize: "vertical", boxSizing: "border-box", background: "transparent", color: "#334155", outline: "none" }} />
+ style={{ width: "100%", flex: 1, minHeight: 178, border: "1px solid #bfdbfe", borderRadius: 8, padding: "10px 11px", fontSize: 12, lineHeight: 1.5, fontFamily: "inherit", resize: "vertical", boxSizing: "border-box", background: "#fff", color: "#334155", outline: "none" }} />
+</div>
  )}
 />
 
  {!reviewLocked && (
-<label style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 14px", background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: 8, marginBottom: 14, color: "#334155", fontSize: 12, lineHeight: 1.5, cursor: "pointer" }}>
+<label style={{ gridColumn: "1 / -1", display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: 8, marginBottom: 0, color: "#334155", fontSize: 12, lineHeight: 1.5, cursor: "pointer" }}>
 <input
  type="checkbox"
  checked={reviewConfirmed}
  onChange={(e) =>setReviewConfirmed(e.target.checked)}
- style={{ marginTop: 3 }}
+ style={{ margin: 0, flexShrink: 0 }}
  />
 <span>I have verified all the details and confirm that the information provided is correct. I am responsible for the accuracy of this data.</span>
 </label>
  )}
 
-<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+<div style={{ gridColumn: "1 / -1", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
 <span style={{ color: "#64748b", fontSize: 11, fontWeight: 700 }}>{draftStatus}</span>
-<div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
+<div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap", marginLeft: "auto" }}>
 <button onClick={onBack} style={{ padding: "9px 22px", background: "#f1f5f9", color: "#475569", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 700, fontSize: 12, fontFamily: "inherit" }}>{reviewLocked ? "Close" : "Cancel"}</button>
  {!reviewLocked && (
 <>

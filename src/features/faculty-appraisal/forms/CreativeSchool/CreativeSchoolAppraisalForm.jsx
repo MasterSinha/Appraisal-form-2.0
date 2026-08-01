@@ -2196,7 +2196,8 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
       totals: facultyTotals,
       maxScores: facultyTotals.maxScores,
       accent: "#0ea5e9",
-      extraContent: <SummaryOtherInfoField value={summaryOtherInfoValueFrom(person)} readOnly rows={4} />,
+      compact: normalizedSubjectRole === "director" || normalizedSubjectRole === "dean" || normalizedSubjectRole === "faculty",
+      extraContent: <SummaryOtherInfoField value={summaryOtherInfoValueFrom(person)} readOnly rows={(normalizedSubjectRole === "director" || normalizedSubjectRole === "dean" || normalizedSubjectRole === "faculty") ? 2 : 4} />,
     },
     ...previousSummaryCards.map(({ role, label, totals: roleTotals, remarks: roleRemarks }) => ({
       key: role,
@@ -2205,6 +2206,7 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
       totals: roleTotals,
       maxScores: roleTotals.maxScores,
       accent: role === "director" ? "#2563eb" : "#0f766e",
+      compact: normalizedSubjectRole === "director" || normalizedSubjectRole === "dean" || normalizedSubjectRole === "faculty",
       remarksTitle: `${label} Remarks`,
       remarksContent: <div style={{ color: "#334155", fontSize: 12, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{String(roleRemarks || "").trim() || "-"}</div>,
     })),
@@ -2215,8 +2217,9 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
       totals: averageSummaryTotals,
       maxScores: averageSummaryTotals.maxScores,
       accent: "#f59e0b",
-      partsLayout: "horizontal",
-      cardStyle: { gridColumn: "1 / -1" },
+      partsLayout: normalizedSubjectRole === "dean" ? "vertical" : "horizontal",
+      compact: normalizedSubjectRole === "dean",
+      cardStyle: normalizedSubjectRole === "dean" ? undefined : { gridColumn: "1 / -1" },
     }] : []),
     {
       key: "vc",
@@ -2238,6 +2241,18 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
       ),
     },
   ];
+  const splitVcDirectorSummaryRows = reviewerRole === "vc" && normalizedSubjectRole === "director";
+  const splitVcDeanSummaryRows = reviewerRole === "vc" && normalizedSubjectRole === "dean";
+  const vcSplitReferenceCards = splitVcDirectorSummaryRows
+    ? vcSummaryCards.filter((card) => ["self", "dean"].includes(card.key))
+    : splitVcDeanSummaryRows
+    ? vcSummaryCards.filter((card) => ["self", "average"].includes(card.key))
+    : [];
+  const vcSplitRemainingCards = splitVcDirectorSummaryRows
+    ? vcSummaryCards.filter((card) => !["self", "dean"].includes(card.key))
+    : splitVcDeanSummaryRows
+    ? vcSummaryCards.filter((card) => !["self", "average"].includes(card.key))
+    : vcSummaryCards;
   const reviewerAccent = reviewerRole === "dean" ? "#7c3aed" : reviewerRole === "director" ? "#2563eb" : "#0f766e";
   const authoritySummaryCards = [
     ...(normalizedSubjectRole === "faculty" ? [{
@@ -2271,6 +2286,13 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
       remarksContent: <textarea value={remarks} readOnly={panelReadOnly} onChange={(event) => setRemarks(event.target.value)} rows={4} style={{ width: "100%", border: "none", padding: 0, fontFamily: "inherit", fontSize: 12, color: "#334155", resize: "vertical", background: "transparent", outline: "none", lineHeight: 1.6 }} />,
     },
   ];
+  const splitAuthorityDeanFacultyRows = reviewerRole === "dean" && normalizedSubjectRole === "faculty" && !isSoemrFacultyReview;
+  const authorityReferenceCards = splitAuthorityDeanFacultyRows
+    ? authoritySummaryCards.filter((card) => card.key !== reviewerRole)
+    : authoritySummaryCards;
+  const authorityReviewCards = splitAuthorityDeanFacultyRows
+    ? authoritySummaryCards.filter((card) => card.key === reviewerRole)
+    : [];
   useEffect(() => {
     let active = true;
     if (panelReadOnly || !subjectEmail) return undefined;
@@ -2420,7 +2442,7 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
       <div style={{ display: "flex", justifyContent: "flex-start" }}>
         <SectionSelector value={sectionView} onChange={setSectionView} label="Review Section" />
       </div>
-      <FacultyInfoSection info={form.info} />
+      {sectionView === "partA" && <FacultyInfoSection info={form.info} />}
       {finalisedVcReadOnly && (
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
           <button onClick={() => { setEditingFinalised(true); setConfirmed(false); }} style={smallButton("#4c1d95")}>
@@ -2473,8 +2495,36 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
         <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 14, display: "grid", gap: 10 }}>
           {reviewerRole === "vc" ? (
             <>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(330px, 1fr))", gap: 16 }}>
-                {vcSummaryCards.map((card) => (
+              {(splitVcDirectorSummaryRows || splitVcDeanSummaryRows) ? (
+                <>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 16, width: "100%" }}>
+                    {vcSplitReferenceCards.map((card) => (
+                      <ScoreCard key={card.key} {...card} cardStyle={{ ...(card.cardStyle || {}), width: "100%", minWidth: 0 }} />
+                    ))}
+                  </div>
+                  <div style={{ display: "grid", gap: 16, width: "100%" }}>
+                    {vcSplitRemainingCards.map((card) => (
+                      <ScoreCard key={card.key} {...card} />
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(330px, 1fr))", gap: 16 }}>
+                  {vcSummaryCards.map((card) => (
+                    <ScoreCard key={card.key} {...card} />
+                  ))}
+                </div>
+              )}
+            </>
+          ) : splitAuthorityDeanFacultyRows ? (
+            <>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 16, width: "100%" }}>
+                {authorityReferenceCards.map((card) => (
+                  <ScoreCard key={card.key} {...card} cardStyle={{ ...(card.cardStyle || {}), width: "100%", minWidth: 0 }} />
+                ))}
+              </div>
+              <div style={{ display: "grid", gap: 16, width: "100%" }}>
+                {authorityReviewCards.map((card) => (
                   <ScoreCard key={card.key} {...card} />
                 ))}
               </div>
@@ -2489,7 +2539,7 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
           {!panelReadOnly && <AccuracyCheckbox checked={confirmed} onChange={setConfirmed} />}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
             <span style={{ color: "#64748b", fontSize: 11, fontWeight: 700 }}>{draftStatus}</span>
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap", marginLeft: "auto" }}>
               <button onClick={onBack} style={smallButton("#64748b")}>Close</button>
               {showReport && (
                 <button onClick={generateReviewReport} disabled={!reviewCompleted} style={smallButton(reviewCompleted ? "#4c1d95" : "#94a3b8")}>
