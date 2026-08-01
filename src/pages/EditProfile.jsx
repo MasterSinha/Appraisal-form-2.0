@@ -181,6 +181,117 @@ function FrozenField({ label, value, wide }) {
   );
 }
 
+function createAdjustedProfileImage(src, { zoom, x, y }, outputSize = 480) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = outputSize;
+      canvas.height = outputSize;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        reject(new Error("Unable to prepare the profile image."));
+        return;
+      }
+
+      ctx.fillStyle = "#f8fafc";
+      ctx.fillRect(0, 0, outputSize, outputSize);
+
+      const baseScale = Math.max(outputSize / image.naturalWidth, outputSize / image.naturalHeight);
+      const scale = baseScale * zoom;
+      const drawWidth = image.naturalWidth * scale;
+      const drawHeight = image.naturalHeight * scale;
+      const offsetX = (x / 100) * (outputSize / 2);
+      const offsetY = (y / 100) * (outputSize / 2);
+      const drawX = (outputSize - drawWidth) / 2 + offsetX;
+      const drawY = (outputSize - drawHeight) / 2 + offsetY;
+
+      ctx.drawImage(image, drawX, drawY, drawWidth, drawHeight);
+      resolve(canvas.toDataURL("image/jpeg", 0.92));
+    };
+    image.onerror = () => reject(new Error("Unable to load the selected image."));
+    image.src = src;
+  });
+}
+
+function PhotoAdjustModal({ src, adjust, setAdjust, onCancel, onApply }) {
+  const setValue = (field) => (event) => {
+    const value = Number(event.target.value);
+    setAdjust((prev) => ({ ...prev, [field]: value }));
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 2000, background: "rgba(15,23,42,0.62)", display: "grid", placeItems: "center", padding: 24 }} onClick={onCancel}>
+      <div style={{ width: "min(520px, 94vw)", background: "#fff", borderRadius: 18, border: "1px solid #e5e7eb", boxShadow: "0 24px 80px rgba(15,23,42,0.28)", padding: 22 }} onClick={(event) => event.stopPropagation()}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, marginBottom: 18 }}>
+          <div>
+            <div style={{ color: "#0f172a", fontSize: 18, fontWeight: 900 }}>Adjust Profile Photo</div>
+            <div style={{ color: "#64748b", fontSize: 12, marginTop: 4 }}>Position your photo inside the circle before saving.</div>
+          </div>
+          <button type="button" onClick={onCancel} style={{ width: 34, height: 34, borderRadius: 10, border: "1px solid #e2e8f0", background: "#f8fafc", color: "#475569", cursor: "pointer", fontWeight: 900, fontFamily: "inherit" }}>X</button>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "180px 1fr", gap: 22, alignItems: "center" }}>
+          <div style={{ display: "grid", justifyItems: "center", gap: 10 }}>
+            <div style={{ width: 170, height: 170, borderRadius: "50%", overflow: "hidden", background: "#e2e8f0", border: "5px solid #fff", boxShadow: "0 12px 32px rgba(15,23,42,0.16), 0 0 0 1px #e2e8f0" }}>
+              <img
+                src={src}
+                alt="Profile preview"
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  display: "block",
+                  transform: `translate(${adjust.x}%, ${adjust.y}%) scale(${adjust.zoom})`,
+                  transformOrigin: "center",
+                }}
+              />
+            </div>
+            <div style={{ color: "#64748b", fontSize: 11, fontWeight: 700 }}>Circular preview</div>
+          </div>
+
+          <div style={{ display: "grid", gap: 14 }}>
+            {[
+              ["zoom", "Zoom", 0.6, 3, 0.05],
+              ["x", "Move Left / Right", -70, 70, 1],
+              ["y", "Move Up / Down", -70, 70, 1],
+            ].map(([field, label, min, max, step]) => (
+              <label key={field} style={{ display: "grid", gap: 7 }}>
+                <span style={{ display: "flex", justifyContent: "space-between", color: "#334155", fontSize: 12, fontWeight: 850 }}>
+                  {label}
+                  <span style={{ color: "#64748b", fontWeight: 750 }}>{field === "zoom" ? `${Math.round(adjust.zoom * 100)}%` : adjust[field]}</span>
+                </span>
+                <input
+                  type="range"
+                  min={min}
+                  max={max}
+                  step={step}
+                  value={adjust[field]}
+                  onChange={setValue(field)}
+                  style={{ width: "100%", accentColor: "#2563eb" }}
+                />
+              </label>
+            ))}
+
+            <button
+              type="button"
+              onClick={() => setAdjust({ zoom: 1, x: 0, y: 0 })}
+              style={{ justifySelf: "start", border: "1px solid #dbe3ef", background: "#f8fafc", color: "#475569", borderRadius: 9, height: 34, padding: "0 12px", cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 800 }}
+            >
+              Reset Position
+            </button>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 22, paddingTop: 16, borderTop: "1px solid #eef2f7" }}>
+          <button type="button" onClick={onCancel} style={{ height: 38, border: "1px solid #dbe3ef", background: "#fff", color: "#475569", borderRadius: 9, padding: "0 16px", cursor: "pointer", fontFamily: "inherit", fontWeight: 800 }}>Cancel</button>
+          <button type="button" onClick={onApply} style={{ height: 38, border: "none", background: "#2563eb", color: "#fff", borderRadius: 9, padding: "0 18px", cursor: "pointer", fontFamily: "inherit", fontWeight: 900 }}>Use Photo</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function InputField({ label, required, hint, wide, children }) {
   return (
     <label style={{ display: "flex", flexDirection: "column", gap: 5, ...(wide ? { gridColumn: "1 / -1" } : {}) }}>
@@ -244,6 +355,8 @@ export default function EditProfile() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
+  const [pendingPhotoSrc, setPendingPhotoSrc] = useState("");
+  const [photoAdjust, setPhotoAdjust] = useState({ zoom: 1, x: 0, y: 0 });
 
   const selectedSchool = useMemo(() => canonicalSchoolValue(formData.school), [formData.school]);
   const selectedRole = normalizeRole(formData.role, "");
@@ -289,7 +402,8 @@ export default function EditProfile() {
     const reader = new FileReader();
     reader.onload = () => {
       setError("");
-      setFormData((prev) => ({ ...prev, profilePictureUrl: String(reader.result || "") }));
+      setPhotoAdjust({ zoom: 1, x: 0, y: 0 });
+      setPendingPhotoSrc(String(reader.result || ""));
     };
     reader.onerror = () => {
       setError("Unable to read the selected image. Please try another file.");
@@ -299,7 +413,27 @@ export default function EditProfile() {
 
   const removePhoto = () => {
     setFormData((prev) => ({ ...prev, profilePictureUrl: "" }));
+    setPendingPhotoSrc("");
+    setPhotoAdjust({ zoom: 1, x: 0, y: 0 });
     if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const cancelPhotoAdjustment = () => {
+    setPendingPhotoSrc("");
+    setPhotoAdjust({ zoom: 1, x: 0, y: 0 });
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const applyPhotoAdjustment = async () => {
+    try {
+      const adjustedUrl = await createAdjustedProfileImage(pendingPhotoSrc, photoAdjust);
+      setFormData((prev) => ({ ...prev, profilePictureUrl: adjustedUrl }));
+      setPendingPhotoSrc("");
+      setPhotoAdjust({ zoom: 1, x: 0, y: 0 });
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    } catch (err) {
+      setError(err?.message || "Unable to adjust the selected image. Please try another file.");
+    }
   };
 
   const handleSubmit = async (event) => {
@@ -453,6 +587,18 @@ export default function EditProfile() {
                     style={{ height: 34, padding: "0 12px", borderRadius: 999, border: "1px solid #fecaca", background: "#fff5f5", color: "#b91c1c", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}
                   >
                     Remove
+                  </button>
+                )}
+                {formData.profilePictureUrl?.startsWith("data:image/") && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPhotoAdjust({ zoom: 1, x: 0, y: 0 });
+                      setPendingPhotoSrc(formData.profilePictureUrl);
+                    }}
+                    style={{ height: 34, padding: "0 12px", borderRadius: 999, border: "1px solid #dbe3ef", background: "#f8fafc", color: "#475569", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}
+                  >
+                    Adjust
                   </button>
                 )}
               </div>
@@ -617,6 +763,15 @@ export default function EditProfile() {
         {/* Spinner keyframe (for save button loading state) */}
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </main>
+      {pendingPhotoSrc && (
+        <PhotoAdjustModal
+          src={pendingPhotoSrc}
+          adjust={photoAdjust}
+          setAdjust={setPhotoAdjust}
+          onCancel={cancelPhotoAdjustment}
+          onApply={applyPhotoAdjustment}
+        />
+      )}
     </div>
   );
 }
