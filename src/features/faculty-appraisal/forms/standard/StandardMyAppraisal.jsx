@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars, react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../../../services/api";
 import {
@@ -68,6 +68,11 @@ import {
   roleLabel,
   workflowValidationError,
 } from "../../../../utils/hierarchy";
+import LegacyPreviousYearReport from "./LegacyPreviousYearReport";
+import {
+  isLegacyTwoPartAcademicYear,
+  legacySubmittedTotals,
+} from "./legacyPreviousYearReportUtils";
 
 const INNOVATIVE_METHOD_OPTIONS = [
   { value: "Blended learning", label: "Blended learning" },
@@ -458,6 +463,25 @@ function normalizeAcademicYearCycles(cyclesData) {
     .sort((a, b) => b.academic_year.localeCompare(a.academic_year));
 }
 
+const sessionFacultyInfo = (academicYear, defaultDesignation = "") => ({
+  name: sessionStorage.getItem("name") || "",
+  qual: sessionStorage.getItem("qualification") || "",
+  desig: sessionStorage.getItem("designation") || defaultDesignation || "",
+  school: sessionStorage.getItem("school") || sessionStorage.getItem("department") || "",
+  experience: sessionStorage.getItem("experience") || "",
+  ay: academicYear,
+});
+
+const profileSafeInfoForYear = (nextInfo = {}, academicYear, defaultDesignation = "") => {
+  const safeAcademicYear = academicYear || nextInfo.ay || APP_INFO.DEFAULT_AY;
+  if (isLegacyTwoPartAcademicYear(safeAcademicYear)) return { ...nextInfo, ay: safeAcademicYear };
+  return {
+    ...nextInfo,
+    ...sessionFacultyInfo(safeAcademicYear, defaultDesignation),
+    ay: safeAcademicYear,
+  };
+};
+
 export default function StandardMyAppraisal({
   sectionTab,
   onSectionTabChange,
@@ -468,6 +492,7 @@ export default function StandardMyAppraisal({
   subtitleSeparator = ".",
 } = {}) {
   const navigate = useNavigate();
+  const loadRequestRef = useRef(0);
   const [localAppraisalTab, setLocalAppraisalTab] = useState("partA");
   const hodAppraisalTab = sectionTab || localAppraisalTab;
   const setHodAppraisalTab = onSectionTabChange || setLocalAppraisalTab;
@@ -475,30 +500,25 @@ export default function StandardMyAppraisal({
 
   // -- HOD's own appraisal form state --
   const [info, setInfo] = useState({
-    name: sessionStorage.getItem("name") || "",
-    qual: sessionStorage.getItem("qualification") || "",
-    desig: defaultDesignation,
-    school: sessionStorage.getItem("school") || sessionStorage.getItem("department") || "",
-    experience: sessionStorage.getItem("experience") || "",
+    ...sessionFacultyInfo(resolvedAcademicYear, defaultDesignation),
     expDyp: "",
     expPrev: "",
     expTotal: "",
-    ay: resolvedAcademicYear
   });
 
   useEffect(() => {
     const syncAcademicYear = (event) => {
       const nextAcademicYear = event?.detail?.academicYear || sessionStorage.getItem("academicYear") || APP_INFO.DEFAULT_AY;
-      setInfo((previousInfo) => ({ ...previousInfo, ay: nextAcademicYear }));
+      setInfo((previousInfo) => profileSafeInfoForYear(previousInfo, nextAcademicYear, defaultDesignation));
     };
 
     window.addEventListener("academicYearChanged", syncAcademicYear);
     return () => window.removeEventListener("academicYearChanged", syncAcademicYear);
-  }, []);
+  }, [defaultDesignation]);
 
   useEffect(() => {
-    setInfo((previousInfo) => ({ ...previousInfo, ay: resolvedAcademicYear }));
-  }, [resolvedAcademicYear]);
+    setInfo((previousInfo) => profileSafeInfoForYear(previousInfo, resolvedAcademicYear, defaultDesignation));
+  }, [resolvedAcademicYear, defaultDesignation]);
 
   const [availableCyclesState, setAvailableCyclesState] = useState(() => normalizeAcademicYearCycles(JSON.parse(sessionStorage.getItem("availableCycles") || "[]")));
 
@@ -672,11 +692,30 @@ export default function StandardMyAppraisal({
   const [savingSection, setSavingSection] = useState(null);
   const [workflowDeclaration, setWorkflowDeclaration] = useState(null);
   const [workflowReviews, setWorkflowReviews] = useState([]);
+  const [legacyReportTotals, setLegacyReportTotals] = useState(null);
   const selectedCycle = availableCyclesState.find((cycle) => cycle.academic_year === info.ay);
   const isSelectedCycleClosed = selectedCycle ? !selectedCycle.is_open : false;
+  const isLegacyTwoPartYear = isLegacyTwoPartAcademicYear(info.ay);
+  const showClosedReportOnly = isSelectedCycleClosed && !isLegacyTwoPartYear;
+  const sectionOptions = isLegacyTwoPartYear
+    ? [
+        ["partA", "Part A"],
+        ["partB", "Part B"],
+      ]
+    : [
+        ["partA", "Part A"],
+        ["partB", "Part B"],
+        ["partC", "Part C"],
+        ["partD", "Part D"],
+        ["summary", "Summary"],
+      ];
 
   const appraisalSetters = {
-    setInfo, setLectures, setCourseFile, setInnovRows: (rows) => setInnovRows(sanitizeInnovativeRows(rows)), setInnovDetails, setInnovScore,
+    setInfo: (value) => setInfo((currentInfo) => {
+      const nextInfo = typeof value === "function" ? value(currentInfo) : value;
+      return profileSafeInfoForYear(nextInfo || {}, nextInfo?.ay || currentInfo.ay || info.ay, defaultDesignation);
+    }),
+    setLectures, setCourseFile, setInnovRows: (rows) => setInnovRows(sanitizeInnovativeRows(rows)), setInnovDetails, setInnovScore,
     setProjects, setObeRows, setMentoringRows, setQuals, setFeedback, setDeptActs, setUniActs,
     setEventRows, setSociety, setIndustry, setAlumniRows, setPlacementRows, setAcr, setJournals, setBooks, setIct,
     setResearch, setProjects2, setExternalProjects, setPatents, setAwards,
@@ -687,13 +726,30 @@ export default function StandardMyAppraisal({
   useEffect(() => {
     const userEmail = sessionStorage.getItem("username") || sessionStorage.getItem("email") || localStorage.getItem("username") || localStorage.getItem("email");
     if (!userEmail || !info.ay) return;
+    const requestId = loadRequestRef.current + 1;
+    loadRequestRef.current = requestId;
+    let cancelled = false;
+    const requestedAcademicYear = info.ay;
+    const isCurrentLoad = () => !cancelled && loadRequestRef.current === requestId;
+    const scopedAppraisalSetters = Object.fromEntries(
+      Object.entries(appraisalSetters).map(([key, setter]) => [
+        key,
+        (...args) => {
+          if (!isCurrentLoad()) return undefined;
+          return setter?.(...args);
+        },
+      ])
+    );
+    setDocs({});
+    setLegacyReportTotals(null);
 
     const loadOwnAppraisal = async () => {
       try {
-        const data = await api.get("/appraisal/status", { params: { academic_year: info.ay } }).catch((err) => {
+        const data = await api.get("/appraisal/status", { params: { academic_year: requestedAcademicYear } }).catch((err) => {
           console.error("Could not load workflow status:", err);
           return null;
         });
+        if (!isCurrentLoad()) return;
         const declaration = data?.declaration || null;
         setWorkflowDeclaration(declaration);
         const loadedReviews = reviewListFrom(data?.reviews);
@@ -703,16 +759,35 @@ export default function StandardMyAppraisal({
 
         const savedAppraisal = await (isSelectedCycleClosed ? loadClosedAppraisal : loadSavedAppraisal)({
           facultyEmail: userEmail,
-          academicYear: info.ay,
-          setters: appraisalSetters,
+          academicYear: requestedAcademicYear,
+          setters: scopedAppraisalSetters,
         });
+        if (!isCurrentLoad()) return;
+        setLegacyReportTotals(isLegacyTwoPartAcademicYear(requestedAcademicYear)
+          ? legacySubmittedTotals(
+              savedAppraisal,
+              savedAppraisal?.totals,
+              savedAppraisal?.payload,
+              savedAppraisal?.payload?.totals,
+              savedAppraisal?.form,
+              savedAppraisal?.payload?.form,
+              savedAppraisal?.declaration,
+              savedAppraisal?.payload?.declaration,
+            )
+          : null);
         const savedDeclaration = savedAppraisal?.declaration || savedAppraisal?.payload?.declaration || null;
         if (savedDeclaration && !declaration) setWorkflowDeclaration(savedDeclaration);
         const savedReviews = reviewListFrom(savedAppraisal?.reviews || savedAppraisal?.payload?.reviews);
         if (savedReviews.length && !loadedReviews.length) setWorkflowReviews(savedReviews);
 
         await Promise.all([
-          loadAppraisalDocuments({ facultyEmail: userEmail, academicYear: info.ay, setDocs }),
+          loadAppraisalDocuments({
+            facultyEmail: userEmail,
+            academicYear: requestedAcademicYear,
+            setDocs: (nextDocs) => {
+              if (isCurrentLoad()) setDocs(nextDocs);
+            },
+          }),
         ]);
       } catch (err) {
         console.error("Could not load saved appraisal:", err);
@@ -720,7 +795,16 @@ export default function StandardMyAppraisal({
     };
 
     loadOwnAppraisal();
+    return () => {
+      cancelled = true;
+    };
   }, [info.ay, isSelectedCycleClosed]);
+
+  useEffect(() => {
+    if (isLegacyTwoPartYear && !["partA", "partB"].includes(hodAppraisalTab)) {
+      setHodAppraisalTab("partA");
+    }
+  }, [isLegacyTwoPartYear, hodAppraisalTab]);
 
   // -- Computed scores for HOD appraisal --
   const totalLecScore = sumSectionScore(lectures, A1_COURSE_DELIVERY_MAX, "score", 10);
@@ -883,7 +967,7 @@ export default function StandardMyAppraisal({
     });
   };
 
-  const buildSelfDraftForm = (saveStatus = sectionSaveStatus) => normalizeAutoScores({ info, lectures, courseFile, innovDetails: innovRows.map((row) => row.method).filter(Boolean).join(", "), innovScore: innovScoreComputed, innovRows: innovRows.map((row) => ({ ...row, max: row.max || A3_INNOVATIVE_ROW_MAX })), projects, obeRows, mentoringRows, quals, feedback, deptActs, uniActs, eventRows, society: society.map((row) => ({ ...row, max: row.max || C4_OUTREACH_MAX })), industry, alumniRows, placementRows, acr, journals, books, ict, research, projects2: projects2.map((row) => ({ ...row, max: row.max || B4_PROJECT_MAX })), externalProjects, patents, awards, confs, proposals, products, fdps, training, exhibitions, summaryOtherInfo, sectionSaveStatus: saveStatus });
+  const buildSelfDraftForm = (saveStatus = sectionSaveStatus) => normalizeAutoScores({ info: profileSafeInfoForYear(info, info.ay, defaultDesignation), lectures, courseFile, innovDetails: innovRows.map((row) => row.method).filter(Boolean).join(", "), innovScore: innovScoreComputed, innovRows: innovRows.map((row) => ({ ...row, max: row.max || A3_INNOVATIVE_ROW_MAX })), projects, obeRows, mentoringRows, quals, feedback, deptActs, uniActs, eventRows, society: society.map((row) => ({ ...row, max: row.max || C4_OUTREACH_MAX })), industry, alumniRows, placementRows, acr, journals, books, ict, research, projects2: projects2.map((row) => ({ ...row, max: row.max || B4_PROJECT_MAX })), externalProjects, patents, awards, confs, proposals, products, fdps, training, exhibitions, summaryOtherInfo, sectionSaveStatus: saveStatus });
 
   const markSnapshotLocked = () => {
     setAppraisalLocked(true);
@@ -1413,7 +1497,9 @@ export default function StandardMyAppraisal({
     }
   };
   const handleAcademicYearChange = (newAcademicYear) => {
-    setInfo((previousInfo) => ({ ...previousInfo, ay: newAcademicYear }));
+    setInfo((previousInfo) => profileSafeInfoForYear(previousInfo, newAcademicYear, defaultDesignation));
+    setDocs({});
+    setLegacyReportTotals(null);
     sessionStorage.setItem("academicYear", newAcademicYear);
     window.dispatchEvent(new CustomEvent("academicYearChanged", {
       detail: { academicYear: newAcademicYear },
@@ -1422,7 +1508,7 @@ export default function StandardMyAppraisal({
 
   return (
     <div className="appraisal-form-shell" style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-      {showSectionSelector && !isSelectedCycleClosed && (
+      {showSectionSelector && !showClosedReportOnly && (
       <div className="appraisal-section-selector" style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 20, padding: "16px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, flexWrap: "wrap", boxShadow: "0 12px 30px rgba(17,24,39,0.06)" }}>
         <div style={{ fontSize: 13, color: "#6b7280", fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.6 }}>My Appraisal Section</div>
         <select
@@ -1430,11 +1516,9 @@ export default function StandardMyAppraisal({
           onChange={(e) => handleMyAppraisalSectionChange(e.target.value)}
           style={{ minWidth: 220, height: 44, border: "1px solid #e5e7eb", borderRadius: 12, padding: "0 14px", fontSize: 14, fontFamily: "inherit", color: "#111827", background: "#fff", outline: "none", fontWeight: 700 }}
         >
-          <option value="partA">Part A</option>
-          <option value="partB" disabled={!isMyAppraisalSectionOpen("partB")}>Part B</option>
-          <option value="partC" disabled={!isMyAppraisalSectionOpen("partC")}>Part C</option>
-          <option value="partD" disabled={!isMyAppraisalSectionOpen("partD")}>Part D</option>
-          <option value="summary" disabled={!isMyAppraisalSectionOpen("summary")}>Summary</option>
+          {sectionOptions.map(([value, label]) => (
+            <option key={value} value={value} disabled={!isMyAppraisalSectionOpen(value)}>{label}</option>
+          ))}
         </select>
       </div>
       )}
@@ -1502,7 +1586,7 @@ export default function StandardMyAppraisal({
               </div>
             )}
 
-            {isSelectedCycleClosed ? (
+            {showClosedReportOnly ? (
               <SC title="Closed Appraisal Report" accent="#4c1d95">
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
                   {[
@@ -1549,6 +1633,36 @@ export default function StandardMyAppraisal({
                   )}
                 </div>
               </SC>
+            ) : isLegacyTwoPartYear ? (
+              <LegacyPreviousYearReport
+                sectionView={hodAppraisalTab}
+                storedTotals={legacyReportTotals}
+                docs={docs}
+                lectures={lectures}
+                courseFile={courseFile}
+                innovRows={innovRows}
+                projects={projects}
+                quals={quals}
+                feedback={feedback}
+                deptActs={deptActs}
+                uniActs={uniActs}
+                society={society}
+                industry={industry}
+                acr={acr}
+                journals={journals}
+                books={books}
+                ict={ict}
+                research={research}
+                projects2={projects2}
+                externalProjects={externalProjects}
+                patents={patents}
+                awards={awards}
+                confs={confs}
+                proposals={proposals}
+                products={products}
+                fdps={fdps}
+                training={training}
+              />
             ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <fieldset disabled={appraisalLocked && hodAppraisalTab !== "summary"} style={{ flex: 1, minWidth: 0, border: 0, padding: 0, margin: 0, opacity: appraisalLocked && hodAppraisalTab !== "summary" ? 0.86 : 1 }}>
@@ -1951,7 +2065,7 @@ export default function StandardMyAppraisal({
                 )}
 
                 {/* Part C Tab */}
-                {hodAppraisalTab === "partC" && (
+                {!isLegacyTwoPartYear && hodAppraisalTab === "partC" && (
                   <SC title={`Part C - Administrative Role & University Development Contribution (Max ${PART_C_MAX})`} accent="#0f766e" scoreBadge={`${partCTotal.toFixed(1)} / ${PART_C_MAX}`}>
                     <div style={{ marginBottom: 14, padding: "8px 12px", background: "#ccfbf1", borderRadius: 6, fontSize: 12, color: "#115e59", fontWeight: 600 }}>
                       Total Part C Score: {partCTotal.toFixed(1)}/{PART_C_MAX}
@@ -2209,7 +2323,7 @@ export default function StandardMyAppraisal({
                 )}
 
                 {/* Part D Tab */}
-                {hodAppraisalTab === "partD" && (
+                {!isLegacyTwoPartYear && hodAppraisalTab === "partD" && (
                   <SC title={`Part D - Annual Confidential Report (Max ${PART_D_MAX})`} accent="#b45309" scoreBadge={`${partDTotal.toFixed(1)} / ${PART_D_MAX}`}>
                     <div style={{ marginBottom: 14, padding: "8px 12px", background: "#fef3c7", borderRadius: 6, fontSize: 12, color: "#92400e", fontWeight: 600 }}>
                       Evaluated by HOD/Director only. This part has no faculty self-score input.
@@ -2841,7 +2955,7 @@ export default function StandardMyAppraisal({
                 )}
 
                 {/* Summary Tab */}
-                {hodAppraisalTab === "summary" && (
+                {!isLegacyTwoPartYear && hodAppraisalTab === "summary" && (
                   <SC title="Appraisal Summary & Submission" accent="#10b981">
                     <table className="appraisal-summary-table" style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, marginBottom: 0, border: "1px solid #e5e7eb", borderRadius: 12, overflow: "hidden", boxShadow: "0 12px 26px rgba(15,23,42,0.04)" }}>
                       <tbody>
