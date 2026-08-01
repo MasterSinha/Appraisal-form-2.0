@@ -466,6 +466,7 @@ export function SectionInfoButton({ titleText, customGuideline }) {
     >
       <button
         type="button"
+        className="appraisal-info-btn"
         onClick={(e) => e.stopPropagation()}
         aria-label="Guidelines info"
         style={{
@@ -565,10 +566,10 @@ export function SectionCard({ title, subtitle, accent = "#4f46e5", scoreBadge, c
   const displayTitle = stripMaxMarksFromTitle(title);
 
   return (
-    <div className="fa-section-card appraisal-section-card" style={{ background: "#fff", borderRadius: 16, boxShadow: "0 1px 3px rgba(0,0,0,0.03)", marginBottom: 20, overflow: "hidden", border: "1px solid #e2e8f0" }}>
-      <div className="appraisal-part-header" style={{ padding: "20px 26px", borderBottom: "1px solid #e2e8f0", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, background: "#fbfcfd" }}>
+    <div className="fa-section-card appraisal-section-card" style={{ background: "#fff", borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.03)", marginBottom: 20, overflow: "hidden", border: "1px solid #e2e8f0" }}>
+      <div className="appraisal-part-header" style={{ padding: "18px 24px", borderBottom: "1px solid #e2e8f0", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, background: "#fbfcfd" }}>
         <div style={{ minWidth: 0, display: "flex", alignItems: "center", gap: 14 }}>
-          <span className="appraisal-part-icon" style={{ width: 38, height: 38, borderRadius: 10, background: `${accent}1A`, color: accent, border: `1px solid ${accent}2A`, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <span className="appraisal-part-icon" style={{ width: 36, height: 36, borderRadius: 10, background: `${accent}1A`, color: accent, border: `1px solid ${accent}2A`, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M12 3 3 7l9 4 9-4-9-4Z" />
               <path d="M5 10v5c2 2 12 2 14 0v-5" />
@@ -584,13 +585,13 @@ export function SectionCard({ title, subtitle, accent = "#4f46e5", scoreBadge, c
           </div>
         </div>
         {scoreBadge && (
-          <div className="appraisal-part-score" style={{ display: "inline-flex", alignItems: "center", gap: 10, flexShrink: 0, background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 12, padding: "6px 14px" }}>
+          <div className="appraisal-part-score" style={{ display: "inline-flex", alignItems: "center", gap: 10, flexShrink: 0, background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 10, padding: "6px 14px" }}>
             <span style={{ color: "#475569", fontSize: 12, fontWeight: 700 }}>Total Score</span>
             <span style={{ background: "#eef2ff", color: "#4f46e5", borderRadius: 999, padding: "4px 12px", fontSize: 14, fontWeight: 800, whiteSpace: "nowrap" }}>{scoreBadge}</span>
           </div>
         )}
       </div>
-      <div style={{ padding: "24px 28px 28px", display: "flex", flexDirection: "column", gap: 20 }}>{children}</div>
+      <div style={{ padding: "20px 24px 24px", display: "flex", flexDirection: "column", gap: 18 }}>{children}</div>
     </div>
   );
 }
@@ -604,21 +605,34 @@ export function RowButtons({ onAdd, onDel, canDel = true, addLabel = "+ Add Row"
   );
 }
 
-export function SectionSaveFooter({ label = "section", saved, saving, locked, onSave, variant = "inline" }) {
+export function SectionSaveFooter({ label = "section", saved, saving, locked, onSave, onSaveDraft, onSaveNext, variant = "inline" }) {
   const isCard = variant === "card";
+  const handleDraft = onSaveDraft || (() => onSave?.(false));
+  const handleNext = onSaveNext || (() => onSave?.(true));
+
   return (
     <div style={isCard ? { background: "#fff", border: "1px solid #e5e7eb", borderRadius: 16, padding: 18, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, flexWrap: "wrap", boxShadow: "0 10px 24px rgba(17,24,39,0.06)" } : { marginTop: 22, paddingTop: 18, borderTop: "1px solid #e5e7eb", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, flexWrap: "wrap" }}>
       <span style={{ color: saved ? "#047857" : "#6b7280", fontSize: 14, fontWeight: isCard ? 800 : 700 }}>
-        {locked ? "Submitted and locked" : saved ? `${label} saved to server.` : `Save ${label} draft to server.`}
+        {locked ? "Submitted and locked" : saved ? `${label} saved.` : `Save ${label} and proceed.`}
       </span>
-      <button
-        type="button"
-        onClick={onSave}
-        disabled={locked || saving}
-        style={{ minHeight: 40, padding: isCard ? "9px 16px" : "10px 24px", background: locked ? "#9ca3af" : "#5b5ceb", color: "#fff", border: "none", borderRadius: 10, cursor: locked || saving ? "not-allowed" : "pointer", fontWeight: 800, fontSize: 14, fontFamily: "inherit", opacity: saving ? 0.75 : 1, boxShadow: locked ? "none" : "0 10px 20px rgba(91,92,235,0.22)" }}
-      >
-        {saving ? "Saving..." : `Save ${label}`}
-      </button>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <button
+          type="button"
+          onClick={handleDraft}
+          disabled={locked || saving}
+          style={{ minHeight: 40, padding: isCard ? "9px 16px" : "10px 20px", background: "#fff", color: locked ? "#9ca3af" : "#2563eb", border: `1.5px solid ${locked ? "#d1d5db" : "#2563eb"}`, borderRadius: 10, cursor: locked || saving ? "not-allowed" : "pointer", fontWeight: 700, fontSize: 14, fontFamily: "inherit", opacity: saving ? 0.75 : 1 }}
+        >
+          {saving ? "Saving..." : "Save as Draft"}
+        </button>
+        <button
+          type="button"
+          onClick={handleNext}
+          disabled={locked || saving}
+          style={{ minHeight: 40, padding: isCard ? "9px 16px" : "10px 24px", background: locked ? "#9ca3af" : "#2563eb", color: "#fff", border: "none", borderRadius: 10, cursor: locked || saving ? "not-allowed" : "pointer", fontWeight: 800, fontSize: 14, fontFamily: "inherit", opacity: saving ? 0.75 : 1, boxShadow: locked ? "none" : "0 10px 20px rgba(37,99,235,0.22)" }}
+        >
+          {saving ? "Saving..." : "Save & Next"}
+        </button>
+      </div>
     </div>
   );
 }
@@ -701,7 +715,7 @@ export function DocCell({ id, docs, setDocs, readOnly = false }) {
           {!readOnly && <button type="button" aria-label={`Remove ${file.name || "attachment"}`} onClick={() => removeFile(idx)} style={{ width: 18, height: 18, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#fff", border: "1px solid #fecaca", borderRadius: "50%", color: "#dc2626", fontSize: 12, lineHeight: 1, cursor: "pointer", fontWeight: 900, padding: 0 }}>×</button>}
         </div>
       ))}
-      <div role="button" tabIndex={readOnly ? -1 : 0} aria-label="Attach supporting document" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: uploading || readOnly ? "not-allowed" : "pointer", width: 36, height: 36, padding: 0, border: "1px dashed #cbd5e1", borderRadius: 8, background: "#fff", opacity: uploading || readOnly ? 0.7 : 1, color: "#475569", fontWeight: 800, boxShadow: "none" }} onClick={() => !uploading && !readOnly && ref.current?.click()} onKeyDown={(event) => { if ((event.key === "Enter" || event.key === " ") && !uploading && !readOnly) ref.current?.click(); }}>
+      <div className="appraisal-doc-upload-btn" role="button" tabIndex={readOnly ? -1 : 0} aria-label="Attach supporting document" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: uploading || readOnly ? "not-allowed" : "pointer", width: 36, height: 36, padding: 0, border: "1px dashed #cbd5e1", borderRadius: 8, background: "#fff", opacity: uploading || readOnly ? 0.7 : 1, color: "#475569", fontWeight: 800, boxShadow: "none" }} onClick={() => !uploading && !readOnly && ref.current?.click()} onKeyDown={(event) => { if ((event.key === "Enter" || event.key === " ") && !uploading && !readOnly) ref.current?.click(); }}>
         <DocumentIcon />
         <input ref={ref} type="file" multiple style={{ display: "none" }} disabled={uploading || readOnly} onChange={(event) => handleFiles(event.target.files)} />
       </div>
@@ -727,6 +741,7 @@ export function ViewDocsCell({ docKey, docs, emptyText = "No docs", compact = fa
       {files.map((file, idx) => (
         <div key={`${file.url || file.name || "doc"}-${idx}`} style={{ display: "flex", flexDirection: compact ? "row" : "column", alignItems: "center", justifyContent: "center", gap: 5, width: "100%", maxWidth: "100%", minWidth: 0, overflow: "hidden" }}>
           <a
+            className="appraisal-view-docs-btn"
             href={documentFileUrl(file) || "#"}
             target="_blank"
             rel="noreferrer"

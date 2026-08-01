@@ -1,7 +1,7 @@
 /* eslint-disable no-unused-vars */
 import { useState, useRef, useEffect } from "react";
 import MyAppraisalForm from "../components/appraisal";
-import { Avatar, CompactSummaryCard, ScoreBar, StatusBadge } from "../components/dashboard/dashboardPrimitives";
+import { Avatar, ScoreCard, ScoreBar, StatusBadge } from "../components/dashboard/dashboardPrimitives";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import DashboardSidebar from "../components/dashboard/DashboardSidebar";
 import { api } from "../services/api";
@@ -254,6 +254,18 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false, revi
  setSavingDraft(false);
  }
  };
+
+  const handleSaveAndNext = async () => {
+    await handleSaveDraft();
+    const NEXT_SECTION_MAP = { partA: "partB", partB: "partC", partC: "partD", partD: "summary" };
+    const nextSection = NEXT_SECTION_MAP[sectionView];
+    if (nextSection) {
+      setSectionView(nextSection);
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+      });
+    }
+  };
  const facultySummary = standardSubmittedScoreSummary(faculty, {
  partA: faculty.lectures?.reduce((a, r) =>a + n(r.score), 0) || 0,
  partB: faculty.journals?.reduce((a, r) =>a + n(r.score), 0) || 0,
@@ -318,36 +330,47 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false, revi
 <MyAppraisalForm faculty={faculty} hodData={hodData} setHodData={setHodData} reviewerLabel={reviewerLabel} sectionView={sectionView} />
 </fieldset>
  )}
+
  {["partA", "partB", "partC", "partD"].includes(sectionView) && !reviewLocked && (
 <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, margin: "12px 0 14px", flexWrap: "wrap" }}>
 <span style={{ color: "#64748b", fontSize: 11, fontWeight: 700 }}>{draftStatus}</span>
 <button
+ type="button"
  onClick={handleSaveDraft}
+ disabled={savingDraft}
+ style={{ padding: "10px 22px", background: "#fff", color: savingDraft ? "#94a3b8" : "#2563eb", border: "1.5px solid #2563eb", borderRadius: 7, cursor: savingDraft ? "not-allowed" : "pointer", fontWeight: 700, fontSize: 13, fontFamily: "inherit" }}
+>
+ {savingDraft ? "Saving..." : "Save as Draft"}
+</button>
+<button
+ type="button"
+ onClick={handleSaveAndNext}
  disabled={savingDraft}
  style={{ padding: "10px 22px", background: savingDraft ? "#94a3b8" : "#2563eb", color: "#fff", border: "none", borderRadius: 7, cursor: savingDraft ? "not-allowed" : "pointer", fontWeight: 700, fontSize: 13, fontFamily: "inherit" }}
 >
- {savingDraft ? "Saving..." : "Save Draft"}
+ {savingDraft ? "Saving..." : "Save & Next"}
 </button>
 </div>
  )}
 
  {sectionView === "summary" && (
-<div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 14, display: "grid", gap: 10, boxShadow: "0 1px 6px rgba(0,0,0,.06)" }}>
-<CompactSummaryCard
+<div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 14, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 14, boxShadow: "0 1px 6px rgba(0,0,0,.06)" }}>
+<ScoreCard
  title="Faculty Score"
- subtitle="Faculty submitted score for the engineering appraisal form."
+ subtitle="Self score for the engineering appraisal form."
  totals={{ partA: facultySummary.partA, partB: facultySummary.partB, partC: facultySummary.partC, partD: facultySummary.partD, total: facultySummary.total }}
  maxScores={{ partA: facultySummary.partAMax, partB: facultySummary.partBMax, partC: facultySummary.partCMax, partD: facultySummary.partDMax, grand: facultySummary.grandMax }}
  accent="#0ea5e9"
+ extraContent={<SummaryOtherInfoField value={summaryOtherInfoValueFrom(faculty)} readOnly rows={4} />}
 />
-<SummaryOtherInfoField value={summaryOtherInfoValueFrom(faculty)} readOnly rows={4} />
-<CompactSummaryCard
+<ScoreCard
  title={`${reviewerLabel} Score`}
  subtitle={`${reviewerLabel} score for the engineering appraisal form.`}
  totals={{ partA, partB, partC, partD, total }}
  maxScores={reviewerMaxScores}
- accent="#312e81"
  remarksTitle={`${reviewerLabel} Remarks`}
+ isFinal
+ accent="#7c3aed"
  remarksContent={(
 <textarea value={remarks} onChange={e =>setRemarks(e.target.value)} rows={4} readOnly={reviewLocked}
  placeholder="Enter your remarks, observations, and recommendations for this faculty member..."
@@ -633,6 +656,7 @@ return (
  const data = await fetchSavedAppraisal({
  facultyEmail: faculty.email,
  academicYear: faculty.academic_year || faculty.academicYear || APP_INFO.DEFAULT_AY || "2026-2027",
+ reviewerRole,
  });
  const form = data?.payload?.form || data?.form || {};
  const docs = data?.payload?.docs || data?.docs || {};

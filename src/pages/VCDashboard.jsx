@@ -1,9 +1,9 @@
 /* eslint-disable no-unused-vars, react-hooks/set-state-in-effect */
  import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Avatar, LogoutConfirmModal } from "../components/dashboard/dashboardPrimitives";
+import { Avatar, LogoutConfirmModal, ScoreCard } from "../components/dashboard/dashboardPrimitives";
 import { fetchNonTeachingQueueForRole, isNonTeachingReviewComplete } from "../services/nonTeachingWorkflow";
-import { fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, fetchSavedAppraisal, mergeFacultyInfo, ACR_DETAIL_POINTS, MAX_SCORES, APP_INFO, createAcrRows, buildReviewRemarks, openFullFormReport, SummaryOtherInfoField, summaryOtherInfoValueFrom, SCORE_LIMITS, clampScore, clampReviewScore, effectiveMaxScore, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewRowMaxForSection, reviewSectionScore, rowHasReviewableData, selfEffectivePartAMax, societyRowLocked, societyRowScore, standardReviewSummary, AppraisalHeaderImage, ViewDocsCell, SectionCard as SC, CreativeSchoolAuthorityReviewPanel, isCreativeSchool } from "../features/faculty-appraisal";
+import { fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, fetchSavedAppraisal, mergeFacultyInfo, ACR_DETAIL_POINTS, MAX_SCORES, APP_INFO, createAcrRows, buildReviewRemarks, openFullFormReport, SummaryOtherInfoField, summaryOtherInfoValueFrom, SCORE_LIMITS, clampScore, clampReviewScore, effectiveMaxScore, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewRowMaxForSection, reviewSectionScore, rowHasReviewableData, selfEffectivePartAMax, societyRowLocked, societyRowScore, standardReviewSummary, qualificationRowDescription, AppraisalHeaderImage, ViewDocsCell, SectionCard as SC, CreativeSchoolAuthorityReviewPanel, isCreativeSchool } from "../features/faculty-appraisal";
 
 import { DEAN_TRACKS, UNIVERSITY_SCHOOLS, normalizeHierarchyText } from "../constants/universityHierarchy";
 import { canReviewerRejectProfile, getSchoolKey, profileFromsessionStorage, rejectedStatusFor, visiblePreviousReviewRoles, isAppraisalFinalisedByVc, isPendingReviewStatusFor } from "../utils/hierarchy";
@@ -69,7 +69,7 @@ function SummaryBox({
 <div style={{ background: "#f8fafc", border: "1px solid #f1f5f9", borderRadius: 8, padding: "10px 12px", minWidth: 0, display: "flex", flexDirection: "column" }}>
 <div style={{ fontWeight: 800, color: accent, fontSize: 11, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 6 }}>{remarksTitle || `${title} Remarks`}</div>
 <div style={{ color: "#334155", fontSize: 12, lineHeight: 1.55, whiteSpace: "pre-wrap", flex: 1, maxHeight: 80, overflow: "auto" }}>
- {String(remarks || "").trim() || <span style={{ color: "#cbd5e1" }}>â€”</span>}
+ {String(remarks || "").trim() || <span style={{ color: "#cbd5e1" }}>-</span>}
 </div>
 </div>
  )}
@@ -113,7 +113,7 @@ function RoleBadge({ role }) {
 </span>
  );
 }
-// RO â†’ imported from shared
+// RO imported from shared
 function ScoreValue({ val, center }) {
  const empty = val === undefined || val === null || val === "";
  return<span style={{ fontSize: 11, fontFamily: "inherit", color: "#1e293b", display: "block", textAlign: center ? "center" : "left" }}>{empty ?<span style={{ color: "#cbd5e1" }}>-</span>: val}</span>;
@@ -221,13 +221,17 @@ const vcRoleMeta = (role) =>VC_CHAIN_ROLE_META[role] || {
 
 const vcScoreForRole = (row = {}, role) =>{
  const field = vcRoleMeta(role).field;
+ const directorAlias = role === "director"
+ ? (row?.dir ?? row?.dir_score ?? row?.dirScore ?? row?.dir_marks ?? row?.dirMarks)
+ : undefined;
  return row?.[field] ??
- row?.[`${field}_score`] ??
- row?.[`${field}Score`] ??
- row?.[`${field}_marks`] ??
- row?.[`${field}Marks`] ??
- (role === "center_head" ? (row.center_head_score ?? row.centerHeadScore ?? row.center_head_marks ?? row.centerHeadMarks) : undefined) ??
- row?.[`${role}_score`] ??
+  row?.[`${field}_score`] ??
+  row?.[`${field}Score`] ??
+  row?.[`${field}_marks`] ??
+  row?.[`${field}Marks`] ??
+  directorAlias ??
+  (role === "center_head" ? (row.center_head_score ?? row.centerHeadScore ?? row.center_head_marks ?? row.centerHeadMarks) : undefined) ??
+  row?.[`${role}_score`] ??
  row?.[`${role}Score`] ??
  row?.[`${role}_marks`] ??
  row?.[`${role}Marks`];
@@ -300,20 +304,29 @@ const preserveSavedReviewScores = (form = {}, source = {}) =>{
  return merged;
 };
 const VC_REPORT_PART_A_SECTIONS = [
- { key: "lectures", title: "A(i). Lectures / Tutorials / Practicals", max: 50, doc: "lec", fields: [["sem", "Semester"], ["code", "Course Code / Name"], ["planned", "Classes (as per course structure)"], ["conducted", "Classes Actually Conducted"], ["pctConducted", "% Conducted"]] },
- { key: "courseFile", title: "A(ii). Course File", max: 20, doc: "cf", fields: [["course", "Course / Paper"], ["title", "Title"], ["details", "IQAC Index Compliance (Yes/No, with proof)"]] },
- { key: "projects", title: "A(vi). Guided Students Project", max: 10, doc: "proj", fields: [["label", "Project Category"]] },
- { key: "quals", title: "A(viii). Qualification Enhancement", max: 10, doc: "qual", fields: [["label", "Category"]] },
- { key: "feedback", title: "Student Feedback", max: 10, doc: "fb", fields: [["code", "Course Code / Name"], ["fb1", "First Feedback(%)"], ["fb2", "Second Feedback(%)"]] },
- { key: "deptActs", title: "Departmental / School Activities", max: 20, doc: "dept", fields: [["activity", "Activity"], ["nature", "Nature"]] },
- { key: "uniActs", title: "University Level Activities", max: 30, doc: "uni", fields: [["activity", "Activity"], ["nature", "Nature"]] },
- { key: "society", title: "Contribution to Society", max: 10, doc: "soc", fields: [["label", "Activity"], ["details", "Details"]] },
- { key: "industry", title: "Industry Connect", max: 5, doc: "ind", fields: [["name", "Industry"], ["details", "Details"]] },
- { key: "acr", title: "(xi) Annual Confidential Report (ACR) - Max 50 marks", max: 50, doc: "acr", fields: [["label", "Attribute"]] },
+ { key: "lectures", title: "A1. Lectures / Tutorials / Practicals", max: 40, doc: "lec", fields: [["sem", "Semester"], ["code", "Course Code / Name"], ["planned", "Classes (as per course structure)"], ["conducted", "Classes Actually Conducted"], ["pctConducted", "% Conducted"]] },
+ { key: "courseFile", title: "A2. Course File", max: 20, doc: "cf", fields: [["course", "Course / Paper"], ["title", "Title"], ["details", "IQAC Index Compliance (Yes/No, with proof)"]] },
+ { key: "obeRows", title: "A5. Learning Outcomes Attainment & OBE Practice", max: 20, doc: "obe", fields: [["component", "Component"], ["evidence", "Evidence"]] },
+ { key: "projects", title: "A6. Guided Students Project", max: 20, doc: "proj", fields: [["label", "Project Category"]] },
+ { key: "mentoringRows", title: "A7. Student Mentoring & Counselling", max: 10, doc: "mentor", fields: [["activity", "Activity"], ["evidence", "Evidence"]] },
+ { key: "quals", title: "A8. Qualification Enhancement", max: 10, doc: "qual", fields: [["label", "Category"]] },
+ { key: "feedback", title: "A4. Student Feedback", max: 10, doc: "fb", fields: [["code", "Course Code / Name"], ["fb1", "First Feedback(%)"], ["fb2", "Second Feedback(%)"]] },
+];
+const VC_REPORT_PART_C_SECTIONS = [
+ { key: "uniActs", title: "C1. Administration at University Level", max: 50, doc: "uni", fields: [["activity", "Activity"], ["nature", "Nature"], ["period", "Period"]] },
+ { key: "deptActs", title: "C2. Administration at School Level", max: 30, doc: "dept", fields: [["activity", "Activity"], ["nature", "Nature"], ["period", "Period"]] },
+ { key: "eventRows", title: "C3. Event Organisation & Institutional Visibility", max: 20, doc: "event", fields: [["event", "Event / Contribution"], ["role", "Role"], ["date", "Date"], ["level", "Level"]] },
+ { key: "society", title: "C4. Outreach, Extension & Social Responsibility", max: 20, doc: "soc", fields: [["label", "Activity"], ["details", "Details"], ["date", "Date"]] },
+ { key: "industry", title: "C5. Industry Interaction & Linkages", max: 8, doc: "ind", fields: [["activity", "Activity"], ["partner", "Industry Partner"], ["date", "Date"]] },
+ { key: "alumniRows", title: "C6. Alumni Engagement & Networking", max: 10, doc: "alumni", fields: [["activity", "Activity"], ["details", "Details"], ["date", "Date"]] },
+ { key: "placementRows", title: "C7. Student Placement Mentoring & Career Development", max: 20, doc: "placement", fields: [["activityType", "Activity Type"], ["name", "Student / Company Name"], ["date", "Date"]] },
+];
+const VC_REPORT_PART_D_SECTIONS = [
+ { key: "acr", title: "D1. Annual Confidential Report (ACR)", max: 50, doc: "acr", showDocuments: false, fields: [["label", "Attribute"]] },
 ];
 const VC_REPORT_PART_B_SECTIONS = [
  { key: "journals", title: "B1. Journal Publications", max: 100, doc: "jour", fields: [["title", "Title"], ["journal", "Journal"], ["issn", "ISSN"], ["impactFactor", "Impact Factor"], ["authorPosition", "Author Position"]] },
- { key: "books", title: "B2. Books, Book Chapters & Edited Volumes", max: 30, doc: "book", fields: [["title", "Title"], ["book", "Publisher & ISBN"], ["pub", "Type (Book/Chapter/Editor/Translation)"], ["level", "Level (Intl./National/Local)"], ["coauth", "Co-authors from DYPIU"]] },
+ { key: "books", title: "B2. Books, Book Chapters & Edited Volumes", max: 30, doc: "book", fields: [["title", "Title"], ["book", "Publisher & ISBN"], ["pub", "Type"], ["level", "Level"], ["coauth", "Co-authors from DYPIU"]] },
  { key: "patents", title: "B3. Patents, Copyrights & IP and Product Development", max: 40, doc: "pat", fields: [["title", "Title"], ["type", "National / International"], ["status", "Status (Published/Granted)"], ["fileNo", "Filing / Grant No. & Date"]] },
  { key: "projects2", title: "B4. Funded Research Projects", max: 40, doc: "project2", fields: [["title", "Title of Project"], ["agency", "Funding Agency"], ["date", "Sanction Date"], ["amount", "Amount (₹)"], ["role", "PI / Co-PI"], ["status", "Status"]] },
  { key: "research", title: "B5. Research Guidance", max: 20, doc: "res", fields: [["degree", "Degree (PhD/PG)"], ["name", "Name of Student / Scholar"], ["status", "Status (Ongoing/Awarded)"], ["date", "Date"]] },
@@ -563,7 +576,7 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
 <tbody>{rows(person[key]).map((r, i) =>(
 <tr key={i} style={i % 2 ? { background: "#f8fafc" } : {}}>
 <td style={TDC}>{i + 1}</td>
- {fields.map(([field]) =><td key={field} style={TD}><RO val={r[field]} /></td>)}
+ {fields.map(([field]) =><td key={field} style={TD}><RO val={key === "quals" && field === "label" ? qualificationRowDescription(r) : r[field]} /></td>)}
 <td style={TDV}><ViewDocsCell docKey={`${docPfx}-${i}`} docs={docs} /></td>
  {renderScoreCells(r, key, i)}
 </tr>
@@ -844,7 +857,22 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  hasTotal: hasScoreValue(rawTotal),
  };
  };
- const previousSummaryCards = previousRoles.map((role) =>{
+ const personSchoolKey = getSchoolKey(person.school || person.schoolName || person.info?.school || "");
+ const isSoemrFacultyReview = personMode === "faculty" && personSchoolKey === "SoEMR";
+ const vcSummaryRoles = (() =>{
+ const roles = [];
+ if (personMode === "faculty") {
+ if (previousRoles.includes("center_head")) roles.push("center_head");
+ else if (isSoemrFacultyReview && previousRoles.includes("hod")) roles.push("hod");
+ if (previousRoles.includes("director")) roles.push("director");
+ if (previousRoles.includes("dean")) roles.push("dean");
+ return roles;
+ }
+ if (personMode === "hod") return ["director", "dean"].filter((role) =>previousRoles.includes(role));
+ if (personMode === "director") return previousRoles.includes("dean") ? ["dean"] : [];
+ return [];
+ })();
+ const previousSummaryCards = vcSummaryRoles.map((role) =>{
  const meta = vcRoleMeta(role);
  return {
  role,
@@ -914,6 +942,18 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  }
  };
 
+  const handleSaveAndNext = async () => {
+    await handleSaveDraft();
+    const NEXT_SECTION_MAP = { partA: "partB", partB: "partC", partC: "partD", partD: "summary" };
+    const nextSection = NEXT_SECTION_MAP[sectionView];
+    if (nextSection) {
+      setSectionView(nextSection);
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+      });
+    }
+  };
+
  const generateVcReport = () =>{
  if (!vcReviewCompleted) return;
  const reportForm = {
@@ -946,6 +986,8 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  docs: reportForm.docs,
  partASections: VC_REPORT_PART_A_SECTIONS,
  partBSections: VC_REPORT_PART_B_SECTIONS,
+ partCSections: VC_REPORT_PART_C_SECTIONS,
+ partDSections: VC_REPORT_PART_D_SECTIONS,
  totals: {
  partA: reviewLocked && String(person.vcPartA ?? "").trim() !== "" ? n(person.vcPartA) : partA,
  partB: reviewLocked && String(person.vcPartB ?? "").trim() !== "" ? n(person.vcPartB) : partB,
@@ -974,6 +1016,73 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  return { label: meta.label, val: vcTotalForRole(person, role), color: meta.color };
  }),
  { label: "Average Score", val: vcAverageBeforeVc(person, personMode, previousRoles), color: "#f59e0b" },
+ ];
+ const showAverageColumn = true;
+ const vcComparisonColumns = [
+ { key: "self", label: "Self", totals: facultyTotals, maxScores: facultyTotals.maxScores },
+ ...previousSummaryCards.map(({ role, meta, totals }) =>({ key: role, label: meta.shortLabel, totals, maxScores: totals.maxScores })),
+ ...(showAverageColumn ? [{ key: "average", label: "Average", totals: averageSummaryTotals, maxScores: averageSummaryTotals.maxScores }] : []),
+ { key: "vc", label: "VC", totals: reviewerSummaryTotals, maxScores: reviewerSummaryTotals.maxScores, final: true },
+ ];
+ const vcComparisonRows = [
+ { key: "partA", label: "Part A - Teaching & Learning", icon: "A" },
+ { key: "partB", label: "Part B - Research & Innovation", icon: "B" },
+ { key: "partC", label: "Part C - Administrative Contribution", icon: "C" },
+ { key: "partD", label: "Part D - Annual Confidential Report", icon: "D" },
+ { key: "total", label: "Grand Total", icon: "Σ" },
+ ];
+ const vcPartColors = { partA: "#6d5dfc", partB: "#0f9f9a", partC: "#ef6f61", partD: "#f59e0b", total: "#059669" };
+ const vcSummaryCards = [
+ {
+ key: "self",
+ title: personMode === "faculty" ? "Self Score" : "Self Score",
+ subtitle: "Self score for the engineering appraisal form.",
+ totals: facultyTotals,
+ maxScores: facultyTotals.maxScores,
+ accent: "#0ea5e9",
+ extraContent: <SummaryOtherInfoField value={summaryOtherInfoValueFrom(person)} readOnly rows={4} />,
+ },
+ ...previousSummaryCards.map(({ role, meta, totals, remarks: roleRemarks }) =>({
+ key: role,
+ title: `${meta.shortLabel} Score`,
+ subtitle: `${meta.shortLabel} score for the engineering appraisal form.`,
+ totals,
+ maxScores: totals.maxScores,
+ accent: meta.remarksColor || meta.color,
+ remarksTitle: `${meta.shortLabel} Remarks`,
+ remarksContent: <div style={{ color: "#334155", fontSize: 12, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{String(roleRemarks || "").trim() || "-"}</div>,
+ })),
+ ...(showAverageColumn ? [{
+ key: "average",
+ title: "Average Score",
+ subtitle: "Average across all reviewers.",
+ totals: averageSummaryTotals,
+ maxScores: averageSummaryTotals.maxScores,
+ accent: "#f59e0b",
+ partsLayout: "horizontal",
+ cardStyle: { gridColumn: "1 / -1" },
+ }] : []),
+ {
+ key: "vc",
+ title: "Vice Chancellor Score",
+ subtitle: "Vice Chancellor final score.",
+ totals: reviewerSummaryTotals,
+ maxScores: reviewerSummaryTotals.maxScores,
+ accent: "#7c3aed",
+ isFinal: true,
+ cardStyle: { gridColumn: "1 / -1" },
+ sideContent: (
+ <div style={{ background: "#f8fbff", border: "1px solid #e9d5ff", borderRadius: 10, padding: "12px 14px", display: "grid", gap: 9, alignContent: "start" }}>
+ <div>
+ <div style={{ color: "#5b21b6", fontSize: 12, fontWeight: 900, textTransform: "uppercase", letterSpacing: 0.5 }}>Vice Chancellor Remarks</div>
+ <div style={{ color: "#64748b", fontSize: 11, marginTop: 2 }}>Enter your assessment remarks and confirm before submitting</div>
+ </div>
+ <textarea value={remarks} readOnly={reviewLocked} onChange={e =>setRemarks(e.target.value)} rows={8}
+ placeholder="Write your assessment remarks here..."
+ style={{ width: "100%", minHeight: 210, boxSizing: "border-box", border: "1px solid #cbd5e1", borderRadius: 10, padding: "12px 14px", fontFamily: "inherit", fontSize: 12, resize: "vertical", background: reviewLocked ? "#f8fafc" : "#fff", color: "#1e293b", outline: "none", lineHeight: 1.6 }} />
+ </div>
+ ),
+ },
  ];
 
  return (
@@ -1043,71 +1152,36 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  {["partA", "partB", "partC", "partD"].includes(sectionView) && !reviewLocked && (
 <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, margin: "12px 0 14px", flexWrap: "wrap" }}>
 <span style={{ color: "#64748b", fontSize: 11, fontWeight: 700 }}>{draftStatus}</span>
-<button onClick={handleSaveDraft} disabled={savingDraft}
+<button type="button" onClick={handleSaveDraft} disabled={savingDraft}
+ style={{ padding: "8px 14px", background: "#fff", color: savingDraft ? "#94a3b8" : "#2563eb", border: "1.5px solid #2563eb", borderRadius: 7, cursor: savingDraft ? "not-allowed" : "pointer", fontWeight: 800, fontSize: 12, fontFamily: "inherit" }}>
+ {savingDraft ? "Saving..." : "Save as Draft"}
+</button>
+<button type="button" onClick={handleSaveAndNext} disabled={savingDraft}
  style={{ padding: "8px 14px", background: savingDraft ? "#94a3b8" : "#2563eb", color: "#fff", border: "none", borderRadius: 7, cursor: savingDraft ? "not-allowed" : "pointer", fontWeight: 800, fontSize: 12, fontFamily: "inherit" }}>
- {savingDraft ? "Saving..." : "Save Draft"}
+ {savingDraft ? "Saving..." : "Save & Next"}
 </button>
 </div>
  )}
 
- {/* â”€â”€ Summary â”€â”€ */}
+ {/* Summary */}
  {sectionView === "summary" && (
 <div style={{ display: "grid", gap: 14 }}>
 
 
- {/* â‘¡ Self Score card */}
-<SummaryBox title={personMode === "faculty" ? "Faculty Score" : "Self Score"} totals={facultyTotals} maxScores={facultyTotals.maxScores} accent="#0ea5e9" roleScoreLabel={`${personMode === "faculty" ? "Faculty submitted" : "Self"} score for the engineering appraisal form.`} />
-
- {/* â‘¢ Any Other Information */}
-<div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 6px rgba(15,23,42,0.05)" }}>
-<div style={{ background: "#f8fafc", padding: "10px 16px", borderBottom: "1px solid #e2e8f0", display: "flex", alignItems: "center", gap: 8 }}>
-<div style={{ width: 3, height: 16, background: "#94a3b8", borderRadius: 2 }} />
-<span style={{ fontWeight: 800, fontSize: 11, color: "#475569", textTransform: "uppercase", letterSpacing: 0.7 }}>Any Other Information Not Covered Above</span>
-</div>
-<div style={{ padding: "12px 16px" }}>
-<SummaryOtherInfoField value={summaryOtherInfoValueFrom(person)} readOnly rows={5} />
-</div>
+<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(330px, 1fr))", gap: 16 }}>
+{vcSummaryCards.map((card) =>(
+<ScoreCard key={card.key} {...card} />
+))}
 </div>
 
- {/* â‘£ Reviewer Scores section */}
- {previousSummaryCards.length >0 && (
-<>
-<div style={{ display: "flex", alignItems: "center", gap: 12, margin: "2px 0" }}>
-<div style={{ flex: 1, height: 1, background: "linear-gradient(90deg,transparent,#e2e8f0)" }} />
-<div style={{ display: "flex", alignItems: "center", gap: 6, background: "#f1f5f9", borderRadius: 20, padding: "4px 14px", border: "1px solid #e2e8f0" }}>
-<div style={{ width: 6, height: 6, borderRadius: "50%", background: "#94a3b8" }} />
-<span style={{ fontSize: 10, fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.8 }}>Reviewer Scores</span>
-</div>
-<div style={{ flex: 1, height: 1, background: "linear-gradient(90deg,#e2e8f0,transparent)" }} />
-</div>
- {previousSummaryCards.map(({ role, meta, totals, remarks: roleRemarks }) =>(
-<SummaryBox key={role} title={`${meta.shortLabel} Score`} totals={totals} maxScores={totals.maxScores} accent={meta.remarksColor || meta.color} roleScoreLabel={`${meta.shortLabel} score for the engineering appraisal form.`} remarks={roleRemarks} remarksTitle={`${meta.shortLabel} Remarks`} />
- ))}
-</>
- )}
-
- {/* â‘¤ Final Scores â€” 2-column grid */}
-<div style={{ display: "flex", alignItems: "center", gap: 12, margin: "2px 0" }}>
-<div style={{ flex: 1, height: 1, background: "linear-gradient(90deg,transparent,#e2e8f0)" }} />
-<div style={{ display: "flex", alignItems: "center", gap: 6, background: "#fdf4ff", borderRadius: 20, padding: "4px 14px", border: "1px solid #e9d5ff" }}>
-<div style={{ width: 6, height: 6, borderRadius: "50%", background: "#a78bfa" }} />
-<span style={{ fontSize: 10, fontWeight: 800, color: "#6d28d9", textTransform: "uppercase", letterSpacing: 0.8 }}>Final Assessment</span>
-</div>
-<div style={{ flex: 1, height: 1, background: "linear-gradient(90deg,#e2e8f0,transparent)" }} />
-</div>
-<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-<SummaryBox title="Average Score" totals={averageSummaryTotals} maxScores={averageSummaryTotals.maxScores} accent="#f59e0b" roleScoreLabel="Average across all reviewers." />
-<SummaryBox title="Vice Chancellor Score" totals={reviewerSummaryTotals} maxScores={reviewerSummaryTotals.maxScores} accent="#7c3aed" roleScoreLabel="Vice Chancellor final score." />
-</div>
-
- {/* â‘¥ VC Remarks & Actions */}
+ {/* VC Remarks & Actions */}
 <div style={{ background: "#fff", border: "1px solid #a5b4fc", borderRadius: 16, overflow: "hidden", boxShadow: "0 8px 24px rgba(79,70,229,0.10)" }}>
 
  {/* Header strip */}
 <div style={{ padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #c7d2fe", background: "#f5f7ff" }}>
 <div>
-<div style={{ fontSize: 15, fontWeight: 900, color: "#1e293b", letterSpacing: -0.3 }}>Vice Chancellor Final Remarks</div>
-<div style={{ fontSize: 10, color: "#64748b", marginTop: 3 }}>Enter your assessment remarks and confirm before submitting</div>
+<div style={{ fontSize: 15, fontWeight: 900, color: "#1e293b", letterSpacing: -0.3 }}>Review Confirmation</div>
+<div style={{ fontSize: 10, color: "#64748b", marginTop: 3 }}>Confirm before submitting the final assessment</div>
 </div>
 <div style={{ display: "flex", gap: 10, alignItems: "stretch" }}>
 <div style={{ background: "#fff", border: "1px solid #c7d2fe", borderRadius: 10, padding: "7px 16px", textAlign: "center" }}>
@@ -1119,14 +1193,6 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
 
  {/* Body */}
 <div style={{ padding: "18px 20px", display: "grid", gap: 14 }}>
-
- {/* Textarea */}
-<div>
-<div style={{ fontSize: 10, fontWeight: 700, color: "#475569", marginBottom: 7, textTransform: "uppercase", letterSpacing: 0.6 }}>Your Remarks</div>
-<textarea value={remarks} readOnly={reviewLocked} onChange={e =>setRemarks(e.target.value)} rows={4}
- placeholder="Write your assessment remarks hereâ€¦"
- style={{ width: "100%", boxSizing: "border-box", border: "1px solid #cbd5e1", borderRadius: 10, padding: "12px 14px", fontFamily: "inherit", fontSize: 12, resize: "vertical", background: reviewLocked ? "#f8fafc" : "#fff", color: "#1e293b", outline: "none", lineHeight: 1.6 }} />
-</div>
 
  {/* Confirmation checkbox */}
  {!reviewLocked && (
@@ -1142,14 +1208,19 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
 <button onClick={onBack} style={{ padding: "9px 16px", background: "#fff", color: "#475569", border: "1px solid #cbd5e1", borderRadius: 9, cursor: "pointer", fontWeight: 700, fontSize: 12, fontFamily: "inherit" }}>Close</button>
 <button onClick={generateVcReport} disabled={!vcReviewCompleted}
- style={{ padding: "9px 16px", background: vcReviewCompleted ? "rgba(255,255,255,0.93)" : "rgba(255,255,255,0.08)", color: vcReviewCompleted ? "#4c1d95" : "#6b7280", border: "none", borderRadius: 9, cursor: vcReviewCompleted ? "pointer" : "not-allowed", fontWeight: 800, fontSize: 12, fontFamily: "inherit" }}>
- ðŸ“„ Generate Report
+ style={{ minWidth: 170, height: 42, padding: "0 20px", background: vcReviewCompleted ? "linear-gradient(135deg,#7c3aed,#581c87)" : "#cbd5e1", color: "#fff", border: "none", borderRadius: 8, cursor: vcReviewCompleted ? "pointer" : "not-allowed", fontWeight: 900, fontSize: 13, fontFamily: "inherit", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 9, boxShadow: vcReviewCompleted ? "0 10px 20px rgba(88,28,135,0.20)" : "none" }}>
+ <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+  <path d="M7 3h7l4 4v14H7V3Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+  <path d="M14 3v5h4" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+  <path d="M9 12h6M9 16h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+ </svg>
+ <span>Generate Report</span>
 </button>
  {!reviewLocked && (
 <>
 <button onClick={handleSaveDraft} disabled={savingDraft}
  style={{ padding: "9px 16px", background: savingDraft ? "rgba(255,255,255,0.08)" : "linear-gradient(135deg,#1d4ed8,#3b82f6)", color: "#fff", border: "none", borderRadius: 9, cursor: savingDraft ? "not-allowed" : "pointer", fontWeight: 700, fontSize: 12, fontFamily: "inherit", boxShadow: savingDraft ? "none" : "0 3px 12px rgba(37,99,235,0.4)" }}>
- {savingDraft ? "Savingâ€¦" : "Save Draft"}
+ {savingDraft ? "Saving..." : "Save Draft"}
 </button>
  {canReject && (
 <button onClick={() =>{ if (window.confirm("Reject this appraisal and send it back to the user for editing?")) { onSubmit(person.id, { partA, partB, partC, partD, total }, remarks, personMode, buildVcSectionScores(person, vcData), reviewConfirmed, "rejected"); } }}
@@ -1161,7 +1232,7 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
 <button onClick={() =>onSubmit(person.id, { partA, partB, partC, partD, total }, remarks, personMode, buildVcSectionScores(person, vcData), reviewConfirmed)}
  disabled={!reviewConfirmed || !remarks.trim()}
  style={{ padding: "9px 22px", background: (reviewConfirmed && remarks.trim()) ? "linear-gradient(135deg,#047857,#10b981)" : "rgba(255,255,255,0.06)", color: "#fff", border: "none", borderRadius: 9, cursor: (reviewConfirmed && remarks.trim()) ? "pointer" : "not-allowed", fontWeight: 900, fontSize: 12, fontFamily: "inherit", letterSpacing: 0.2, boxShadow: (reviewConfirmed && remarks.trim()) ? "0 4px 16px rgba(4,120,87,0.5)" : "none" }}>
- {finalisedByVc ? "Edit & Resubmit" : "âœ“ Submit VC Review"}
+ {finalisedByVc ? "Edit & Resubmit" : "Submit VC Review"}
 </button>
 </>
  )}
@@ -1241,12 +1312,12 @@ function PersonCard({ person, role, onReview, schoolColor, loading = false }) {
  {score >0 || tile.isVc ? (
 <>
 <div style={{ fontSize: 15, fontWeight: 900, color: tile.color, lineHeight: 1 }}>
- {score >0 ? score.toFixed(1) : "â€”"}<span style={{ fontSize: 8, color: "#cbd5e1", fontWeight: 600 }}>/{MAX_SCORES.GRAND_TOTAL}</span>
+ {score >0 ? score.toFixed(1) : "-"}<span style={{ fontSize: 8, color: "#cbd5e1", fontWeight: 600 }}>/{MAX_SCORES.GRAND_TOTAL}</span>
 </div>
 <ScoreBar score={score} max={MAX_SCORES.GRAND_TOTAL} color={tile.color} />
 </>
  ) : (
-<div style={{ fontSize: 15, fontWeight: 900, color: "#cbd5e1" }}>â€”</div>
+<div style={{ fontSize: 15, fontWeight: 900, color: "#cbd5e1" }}>-</div>
  )}
 </div>
  );
@@ -1257,17 +1328,17 @@ function PersonCard({ person, role, onReview, schoolColor, loading = false }) {
 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
  {remarkTiles.map((item) =>(
 <div key={item.label} style={{ background: item.bg, borderRadius: 7, padding: "6px 10px", fontSize: 10, color: item.color, borderLeft: `3px solid ${item.border}` }}>
-<span style={{ fontWeight: 800 }}>{item.label}:</span>{" "}{item.value.slice(0, 55)}{item.value.length >55 ? "â€¦" : ""}
+<span style={{ fontWeight: 800 }}>{item.label}:</span>{" "}{item.value.slice(0, 55)}{item.value.length >55 ? "..." : ""}
 </div>
  ))}
 </div>
  )}
 
 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #f1f5f9", paddingTop: 10 }}>
-<div style={{ fontSize: 9, color: "#94a3b8", letterSpacing: 0.2 }}>Submitted: {person.submittedOn || "â€”"}</div>
+<div style={{ fontSize: 9, color: "#94a3b8", letterSpacing: 0.2 }}>Submitted: {person.submittedOn || "-"}</div>
 <button className="vc-action-button" onClick={() =>onReview(person, personMode)} disabled={loading}
  style={{ fontSize: 11, padding: "7px 16px", background: loading ? "#94a3b8" : isVcReviewed(person) ? "linear-gradient(135deg,#1e293b,#334155)" : `linear-gradient(135deg,${cardColor},${cardColor}cc)`, color: "#fff", border: "none", borderRadius: 8, cursor: loading ? "wait" : "pointer", fontWeight: 800, fontFamily: "inherit", letterSpacing: 0.2, boxShadow: loading ? "none" : `0 4px 12px ${cardColor}44` }}>
- {loading ? "Openingâ€¦" : isVcReviewed(person) ? "View Review" : "Review Form"}
+ {loading ? "Opening..." : isVcReviewed(person) ? "View Review" : "Review Form"}
 </button>
 </div>
 </div>
@@ -1375,19 +1446,19 @@ function NonTeachingCard({ item, onReview }) {
 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
  {item.form?.roRemarks && (
 <div style={{ background: "#eff6ff", borderLeft: "3px solid #1d4ed8", borderRadius: 7, padding: "6px 10px", color: "#1e40af", fontSize: 10 }}>
-<span style={{ fontWeight: 800 }}>RO:</span>{" "}{item.form.roRemarks.slice(0, 70)}{item.form.roRemarks.length >70 ? "â€¦" : ""}
+<span style={{ fontWeight: 800 }}>RO:</span>{" "}{item.form.roRemarks.slice(0, 70)}{item.form.roRemarks.length >70 ? "..." : ""}
 </div>
  )}
  {item.form?.registrarRemarks && (
 <div style={{ background: "#ecfeff", borderLeft: "3px solid #155e75", borderRadius: 7, padding: "6px 10px", color: "#155e75", fontSize: 10 }}>
-<span style={{ fontWeight: 800 }}>Registrar:</span>{" "}{item.form.registrarRemarks.slice(0, 70)}{item.form.registrarRemarks.length >70 ? "â€¦" : ""}
+<span style={{ fontWeight: 800 }}>Registrar:</span>{" "}{item.form.registrarRemarks.slice(0, 70)}{item.form.registrarRemarks.length >70 ? "..." : ""}
 </div>
  )}
 </div>
  )}
 
 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #f1f5f9", paddingTop: 10 }}>
-<div style={{ fontSize: 9, color: "#94a3b8" }}>Submitted: {item.submittedOn || "â€”"}</div>
+<div style={{ fontSize: 9, color: "#94a3b8" }}>Submitted: {item.submittedOn || "-"}</div>
 <button className="vc-action-button" type="button" onClick={() =>onReview(item)} style={{ fontSize: 11, padding: "7px 16px", background: reviewed ? "linear-gradient(135deg,#1e293b,#334155)" : `linear-gradient(135deg,${cardColor},#0ea5e9)`, color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontWeight: 800, fontFamily: "inherit", boxShadow: `0 4px 12px ${cardColor}44` }}>
  {reviewed ? "View Review" : "Review Form"}
 </button>
@@ -1675,6 +1746,7 @@ export default function VCDashboard() {
  const data = await fetchSavedAppraisal({
  facultyEmail: person.email,
  academicYear,
+ reviewerRole: "vc",
  });
  const form = data?.payload?.form || data?.form || {};
  const docs = data?.payload?.docs || data?.docs || {};
@@ -1732,7 +1804,7 @@ export default function VCDashboard() {
 
 <button className="vc-sidebar-nav" onClick={() =>setReviewing(null)}
  style={{ background: "rgba(99,102,241,0.18)", border: "none", borderRadius: 8, padding: "10px 11px", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, width: "100%", fontFamily: "inherit", transition: "background 0.15s" }}>
-<span className="vc-sidebar-nav-icon" style={{ fontSize: 16 }}>ðŸ“‹</span>
+<span className="vc-sidebar-nav-icon" style={{ fontSize: 12, fontWeight: 900 }}>SR</span>
 <div style={{ flex: 1, textAlign: "left" }}>
 <div style={{ color: "#e2e8f0", fontWeight: 700, fontSize: 12 }}>School Reviews</div>
 <div style={{ color: "#64748b", fontSize: 10, marginTop: 1 }}>{totalPending} awaiting</div>
@@ -1799,7 +1871,7 @@ export default function VCDashboard() {
  style={{ width: "100%", display: "flex", alignItems: "center", gap: 9, background: "none", border: "1px solid #374151", borderRadius: 8, padding: "9px 11px", cursor: "pointer", fontFamily: "inherit" }}
  onMouseEnter={e =>e.currentTarget.style.background = "#1e293b"}
  onMouseLeave={e =>e.currentTarget.style.background = "none"}>
-<span style={{ fontSize: 15 }}>ðŸšª</span>
+<span style={{ fontSize: 12, fontWeight: 900 }}>OUT</span>
 <span style={{ color: "#f87171", fontWeight: 700, fontSize: 12 }}>Logout</span>
 </button>
 </aside>
@@ -1924,7 +1996,7 @@ export default function VCDashboard() {
  onClick={() =>setShowLogoutModal(false)}>
 <div style={{ background: "#fff", borderRadius: 20, padding: "36px 40px", maxWidth: 360, width: "90%", boxShadow: "0 32px 80px rgba(0,0,0,0.3)", display: "flex", flexDirection: "column", alignItems: "center", gap: 20, fontFamily: "inherit" }}
  onClick={e =>e.stopPropagation()}>
-<div style={{ width: 60, height: 60, borderRadius: "50%", background: "linear-gradient(135deg,#fee2e2,#fecaca)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, boxShadow: "0 8px 20px rgba(239,68,68,0.25)" }}>ðŸšª</div>
+<div style={{ width: 60, height: 60, borderRadius: "50%", background: "linear-gradient(135deg,#fee2e2,#fecaca)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 900, color: "#dc2626", boxShadow: "0 8px 20px rgba(239,68,68,0.25)" }}>OUT</div>
 <div style={{ textAlign: "center" }}>
 <div style={{ fontWeight: 900, fontSize: 18, color: "#0f172a", marginBottom: 8, letterSpacing: -0.3 }}>Confirm Logout</div>
 <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.7 }}>

@@ -2,7 +2,7 @@
 /* eslint-disable no-unused-vars, react-hooks/preserve-manual-memoization, react-refresh/only-export-components */
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Avatar, LogoutConfirmModal, ScoreBar, StatusBadge } from "../../../../components/dashboard/dashboardPrimitives";
+import { Avatar, LogoutConfirmModal, ScoreBar, ScoreCard, StatusBadge } from "../../../../components/dashboard/dashboardPrimitives";
 import { getSchoolByValue, getSchoolKey } from "../../../../constants/universityHierarchy";
 import { api } from "../../../../services/api";
 import {
@@ -31,7 +31,6 @@ import {
   courseFileRowScore,
   effectiveMaxScore,
   feedbackAverage,
-  feedbackRowScore,
   feedbackSectionScore,
   innovativeSelectionsFromDetails,
   innovativeTeachingScore,
@@ -280,7 +279,7 @@ export const PART_A_SECTIONS = [
 
 export const PART_B_SECTIONS = [
   { key: "journals", title: "B1. Journal Publications / Academic Research Papers", max: 60, doc: "jour", fields: [["title", "Title (with page nos.)"], ["journal", "Journal Details"], ["doi", "DOI No."], ["index", "Indexing (Q1/Q2/Q3/Q4)"], ["impact", "Impact Factor"], ["coAuthors", "Co-authors"], ["firstAuthor", "First Author?"]] },
-  { key: "books", title: "B2. Books, Book Chapters & Edited Volumes", max: 30, doc: "book", fields: [["title", "Title"], ["publisher", "Publisher & ISBN"], ["type", "Type (Book/Chapter/Editor/Translation)"], ["level", "Level (Intl./National/Local)"], ["coAuthors", "Co-authors from DYPIU"]] },
+  { key: "books", title: "B2. Books, Book Chapters & Edited Volumes", max: 30, doc: "book", fields: [["title", "Title"], ["publisher", "Publisher & ISBN"], ["type", "Type"], ["level", "Level"], ["coAuthors", "Co-authors from DYPIU"]] },
   { key: "popularWritings", title: "B3 (Part 1). Popular Writing — Newspaper & Magazine Articles, Columns & Reviews", max: 40, doc: "pop", fields: [["title", "Title of Article / Column"], ["pubName", "Publication Name & Date"], ["type", "Type (Article/Column/Review/Op-ed)"], ["circulation", "Circulation (Local/Regional/National/Intl.)"]] },
   { key: "ipr", title: "B3 (Part 2). Patents, Copyrights, IP & Creative Product Development", max: 40, doc: "ipr", fields: [["title", "Title"], ["scope", "National / International"], ["status", "Status (Published/Granted)"], ["fileNo", "Filing / Grant No. & Date"]] },
   { key: "externalProjects", title: "B4. Funded Research / Creative Projects & Grants", max: 20, doc: "ext", fields: [["title", "Title of Project / Grant"], ["agency", "Funding Agency"], ["date", "Sanction Date"], ["amount", "Amount (₹)"], ["role", "PI / Co-PI"], ["status", "Status"]] },
@@ -569,7 +568,7 @@ const DROPDOWN_FIELD_OPTIONS = {
   },
   research: {
     degree: ["PhD", "PG"],
-    status: ["Ongoing", "Awarded", "Submitted"],
+    status: ["Ongoing", "Awarded"],
   },
   consultancy: {
     nature: ["Consultancy", "Corporate Training", "Creative Commission", "Technical Advisory", "Testing / Retainership"],
@@ -611,7 +610,7 @@ const DROPDOWN_FIELD_OPTIONS = {
   },
   events: {
     role: ["Convener", "Co-Convener", "Organising Team Lead", "Member", "Coordinator"],
-    level: ["University / Institutional", "State / Regional", "National", "International"],
+    level: ["University", "National", "International"],
   },
   industry: {
     activity: ["MOU Signed", "Center of Excellence (CoE)", "Placement Drive", "Guest Lecture / Workshop", "Faculty Industry Attachment", "Joint Research Project"],
@@ -633,22 +632,46 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
   const selfLocked = mode === "self" && section.key === "acr";
   const earned = scoreSectionRows(section.key, rows, section.max);
   const hideIndividualB8Summary = section.key === "fdps" || section.key === "training";
-  const totalLabel = ["feedback"].includes(section.key)
-    ? `Average Score (Max ${section.max})`
+  const totalLabel = section.key === "feedback"
+    ? `Faculty Score (Max ${section.max})`
     : `Total Score (Max ${section.max})`;
   const totalLabelColSpan = 1 + section.fields.length + (section.key === "feedback" ? 1 : 0) + 2;
   const sectionTotalScore = (sourceRows = rows, scoreKey = "score") => {
     if (scoreKey !== "score") return reviewSectionScore(section.key, sourceRows, section.max, scoreKey);
-    if (section.key === "feedback" && scoreKey === "score") return feedbackSectionScore(sourceRows, section.max);
     return scoreSectionRows(section.key, sourceRows, section.max, scoreKey);
+  };
+  const renderHeaderLabel = (label) => {
+    const text = String(label);
+    return (
+      <span style={{ display: "block", maxWidth: "100%", whiteSpace: "normal", overflowWrap: "anywhere", wordBreak: "break-word", lineHeight: 1.25 }}>
+        {text}
+      </span>
+    );
+  };
+  const columnWidthFor = (key) => {
+    if (section.key === "feedback") {
+      return {
+        code: "28%",
+        fb1: "15%",
+        fb2: "15%",
+      }[key];
+    }
+    if (section.key !== "books") return undefined;
+    return {
+      title: "14%",
+      publisher: "14%",
+      type: "15%",
+      level: "14%",
+      coAuthors: "14%",
+    }[key];
   };
 
   if (section.key === "acr" && mode === "self") {
     const acrRows = createAcrRows(rows);
     const acrTotal = scoreSectionRows(section.key, acrRows, section.max);
     return (
-      <SectionShell title="(xi) Annual Confidential Report (ACR) - Max 50 marks" max={section.max} earned={acrTotal} accent={ACCENT2} showScoreSummary={false}>
-        <div style={{ overflowX: "auto" }}>
+      <SectionShell title="Part D - Annual Confidential Report (ACR) - Max 50 marks" max={section.max} earned={acrTotal} accent={ACCENT2} showScoreSummary={false}>
+        <div style={{ overflowX: "visible", width: "100%" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
             <thead>
               <tr>
@@ -679,7 +702,7 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
   }
 
   const rowSelfScore = (row) => {
-    if (section.key === "feedback") return feedbackRowScore(row, section.max);
+    if (section.key === "feedback") return clampScore(row.score, section.max);
     if (section.key === "courseFile") return courseFileRowScore(row);
     if (section.key === "research") return String(row.score ?? "").trim() !== "" ? clampScore(row.score, researchGuidanceRowMax(row)) : researchGuidanceScore(row);
     if (section.key === "society") return societyRowScore(row);
@@ -752,16 +775,16 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
   return (
     <SectionShell title={section.title} max={section.max} earned={earned} accent={ACCENT2}>
       <>
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+        <div style={{ overflowX: "visible", width: "100%" }}>
+          <table style={{ ...tableStyle, tableLayout: section.key === "feedback" || section.key === "books" ? "fixed" : tableStyle.tableLayout }}>
             <thead>
               <tr>
-                <th style={thStyle}>SN</th>
-                {section.fields.map(([, label]) => <th key={label} style={thStyle}>{label}</th>)}
-                {section.key === "feedback" && <th style={thStyle}>Average</th>}
-                <th style={thStyle}>Attachment</th>
-                <th style={thStyle}>View Docs</th>
-                <th style={thStyle}>Faculty Score</th>
+                <th style={{ ...thStyle, width: section.key === "feedback" ? "5%" : section.key === "books" ? "5%" : 46 }}>SN</th>
+                {section.fields.map(([key, label]) => <th key={label} style={{ ...thStyle, width: columnWidthFor(key) }}>{renderHeaderLabel(label)}</th>)}
+                {section.key === "feedback" && <th style={{ ...thStyle, width: "10%" }}>Average</th>}
+                <th style={{ ...thStyle, width: section.key === "feedback" ? "9%" : section.key === "books" ? "9%" : undefined }}>Attachment</th>
+                <th style={{ ...thStyle, width: section.key === "feedback" ? "8%" : section.key === "books" ? "8%" : undefined }}>View Docs</th>
+                <th style={{ ...thStyle, width: section.key === "feedback" ? "10%" : section.key === "books" ? "7%" : undefined }}>Faculty Score</th>
                 {mode === "review" && previousRoles.map((role) => <th key={role} style={thStyle}>{roleLabel(role)} Score</th>)}
                 {mode === "review" && <th style={thStyle}>{roleLabel(currentRole)} Score</th>}
               </tr>
@@ -770,7 +793,7 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
               {rows.map((row, index) => {
                 const socRowLocked = section.key === "society" && societyRowLocked(row);
                 const rowReviewable = rowHasReviewableData(section.key, row);
-                const reviewerCanScoreRow = rowReviewable || currentRole === "director";
+                const reviewerCanScoreRow = rowReviewable || currentRole === "director" || currentRole === "vc";
                 const currentRowMax = reviewRowMaxForSection(section.key, row, section.max);
                 const displayScore = (value) => reviewerCanScoreRow && String(value ?? "").trim() ? clampScore(value, currentRowMax) : "";
                 return (
@@ -778,7 +801,13 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
                     <td style={tdCenter}>{index + 1}</td>
                     {section.fields.map(([key, , readOnlyField]) => (
                       <td key={key} style={tdStyle}>
-                        {mode !== "self" ? <RO value={row[key]} /> : key === "first" ? (
+                        {mode !== "self" ? (
+                          key === "pctConducted" ? (
+                            <RO value={row.pctConducted || (Number(row.planned) > 0 && Number(row.conducted) >= 0 ? `${((Number(row.conducted) / Number(row.planned)) * 100).toFixed(1)}%` : "")} placeholder="%" center />
+                          ) : (
+                            <RO value={row[key]} />
+                          )
+                        ) : key === "first" ? (
                           <select
                             value={row[key] || ""}
                             disabled={!editableSelf || readOnlyField || selfLocked}
@@ -828,7 +857,13 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
                             ))}
                           </select>
                         ) : key === "pctConducted" ? (
-                          <RO value={row.pctConducted || (Number(row.planned) > 0 && Number(row.conducted) >= 0 ? `${((Number(row.conducted) / Number(row.planned)) * 100).toFixed(1)}%` : "")} placeholder="%" center />
+                          <TI
+                            value={row.pctConducted || (Number(row.planned) > 0 && Number(row.conducted) >= 0 ? `${((Number(row.conducted) / Number(row.planned)) * 100).toFixed(1)}%` : "")}
+                            onChange={(value) => updateRow(index, "pctConducted", value)}
+                            center
+                            placeholder="%"
+                            readOnly={!editableSelf || readOnlyField || selfLocked || socRowLocked}
+                          />
                         ) : (
                           <>
                             <TI value={row[key]} type={NUMERIC_KEYS.has(key) ? "number" : "text"} center={section.key === "courseFile" && key === "title"} placeholder={placeholderForField(section.key, key)} max={key === "fb1" || key === "fb2" ? SCORE_LIMITS.feedbackAverage : undefined} deferClampWhileTyping={key === "fb1" || key === "fb2"} textOnly={TEXT_ONLY_KEYS.has(key) && !(section.key === "courseFile" && key === "title")} readOnly={!editableSelf || readOnlyField || selfLocked || socRowLocked} onChange={(value) => updateRow(index, key, value)} />
@@ -849,9 +884,7 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
                     <td style={tdStyle}><ViewCell id={`${section.doc}-${index}`} docs={docs} /></td>
                     <td style={tdCenter}>
                       {mode === "self"
-                        ? section.key === "feedback"
-                          ? <RO value={row.fb1 || row.fb2 ? feedbackRowScore(row, section.max).toFixed(1) : ""} center />
-                          : section.autoScore
+                        ? section.autoScore
                             ? <RO value={rowSelfScore(row) ? rowSelfScore(row).toFixed(1) : ""} center />
                             : <TI value={row.score} type="number" center placeholder="Marks" max={section.rowMax ? (typeof section.rowMax === "function" ? section.rowMax(row) : section.rowMax) : section.max} readOnly={!editableSelf || section.selfReadOnlyScore || selfLocked || socRowLocked} onChange={(value) => updateRow(index, "score", value)} />
                         : <RO value={rowSelfScore(row) ? rowSelfScore(row).toFixed(1) : ""} center />}
@@ -866,16 +899,16 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
                 );
               })}
               {!hideIndividualB8Summary && (
-                <tr style={{ background: "#eef2ff", borderTop: "1px solid #c7d2fe" }}>
-                  <td style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center" }} colSpan={totalLabelColSpan}>{totalLabel}</td>
-                  <td style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center" }}>{earned.toFixed(1)}</td>
+                <tr className="appraisal-total-row" style={{ background: "#f0f3ff", borderTop: "1px solid #c7d2fe" }}>
+                  <td style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center", background: "#f0f3ff" }} colSpan={totalLabelColSpan}>{totalLabel}</td>
+                  <td style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center", background: "#f0f3ff" }}>{earned.toFixed(1)}</td>
                   {mode === "review" && previousRoles.map((role) => (
-                    <td key={role} style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center" }}>
+                    <td key={role} style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center", background: "#f0f3ff" }}>
                       {sectionTotalScore(rows, role).toFixed(1)}
                     </td>
                   ))}
                   {mode === "review" && (
-                    <td style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center" }}>
+                    <td style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center", background: "#f0f3ff" }}>
                       {sectionTotalScore(reviewRows.length ? reviewRows : rows, currentRole).toFixed(1)}
                     </td>
                   )}
@@ -916,11 +949,11 @@ function InnovativeSection({ form, setForm, docs, setDocs, mode, locked, reviewe
   const selectedInnovativeMethods = new Set(visibleInnovRows.map((row) => String(row.method ?? "").trim()).filter(Boolean));
   const innovativeMethodOptionsForRow = (currentMethod) =>
     INNOVATIVE_METHOD_OPTIONS.filter((option) => option.value === currentMethod || !selectedInnovativeMethods.has(option.value));
-  const facultyScore = clampScore(innovRows.reduce((total, row) => total + clampScore(row.score, SCORE_LIMITS.innovativeRow), 0), 10);
+  const facultyScore = clampScore(innovRows.reduce((total, row) => total + clampScore(row.score, 4), 0), 10);
   const rowReviewScore = (role, row, index) => {
     if (!rowHasReviewableData("innovRows", row) && role !== "director") return "";
     const value = reviewData.innovRows?.[index]?.[role] ?? row[role] ?? "";
-    return String(value ?? "").trim() ? clampScore(value, SCORE_LIMITS.innovativeRow) : "";
+    return String(value ?? "").trim() ? clampScore(value, 4) : "";
   };
   const roleInnovTotal = (role) => {
     const total = reviewSectionScore("innovRows", visibleInnovRows.map((row, index) => ({
@@ -936,8 +969,8 @@ function InnovativeSection({ form, setForm, docs, setDocs, mode, locked, reviewe
   const updateReview = (index, value) => {
     const sourceRow = visibleInnovRows[index] || {};
     const nextValue = reviewerRole === "director"
-      ? clampDirectorReviewScore("innovRows", sourceRow, value, 10)
-      : clampReviewScore("innovRows", sourceRow, value, 10);
+      ? clampDirectorReviewScore("innovRows", sourceRow, value, 4)
+      : clampReviewScore("innovRows", sourceRow, value, 4);
     setReviewData((prev) => {
       const sourceRows = Array.isArray(prev.innovRows) && prev.innovRows.length ? prev.innovRows : cloneRows(visibleInnovRows);
       const nextRows = sourceRows.map((row, rowIndex) => rowIndex === index ? { ...row, [reviewerRole]: nextValue } : row);
@@ -958,7 +991,7 @@ function InnovativeSection({ form, setForm, docs, setDocs, mode, locked, reviewe
       const nextRows = baseRows.map((row, rowIndex) => rowIndex === index ? { ...row, [field]: value } : row);
       const hasAnyScore = nextRows.some((row) => String(row.score ?? "").trim() !== "");
       const nextScore = hasAnyScore
-        ? String(clampScore(nextRows.reduce((total, row) => total + clampScore(row.score, SCORE_LIMITS.innovativeRow), 0), 10))
+        ? String(clampScore(nextRows.reduce((total, row) => total + clampScore(row.score, 4), 0), 10))
         : "";
       return { ...prev, innovRows: nextRows, innovDetails: nextRows.map((row) => row.method).filter(Boolean).join(", "), innovScore: nextScore };
     });
@@ -974,10 +1007,10 @@ function InnovativeSection({ form, setForm, docs, setDocs, mode, locked, reviewe
 
   return (
     <SectionShell title="A3. Innovative Teaching-Learning Methodologies - Max 10 marks" max={10} earned={facultyScore}>
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+      <table style={tableStyle}>
         <thead>
           <tr>
-            <th style={{ ...thStyle, width: 42 }}>SN</th>
+            <th style={{ ...thStyle, width: 46 }}>SN</th>
             <th style={thStyle}>Methods Used</th>
             <th style={thStyle}>Proof Attached (Yes/No)</th>
             <th style={thStyle}>Attachment</th>
@@ -1013,16 +1046,25 @@ function InnovativeSection({ form, setForm, docs, setDocs, mode, locked, reviewe
                 </td>
                 <td style={tdStyle}>
                   {mode === "self" ? (
-                    <TI value={row.details} textOnly readOnly={!editableSelf} onChange={(value) => updateSelfRow(index, "details", value)} placeholder="Yes / No (with details)" />
+                    <select
+                      value={row.details || ""}
+                      disabled={!editableSelf}
+                      onChange={(e) => updateSelfRow(index, "details", e.target.value)}
+                      style={{ width: "100%", height: 30, border: "1px solid #cbd5e1", borderRadius: 4, background: "#fff", fontFamily: "inherit", fontSize: 11 }}
+                    >
+                      <option value="">Select</option>
+                      <option value="Yes">Yes</option>
+                      <option value="No">No</option>
+                    </select>
                   ) : (
                     <RO value={row.details} />
                   )}
                 </td>
                 <td style={tdStyle}><DocCell id={`innov-${index}`} docs={docs} setDocs={setDocs} readOnly={!editableSelf} /></td>
                 <td style={tdStyle}><ViewCell id={`innov-${index}`} docs={docs} /></td>
-                <td style={tdCenter}>{mode === "self" ? <TI type="number" center max={SCORE_LIMITS.innovativeRow} readOnly={!editableSelf} value={row.score} onChange={(value) => updateSelfRow(index, "score", value)} /> : <RO value={row.score || form.innovScore} center />}</td>
+                <td style={tdCenter}>{mode === "self" ? <TI type="number" center max={4} readOnly={!editableSelf} value={row.score} onChange={(value) => updateSelfRow(index, "score", value)} /> : <RO value={row.score || form.innovScore} center />}</td>
                 {mode === "review" && previousRoles.map((role) => <td key={role} style={tdCenter}><RO value={rowReviewScore(role, row, index)} center /></td>)}
-                {mode === "review" && <td style={tdCenter}><TI type="number" center max={SCORE_LIMITS.innovativeRow} readOnly={reviewLocked || !(rowReviewable || reviewerRole === "director")} value={rowReviewScore(reviewerRole, row, index)} onChange={(value) => updateReview(index, value)} /></td>}
+                {mode === "review" && <td style={tdCenter}><TI type="number" center max={4} readOnly={reviewLocked || !(rowReviewable || reviewerRole === "director" || reviewerRole === "vc")} value={rowReviewScore(reviewerRole, row, index)} onChange={(value) => updateReview(index, value)} /></td>}
               </tr>
             );
           })}
@@ -1061,6 +1103,8 @@ function ObeSection({ form, setForm, docs, setDocs, mode, locked, reviewerRole, 
     20
   );
 
+  const currentRole = reviewerRole;
+
   const rowReviewScore = (role, row, index) => {
     if (!rowHasReviewableData("obeRows", row)) return "";
     const value = reviewData.obeRows?.[index]?.[role] ?? row[role] ?? "";
@@ -1081,22 +1125,20 @@ function ObeSection({ form, setForm, docs, setDocs, mode, locked, reviewerRole, 
   })), 20, reviewerRole);
 
   const updateReview = (index, value) => {
-    const sourceRow = visibleObeRows[index] || {};
-    const nextValue = reviewerRole === "director"
-      ? clampDirectorReviewScore("obeRows", sourceRow, value, sourceRow.max || 20)
-      : clampReviewScore("obeRows", sourceRow, value, sourceRow.max || 20);
-    setReviewData((prev) => {
-      const sourceRows = Array.isArray(prev.obeRows) && prev.obeRows.length ? prev.obeRows : cloneRows(visibleObeRows);
-      const nextRows = sourceRows.map((row, rowIndex) => rowIndex === index ? { ...row, [reviewerRole]: nextValue } : row);
-      return { ...prev, obeRows: nextRows };
+    const source = reviewData.obeRows || cloneRows(obeRows);
+    const updated = source.map((row, i) => {
+      if (i !== index) return row;
+      const sourceRow = obeRows[i] || row;
+      return { ...row, [currentRole]: clampReviewScore("obeRows", sourceRow, value, sourceRow.max || 20) };
     });
+    setReviewData((prev) => ({ ...prev, obeRows: updated }));
   };
 
   const updateSelfRow = (index, field, value) => {
     setForm((prev) => {
       const baseRows = Array.isArray(prev.obeRows) && prev.obeRows.length ? prev.obeRows : defaultObeRows();
-      const nextRows = baseRows.map((row, rowIndex) => rowIndex === index ? { ...row, [field]: value } : row);
-      return { ...prev, obeRows: nextRows };
+      const updatedRows = baseRows.map((row, i) => (i === index ? { ...row, [field]: value } : row));
+      return { ...prev, obeRows: updatedRows };
     });
   };
 
@@ -1115,61 +1157,72 @@ function ObeSection({ form, setForm, docs, setDocs, mode, locked, reviewerRole, 
       <div style={{ fontSize: 11, fontStyle: "italic", color: "#475569", marginBottom: 8 }}>
         CO-PO mapping — 5 marks; attainment computation — 10 marks; corrective action taken — 5 marks.
       </div>
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
-        <thead>
-          <tr>
-            <th style={{ ...thStyle, width: 42 }}>SN</th>
-            <th style={thStyle}>Component</th>
-            <th style={thStyle}>Evidence Attached (Yes/No)</th>
-            <th style={thStyle}>Attachment</th>
-            <th style={thStyle}>View Docs</th>
-            <th style={thStyle}>{mode === "self" ? "Score" : "Faculty Score"}</th>
-            {mode === "review" && previousRoles.map((role) => <th key={role} style={thStyle}>{roleLabel(role)} Score</th>)}
-            {mode === "review" && <th style={thStyle}>{roleLabel(reviewerRole)} Score</th>}
-          </tr>
-        </thead>
-        <tbody>
-          {visibleObeRows.map((row, index) => {
-            const rowReviewable = rowHasReviewableData("obeRows", row);
-            return (
-              <tr key={index}>
-                <td style={tdCenter}>{index + 1}</td>
-                <td style={tdStyle}>
-                  {mode === "self" && index >= 3 ? (
-                    <TI value={row.component} textOnly readOnly={!editableSelf} onChange={(value) => updateSelfRow(index, "component", value)} />
-                  ) : (
-                    <RO value={row.component} />
-                  )}
-                </td>
-                <td style={tdStyle}>
-                  {mode === "self" ? (
-                    <TI value={row.evidence} textOnly readOnly={!editableSelf} onChange={(value) => updateSelfRow(index, "evidence", value)} placeholder="Yes / No" />
-                  ) : (
-                    <RO value={row.evidence} />
-                  )}
-                </td>
-                <td style={tdStyle}><DocCell id={`obe-${index}`} docs={docs} setDocs={setDocs} readOnly={!editableSelf} /></td>
-                <td style={tdStyle}><ViewCell id={`obe-${index}`} docs={docs} /></td>
-                <td style={tdCenter}>
-                  {mode === "self" ? (
-                    <TI type="number" center max={row.max || 20} readOnly={!editableSelf} value={row.score} onChange={(value) => updateSelfRow(index, "score", value)} />
-                  ) : (
-                    <RO value={row.score} center />
-                  )}
-                </td>
-                {mode === "review" && previousRoles.map((role) => <td key={role} style={tdCenter}><RO value={rowReviewScore(role, row, index)} center /></td>)}
-                {mode === "review" && <td style={tdCenter}><TI type="number" center max={row.max || 20} readOnly={reviewLocked || !(rowReviewable || reviewerRole === "director")} value={rowReviewScore(reviewerRole, row, index)} onChange={(value) => updateReview(index, value)} /></td>}
-              </tr>
-            );
-          })}
-          <tr style={{ background: "#eff6ff" }}>
-            <td style={{ ...tdCenter, fontWeight: 800 }} colSpan={5}>Total (Max: 20)</td>
-            <td style={{ ...tdCenter, fontWeight: 800 }}>{facultyScore.toFixed(1)}</td>
-            {mode === "review" && previousRoles.map((role) => <td key={role} style={{ ...tdCenter, fontWeight: 800 }}><RO value={roleObeTotal(role)} center /></td>)}
-            {mode === "review" && <td style={{ ...tdCenter, fontWeight: 800 }}><RO value={currentObeTotal()} center /></td>}
-          </tr>
-        </tbody>
-      </table>
+      <div style={{ overflowX: "visible", width: "100%" }}>
+        <table style={tableStyle}>
+          <thead>
+            <tr>
+              <th style={{ ...thStyle, width: 46 }}>SN</th>
+              <th style={thStyle}>Component</th>
+              <th style={thStyle}>Evidence Attached (Yes/No)</th>
+              <th style={thStyle}>Attachment</th>
+              <th style={thStyle}>View Docs</th>
+              <th style={thStyle}>{mode === "self" ? "Score" : "Faculty Score"}</th>
+              {mode === "review" && previousRoles.map((role) => <th key={role} style={thStyle}>{roleLabel(role)} Score</th>)}
+              {mode === "review" && <th style={thStyle}>{roleLabel(reviewerRole)} Score</th>}
+            </tr>
+          </thead>
+          <tbody>
+            {visibleObeRows.map((row, index) => {
+              const rowReviewable = rowHasReviewableData("obeRows", row);
+              return (
+                <tr key={index}>
+                  <td style={tdCenter}>{index + 1}</td>
+                  <td style={tdStyle}>
+                    {mode === "self" && index >= 3 ? (
+                      <TI value={row.component} textOnly readOnly={!editableSelf} onChange={(value) => updateSelfRow(index, "component", value)} />
+                    ) : (
+                      <RO value={row.component} />
+                    )}
+                  </td>
+                  <td style={tdStyle}>
+                    {mode === "self" ? (
+                      <select
+                        value={row.evidence || ""}
+                        disabled={!editableSelf}
+                        onChange={(e) => updateSelfRow(index, "evidence", e.target.value)}
+                        style={{ width: "100%", height: 30, border: "1px solid #cbd5e1", borderRadius: 4, background: "#fff", fontFamily: "inherit", fontSize: 11 }}
+                      >
+                        <option value="">Select</option>
+                        <option value="Yes">Yes</option>
+                        <option value="No">No</option>
+                      </select>
+                    ) : (
+                      <RO value={row.evidence} />
+                    )}
+                  </td>
+                  <td style={tdStyle}><DocCell id={`obe-${index}`} docs={docs} setDocs={setDocs} readOnly={!editableSelf} /></td>
+                  <td style={tdStyle}><ViewCell id={`obe-${index}`} docs={docs} /></td>
+                  <td style={tdCenter}>
+                    {mode === "self" ? (
+                      <TI type="number" center max={row.max || 20} readOnly={!editableSelf} value={row.score} onChange={(value) => updateSelfRow(index, "score", value)} />
+                    ) : (
+                      <RO value={row.score} center />
+                    )}
+                  </td>
+                  {mode === "review" && previousRoles.map((role) => <td key={role} style={tdCenter}><RO value={rowReviewScore(role, row, index)} center /></td>)}
+                  {mode === "review" && <td style={tdCenter}><TI type="number" center max={row.max || 20} readOnly={reviewLocked || !(rowReviewable || reviewerRole === "director" || reviewerRole === "vc")} value={rowReviewScore(reviewerRole, row, index)} onChange={(value) => updateReview(index, value)} /></td>}
+                </tr>
+              );
+            })}
+            <tr className="appraisal-total-row" style={{ background: "#f0f3ff", borderTop: "1px solid #c7d2fe" }}>
+              <td style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center", background: "#f0f3ff" }} colSpan={5}>Total (Max: 20)</td>
+              <td style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center", background: "#f0f3ff" }}>{facultyScore.toFixed(1)}</td>
+              {mode === "review" && previousRoles.map((role) => <td key={role} style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center", background: "#f0f3ff" }}><RO value={roleObeTotal(role)} center /></td>)}
+              {mode === "review" && <td style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center", background: "#f0f3ff" }}><RO value={currentObeTotal()} center /></td>}
+            </tr>
+          </tbody>
+        </table>
+      </div>
       {mode === "self" && !locked && (
         <RowBtns onAdd={addObeRow} onDel={deleteObeRow} canDel={visibleObeRows.length > 3} />
       )}
@@ -1187,6 +1240,8 @@ function MentoringSection({ form, setForm, docs, setDocs, mode, locked, reviewer
     mentoringRows.reduce((total, row) => total + clampScore(row.score, row.max || 10), 0),
     10
   );
+
+  const currentRole = reviewerRole;
 
   const rowReviewScore = (role, row, index) => {
     if (!rowHasReviewableData("mentoringRows", row)) return "";
@@ -1208,22 +1263,20 @@ function MentoringSection({ form, setForm, docs, setDocs, mode, locked, reviewer
   })), 10, reviewerRole);
 
   const updateReview = (index, value) => {
-    const sourceRow = visibleMentoringRows[index] || {};
-    const nextValue = reviewerRole === "director"
-      ? clampDirectorReviewScore("mentoringRows", sourceRow, value, sourceRow.max || 10)
-      : clampReviewScore("mentoringRows", sourceRow, value, sourceRow.max || 10);
-    setReviewData((prev) => {
-      const sourceRows = Array.isArray(prev.mentoringRows) && prev.mentoringRows.length ? prev.mentoringRows : cloneRows(visibleMentoringRows);
-      const nextRows = sourceRows.map((row, rowIndex) => rowIndex === index ? { ...row, [reviewerRole]: nextValue } : row);
-      return { ...prev, mentoringRows: nextRows };
+    const source = reviewData.mentoringRows || cloneRows(mentoringRows);
+    const updated = source.map((row, i) => {
+      if (i !== index) return row;
+      const sourceRow = mentoringRows[i] || row;
+      return { ...row, [currentRole]: clampReviewScore("mentoringRows", sourceRow, value, sourceRow.max || 10) };
     });
+    setReviewData((prev) => ({ ...prev, mentoringRows: updated }));
   };
 
   const updateSelfRow = (index, field, value) => {
     setForm((prev) => {
       const baseRows = Array.isArray(prev.mentoringRows) && prev.mentoringRows.length ? prev.mentoringRows : defaultMentoringRows();
-      const nextRows = baseRows.map((row, rowIndex) => rowIndex === index ? { ...row, [field]: value } : row);
-      return { ...prev, mentoringRows: nextRows };
+      const updatedRows = baseRows.map((row, i) => (i === index ? { ...row, [field]: value } : row));
+      return { ...prev, mentoringRows: updatedRows };
     });
   };
 
@@ -1239,72 +1292,78 @@ function MentoringSection({ form, setForm, docs, setDocs, mode, locked, reviewer
 
   return (
     <SectionShell title="A7. Student Mentoring & Counselling (Max: 10)" max={10} earned={facultyScore}>
-      <div style={{ fontSize: 11, fontStyle: "italic", color: "#475569", marginBottom: 8 }}>
-        Regular mentoring meetings (min. 2/semester) — 4 marks; mentoring register maintained — 3 marks; documented counselling outcomes — 3 marks.
+      <div style={{ overflowX: "visible", width: "100%" }}>
+        <table style={tableStyle}>
+          <thead>
+            <tr>
+              <th style={{ ...thStyle, width: 46 }}>SN</th>
+              <th style={thStyle}>Activity</th>
+              <th style={thStyle}>Evidence Attached (Yes/No)</th>
+              <th style={thStyle}>Attachment</th>
+              <th style={thStyle}>View Docs</th>
+              <th style={thStyle}>{mode === "self" ? "Score" : "Faculty Score"}</th>
+              {mode === "review" && previousRoles.map((role) => <th key={role} style={thStyle}>{roleLabel(role)} Score</th>)}
+              {mode === "review" && <th style={thStyle}>{roleLabel(reviewerRole)} Score</th>}
+            </tr>
+          </thead>
+          <tbody>
+            {visibleMentoringRows.map((row, index) => {
+              const rowReviewable = rowHasReviewableData("mentoringRows", row);
+              return (
+                <tr key={index}>
+                  <td style={tdCenter}>{index + 1}</td>
+                  <td style={tdStyle}>
+                    {mode === "self" && index >= 3 ? (
+                      <TI value={row.activity} textOnly readOnly={!editableSelf} onChange={(value) => updateSelfRow(index, "activity", value)} />
+                    ) : (
+                      <RO value={row.activity} />
+                    )}
+                  </td>
+                  <td style={tdStyle}>
+                    {mode === "self" ? (
+                      <select
+                        value={row.evidence || ""}
+                        disabled={!editableSelf}
+                        onChange={(e) => updateSelfRow(index, "evidence", e.target.value)}
+                        style={{ width: "100%", height: 30, border: "1px solid #cbd5e1", borderRadius: 4, background: "#fff", fontFamily: "inherit", fontSize: 11 }}
+                      >
+                        <option value="">Select</option>
+                        <option value="Yes">Yes</option>
+                        <option value="No">No</option>
+                      </select>
+                    ) : (
+                      <RO value={row.evidence} />
+                    )}
+                  </td>
+                  <td style={tdStyle}><DocCell id={`mentor-${index}`} docs={docs} setDocs={setDocs} readOnly={!editableSelf} /></td>
+                  <td style={tdStyle}><ViewCell id={`mentor-${index}`} docs={docs} /></td>
+                  <td style={tdCenter}>
+                    {mode === "self" ? (
+                      <TI type="number" center max={row.max || 10} readOnly={!editableSelf} value={row.score} onChange={(value) => updateSelfRow(index, "score", value)} />
+                    ) : (
+                      <RO value={row.score} center />
+                    )}
+                  </td>
+                  {mode === "review" && previousRoles.map((role) => <td key={role} style={tdCenter}><RO value={rowReviewScore(role, row, index)} center /></td>)}
+                  {mode === "review" && <td style={tdCenter}><TI type="number" center max={row.max || 10} readOnly={reviewLocked || !(rowReviewable || reviewerRole === "director" || reviewerRole === "vc")} value={rowReviewScore(reviewerRole, row, index)} onChange={(value) => updateReview(index, value)} /></td>}
+                </tr>
+              );
+            })}
+            <tr className="appraisal-total-row" style={{ background: "#f0f3ff", borderTop: "1px solid #c7d2fe" }}>
+              <td style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center", background: "#f0f3ff" }} colSpan={5}>Total (Max: 10)</td>
+              <td style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center", background: "#f0f3ff" }}>{facultyScore.toFixed(1)}</td>
+              {mode === "review" && previousRoles.map((role) => <td key={role} style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center", background: "#f0f3ff" }}><RO value={roleMentoringTotal(role)} center /></td>)}
+              {mode === "review" && <td style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center", background: "#f0f3ff" }}><RO value={currentMentoringTotal()} center /></td>}
+            </tr>
+          </tbody>
+        </table>
       </div>
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
-        <thead>
-          <tr>
-            <th style={{ ...thStyle, width: 42 }}>SN</th>
-            <th style={thStyle}>Activity</th>
-            <th style={thStyle}>Evidence Attached (Yes/No)</th>
-            <th style={thStyle}>Attachment</th>
-            <th style={thStyle}>View Docs</th>
-            <th style={thStyle}>{mode === "self" ? "Score" : "Faculty Score"}</th>
-            {mode === "review" && previousRoles.map((role) => <th key={role} style={thStyle}>{roleLabel(role)} Score</th>)}
-            {mode === "review" && <th style={thStyle}>{roleLabel(reviewerRole)} Score</th>}
-          </tr>
-        </thead>
-        <tbody>
-          {visibleMentoringRows.map((row, index) => {
-            const rowReviewable = rowHasReviewableData("mentoringRows", row);
-            return (
-              <tr key={index}>
-                <td style={tdCenter}>{index + 1}</td>
-                <td style={tdStyle}>
-                  {mode === "self" && index >= 3 ? (
-                    <TI value={row.activity} textOnly readOnly={!editableSelf} onChange={(value) => updateSelfRow(index, "activity", value)} />
-                  ) : (
-                    <RO value={row.activity} />
-                  )}
-                </td>
-                <td style={tdStyle}>
-                  {mode === "self" ? (
-                    <TI value={row.evidence} textOnly readOnly={!editableSelf} onChange={(value) => updateSelfRow(index, "evidence", value)} placeholder="Yes / No" />
-                  ) : (
-                    <RO value={row.evidence} />
-                  )}
-                </td>
-                <td style={tdStyle}><DocCell id={`mentor-${index}`} docs={docs} setDocs={setDocs} readOnly={!editableSelf} /></td>
-                <td style={tdStyle}><ViewCell id={`mentor-${index}`} docs={docs} /></td>
-                <td style={tdCenter}>
-                  {mode === "self" ? (
-                    <TI type="number" center max={row.max || 10} readOnly={!editableSelf} value={row.score} onChange={(value) => updateSelfRow(index, "score", value)} />
-                  ) : (
-                    <RO value={row.score} center />
-                  )}
-                </td>
-                {mode === "review" && previousRoles.map((role) => <td key={role} style={tdCenter}><RO value={rowReviewScore(role, row, index)} center /></td>)}
-                {mode === "review" && <td style={tdCenter}><TI type="number" center max={row.max || 10} readOnly={reviewLocked || !(rowReviewable || reviewerRole === "director")} value={rowReviewScore(reviewerRole, row, index)} onChange={(value) => updateReview(index, value)} /></td>}
-              </tr>
-            );
-          })}
-          <tr style={{ background: "#eff6ff" }}>
-            <td style={{ ...tdCenter, fontWeight: 800 }} colSpan={5}>Total (Max: 10)</td>
-            <td style={{ ...tdCenter, fontWeight: 800 }}>{facultyScore.toFixed(1)}</td>
-            {mode === "review" && previousRoles.map((role) => <td key={role} style={{ ...tdCenter, fontWeight: 800 }}><RO value={roleMentoringTotal(role)} center /></td>)}
-            {mode === "review" && <td style={{ ...tdCenter, fontWeight: 800 }}><RO value={currentMentoringTotal()} center /></td>}
-          </tr>
-        </tbody>
-      </table>
       {mode === "self" && !locked && (
         <RowBtns onAdd={addMentoringRow} onDel={deleteMentoringRow} canDel={visibleMentoringRows.length > 3} />
       )}
     </SectionShell>
   );
 }
-
-
 
 function PartA({ sections, SectionTable, InnovativeSection, ObeSection, MentoringSection, sectionTableProps }) {
   const totals = calculateCreativeSchoolTotals(sectionTableProps.form || {});
@@ -1427,7 +1486,7 @@ function PartD({ sectionTableProps }) {
           </h3>
           <span
             title="Evaluated by HOD/Director only. This part has no faculty self-score input."
-            style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 18, height: 18, borderRadius: "50%", background: "#e2e8f0", color: "#475569", fontSize: 11, fontWeight: 700, cursor: "help" }}
+            style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 18, height: 18, borderRadius: "50%", background: "#e2e8f0", color: "#475469", fontSize: 11, fontWeight: 700, cursor: "help" }}
           >
             ℹ
           </span>
@@ -1444,19 +1503,19 @@ function PartD({ sectionTableProps }) {
       </div>
 
       {/* Table */}
-      <div style={{ overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+      <div style={{ overflowX: "visible", width: "100%" }}>
+        <table style={tableStyle}>
           <thead>
-            <tr style={{ background: "#1e293b", color: "#ffffff" }}>
-              <th style={{ border: "1px solid #334155", padding: "10px 8px", textAlign: "center", width: 60 }}>Sr. No.</th>
-              <th style={{ border: "1px solid #334155", padding: "10px 12px", textAlign: "left", width: 220 }}>Parameter</th>
-              <th style={{ border: "1px solid #334155", padding: "10px 12px", textAlign: "left" }}>Description / Indicators</th>
-              <th style={{ border: "1px solid #334155", padding: "10px 8px", textAlign: "center", width: 90 }}>Max Marks</th>
+            <tr>
+              <th style={{ ...thStyle, width: 46 }}>Sr. No.</th>
+              <th style={{ ...thStyle, width: 220, textAlign: "left" }}>Parameter</th>
+              <th style={{ ...thStyle, textAlign: "left" }}>Description / Indicators</th>
+              <th style={{ ...thStyle, width: 90 }}>Max Marks</th>
               {mode === "review" && previousRoles.map((role) => (
-                <th key={role} style={{ border: "1px solid #334155", padding: "10px 8px", textAlign: "center", width: 110 }}>{roleLabel(role)} Score</th>
+                <th key={role} style={{ ...thStyle, width: 110 }}>{roleLabel(role)} Score</th>
               ))}
               {mode === "review" && (
-                <th style={{ border: "1px solid #334155", padding: "10px 8px", textAlign: "center", width: 120 }}>{roleLabel(currentRole)} Score</th>
+                <th style={{ ...thStyle, width: 120 }}>{roleLabel(currentRole)} Score</th>
               )}
             </tr>
           </thead>
@@ -1466,17 +1525,17 @@ function PartD({ sectionTableProps }) {
               const reviewRow = reviewData?.acr?.[index] || row;
               return (
                 <tr key={param.id} style={{ background: index % 2 === 1 ? "#f8fafc" : "#ffffff" }}>
-                  <td style={{ border: "1px solid #cbd5e1", padding: "8px", textAlign: "center", fontWeight: 700, color: "#475569" }}>{param.id}</td>
-                  <td style={{ border: "1px solid #cbd5e1", padding: "8px 12px", fontWeight: 600, color: "#0f172a" }}>{param.label}</td>
-                  <td style={{ border: "1px solid #cbd5e1", padding: "8px 12px", color: "#334155", lineHeight: 1.4 }}>{param.desc}</td>
-                  <td style={{ border: "1px solid #cbd5e1", padding: "8px", textAlign: "center", fontWeight: 700, color: "#1e293b" }}>{param.max}</td>
+                  <td style={tdCenter}>{param.id}</td>
+                  <td style={{ ...tdStyle, fontWeight: 600, color: "#0f172a" }}>{param.label}</td>
+                  <td style={{ ...tdStyle, color: "#334155" }}>{param.desc}</td>
+                  <td style={tdCenter}>{param.max}</td>
                   {mode === "review" && previousRoles.map((role) => (
-                    <td key={role} style={{ border: "1px solid #cbd5e1", padding: "8px", textAlign: "center" }}>
+                    <td key={role} style={tdCenter}>
                       <RO value={reviewRow[role] ?? row[role]} center />
                     </td>
                   ))}
                   {mode === "review" && (
-                    <td style={{ border: "1px solid #cbd5e1", padding: "8px", textAlign: "center" }}>
+                    <td style={tdCenter}>
                       <TI
                         type="number"
                         center
@@ -1490,21 +1549,21 @@ function PartD({ sectionTableProps }) {
                 </tr>
               );
             })}
-            <tr style={{ background: "#f1f5f9", fontWeight: 700 }}>
-              <td colSpan={3} style={{ border: "1px solid #cbd5e1", padding: "10px 12px", textAlign: "right", color: "#1e293b", fontSize: 12 }}>
-                Part D Total (Max: 50)
+            <tr className="appraisal-total-row" style={{ background: "#f0f3ff", borderTop: "1px solid #c7d2fe" }}>
+              <td colSpan={3} style={{ ...tdStyle, textAlign: "center", color: "#3730a3", fontSize: 14, fontWeight: 800, background: "#f0f3ff" }}>
+                Part D Total (Max 50)
               </td>
-              <td style={{ border: "1px solid #cbd5e1", padding: "10px 8px", textAlign: "center", color: "#1e293b", fontSize: 12 }}>50</td>
+              <td style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, background: "#f0f3ff" }}>50</td>
               {mode === "review" && previousRoles.map((role) => {
                 const prevTotal = scoreSectionRows("acr", reviewData?.acr || rows, 50, role);
                 return (
-                  <td key={role} style={{ border: "1px solid #cbd5e1", padding: "10px 8px", textAlign: "center", color: "#4f46e5", fontSize: 12 }}>
+                  <td key={role} style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, background: "#f0f3ff" }}>
                     {prevTotal.toFixed(1)}
                   </td>
                 );
               })}
               {mode === "review" && (
-                <td style={{ border: "1px solid #cbd5e1", padding: "10px 8px", textAlign: "center", color: "#4f46e5", fontSize: 12 }}>
+                <td style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, background: "#f0f3ff" }}>
                   {partDScore.toFixed(1)}
                 </td>
               )}
@@ -1620,22 +1679,49 @@ export function CompactAuthoritySummaryCard({ title, subtitle, totals, maxScores
 }
 
 export function SectionSelector({ value, onChange, label = "Appraisal Section", isOptionDisabled = () => false }) {
+  const shortLabels = {
+    partA: "Part A",
+    partB: "Part B",
+    partC: "Part C",
+    partD: "Part D",
+    summary: "Summary",
+  };
+  const handleChange = (nextValue) => {
+    onChange(nextValue);
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    });
+  };
+
   return (
-    <label style={{ display: "inline-grid", gap: 6, fontSize: 11, color: "#475569", fontWeight: 800, minWidth: 230 }}>
-      {label}
-      <select
-        value={value}
-        onChange={(event) => {
-          onChange(event.target.value);
-          requestAnimationFrame(() => {
-            window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-          });
-        }}
-        style={{ height: 36, border: "1px solid #cbd5e1", borderRadius: 7, background: "#fff", color: "#0f172a", padding: "0 10px", fontFamily: "inherit", fontSize: 12, fontWeight: 700 }}
-      >
-        {SECTION_OPTIONS.map((option) => <option key={option.value} value={option.value} disabled={isOptionDisabled(option.value)}>{option.label}</option>)}
-      </select>
-    </label>
+    <div aria-label={label} style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+      {SECTION_OPTIONS.map((option) => {
+        const active = value === option.value;
+        const disabled = isOptionDisabled(option.value);
+        return (
+          <button
+            key={option.value}
+            type="button"
+            onClick={() => handleChange(option.value)}
+            disabled={disabled}
+            style={{
+              padding: "7px 18px",
+              border: "none",
+              borderRadius: 6,
+              cursor: disabled ? "not-allowed" : "pointer",
+              fontFamily: "inherit",
+              fontSize: 12,
+              fontWeight: 700,
+              background: active ? "#4c1d95" : "#e2e8f0",
+              color: active ? "#ddd6fe" : "#475569",
+              opacity: disabled ? 0.55 : 1,
+            }}
+          >
+            {shortLabels[option.value] || option.label}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -1835,7 +1921,7 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
   const facultyTotals = calculateCreativeSchoolTotals(form, "score");
   const totals = calculateCreativeSchoolTotals(reviewerForm, reviewerRole);
   const reviewCompleted = panelReadOnly || isReviewerReviewComplete(person, reviewerRole);
-  const savedReviewerTotalKeys = [`${reviewerRole}PartA`, `${reviewerRole}PartB`, `${reviewerRole}Total`];
+  const savedReviewerTotalKeys = [`${reviewerRole}PartA`, `${reviewerRole}PartB`, `${reviewerRole}PartC`, `${reviewerRole}PartD`, `${reviewerRole}Total`];
   const hasSavedReviewerTotals = savedReviewerTotalKeys.some((key) => String(person?.[key] ?? "").trim() !== "");
   const reviewerSummaryTotals = panelReadOnly && hasSavedReviewerTotals ? {
     ...totals,
@@ -1849,12 +1935,31 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
     return {
       partA: n(person?.[`${prefix}PartA`]),
       partB: n(person?.[`${prefix}PartB`]),
+      partC: n(person?.[`${prefix}PartC`]),
+      partD: n(person?.[`${prefix}PartD`]),
       total: n(rawTotal),
       maxScores: totals.maxScores,
       hasTotal: rawTotal !== undefined && rawTotal !== null && String(rawTotal).trim() !== "",
     };
   };
-  const previousSummaryCards = reviewerRole === "vc" ? visiblePreviousRoles.map((role) => {
+  const subjectRole = person?.appraisalRole || person?.appraisal_role || person?.role || "faculty";
+  const normalizedSubjectRole = String(subjectRole || "").trim().toLowerCase();
+  const subjectSchoolKey = getSchoolKey(person?.school || form.info?.school || person?.info?.school || "");
+  const isSoemrFacultyReview = normalizedSubjectRole === "faculty" && subjectSchoolKey === "SoEMR";
+  const visibleSummaryRoles = reviewerRole === "vc" ? (() => {
+    if (normalizedSubjectRole === "faculty") {
+      const roles = [];
+      if (visiblePreviousRoles.includes("center_head")) roles.push("center_head");
+      else if (isSoemrFacultyReview && visiblePreviousRoles.includes("hod")) roles.push("hod");
+      if (visiblePreviousRoles.includes("director")) roles.push("director");
+      if (visiblePreviousRoles.includes("dean")) roles.push("dean");
+      return roles;
+    }
+    if (normalizedSubjectRole === "hod") return ["director", "dean"].filter((role) => visiblePreviousRoles.includes(role));
+    if (normalizedSubjectRole === "director") return visiblePreviousRoles.includes("dean") ? ["dean"] : [];
+    return [];
+  })() : [];
+  const previousSummaryCards = visibleSummaryRoles.map((role) => {
     const prefix = role === "center_head" ? "hod" : role;
     const label = role === "center_head" ? "Center Head" : roleLabel(role);
     return {
@@ -1863,8 +1968,32 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
       totals: roleSummaryTotalsFor(role),
       remarks: person?.[`${prefix}Remarks`],
     };
-  }) : [];
-  const subjectRole = person?.appraisalRole || person?.appraisal_role || person?.role || "";
+  });
+  const authorityPreviousRoles = reviewerRole === "vc" ? [] : (() => {
+    if (normalizedSubjectRole !== "faculty") return [];
+    if (reviewerRole === "dean") {
+      const roles = [];
+      if (visiblePreviousRoles.includes("center_head")) roles.push("center_head");
+      else if (isSoemrFacultyReview && visiblePreviousRoles.includes("hod")) roles.push("hod");
+      if (visiblePreviousRoles.includes("director")) roles.push("director");
+      return roles;
+    }
+    if (reviewerRole === "director") {
+      if (visiblePreviousRoles.includes("center_head")) return ["center_head"];
+      return isSoemrFacultyReview && visiblePreviousRoles.includes("hod") ? ["hod"] : [];
+    }
+    return [];
+  })();
+  const authorityPreviousSummaryCards = authorityPreviousRoles.map((role) => {
+    const prefix = role === "center_head" ? "hod" : role;
+    const label = role === "center_head" ? "Center Head" : roleLabel(role);
+    return {
+      role,
+      label,
+      totals: roleSummaryTotalsFor(role),
+      remarks: person?.[`${prefix}Remarks`],
+    };
+  });
   const averageSourceTotals = [
     facultyTotals,
     ...previousSummaryCards
@@ -1879,6 +2008,104 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
     total: averageSourceTotals.reduce((sum, item) => sum + n(item.total), 0) / averageSourceTotals.length,
     maxScores: totals.maxScores,
   } : { partA: 0, partB: 0, partC: 0, partD: 0, total: 0, maxScores: totals.maxScores };
+  const showAverageColumn = true;
+  const comparisonColumns = [
+    { key: "self", label: "Self", totals: facultyTotals, maxScores: facultyTotals.maxScores },
+    ...previousSummaryCards.map(({ role, label, totals: roleTotals }) => ({ key: role, label, totals: roleTotals, maxScores: roleTotals.maxScores })),
+    ...(showAverageColumn ? [{ key: "average", label: "Average", totals: averageSummaryTotals, maxScores: averageSummaryTotals.maxScores }] : []),
+    { key: "vc", label: "VC", totals: reviewerSummaryTotals, maxScores: totals.maxScores, final: true },
+  ];
+  const comparisonRows = [
+    { key: "partA", label: "Part A - Teaching & Learning", icon: "A" },
+    { key: "partB", label: "Part B - Research & Innovation", icon: "B" },
+    { key: "partC", label: "Part C - Administrative Contribution", icon: "C" },
+    { key: "partD", label: "Part D - Annual Confidential Report", icon: "D" },
+    { key: "total", label: "Grand Total", icon: "Σ" },
+  ];
+  const comparisonColors = { partA: "#6d5dfc", partB: "#0f9f9a", partC: "#ef6f61", partD: "#f59e0b", total: "#059669" };
+  const vcSummaryCards = [
+    {
+      key: "self",
+      title: "Self Score",
+      subtitle: `Self score for the ${schoolDisplayName} appraisal form.`,
+      totals: facultyTotals,
+      maxScores: facultyTotals.maxScores,
+      accent: "#0ea5e9",
+      extraContent: <SummaryOtherInfoField value={summaryOtherInfoValueFrom(person)} readOnly rows={4} />,
+    },
+    ...previousSummaryCards.map(({ role, label, totals: roleTotals, remarks: roleRemarks }) => ({
+      key: role,
+      title: `${label} Score`,
+      subtitle: `${label} score for the ${schoolDisplayName} appraisal form.`,
+      totals: roleTotals,
+      maxScores: roleTotals.maxScores,
+      accent: role === "director" ? "#2563eb" : "#0f766e",
+      remarksTitle: `${label} Remarks`,
+      remarksContent: <div style={{ color: "#334155", fontSize: 12, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{String(roleRemarks || "").trim() || "-"}</div>,
+    })),
+    ...(showAverageColumn ? [{
+      key: "average",
+      title: "Average Score",
+      subtitle: "Average across all reviewers.",
+      totals: averageSummaryTotals,
+      maxScores: averageSummaryTotals.maxScores,
+      accent: "#f59e0b",
+      partsLayout: "horizontal",
+      cardStyle: { gridColumn: "1 / -1" },
+    }] : []),
+    {
+      key: "vc",
+      title: "Vice Chancellor Score",
+      subtitle: "Vice Chancellor final score.",
+      totals: reviewerSummaryTotals,
+      maxScores: totals.maxScores,
+      accent: "#7c3aed",
+      isFinal: true,
+      cardStyle: { gridColumn: "1 / -1" },
+      sideContent: (
+        <div style={{ background: "#f8fbff", border: "1px solid #e9d5ff", borderRadius: 10, padding: "12px 14px", display: "grid", gap: 9, alignContent: "start" }}>
+          <div>
+            <div style={{ color: "#5b21b6", fontSize: 12, fontWeight: 900, textTransform: "uppercase", letterSpacing: 0.5 }}>Vice Chancellor Remarks</div>
+            <div style={{ color: "#64748b", fontSize: 11, marginTop: 2 }}>Enter your assessment remarks and confirm before submitting</div>
+          </div>
+          <textarea value={remarks} readOnly={panelReadOnly} onChange={(event) => setRemarks(event.target.value)} rows={8} placeholder="Write your assessment remarks here..." style={{ width: "100%", minHeight: 210, boxSizing: "border-box", border: "1px solid #cbd5e1", borderRadius: 10, padding: "12px 14px", fontFamily: "inherit", fontSize: 12, color: "#334155", resize: "vertical", background: panelReadOnly ? "#f8fafc" : "#fff", outline: "none", lineHeight: 1.6 }} />
+        </div>
+      ),
+    },
+  ];
+  const reviewerAccent = reviewerRole === "dean" ? "#7c3aed" : reviewerRole === "director" ? "#2563eb" : "#0f766e";
+  const authoritySummaryCards = [
+    ...(normalizedSubjectRole === "faculty" ? [{
+      key: "self",
+      title: "Self Score",
+      subtitle: `Self score for the ${schoolDisplayName} appraisal form.`,
+      totals: facultyTotals,
+      maxScores: facultyTotals.maxScores,
+      accent: "#0ea5e9",
+      extraContent: <SummaryOtherInfoField value={summaryOtherInfoValueFrom(person)} readOnly rows={4} />,
+    }] : []),
+    ...authorityPreviousSummaryCards.map(({ role, label, totals: roleTotals, remarks: roleRemarks }) => ({
+      key: role,
+      title: `${label} Score`,
+      subtitle: `${label} score for the ${schoolDisplayName} appraisal form.`,
+      totals: roleTotals,
+      maxScores: roleTotals.maxScores,
+      accent: role === "director" ? "#2563eb" : "#0f766e",
+      remarksTitle: `${label} Remarks`,
+      remarksContent: <div style={{ color: "#334155", fontSize: 12, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{String(roleRemarks || "").trim() || "-"}</div>,
+    })),
+    {
+      key: reviewerRole,
+      title: `${roleLabel(reviewerRole)} Score`,
+      subtitle: `${roleLabel(reviewerRole)} score for the ${schoolDisplayName} appraisal form.`,
+      totals: reviewerSummaryTotals,
+      maxScores: totals.maxScores,
+      accent: reviewerAccent,
+      isFinal: true,
+      remarksTitle: `${roleLabel(reviewerRole)} Remarks`,
+      remarksContent: <textarea value={remarks} readOnly={panelReadOnly} onChange={(event) => setRemarks(event.target.value)} rows={4} style={{ width: "100%", border: "none", padding: 0, fontFamily: "inherit", fontSize: 12, color: "#334155", resize: "vertical", background: "transparent", outline: "none", lineHeight: 1.6 }} />,
+    },
+  ];
   useEffect(() => {
     let active = true;
     if (panelReadOnly || !subjectEmail) return undefined;
@@ -1921,6 +2148,18 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
     }
   };
 
+  const handleSaveAndNext = async () => {
+    await handleSaveDraft();
+    const NEXT_SECTION_MAP = { partA: "partB", partB: "partC", partC: "partD", partD: "summary" };
+    const nextSection = NEXT_SECTION_MAP[sectionView];
+    if (nextSection) {
+      setSectionView(nextSection);
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+      });
+    }
+  };
+
   const generateReviewReport = () => {
     if (!reviewCompleted) return;
     const applicability = {};
@@ -1931,6 +2170,8 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
     const maxScores = getCreativeSchoolEffectiveMaxScores(reviewerForm);
     const partATotal = panelReadOnly && String(person?.[`${reviewerRole}PartA`] ?? "").trim() !== "" ? n(person?.[`${reviewerRole}PartA`]) : totals.partA;
     const partBTotal = panelReadOnly && String(person?.[`${reviewerRole}PartB`] ?? "").trim() !== "" ? n(person?.[`${reviewerRole}PartB`]) : totals.partB;
+    const partCTotal = panelReadOnly && String(person?.[`${reviewerRole}PartC`] ?? "").trim() !== "" ? n(person?.[`${reviewerRole}PartC`]) : totals.partC;
+    const partDTotal = panelReadOnly && String(person?.[`${reviewerRole}PartD`] ?? "").trim() !== "" ? n(person?.[`${reviewerRole}PartD`]) : totals.partD;
     const grandTotal = panelReadOnly && String(person?.[`${reviewerRole}Total`] ?? "").trim() !== "" ? n(person?.[`${reviewerRole}Total`]) : totals.total;
     const b8Score = clampScore(rowSum("fdps", 20) + rowSum("training", 20), 20);
     generateMediaCommReport({
@@ -1940,7 +2181,9 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
       docs,
       partASections: PART_A_SECTIONS,
       partBSections: getPartBSectionsForSchool(reviewerForm?.info?.school || person),
-      totals: { partA: partATotal, partB: partBTotal, total: grandTotal },
+      partCSections: PART_C_SECTIONS,
+      partDSections: PART_D_SECTIONS,
+      totals: { partA: partATotal, partB: partBTotal, partC: partCTotal, partD: partDTotal, total: grandTotal },
       maxScores,
       generatedBy: sessionStorage.getItem("name") || roleLabel(reviewerRole),
       remarksSections: buildReviewRemarks({
@@ -1961,7 +2204,6 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
         ...summaryRow(applicability, "uniActs", { id: "A(viii)", label: "University Level Activities", max: 30, score: rowSum("uniActs", 30) }),
         ...summaryRow(applicability, "society", { id: "A(ix)", label: "Contribution to Society", max: 10, score: rowSum("society", 10) }),
         ...summaryRow(applicability, "industry", { id: "A(x)", label: "Industry Connect", max: 5, score: rowSum("industry", 5) }),
-        ...summaryRow(applicability, "acr", { id: "A(xi)", label: "Annual Confidential Report (ACR)", max: 50, score: rowSum("acr", 50) }),
         { isTotal: true, label: "Part A Total", max: maxScores.partA, score: partATotal },
         { isHeader: true, label: "Part B - Research & Academic Contributions" },
         ...summaryRow(applicability, "journals", { id: "B1(i)", label: "Published Papers in Journals", max: 80, score: rowSum("journals", 80) }),
@@ -2005,10 +2247,10 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
         </div>
         <StatusBadge status={person?.status} />
       </div>
-      <FacultyInfoSection info={form.info} />
-      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+      <div style={{ display: "flex", justifyContent: "flex-start" }}>
         <SectionSelector value={sectionView} onChange={setSectionView} label="Review Section" />
       </div>
+      <FacultyInfoSection info={form.info} />
       {finalisedVcReadOnly && (
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
           <button onClick={() => { setEditingFinalised(true); setConfirmed(false); }} style={smallButton("#4c1d95")}>
@@ -2040,31 +2282,40 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
         <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, margin: "12px 0 14px", flexWrap: "wrap" }}>
           <span style={{ color: "#64748b", fontSize: 11, fontWeight: 700 }}>{draftStatus}</span>
           <button
+            type="button"
             onClick={handleSaveDraft}
+            disabled={savingDraft}
+            style={{ ...smallButton(savingDraft ? "#94a3b8" : "#ffffff"), color: savingDraft ? "#94a3b8" : "#2563eb", border: "1.5px solid #2563eb" }}
+          >
+            {savingDraft ? "Saving..." : "Save as Draft"}
+          </button>
+          <button
+            type="button"
+            onClick={handleSaveAndNext}
             disabled={savingDraft}
             style={smallButton(savingDraft ? "#94a3b8" : "#2563eb")}
           >
-            {savingDraft ? "Saving..." : "Save Draft"}
+            {savingDraft ? "Saving..." : "Save & Next"}
           </button>
         </div>
       )}
       {sectionView === "summary" && (
         <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 14, display: "grid", gap: 10 }}>
-          <CompactAuthoritySummaryCard title="Faculty Score" totals={facultyTotals} maxScores={facultyTotals.maxScores} accent="#4f46e5" subtitle={`Faculty submitted score for the ${schoolDisplayName} appraisal form.`} />
-          <SummaryOtherInfoField value={summaryOtherInfoValueFrom(person)} readOnly rows={4} />
-          {previousSummaryCards.map(({ role, label, totals: roleTotals, remarks: roleRemarks }) => (
-            <CompactAuthoritySummaryCard key={role} title={`${label} Score`} totals={roleTotals} maxScores={roleTotals.maxScores} accent="#4338ca" subtitle={`${label} score for the ${schoolDisplayName} appraisal form.`} remarksTitle={`${label} Remarks`} remarksContent={<div style={{ color: "#334155", fontSize: 12, lineHeight: 1.45, whiteSpace: "pre-wrap", maxHeight: 74, overflow: "auto" }}>{String(roleRemarks || "").trim() || "-"}</div>} />
-          ))}
-          {reviewerRole === "vc" && <CompactAuthoritySummaryCard title="Average Score" totals={averageSummaryTotals} maxScores={averageSummaryTotals.maxScores} accent="#6366f1" subtitle="Average score before VC review." />}
-          <CompactAuthoritySummaryCard
-            title={`${roleLabel(reviewerRole)} Score`}
-            totals={reviewerSummaryTotals}
-            maxScores={totals.maxScores}
-            accent="#3730a3"
-            subtitle={`${roleLabel(reviewerRole)} score for the ${schoolDisplayName} appraisal form.`}
-            remarksTitle={reviewerRole === "vc" ? "Vice Chancellor Remarks and Grade" : `${roleLabel(reviewerRole)} Remarks`}
-            remarksContent={<textarea value={remarks} readOnly={panelReadOnly} onChange={(event) => setRemarks(event.target.value)} rows={4} style={{ width: "100%", border: "none", padding: 0, fontFamily: "inherit", fontSize: 12, color: "#334155", resize: "vertical", background: "transparent", outline: "none" }} />}
-          />
+          {reviewerRole === "vc" ? (
+            <>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(330px, 1fr))", gap: 16 }}>
+                {vcSummaryCards.map((card) => (
+                  <ScoreCard key={card.key} {...card} />
+                ))}
+              </div>
+            </>
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(330px, 1fr))", gap: 16 }}>
+              {authoritySummaryCards.map((card) => (
+                <ScoreCard key={card.key} {...card} />
+              ))}
+            </div>
+          )}
           {!panelReadOnly && <AccuracyCheckbox checked={confirmed} onChange={setConfirmed} />}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
             <span style={{ color: "#64748b", fontSize: 11, fontWeight: 700 }}>{draftStatus}</span>

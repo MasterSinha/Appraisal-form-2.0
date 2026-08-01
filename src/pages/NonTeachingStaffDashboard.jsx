@@ -715,7 +715,9 @@ function AuthorityPartA({ form, setForm, reviewerRole, readOnly, visibleRoles = 
                 )}
                 {showVc && (
                   <td style={TDC}>
-                    <MarksInput value={form[item.key]?.vcMarks} max={item.max} readOnly={readOnly} accent={accent} onChange={(value) => setMark(item.key, value)} />
+                    {role === "vc" ? (
+                      <MarksInput value={form[item.key]?.vcMarks} max={item.max} readOnly={readOnly} accent={accent} onChange={(value) => setMark(item.key, value)} />
+                    ) : form[item.key]?.vcMarks || "-"}
                   </td>
                 )}
               </tr>
@@ -787,7 +789,9 @@ function AuthorityPartB({ form, setForm, reviewerRole, readOnly, visibleRoles = 
                       )}
                       {showVc && (
                         <td style={TDC}>
-                          <RatingPicker value={row[`p${index}_vc`]} readOnly={readOnly} onChange={(value) => setRating(section.key, index, value)} />
+                          {role === "vc" ? (
+                            <RatingPicker value={row[`p${index}_vc`]} readOnly={readOnly} onChange={(value) => setRating(section.key, index, value)} />
+                          ) : row[`p${index}_vc`] || "-"}
                         </td>
                       )}
                     </tr>
@@ -896,6 +900,18 @@ export function NonTeachingAuthorityReviewPanel({ item, reviewerRole, onBack, on
     }
   };
 
+  const handleSaveAndNext = async () => {
+    await handleSaveDraft();
+    const NEXT_NON_TEACHING_TAB = { partA: "partB", partB: "remarks" };
+    const nextTab = NEXT_NON_TEACHING_TAB[tab];
+    if (nextTab) {
+      setTab(nextTab);
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+      });
+    }
+  };
+
   const handleSubmit = async () => {
     if (!confirmed) {
       alert("Please verify and confirm the accuracy declaration before submitting the review.");
@@ -998,8 +1014,11 @@ export function NonTeachingAuthorityReviewPanel({ item, reviewerRole, onBack, on
       {(tab === "partA" || tab === "partB") && !locked && (
         <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, margin: "12px 0 14px", flexWrap: "wrap" }}>
           <span style={{ color: "#64748b", fontSize: 11, fontWeight: 800 }}>{draftStatus}</span>
-          <button type="button" onClick={handleSaveDraft} disabled={savingDraft} style={{ padding: "10px 24px", border: "none", borderRadius: 7, background: savingDraft ? "#94a3b8" : "#2563eb", color: "#fff", cursor: savingDraft ? "not-allowed" : "pointer", fontWeight: 800, fontFamily: "inherit" }}>
-            {savingDraft ? "Saving..." : "Save Draft"}
+          <button type="button" onClick={handleSaveDraft} disabled={savingDraft} style={{ padding: "10px 24px", border: "1.5px solid #2563eb", borderRadius: 7, background: "#fff", color: savingDraft ? "#94a3b8" : "#2563eb", cursor: savingDraft ? "not-allowed" : "pointer", fontWeight: 800, fontFamily: "inherit" }}>
+            {savingDraft ? "Saving..." : "Save as Draft"}
+          </button>
+          <button type="button" onClick={handleSaveAndNext} disabled={savingDraft} style={{ padding: "10px 24px", border: "none", borderRadius: 7, background: savingDraft ? "#94a3b8" : "#2563eb", color: "#fff", cursor: savingDraft ? "not-allowed" : "pointer", fontWeight: 800, fontFamily: "inherit" }}>
+            {savingDraft ? "Saving..." : "Save & Next"}
           </button>
         </div>
       )}

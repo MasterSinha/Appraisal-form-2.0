@@ -66,7 +66,7 @@ import {
 import { canReviewerRejectProfile, getReviewChain, pendingStatusFor, profileFromsessionStorage, reviewedStatusFor, roleLabel, visiblePreviousReviewRoles, workflowValidationError, isAppraisalFinalisedByVc, isRejectedStatus, isPendingReviewStatusFor, hasActiveRejection, reviewListFrom } from "../utils/hierarchy";
 import { n, pct, RO, TI } from "../features/faculty-appraisal/shared";
 
-import { emptyMediaForm, ALL_ARRAY_KEYS, titleCase, calculateMediaTotals, getMediaEffectiveMaxScores, validateMediaBeforeSubmit, mergeForm, preserveSavedReviewScores, PART_A_SECTIONS, PART_B_SECTIONS, MediaForm, MediaCommAuthorityReviewPanel, SectionSelector, AccuracyCheckbox, CompactAuthoritySummaryCard, isReviewerReviewComplete, normalizeScoresForSubmit, summaryRow, b8summaryRow, SECTION_OPTIONS, SummaryBox, WorkflowTracker, ACCENT, ACCENT2, userInitials } from "../features/faculty-appraisal";
+import { emptyMediaForm, ALL_ARRAY_KEYS, titleCase, calculateMediaTotals, getMediaEffectiveMaxScores, validateMediaBeforeSubmit, mergeForm, preserveSavedReviewScores, PART_A_SECTIONS, PART_B_SECTIONS, PART_C_SECTIONS, PART_D_SECTIONS, MediaForm, MediaCommAuthorityReviewPanel, SectionSelector, AccuracyCheckbox, CompactAuthoritySummaryCard, isReviewerReviewComplete, normalizeScoresForSubmit, summaryRow, b8summaryRow, SECTION_OPTIONS, SummaryBox, WorkflowTracker, ACCENT, ACCENT2, userInitials } from "../features/faculty-appraisal";
 import { loadClosedAppraisal } from "../services/appraisalPersistence";
 
 function InlineSvgIcon({ paths, size = 16, strokeWidth = 2.2 }) {
@@ -303,6 +303,14 @@ export default function MediaCommDashboard({ fixedRole }) {
  sectionSaveStatus: nextStatus,
  });
  setSectionSaveStatus(nextStatus);
+ const NEXT_SECTION_MAP = { partA: "partB", partB: "partC", partC: "partD", partD: "summary" };
+ const nextSection = NEXT_SECTION_MAP[section];
+ if (nextSection) {
+   setSelfSectionView(nextSection);
+   requestAnimationFrame(() => {
+     window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+   });
+ }
  } catch (err) {
  if (err?.statusCode === 403 || err?.response?.status === 403) {
  setDeclaration((current) =>current || { status: "Submitted" });
@@ -421,6 +429,7 @@ export default function MediaCommDashboard({ fixedRole }) {
  const data = await fetchSavedAppraisal({
  facultyEmail: item.email,
  academicYear: item.academic_year || item.academicYear || item.info?.ay || APP_INFO.DEFAULT_AY || "2026-2027",
+ reviewerRole: role,
  });
  const submittedForm = data?.payload?.form || data?.form || {};
  const submittedDocs = data?.payload?.docs || data?.docs || {};
@@ -469,16 +478,20 @@ export default function MediaCommDashboard({ fixedRole }) {
   const maxScores = getMediaEffectiveMaxScores(form, { self: true });
   const partATotal = clampScore(lecScore + cfScore + innovScore + obeScore + mentoringScore + projScore + qualScore + fbScore, maxScores.partA);
   const partBTotal = clampScore(b1Score + b2Score + b3Score + b4Score + b5Score + b6Score + b7Score + b8Score + b9Score + b10Score + b11Score + b12Score, maxScores.partB);
-  const grandTotal = clampScore(partATotal + partBTotal, maxScores.grand);
+  const partCTotal = totals.partC;
+  const partDTotal = totals.partD;
+  const grandTotal = clampScore(partATotal + partBTotal + partCTotal + partDTotal, maxScores.grand);
  await generateMediaCommReport({
  title: `${currentSchoolCode} Faculty Appraisal Report`,
  subtitle: currentSchoolName,
  form,
  docs,
- partASections: PART_A_SECTIONS.map((section) =>section.key === "acr" ? { ...section, max: 0, title: "(x) Annual Confidential Report (ACR) - Not counted in self score" } : section),
+ partASections: PART_A_SECTIONS,
  partBSections: PART_B_SECTIONS,
-		totals: { partA: partATotal, partB: partBTotal, total: grandTotal },
-		hideAcr: true,
+ partCSections: PART_C_SECTIONS,
+ partDSections: PART_D_SECTIONS,
+ totals: { partA: partATotal, partB: partBTotal, partC: partCTotal, partD: partDTotal, total: grandTotal },
+ hideAcr: false,
  maxScores,
  generatedBy: sessionStorage.getItem("name") || roleLabel(role),
  declaration,
@@ -512,7 +525,19 @@ export default function MediaCommDashboard({ fixedRole }) {
  ...summaryRow(applicability, "ict", { id: "B11", label: "ICT Content, MOOCs & E-Learning", max: 40, score: b11Score }),
  ...summaryRow(applicability, "exhibitions", { id: "B12", label: "Exhibitions — Photography, Documentaries, Films & Audio-Visual", max: 30, score: b12Score }),
  { isTotal: true, label: "Part B Total", max: maxScores.partB, score: partBTotal },
- { isGrandTotal: true, label: "Grand Total (Part A + Part B)", max: maxScores.grand, score: grandTotal },
+ { isHeader: true, label: "Part C - Administrative Role & University Development" },
+ ...summaryRow(applicability, "uniActs", { id: "C1", label: "Administration at University Level", max: 50, score: rowSum("uniActs", 50) }),
+ ...summaryRow(applicability, "deptActs", { id: "C2", label: "School / Department Level Activities", max: 30, score: rowSum("deptActs", 30) }),
+ ...summaryRow(applicability, "events", { id: "C3", label: "Event Organisation", max: 20, score: rowSum("events", 20) }),
+ ...summaryRow(applicability, "society", { id: "C4", label: "Contribution to Society", max: 10, score: rowSum("society", 10) }),
+ ...summaryRow(applicability, "industry", { id: "C5", label: "Industry Connect", max: 10, score: rowSum("industry", 10) }),
+ ...summaryRow(applicability, "alumni", { id: "C6", label: "Alumni Engagement", max: 10, score: rowSum("alumni", 10) }),
+ ...summaryRow(applicability, "placements", { id: "C7", label: "Placement & Internship Support", max: 20, score: rowSum("placements", 20) }),
+ { isTotal: true, label: "Part C Total", max: maxScores.partC, score: totals.partC },
+ { isHeader: true, label: "Part D - Annual Confidential Report (ACR)" },
+ ...summaryRow(applicability, "acr", { id: "D1", label: "Annual Confidential Report", max: 50, score: rowSum("acr", 50) }),
+ { isTotal: true, label: "Part D Total", max: maxScores.partD, score: totals.partD },
+ { isGrandTotal: true, label: "Grand Total", max: maxScores.grand, score: grandTotal },
  ],
  });
  };
@@ -530,7 +555,7 @@ export default function MediaCommDashboard({ fixedRole }) {
       showLogoutModal={showLogoutModal}
       onCancelLogout={() => setShowLogoutModal(false)}
       containerStyle={{ display: "flex", minHeight: "100vh", fontFamily: "inherit", background: "#f8fafc", color: "#111827" }}
-      mainStyle={{ flex: 1, padding: "40px", display: "flex", flexDirection: "column", gap: 16, overflowX: "auto", maxWidth: 1600, margin: "0 auto", width: "100%" }}
+      mainStyle={{ flex: 1, padding: "40px", display: "flex", flexDirection: "column", gap: 16, overflowX: "hidden", maxWidth: 1600, margin: "0 auto", width: "100%" }}
       sidebar={(
         <DashboardSidebar
           appInfo={APP_INFO}

@@ -28,11 +28,11 @@ export default function DirectorDepartmentActivities({ ctx }) {
  const { faculty, docs, lectures, courseFile, projects, quals, feedback, deptActs, uniActs, society, industry, acr, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, rows, getDir, setDir, getInnovDir, setInnovDir, innovativeRows } = ctx;
  return (
 <>
-{/* C: Dept Activities */}
-<SC title="C. Departmental Activities (Max 20)" accent="#f59e0b">
+{/* C2: School administration */}
+<SC title="C2. Administration at School Level (Max 30)" accent="#0f766e">
 <table style={T}>
 <thead><tr>
-<th style={TH}>SN</th><th style={TH}>Activity</th><th style={TH}>Nature</th>
+<th style={TH}>SN</th><th style={TH}>Activity</th><th style={TH}>Nature</th><th style={TH}>Period</th>
 <th style={TH}>View Docs</th><th style={TH}>Faculty Score</th><th style={TH_DIR}>Director Score</th>
 </tr></thead>
 <tbody>
@@ -41,9 +41,10 @@ export default function DirectorDepartmentActivities({ ctx }) {
 <td style={TDC}>{i + 1}</td>
 <td style={TD}><RO val={r.activity} /></td>
 <td style={TD}><RO val={r.nature} /></td>
+<td style={TD}><RO val={r.period} /></td>
 <td style={TDV}><ViewDocsCell docKey={`dept-${i}`} docs={docs} /></td>
 <td style={TDS}><RO val={r.score} center /></td>
-<td style={TDS_DIR}><DirInput val={getDir("deptActs", i, "dir")} onChange={v =>setDir("deptActs", i, "dir", v)} /></td>
+<td style={TDS_DIR}><DirInput val={getDir("deptActs", i, "dir")} max={30} onChange={v =>setDir("deptActs", i, "dir", v)} /></td>
 </tr>
  ))}
 </tbody>

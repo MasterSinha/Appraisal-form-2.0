@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import { DirectorFacultyReviewForm } from "../components/appraisal";
 import { api } from "../services/api";
-import { Avatar, CompactSummaryCard, ScoreBar, StatusBadge } from "../components/dashboard/dashboardPrimitives";
+import { Avatar, ScoreCard, ScoreBar, StatusBadge } from "../components/dashboard/dashboardPrimitives";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import DashboardSidebar from "../components/dashboard/DashboardSidebar";
 import { ACR_DETAIL_POINTS, SOCIETY_LABELS, MAX_SCORES, APP_INFO, createAcrRows, fetchSavedAppraisal, loadAppraisalDocuments, loadSavedAppraisal, mergeFacultyInfo, saveAppraisalDraftSection, submitAppraisal, fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, INNOVATIVE_METHODS, SCORE_LIMITS, averageSectionScore, clampScore, clampReviewScore, courseFileAverageScore, courseFileRowScore, effectiveMaxScore, feedbackAverage, feedbackRowScore, feedbackSectionScore, innovativeSelectionsFromDetails, innovativeTeachingScore, isAllowedAttachmentFile, isValidDDMMYYYY, maskDateDDMMYYYY, normalizeAutoScores, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewSectionScore, rowHasReviewableData, scoreRemaining, selfEffectivePartAMax, societyRowLocked, societyRowScore, sumSectionScore, toggleInnovativeMethod, validateCompleteRows, generateStandardReport, standardSubmittedScoreSummary, AppraisalHeaderImage, SummaryOtherInfoField, summaryOtherInfoValueFrom, RejectionNotice, DocCell, ViewCell, ViewDocsCell, RowButtons as RowBtns, SectionSaveFooter, SectionCard as SC, T, TH, TH_HOD, TH_DIR, TD, TDC, TDS, TDS_HOD, TDS_DIR, TDV, MyAppraisalSection, CreativeSchoolAuthorityReviewPanel, isCreativeSchool } from "../features/faculty-appraisal";
@@ -31,8 +31,8 @@ const DIRECTOR_ACR_DEFAULT_SCORE = 5;
 const REVIEW_SCORE_FIELDS = ["hod", "director", "dean", "vc"];
 const clampDirectorReviewScore = (section, row, value, maxScore) =>{
  if (String(value ?? "").trim() === "") return "";
- const strictValue = clampReviewScore(section, row, value, maxScore);
- return strictValue === "" ? String(clampScore(value, maxScore)) : strictValue;
+ if (section !== "acr" && clampReviewScore(section, row, value, maxScore) === "") return "";
+ return String(clampScore(value, maxScore));
 };
 const preserveSavedReviewScores = (form = {}, source = {}) =>{
  const merged = { ...form };
@@ -204,18 +204,13 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
  );
  const lec = reviewSectionScore("lectures", faculty.lectures || [], 40, "hod");
  const cf = reviewSectionScore("courseFile", faculty.courseFile || [], 20, "hod");
- const innov = clampScore(getS("innovHod"), 10);
+ const innov = clampScore(getS("innovHod"), 20);
  const obe = sumReviewRows("obeRows", "hod", 20, (row) =>row.max || 20);
  const proj = sumReviewRows("projects", "hod", 20, projectGuidanceRowMax);
  const mentoring = sumReviewRows("mentoringRows", "hod", 10, (row) =>row.max || 10);
  const qual = sumReviewRows("quals", "hod", 10, SCORE_LIMITS.qualificationRow);
  const fb = reviewSectionScore("feedback", faculty.feedback || [], 10, "hod");
- const dept = sumReviewRows("deptActs", "hod", 30);
- const uni = sumReviewRows("uniActs", "hod", 50);
- const soc = sumReviewRows("society", "hod", 20, SCORE_LIMITS.societyRow);
- const ind = sumReviewRows("industry", "hod", 8);
- const acrT = sumReviewRows("acr", "hod", 50, SCORE_LIMITS.acrRow);
- const partA = clampScore(lec + cf + innov + fb + obe + proj + mentoring + qual + dept + uni + soc + ind + acrT, reviewerMaxScores.partA);
+ const partA = clampScore(lec + cf + innov + fb + obe + proj + mentoring + qual, reviewerMaxScores.partA);
 
  const jour = sumReviewRows("journals", "hod", 100);
  const bk = sumReviewRows("books", "hod", 30);
@@ -230,7 +225,17 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
  const b8 = sumReviewRows("fdps", "hod", 20, SCORE_LIMITS.fdpRow);
  const partB = clampScore(jour + bk + pat + resProjects + res + prop + conf + b8 + awd + prod + ictT, reviewerMaxScores.partB);
 
- return { partA, partB, total: clampScore(partA + partB, reviewerMaxScores.grand) };
+ const uni = sumReviewRows("uniActs", "hod", 50);
+ const dept = sumReviewRows("deptActs", "hod", 30);
+ const events = sumReviewRows("eventRows", "hod", 20);
+ const soc = sumReviewRows("society", "hod", 20, (row) =>row.max || 20);
+ const ind = sumReviewRows("industry", "hod", 8);
+ const alumni = sumReviewRows("alumniRows", "hod", 10);
+ const placement = sumReviewRows("placementRows", "hod", 20);
+ const partC = clampScore(uni + dept + events + soc + ind + alumni + placement, reviewerMaxScores.partC);
+ const partD = sumReviewRows("acr", "hod", reviewerMaxScores.partD, SCORE_LIMITS.acrRow);
+
+ return { partA, partB, partC, partD, total: clampScore(partA + partB + partC + partD, reviewerMaxScores.grand) };
  };
 
  // Compute Director total from dirData
@@ -253,7 +258,7 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
  };
  const getDirS = (key) =>n(dirData[key] ?? faculty.innovDirector ?? faculty.innovDir);
  const sumReviewRows = (section, field, max, rowMax) =>clampScore(
- (faculty[section] || []).reduce((total, row, index) =>{
+ (section === "acr" ? createAcrRows(faculty.acr) : (faculty[section] || [])).reduce((total, row, index) =>{
  if (section === "society" && societyRowLocked(row)) return total;
  if (!rowHasReviewableData(section, row) && String(getDRaw(section, index, field) ?? "").trim() === "") return total;
  const limit = typeof rowMax === "function" ? rowMax(row) : rowMax;
@@ -313,7 +318,7 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
  return { partA, partB, partC, partD, total: clampScore(partA + partB + partC + partD, reviewerMaxScores.grand) };
  };
 
- const { partA, partB, total } = calcHodScore();
+ const { partA, partB, partC, partD, total } = calcHodScore();
  const calculatedDirScores = calcDirScore();
  const hasSavedDirectorScores = ["directorPartA", "directorPartB", "directorPartC", "directorPartD", "directorTotal"].some((key) =>String(faculty?.[key] ?? "").trim() !== "");
  const rawDisplayedDirScores = reviewLocked && hasSavedDirectorScores ? {
@@ -373,10 +378,25 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
  setSavingDraft(false);
  }
  };
+
+ const handleSaveAndNext = async () => {
+    await handleSaveDraft();
+    const NEXT_SECTION_MAP = { partA: "partB", partB: "partC", partC: "partD", partD: "summary" };
+    const nextSection = NEXT_SECTION_MAP[sectionView];
+    if (nextSection) {
+      setSectionView(nextSection);
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+      });
+    }
+  };
+
  const facultySummary = standardSubmittedScoreSummary(faculty, {
  partA: faculty.lectures?.reduce((a, r) =>a + n(r.score), 0) || 0,
  partB: faculty.journals?.reduce((a, r) =>a + n(r.score), 0) || 0,
  });
+ const directorSubjectRole = (faculty.appraisalRole || faculty.appraisal_role || faculty.role || "faculty").toLowerCase();
+ const showHodSummaryCard = directorSubjectRole === "faculty" && getSchoolKey(faculty.school || faculty.schoolName || faculty.info?.school || "") === "SoEMR";
 
  return (
 <div style={{ display: "flex", flexDirection: "column", gap: 0, minHeight: "100%" }}>
@@ -437,36 +457,58 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
 <DirectorFacultyReviewForm faculty={faculty} hodData={hodData} setHodData={setHodData} dirData={dirData} setDirData={setDirData} sectionView={sectionView} />
 </fieldset>
  )}
+
  {["partA", "partB", "partC", "partD"].includes(sectionView) && !reviewLocked && (
 <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, margin: "12px 0 14px", flexWrap: "wrap" }}>
 <span style={{ color: "#64748b", fontSize: 11, fontWeight: 700 }}>{draftStatus}</span>
 <button
+ type="button"
  onClick={handleSaveDraft}
+ disabled={savingDraft}
+ style={{ padding: "10px 22px", background: "#fff", color: savingDraft ? "#94a3b8" : "#2563eb", border: "1.5px solid #2563eb", borderRadius: 7, cursor: savingDraft ? "not-allowed" : "pointer", fontWeight: 700, fontSize: 13, fontFamily: "inherit" }}
+>
+ {savingDraft ? "Saving..." : "Save as Draft"}
+</button>
+<button
+ type="button"
+ onClick={handleSaveAndNext}
  disabled={savingDraft}
  style={{ padding: "10px 22px", background: savingDraft ? "#94a3b8" : "#2563eb", color: "#fff", border: "none", borderRadius: 7, cursor: savingDraft ? "not-allowed" : "pointer", fontWeight: 700, fontSize: 13, fontFamily: "inherit" }}
 >
- {savingDraft ? "Saving..." : "Save Draft"}
+ {savingDraft ? "Saving..." : "Save & Next"}
 </button>
 </div>
  )}
 
  {sectionView === "summary" && (
-<div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 14, display: "grid", gap: 10, boxShadow: "0 1px 6px rgba(0,0,0,.06)" }}>
-<CompactSummaryCard
- title="Faculty Score"
- subtitle="Faculty submitted score for the engineering appraisal form."
+<div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 14, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 14, boxShadow: "0 1px 6px rgba(0,0,0,.06)" }}>
+<ScoreCard
+ title={directorSubjectRole === "faculty" ? "Faculty Score" : "Self Score"}
+ subtitle="Self score for the engineering appraisal form."
  totals={{ partA: facultySummary.partA, partB: facultySummary.partB, partC: facultySummary.partC, partD: facultySummary.partD, total: facultySummary.total }}
  maxScores={{ partA: facultySummary.partAMax, partB: facultySummary.partBMax, partC: facultySummary.partCMax, partD: facultySummary.partDMax, grand: facultySummary.grandMax }}
  accent="#0ea5e9"
+ extraContent={<SummaryOtherInfoField value={summaryOtherInfoValueFrom(faculty)} readOnly rows={4} />}
 />
-<SummaryOtherInfoField value={summaryOtherInfoValueFrom(faculty)} readOnly rows={4} />
-<CompactSummaryCard
+{showHodSummaryCard && (
+<ScoreCard
+ title="HOD Score"
+ subtitle="HOD score for the engineering appraisal form."
+ totals={{ partA, partB, partC, partD, total }}
+ maxScores={reviewerMaxScores}
+ remarksTitle="HOD Remarks"
+ accent="#0f766e"
+ remarksContent={<div style={{ color: "#334155", fontSize: 12, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{hodRemarks || "-"}</div>}
+/>
+)}
+<ScoreCard
  title="Director Score"
  subtitle="Director score for the engineering appraisal form."
  totals={{ partA: dirPartA, partB: dirPartB, partC: dirPartC, partD: dirPartD, total: dirTotal }}
  maxScores={reviewerMaxScores}
- accent="#0ea5e9"
  remarksTitle="Director Remarks"
+ isFinal
+ accent="#7c3aed"
  remarksContent={(
 <textarea value={dirRemarks} onChange={e =>setDirRemarks(e.target.value)} rows={4} readOnly={reviewLocked}
  placeholder="Enter your director remarks, observations, and recommendations..."
@@ -536,7 +578,7 @@ export default function DirectorDashboard() {
  const [reviewLoading, setReviewLoading] = useState(null);
 
  const dirSchool = sessionStorage.getItem("school");
- const hasHOD = sessionStorage.getItem("hasHod") === "true";
+ const isSoemrDirector = getSchoolKey(dirSchool) === "SoEMR";
 
  const [facultyList, setFacultyList] = useState([]);
  const [hodList, setHodList] = useState([]);
@@ -585,7 +627,7 @@ export default function DirectorDashboard() {
  const navItems = [
  { id: "myAppraisal", icon: "", label: "My Appraisal", sub: "View your self-appraisal form" },
  { id: "facultyApprovals", icon: "", label: "Faculty's Appraisal", sub: `${facultyPendingCount} awaiting review`, badge: facultyPendingCount },
- ...(hasHOD ? [{ id: "hodApprovals", icon: "", label: "HOD's Appraisal", sub: `${hodPendingCount} awaiting review`, badge: hodPendingCount }] : []),
+ ...(isSoemrDirector ? [{ id: "hodApprovals", icon: "", label: "HOD's Appraisal", sub: `${hodPendingCount} awaiting review`, badge: hodPendingCount }] : []),
  ];
  const handleSubmitReview = async (type, id, scores, remarks, sectionScores, reviewConfirmed = false, decision = "approved") =>{
  if (!reviewConfirmed) {
@@ -655,7 +697,7 @@ export default function DirectorDashboard() {
  appInfo={APP_INFO}
  navItems={navItems}
  activeTab={activeMainTab}
- onTabSelect={(tab) =>{ setActiveMainTab(tab); setReviewingFaculty(null); }}
+ onTabSelect={(tab) =>{ setActiveMainTab(tab); setReviewingFaculty(null); setReviewingHod(null); }}
  showSectionSelector={activeMainTab === "myAppraisal"}
  sectionTab={hodAppraisalTab}
  onSectionChange={handleMyAppraisalSectionChange}
@@ -790,6 +832,7 @@ return (
  const data = await fetchSavedAppraisal({
  facultyEmail: item.email,
  academicYear: item.academic_year || item.academicYear || APP_INFO.DEFAULT_AY || "2026-2027",
+ reviewerRole: "director",
  });
  const form = data?.payload?.form || data?.form || {};
  const docs = data?.payload?.docs || data?.docs || {};

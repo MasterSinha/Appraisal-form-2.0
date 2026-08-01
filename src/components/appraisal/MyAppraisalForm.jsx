@@ -3,6 +3,7 @@ import {
   SCORE_LIMITS,
   clampScore,
   clampReviewScore,
+  createAcrRows,
   mergeFacultyInfo,
   reviewSectionScore,
 } from "../../features/faculty-appraisal";
@@ -15,18 +16,18 @@ import PartC from "./PartC/PartC";
 import PartD from "./PartD/PartD";
 
 const REVIEW_SECTION_MAX = {
-  lectures: 50,
+  lectures: 40,
   courseFile: 20,
   obeRows: 20,
   projects: 20,
   mentoringRows: 10,
   quals: 10,
   feedback: 10,
-  deptActs: 20,
-  uniActs: 30,
+  deptActs: 30,
+  uniActs: 50,
   eventRows: 20,
-  society: 10,
-  industry: 5,
+  society: 20,
+  industry: 8,
   alumniRows: 10,
   placementRows: 20,
   acr: 50,
@@ -63,8 +64,8 @@ const DIRECTOR_REVIEW_SECTION_MAX = {
 const DIRECTOR_ACR_DEFAULT_SCORE = 5;
 const clampDirectorReviewScore = (section, row, value, maxScore) => {
  if (String(value ?? "").trim() === "") return "";
- const strictValue = clampReviewScore(section, row, value, maxScore);
- return strictValue === "" ? String(clampScore(value, maxScore)) : strictValue;
+ if (section !== "acr" && clampReviewScore(section, row, value, maxScore) === "") return "";
+ return String(clampScore(value, maxScore));
 };
 
 // - Faculty Form in HOD Review Mode -
@@ -157,8 +158,9 @@ export function DirectorFacultyReviewForm({ faculty, hodData, setHodData, dirDat
  setDirData(prev =>{
  const updated = { ...prev };
  if (!updated[section]) updated[section] = JSON.parse(JSON.stringify(faculty[section] || []));
+ const sourceRows = section === "acr" ? createAcrRows(faculty[section]) : (faculty[section] || []);
  const nextVal = field === "dir" && idx !== null
- ? clampDirectorReviewScore(section, faculty[section]?.[idx] || {}, val, DIRECTOR_REVIEW_SECTION_MAX[section] || 0)
+ ? clampDirectorReviewScore(section, sourceRows[idx] || {}, val, DIRECTOR_REVIEW_SECTION_MAX[section] || 0)
  : val;
  if (idx === null) {
  updated[section] = Array.isArray(updated[section])

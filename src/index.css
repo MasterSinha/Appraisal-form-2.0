@@ -65,8 +65,7 @@ select:focus {
    on hover so the effect is visible against any base row color.
    - */
 tbody tr:hover > td {
-  background-color: rgba(99,102,241,0.045) !important;
-  transition: background-color 0.12s ease;
+  transition: none !important;
 }
 
 /* - Sidebar button hover -
@@ -630,18 +629,74 @@ tbody tr { transition: background-color 0.12s ease; }
   border-right: none !important;
 }
 
-.appraisal-form-shell table tbody tr:hover td {
-  background: #fff !important;
+.appraisal-form-shell table tbody tr:hover td,
+.fa-section-card table tbody tr:hover td,
+.appraisal-table-box table tbody tr:hover td {
+  transition: none !important;
 }
 
-.appraisal-form-shell table tbody tr:has(td[colspan]) td {
-  background: #f1efff !important;
-  color: #4338ca !important;
-  font-weight: 900 !important;
+table tbody tr.appraisal-total-row td,
+table tbody tr.appraisal-total-row:hover td,
+table tbody tr:has(td[colspan]) td,
+table tbody tr:has(td[colspan]):hover td,
+.appraisal-form-shell table tbody tr.appraisal-total-row td,
+.appraisal-form-shell table tbody tr.appraisal-total-row:hover td {
+  background: #f0f3ff !important;
+  background-color: #f0f3ff !important;
+  color: #3730a3 !important;
+  font-weight: 800 !important;
 }
 
 .appraisal-section-card > div:last-child {
   overflow-x: auto;
+}
+
+/* - Standardized Icon & Interactive Controls Hover Effects - */
+button[aria-label="Guidelines info"] {
+  transition: all 0.15s ease !important;
+}
+
+button[aria-label="Guidelines info"]:hover {
+  background: #4338ca !important;
+  color: #ffffff !important;
+  border-color: #4338ca !important;
+  box-shadow: 0 4px 10px rgba(67, 56, 202, 0.25) !important;
+}
+
+div[role="button"][aria-label="Attach supporting document"] {
+  transition: all 0.18s ease !important;
+}
+
+div[role="button"][aria-label="Attach supporting document"]:hover {
+  background: #f8fafc !important;
+  border-color: #6366f1 !important;
+  color: #4f46e5 !important;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.14) !important;
+}
+
+a[aria-label^="View "] {
+  transition: background 180ms ease, border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease !important;
+}
+
+a[aria-label^="View "]:hover {
+  background: #ede9fe !important;
+  border-color: #c7d2fe !important;
+  color: #3730a3 !important;
+  box-shadow: 0 10px 22px rgba(79, 70, 229, 0.16) !important;
+  transform: translateY(-1px);
+}
+
+.appraisal-part-icon,
+.appraisal-subsection-title span:first-child {
+  transition: all 180ms ease !important;
+}
+
+.appraisal-part-icon:hover,
+.appraisal-subsection-title span:first-child:hover {
+  background: #e0e7ff !important;
+  border-color: #c7d2fe !important;
+  color: #3730a3 !important;
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.12);
 }
 
 .appraisal-section-card > div:last-child::-webkit-scrollbar {

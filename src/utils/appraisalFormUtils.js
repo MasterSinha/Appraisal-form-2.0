@@ -169,12 +169,10 @@ export const feedbackRowScore = (row = {}, maxScore = 10) =>
  clampScore(feedbackAverage(row) / 10, maxScore);
 
 export const feedbackSectionScore = (rows = [], maxScore = 10) =>{
- const filled = rows.filter((row) =>
- ["code", "fb1", "fb2"].some((key) =>String(row?.[key] ?? "").trim() !== ""),
- );
+ const filled = rows.filter((row) =>String(row?.score ?? "").trim() !== "");
  if (!filled.length) return 0;
  return clampScore(
- filled.reduce((total, row) =>total + feedbackRowScore(row, maxScore), 0) / filled.length,
+ filled.reduce((total, row) =>total + clampScore(row?.score, maxScore), 0),
  maxScore,
  );
 };
@@ -218,9 +216,6 @@ export const scoreSectionRows = (sectionKey, rows = [], maxScore, scoreKey = "sc
 const hasScoreValue = (row = {}, key = "score") =>
  String(row?.[key] ?? "").trim() !== "";
 
-const hasFeedbackScoreValues = (row = {}) =>
- ["fb1", "fb2"].some((key) =>String(row?.[key] ?? "").trim() !== "");
-
 const innovRowsScore = (rows = []) =>{
  const hasAnyScore = rows.some((row) =>hasScoreValue(row));
  if (!hasAnyScore) return "";
@@ -240,7 +235,7 @@ export const normalizeAutoScores = (form = {}) =>({
  })),
  feedback: (form.feedback || []).map((row) =>({
  ...row,
- score: hasFeedbackScoreValues(row) ? feedbackRowScore(row, 10).toFixed(1) : "",
+ score: String(row.score ?? "").trim() ? String(clampScore(row.score, 10)) : "",
  })),
  society: (form.society || []).map((row) =>{
  return {
@@ -292,43 +287,94 @@ export const isFilled = (value) =>String(value ?? "").trim() !== "";
 export const rowHasAnyValue = (row = {}, keys = []) =>
  keys.some((key) =>isFilled(row?.[key]));
 
-export const REVIEW_ROW_VALUE_KEYS = {
- lectures: ["sem", "code", "planned", "conducted"],
- courseFile: ["course", "title", "details"],
- obeRows: ["component", "evidence"],
- projects: ["label"],
- mentoringRows: ["activity", "evidence"],
- quals: ["label"],
- feedback: ["code", "fb1", "fb2"],
- deptActs: ["activity", "nature", "period"],
- uniActs: ["activity", "nature", "period"],
- eventRows: ["event", "role", "date", "level"],
- society: ["label", "details", "date", "participated", "completed", "yesNo", "yes_no"],
- industry: ["name", "details", "date"],
- alumniRows: ["activity", "details", "date"],
- placementRows: ["activityType", "name", "date"],
- acr: ["label"],
- journals: ["title", "journal", "issn", "index"],
- popularWritings: ["media", "film"],
- books: ["title", "book", "issn", "pub", "publisher", "coauth", "coAuthors", "first"],
- ict: ["title", "desc", "type", "quad"],
- research: ["degree", "name", "thesis"],
- projects2: ["title", "agency", "date", "amount", "role", "status"],
- internalProjects: ["title", "agency", "date", "amount", "role", "status"],
- externalProjects: ["title", "agency", "date", "amount", "role", "status"],
- patents: ["title", "type", "date", "status", "fileNo"],
- awards: ["title", "date", "agency", "level"],
- confs: ["title", "type", "org", "level"],
- proposals: ["title", "duration", "agency", "amount"],
- products: ["details", "usage", "used"],
- fdps: ["program", "duration", "org"],
- training: ["company", "duration", "nature"],
- innovRows: ["method", "details"],
+export const qualificationRowDescription = (row = {}) => {
+ const primary =
+ row.label ||
+ row.title ||
+ row.qualification_title ||
+ row.qualificationTitle ||
+ row.qualification ||
+ row.certification_title ||
+ row.certificationTitle ||
+ row.certification ||
+ row.name ||
+ "";
+ const details = [row.awardingBody || row.awarding_body || row.body, row.date].filter(isFilled);
+ if (!isFilled(primary)) return details.join(" - ");
+ return details.length ? `${primary} (${details.join(", ")})` : String(primary);
 };
 
-export const rowHasReviewableData = (sectionKey, row = {}) =>{
- const keys = REVIEW_ROW_VALUE_KEYS[sectionKey] || [];
- return keys.length ? rowHasAnyValue(row, keys) : false;
+export const REVIEW_ROW_VALUE_KEYS = {
+  lectures: ["sem", "code", "planned", "conducted"],
+  courseFile: ["course", "title", "details"],
+  obeRows: ["component", "evidence"],
+  projects: ["label", "studentsCount", "industryCollab", "awardReceived", "studentPub", "details"],
+  mentoringRows: ["activity", "evidence"],
+  quals: [
+    "label",
+    "title",
+    "qualification_title",
+    "qualificationTitle",
+    "qualification",
+    "certification_title",
+    "certificationTitle",
+    "certification",
+    "awarding_body",
+    "awardingBody",
+    "body",
+    "date",
+    "score",
+    "hod",
+    "director",
+    "dir",
+    "dean",
+    "vc",
+  ],
+  feedback: ["code", "fb1", "fb2"],
+  deptActs: ["activity", "nature", "period", "durationCat"],
+  uniActs: ["activity", "nature", "period", "durationCat"],
+  eventRows: ["event", "role", "date", "level"],
+  events: ["event", "role", "date", "level"],
+  society: ["label", "activity", "details", "date", "participated", "completed", "yesNo", "yes_no"],
+  industry: ["name", "details", "activity", "partner", "date"],
+  alumniRows: ["activity", "details", "date"],
+  alumni: ["activity", "details", "date"],
+  placementRows: ["activityType", "type", "name", "date"],
+  placements: ["activityType", "type", "name", "date"],
+  acr: ["label"],
+  journals: ["title", "journal", "issn", "index", "doi", "impact", "coAuthors", "firstAuthor"],
+  popularWritings: ["title", "pubName", "type", "circulation", "media", "film"],
+  books: ["title", "book", "issn", "pub", "publisher", "coauth", "coAuthors", "first", "type", "level"],
+  ipr: ["title", "scope", "status", "fileNo", "type", "date"],
+  ict: ["title", "desc", "type", "quad", "platform", "reach"],
+  research: ["degree", "name", "thesis", "status", "date"],
+  projects2: ["title", "agency", "date", "amount", "role", "status"],
+  internalProjects: ["title", "agency", "date", "amount", "role", "status"],
+  externalProjects: ["title", "agency", "date", "amount", "role", "status"],
+  patents: ["title", "type", "date", "status", "fileNo"],
+  consultancy: ["client", "nature", "amount", "agency", "duration"],
+  awards: ["title", "date", "agency", "level"],
+  confs: ["title", "type", "org", "level", "role", "date"],
+  proposals: ["title", "duration", "agency", "amount"],
+  products: ["details", "usage", "used", "title", "role", "status"],
+  innovation: ["details", "usage", "used", "title", "role", "status"],
+  fdps: ["program", "duration", "org"],
+  training: ["company", "duration", "nature"],
+  innovRows: ["method", "details", "score"],
+  exhibitions: ["title", "type", "venueLevel", "date"],
+};
+
+const IGNORED_METADATA_KEYS = new Set([
+  "_id", "id", "hod", "director", "dir", "dean", "vc", "ro", "reg", "status", "workflowStatus", "workflow_status"
+]);
+
+export const rowHasReviewableData = (sectionKey, row = {}) => {
+  if (!row || typeof row !== "object") return false;
+  const keys = REVIEW_ROW_VALUE_KEYS[sectionKey] || [];
+  if (keys.length && rowHasAnyValue(row, keys)) {
+    return true;
+  }
+  return Object.entries(row).some(([key, value]) => !IGNORED_METADATA_KEYS.has(key) && isFilled(value));
 };
 
 export const reviewRowMaxForSection = (sectionKey, row = {}, sectionMax = 0) =>
@@ -366,8 +412,25 @@ export const reviewSectionScore = (sectionKey, rows = [], maxScore = 0, scoreKey
  );
 };
 
+const FIELD_ALIASES = {
+  index: ["index", "indexing", "impact", "impactFactor", "issn"],
+  impact: ["impact", "impactFactor", "index", "indexing"],
+  impactFactor: ["impactFactor", "impact", "index", "indexing"],
+  issn: ["issn", "doi"],
+  position: ["position", "authorPosition", "firstAuthor", "first", "coauth", "coAuthors"],
+  authorPosition: ["authorPosition", "position", "firstAuthor", "first", "coauth", "coAuthors"],
+  first: ["first", "firstAuthor", "authorPosition", "position", "coauth", "coAuthors"],
+  coauth: ["coauth", "coAuthors", "authorPosition", "position", "firstAuthor"],
+  book: ["book", "publisherIsbn", "publisher"],
+  pub: ["pub", "type", "publisher"],
+  fileNo: ["fileNo", "date"],
+};
+
 export const rowMissingFields = (row = {}, keys = []) =>
- keys.filter((key) =>!isFilled(row?.[key]));
+  keys.filter((key) => {
+    const aliases = FIELD_ALIASES[key] || [key];
+    return !aliases.some((alias) => isFilled(row?.[alias]));
+  });
 
 const YES_NO_FIELD_NAMES = new Set([
  "evidence",
