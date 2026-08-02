@@ -374,20 +374,20 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false, revi
 <div style={{ background: "#eff6ff", border: "2px solid #93c5fd", borderRadius: 10, padding: "14px 15px", display: "flex", flexDirection: "column", minWidth: 0, boxShadow: "0 0 0 4px rgba(147,197,253,0.16), 0 14px 28px rgba(37,99,235,0.08)" }}>
 <div style={{ fontSize: 11, fontWeight: 900, color: "#1d4ed8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 5 }}>{reviewerLabel} Remarks Required</div>
 <div style={{ color: "#1e40af", fontSize: 11, fontWeight: 700, marginBottom: 10 }}>Please enter remarks before submitting the review.</div>
-<textarea value={remarks} onChange={e =>setRemarks(e.target.value)} rows={8} readOnly={reviewLocked}
+<textarea value={remarks} onChange={e =>setRemarks(e.target.value)} rows={7} readOnly={reviewLocked}
  placeholder="Enter your remarks, observations, and recommendations for this faculty member..."
- style={{ width: "100%", flex: 1, minHeight: 178, border: "1px solid #bfdbfe", borderRadius: 8, padding: "10px 11px", fontSize: 12, lineHeight: 1.5, fontFamily: "inherit", resize: "vertical", boxSizing: "border-box", background: "#fff", color: "#334155", outline: "none" }} />
+ style={{ width: "100%", height: 235, minHeight: 235, border: "1px solid #bfdbfe", borderRadius: 8, padding: "10px 11px", fontSize: 12, lineHeight: 1.5, fontFamily: "inherit", resize: "none", boxSizing: "border-box", background: "#fff", color: "#334155", outline: "none" }} />
 </div>
  )}
 />
 
  {!reviewLocked && (
-<label style={{ gridColumn: "1 / -1", display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: 8, marginBottom: 0, color: "#334155", fontSize: 12, lineHeight: 1.5, cursor: "pointer" }}>
+<label className="appraisal-confirmation-card" style={{ gridColumn: "1 / -1", display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 8, marginBottom: 0, color: "#334155", fontSize: 12, lineHeight: 1.5, cursor: "pointer" }}>
 <input
  type="checkbox"
  checked={reviewConfirmed}
  onChange={(e) =>setReviewConfirmed(e.target.checked)}
- style={{ margin: 0, flexShrink: 0 }}
+ style={{ margin: 0, accentColor: "#16a34a", flexShrink: 0 }}
  />
 <span>I have verified all the details and confirm that the information provided is correct. I am responsible for the accuracy of this data.</span>
 </label>

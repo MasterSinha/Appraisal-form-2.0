@@ -192,12 +192,12 @@ export default function FacultyProfile({ user, onProceed }) {
 
           {/* Confirmation */}
           <div style={S.confirmRow}>
-            <label style={S.checkLabel}>
+            <label className="appraisal-confirmation-card" style={S.checkLabel}>
               <input
                 type="checkbox"
                 checked={confirmed}
                 onChange={(e) => setConfirmed(e.target.checked)}
-                style={{ width: 15, height: 15, accentColor: "#0f172a", cursor: "pointer" }}
+                style={{ width: 15, height: 15, accentColor: "#16a34a", cursor: "pointer" }}
               />
               <span>
                 I confirm that the above information is correct and I wish to proceed with my{" "}
@@ -341,7 +341,8 @@ const S = {
   confirmRow: { marginBottom: 18 },
   checkLabel: {
     display: "flex", alignItems: "flex-start", gap: 10,
-    fontSize: 13, color: "#374151", cursor: "pointer", lineHeight: 1.6,
+    padding: "11px 12px", background: "#f0fdf4", border: "1px solid #86efac",
+    borderRadius: 8, fontSize: 13, color: "#374151", cursor: "pointer", lineHeight: 1.6,
   },
 
   proceedBtn: {

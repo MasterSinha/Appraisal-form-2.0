@@ -189,9 +189,9 @@ function ReviewPanel({ faculty, onBack, onSubmit }) {
  remarksTitle="HOD Remarks"
  isFinal
  remarksContent={(
-<textarea value={remarks} onChange={e =>setRemarks(e.target.value)} rows={4}
+<textarea value={remarks} onChange={e =>setRemarks(e.target.value)} rows={7}
  placeholder="Enter your remarks, observations, and recommendations for this faculty member..."
- style={{ width: "100%", border: "1px solid #e2e8f0", borderRadius: 7, padding: "10px 12px", fontSize: 12, fontFamily: "inherit", resize: "vertical", boxSizing: "border-box" }} />
+ style={{ width: "100%", height: 235, minHeight: 235, border: "1px solid #e2e8f0", borderRadius: 7, padding: "10px 12px", fontSize: 12, fontFamily: "inherit", resize: "none", boxSizing: "border-box" }} />
  )}
 />
 </div>
@@ -872,6 +872,8 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
  const subjectRole = (approval.appraisalRole || approval.appraisal_role || approval.role || "faculty").toLowerCase();
  const isSoemrFaculty = subjectRole === "faculty" && getSchoolKey(approval.school || approval.schoolName || approval.info?.school || "") === "SoEMR";
  const useTwoCardDeanSummary = subjectRole === "hod" || (subjectRole === "faculty" && !isSoemrFaculty);
+ const useDirectorDeanSummaryRow = subjectRole === "director";
+ const selfScoreTitle = subjectRole === "faculty" ? "Faculty Score" : `${subjectRole === "hod" ? "HOD" : subjectRole === "director" ? "Director" : "Self"} Self Score`;
  const roleTotalsFor = (prefix) =>({
  partA: n(approval[`${prefix}PartA`]),
  partB: n(approval[`${prefix}PartB`]),
@@ -880,10 +882,10 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
  total: n(approval[`${prefix}Total`]),
  });
  const deanSummaryCards = [
- ...(["faculty", "hod"].includes(subjectRole) ? [{
+ ...(["faculty", "hod", "director"].includes(subjectRole) ? [{
  key: "self",
- title: subjectRole === "hod" ? "HOD Self Score" : "Faculty Score",
- subtitle: subjectRole === "hod" ? "Self score for the HOD appraisal form." : "Self score for the engineering appraisal form.",
+ title: selfScoreTitle,
+ subtitle: `Self score for the ${subjectRole === "hod" ? "HOD" : subjectRole === "director" ? "Director" : "engineering"} appraisal form.`,
  totals: { partA: selfSummary.partA, partB: selfSummary.partB, partC: selfSummary.partC, partD: selfSummary.partD, total: selfSummary.total },
  maxScores: { partA: selfSummary.partAMax, partB: selfSummary.partBMax, partC: selfSummary.partCMax, partD: selfSummary.partDMax, grand: selfSummary.grandMax },
  accent: "#0ea5e9",
@@ -1053,7 +1055,7 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
 
  {sectionView === "summary" && (
 <>
-<div className={`dean-review-summary-grid ${useTwoCardDeanSummary ? "dean-review-summary-grid--two" : ""}`} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 14, display: "grid", gap: 14, boxShadow: "0 1px 6px rgba(0,0,0,.06)", marginBottom: 14 }}>
+<div className={`dean-review-summary-grid ${useTwoCardDeanSummary ? "dean-review-summary-grid--two" : ""}`} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 14, display: "grid", gridTemplateColumns: useDirectorDeanSummaryRow ? "minmax(280px, 0.72fr) minmax(640px, 1.28fr)" : undefined, gap: 14, boxShadow: "0 1px 6px rgba(0,0,0,.06)", marginBottom: 14 }}>
 {deanSummaryCards.map((card) =>(
 <ScoreCard key={card.key} {...card} />
 ))}
@@ -1064,15 +1066,15 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
  maxScores={reviewerMaxScores}
  isFinal
  accent="#7c3aed"
- cardStyle={{ gridColumn: "1 / -1" }}
+ cardStyle={useDirectorDeanSummaryRow ? { minWidth: 0 } : { gridColumn: "1 / -1" }}
  sideContent={(
 <div style={{ background: "#eff6ff", border: "2px solid #93c5fd", borderRadius: 10, padding: "14px 15px", display: "flex", flexDirection: "column", minWidth: 0, boxShadow: "0 0 0 4px rgba(147,197,253,0.16), 0 14px 28px rgba(37,99,235,0.08)" }}>
 <div style={{ fontSize: 11, fontWeight: 900, color: "#1d4ed8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 5 }}>Dean Remarks Required</div>
 <div style={{ color: "#1e40af", fontSize: 11, fontWeight: 700, marginBottom: 10 }}>Please enter remarks before submitting the review.</div>
-<textarea value={remarks} onChange={(e) =>setRemarks(e.target.value)} rows={8} readOnly={reviewLocked}
+<textarea value={remarks} onChange={(e) =>setRemarks(e.target.value)} rows={7} readOnly={reviewLocked}
  placeholder="Enter dean remarks, observations, and recommendations..."
- style={{ width: "100%", flex: 1, minHeight: 178, border: "1px solid #bfdbfe", borderRadius: 8, padding: "10px 11px", fontFamily: "inherit", fontSize: 12, lineHeight: 1.5, color: "#334155", resize: "vertical", background: "#fff", outline: "none", boxSizing: "border-box" }}
- />
+ style={{ width: "100%", height: 235, minHeight: 235, border: "1px solid #bfdbfe", borderRadius: 8, padding: "10px 11px", fontFamily: "inherit", fontSize: 12, lineHeight: 1.5, color: "#334155", resize: "none", background: "#fff", outline: "none", boxSizing: "border-box" }}
+/>
 </div>
  )}
 />
@@ -1083,12 +1085,12 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
  {sectionView === "summary" && (
 <>
  {!reviewLocked && (
-<label style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: 8, marginBottom: 14, color: "#334155", fontSize: 12, lineHeight: 1.5, cursor: "pointer" }}>
+<label className="appraisal-confirmation-card" style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 8, marginBottom: 14, color: "#334155", fontSize: 12, lineHeight: 1.5, cursor: "pointer" }}>
 <input
  type="checkbox"
  checked={reviewConfirmed}
  onChange={(e) =>setReviewConfirmed(e.target.checked)}
- style={{ margin: 0, flexShrink: 0 }}
+ style={{ margin: 0, accentColor: "#16a34a", flexShrink: 0 }}
  />
 <span>I have verified all the details and confirm that the information provided is correct. I am responsible for the accuracy of this data.</span>
 </label>
@@ -1147,20 +1149,23 @@ export default function DeanDashboard() {
   const activeDeanTrack = getDeanTrack(userProfile);
   const activeSchools = getSchoolsByDeanTrack(activeDeanTrack);
   const activeSchoolCodes = activeSchools.map((s) => s.code);
+  const activeSchoolCodesKey = activeSchoolCodes.join(",");
 
   useEffect(() => {
     const loadReviewQueue = async () => {
+      const schoolValues = activeSchoolCodesKey.split(",").filter(Boolean);
+      const reviewerProfile = profileFromsessionStorage();
       try {
         const items = await fetchReviewQueueForRole({
           reviewerRole: "dean",
-          reviewerProfile: userProfile,
-          schoolValues: activeSchoolCodes,
+          reviewerProfile,
+          schoolValues,
         });
         const schoolOf = (item) => getSchoolKey(item.school || item.school_name || item.schoolName || "");
         const roleOf = (item) => (item.appraisalRole || item.appraisal_role || "").toLowerCase();
         const scopedItems = items.filter((item) => {
           const code = schoolOf(item);
-          return activeSchoolCodes.includes(code) || activeSchoolCodes.includes(item.school);
+          return schoolValues.includes(code) || schoolValues.includes(item.school);
         });
         setFacultyList(scopedItems.filter((item) => roleOf(item) === "faculty"));
         setHodList(scopedItems.filter((item) => roleOf(item) === "hod" && (schoolOf(item) === "SoEMR" || item.school === "SoEMR")));
@@ -1174,7 +1179,7 @@ export default function DeanDashboard() {
     };
 
     loadReviewQueue();
-  }, [activeSchoolCodes.join(",")]);
+  }, [activeSchoolCodesKey]);
 
   const [filterStatus, setFilterStatus] = useState("All");
   const [selectedSchoolCode, setSelectedSchoolCode] = useState(activeSchools[0]?.code || "SoCSEA");
@@ -1354,21 +1359,6 @@ export default function DeanDashboard() {
           showSectionSelector={activeMainTab === "myAppraisal"}
           sectionTab={hodAppraisalTab}
           onSectionChange={handleMyAppraisalSectionChange}
-          afterNav={(
-            <div style={{ background: "#1e293b", borderRadius: 9, padding: "12px 13px", display: "grid", gap: 8 }}>
-              <div style={{ fontSize: 9, color: "#94a3b8", fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.9 }}>Schools Overseen</div>
-              {ENGINEERING_SCHOOLS.map((school) => {
-                const visual = SCHOOL_VISUALS[school.code] || {};
-                return (
-                  <div key={school.code} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 10, color: "#cbd5e1" }}>
-                    <span style={{ width: 9, height: 9, borderRadius: 2, background: visual.color || "#64748b", display: "inline-block" }} />
-                    <span style={{ color: visual.color || "#cbd5e1", fontWeight: 800 }}>{visual.icon || "-"}</span>
-                    <span>{school.code}</span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
           profileSubtitle={`Dean - ${sessionStorage.getItem("department")?.split(" ")[0] || ""}`}
           onLogout={() => setShowLogoutModal(true)}
           showLogoutSpacer

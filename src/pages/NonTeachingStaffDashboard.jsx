@@ -118,6 +118,7 @@ function TextInput({ value, onChange, readOnly = false, placeholder = "", type =
 }
 
 function TextArea({ value, onChange, readOnly = false, placeholder = "", rows = 3 }) {
+  const large = rows >= 7;
   return (
     <textarea
       value={value ?? ""}
@@ -125,7 +126,7 @@ function TextArea({ value, onChange, readOnly = false, placeholder = "", rows = 
       readOnly={readOnly}
       placeholder={placeholder}
       rows={rows}
-      style={{ width: "100%", boxSizing: "border-box", border: "1px solid #cbd5e1", borderRadius: 6, padding: "8px 10px", fontSize: 12, fontFamily: "inherit", resize: "vertical", outline: "none", background: readOnly ? "#f8fafc" : "#fff", color: "#0f172a" }}
+      style={{ width: "100%", boxSizing: "border-box", height: large ? 235 : undefined, minHeight: large ? 235 : undefined, border: "1px solid #cbd5e1", borderRadius: 6, padding: large ? "10px 11px" : "8px 10px", fontSize: 12, lineHeight: large ? 1.5 : undefined, fontFamily: "inherit", resize: large ? "none" : "vertical", outline: "none", background: readOnly ? "#f8fafc" : "#fff", color: "#0f172a" }}
     />
   );
 }
@@ -356,14 +357,14 @@ function SummaryPanel({ form, onSubmit, onUpdateRemarks, onUpdateSummaryOtherInf
       <TextArea
         value={form.remarks}
         readOnly={locked}
-        rows={3}
+        rows={7}
         placeholder="Optional remarks for the next authority..."
         onChange={onUpdateRemarks}
       />
 
       {!locked && (
-        <label style={{ display: "flex", gap: 10, alignItems: "flex-start", marginTop: 14, padding: "11px 12px", background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: 8, fontSize: 12, color: "#334155", lineHeight: 1.5 }}>
-          <input type="checkbox" checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} style={{ marginTop: 3 }} />
+        <label className="appraisal-confirmation-card" style={{ display: "flex", gap: 10, alignItems: "flex-start", marginTop: 14, padding: "11px 12px", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 8, fontSize: 12, color: "#334155", lineHeight: 1.5 }}>
+          <input type="checkbox" checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} style={{ marginTop: 3, accentColor: "#16a34a" }} />
           <span>I have verified all the details and confirm that the information provided is correct.</span>
         </label>
       )}
@@ -1066,11 +1067,11 @@ export function NonTeachingAuthorityReviewPanel({ item, reviewerRole, onBack, on
           </div>
 
           <label style={{ fontSize: 12, color: "#334155", fontWeight: 800, display: "block", marginBottom: 6 }}>{remarksLabel}</label>
-          <TextArea value={remarks} onChange={setRemarks} readOnly={locked} rows={4} placeholder="Enter review remarks and recommendations..." />
+          <TextArea value={remarks} onChange={setRemarks} readOnly={locked} rows={7} placeholder="Enter review remarks and recommendations..." />
 
           {!locked && (
-            <label style={{ display: "flex", gap: 10, alignItems: "flex-start", marginTop: 14, padding: "11px 12px", background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: 8, fontSize: 12, color: "#334155", lineHeight: 1.5 }}>
-              <input type="checkbox" checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} style={{ marginTop: 3 }} />
+            <label className="appraisal-confirmation-card" style={{ display: "flex", gap: 10, alignItems: "flex-start", marginTop: 14, padding: "11px 12px", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 8, fontSize: 12, color: "#334155", lineHeight: 1.5 }}>
+              <input type="checkbox" checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} style={{ marginTop: 3, accentColor: "#16a34a" }} />
               <span>I have verified all details and confirm that this review is accurate.</span>
             </label>
           )}

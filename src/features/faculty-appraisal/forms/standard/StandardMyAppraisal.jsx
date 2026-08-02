@@ -2974,7 +2974,7 @@ export default function StandardMyAppraisal({
                       rows={5}
                     />
 
-                    <label className={declarationConfirmed ? "appraisal-declaration-card is-checked" : "appraisal-declaration-card"} style={{ display: "flex", alignItems: "flex-start", gap: 14, padding: "14px 18px", background: "#f8fafc", border: "1px solid #dbe3ef", borderRadius: 12, marginBottom: 0, color: "#334155", fontSize: 13, lineHeight: 1.5, cursor: appraisalLocked ? "not-allowed" : "pointer", transition: "background 180ms ease, border-color 180ms ease, box-shadow 180ms ease" }}>
+                    <label className={declarationConfirmed ? "appraisal-declaration-card appraisal-confirmation-card is-checked" : "appraisal-declaration-card appraisal-confirmation-card"} style={{ display: "flex", alignItems: "flex-start", gap: 14, padding: "14px 18px", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 12, marginBottom: 0, color: "#334155", fontSize: 13, lineHeight: 1.5, cursor: appraisalLocked ? "not-allowed" : "pointer", transition: "background 180ms ease, border-color 180ms ease, box-shadow 180ms ease" }}>
                       <input
                         type="checkbox"
                         checked={declarationConfirmed}

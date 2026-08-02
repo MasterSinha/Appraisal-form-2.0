@@ -473,7 +473,18 @@ export default function EditProfile() {
       };
       const profilePayload = buildProfilePayload(cleanFormData, APP_INFO.DEFAULT_AY);
       const savedProfile = await updateProfile(profilePayload);
-      storeUserSession({ profile: { ...profilePayload, ...(savedProfile || {}) }, fallbackEmail: email });
+      const sessionProfile = { ...profilePayload, ...(savedProfile || {}) };
+      if (!cleanFormData.profilePictureUrl) {
+        sessionProfile.profile_picture_url = null;
+        sessionProfile.profilePictureUrl = null;
+        sessionProfile.avatar_url = null;
+        sessionProfile.avatarUrl = null;
+        sessionProfile.photo_url = null;
+        sessionProfile.photoUrl = null;
+        sessionProfile.picture_url = null;
+        sessionProfile.pictureUrl = null;
+      }
+      storeUserSession({ profile: sessionProfile, fallbackEmail: email });
       setMessage("Profile updated successfully.");
       setTimeout(() => navigate("/dashboard", { replace: true }), 450);
     } catch (err) {

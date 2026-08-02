@@ -1770,8 +1770,8 @@ export const MediaForm = CreativeSchoolForm;
 
 export function AccuracyCheckbox({ checked, onChange, disabled = false }) {
   return (
-    <label style={{ display: "flex", gap: 14, alignItems: "flex-start", fontSize: 13, color: "#334155", lineHeight: 1.5, padding: "14px 18px", background: "#f8fafc", border: "1px solid #dbe3ef", borderRadius: 12, cursor: disabled ? "not-allowed" : "pointer" }}>
-      <input type="checkbox" checked={checked} disabled={disabled} onChange={(event) => onChange(event.target.checked)} style={{ marginTop: 2, width: 18, height: 18, accentColor: "#2563eb", flexShrink: 0 }} />
+    <label className="appraisal-confirmation-card" style={{ display: "flex", gap: 14, alignItems: "flex-start", fontSize: 13, color: "#334155", lineHeight: 1.5, padding: "14px 18px", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 12, cursor: disabled ? "not-allowed" : "pointer" }}>
+      <input type="checkbox" checked={checked} disabled={disabled} onChange={(event) => onChange(event.target.checked)} style={{ marginTop: 2, width: 18, height: 18, accentColor: "#16a34a", flexShrink: 0 }} />
       <span>{VERIFY_TEXT}</span>
     </label>
   );
@@ -2173,7 +2173,7 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
     total: averageSourceTotals.reduce((sum, item) => sum + n(item.total), 0) / averageSourceTotals.length,
     maxScores: totals.maxScores,
   } : { partA: 0, partB: 0, partC: 0, partD: 0, total: 0, maxScores: totals.maxScores };
-  const showAverageColumn = true;
+  const showAverageColumn = !(reviewerRole === "vc" && normalizedSubjectRole === "dean");
   const comparisonColumns = [
     { key: "self", label: "Self", totals: facultyTotals, maxScores: facultyTotals.maxScores },
     ...previousSummaryCards.map(({ role, label, totals: roleTotals }) => ({ key: role, label, totals: roleTotals, maxScores: roleTotals.maxScores })),
@@ -2229,14 +2229,14 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
       maxScores: totals.maxScores,
       accent: "#7c3aed",
       isFinal: true,
-      cardStyle: { gridColumn: "1 / -1" },
+      cardStyle: normalizedSubjectRole === "dean" ? undefined : { gridColumn: "1 / -1" },
       sideContent: (
-        <div style={{ background: "#f8fbff", border: "1px solid #e9d5ff", borderRadius: 10, padding: "12px 14px", display: "grid", gap: 9, alignContent: "start" }}>
+        <div style={{ background: "#f5f3ff", border: "2px solid #c4b5fd", borderRadius: 10, padding: "14px 15px", display: "grid", gap: 9, alignContent: "start", boxShadow: "0 0 0 4px rgba(196,181,253,0.18), 0 14px 28px rgba(124,58,237,0.10)" }}>
           <div>
-            <div style={{ color: "#5b21b6", fontSize: 12, fontWeight: 900, textTransform: "uppercase", letterSpacing: 0.5 }}>Vice Chancellor Remarks</div>
-            <div style={{ color: "#64748b", fontSize: 11, marginTop: 2 }}>Enter your assessment remarks and confirm before submitting</div>
+            <div style={{ color: "#6d28d9", fontSize: 12, fontWeight: 900, textTransform: "uppercase", letterSpacing: 0.5 }}>Vice Chancellor Remarks</div>
+            <div style={{ color: "#5b21b6", fontSize: 11, fontWeight: 700, marginTop: 3 }}>Enter your assessment remarks and confirm before submitting</div>
           </div>
-          <textarea value={remarks} readOnly={panelReadOnly} onChange={(event) => setRemarks(event.target.value)} rows={8} placeholder="Write your assessment remarks here..." style={{ width: "100%", minHeight: 210, boxSizing: "border-box", border: "1px solid #cbd5e1", borderRadius: 10, padding: "12px 14px", fontFamily: "inherit", fontSize: 12, color: "#334155", resize: "vertical", background: panelReadOnly ? "#f8fafc" : "#fff", outline: "none", lineHeight: 1.6 }} />
+          <textarea value={remarks} readOnly={panelReadOnly} onChange={(event) => setRemarks(event.target.value)} rows={7} placeholder="Write your assessment remarks here..." style={{ width: "100%", height: 235, minHeight: 235, boxSizing: "border-box", border: "1px solid #c4b5fd", borderRadius: 10, padding: "10px 11px", fontFamily: "inherit", fontSize: 12, color: "#334155", resize: "none", background: panelReadOnly ? "#f8fafc" : "#fff", outline: "none", lineHeight: 1.5 }} />
         </div>
       ),
     },
@@ -2246,23 +2246,24 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
   const vcSplitReferenceCards = splitVcDirectorSummaryRows
     ? vcSummaryCards.filter((card) => ["self", "dean"].includes(card.key))
     : splitVcDeanSummaryRows
-    ? vcSummaryCards.filter((card) => ["self", "average"].includes(card.key))
+    ? vcSummaryCards.filter((card) => ["self", "vc"].includes(card.key))
     : [];
   const vcSplitRemainingCards = splitVcDirectorSummaryRows
     ? vcSummaryCards.filter((card) => !["self", "dean"].includes(card.key))
     : splitVcDeanSummaryRows
-    ? vcSummaryCards.filter((card) => !["self", "average"].includes(card.key))
+    ? vcSummaryCards.filter((card) => !["self", "vc"].includes(card.key))
     : vcSummaryCards;
   const reviewerAccent = reviewerRole === "dean" ? "#7c3aed" : reviewerRole === "director" ? "#2563eb" : "#0f766e";
   const authoritySummaryCards = [
-    ...(normalizedSubjectRole === "faculty" ? [{
+    ...(["faculty", "hod", "director", "dean", "center_head"].includes(normalizedSubjectRole) ? [{
       key: "self",
       title: "Self Score",
       subtitle: `Self score for the ${schoolDisplayName} appraisal form.`,
       totals: facultyTotals,
       maxScores: facultyTotals.maxScores,
       accent: "#0ea5e9",
-      extraContent: <SummaryOtherInfoField value={summaryOtherInfoValueFrom(person)} readOnly rows={4} />,
+      compact: ["director", "dean", "center_head"].includes(normalizedSubjectRole),
+      extraContent: <SummaryOtherInfoField value={summaryOtherInfoValueFrom(person)} readOnly rows={["director", "dean", "center_head"].includes(normalizedSubjectRole) ? 2 : 4} />,
     }] : []),
     ...authorityPreviousSummaryCards.map(({ role, label, totals: roleTotals, remarks: roleRemarks }) => ({
       key: role,
@@ -2283,7 +2284,7 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
       accent: reviewerAccent,
       isFinal: true,
       remarksTitle: `${roleLabel(reviewerRole)} Remarks`,
-      remarksContent: <textarea value={remarks} readOnly={panelReadOnly} onChange={(event) => setRemarks(event.target.value)} rows={4} style={{ width: "100%", border: "none", padding: 0, fontFamily: "inherit", fontSize: 12, color: "#334155", resize: "vertical", background: "transparent", outline: "none", lineHeight: 1.6 }} />,
+      remarksContent: <textarea value={remarks} readOnly={panelReadOnly} onChange={(event) => setRemarks(event.target.value)} rows={7} style={{ width: "100%", height: 235, minHeight: 235, border: "none", padding: 0, fontFamily: "inherit", fontSize: 12, color: "#334155", resize: "none", background: "transparent", outline: "none", lineHeight: 1.5 }} />,
     },
   ];
   const splitAuthorityDeanFacultyRows = reviewerRole === "dean" && normalizedSubjectRole === "faculty" && !isSoemrFacultyReview;
@@ -2497,7 +2498,7 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
             <>
               {(splitVcDirectorSummaryRows || splitVcDeanSummaryRows) ? (
                 <>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 16, width: "100%" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: splitVcDeanSummaryRows ? "minmax(280px, 0.68fr) minmax(640px, 1.32fr)" : "repeat(2, minmax(0, 1fr))", gap: 16, width: "100%" }}>
                     {vcSplitReferenceCards.map((card) => (
                       <ScoreCard key={card.key} {...card} cardStyle={{ ...(card.cardStyle || {}), width: "100%", minWidth: 0 }} />
                     ))}
