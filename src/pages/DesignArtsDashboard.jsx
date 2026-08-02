@@ -67,6 +67,8 @@ import { n, pct, RO, TI } from "../features/faculty-appraisal/shared";
 
 import { emptyDesignArtsForm, ALL_ARRAY_KEYS, titleCase, calculateDesignArtsTotals, getDesignArtsEffectiveMaxScores, validateDesignArtsBeforeSubmit, mergeForm, preserveSavedReviewScores, designArtsSchoolName, PART_A_SECTIONS, PART_B_SECTIONS, PART_C_SECTIONS, PART_D_SECTIONS, DesignArtsForm, DesignArtsAuthorityReviewPanel, SectionSelector, AccuracyCheckbox, CompactAuthoritySummaryCard, isReviewerReviewComplete, normalizeScoresForSubmit, summaryRow, b8summaryRow, SECTION_OPTIONS, SummaryBox, WorkflowTracker, ACCENT, ACCENT2, PART_A_MAX, PART_B_MAX, GRAND_MAX, userInitials } from "../features/faculty-appraisal";
 import { loadClosedAppraisal } from "../services/appraisalPersistence";
+import { DesignArtsPreviousYearView } from "../features/previousYearReport";
+import { isLegacyTwoPartAcademicYear } from "../features/faculty-appraisal/forms/standard/legacyPreviousYearReportUtils";
 
 function InlineSvgIcon({ paths, size = 16, strokeWidth = 2.2 }) {
  return (
@@ -135,6 +137,7 @@ export default function DesignArtsDashboard({ fixedRole }) {
  const [declaration, setDeclaration] = useState(null);
  const [reviews, setReviews] = useState([]);
  const [availableCycles, setAvailableCycles] = useState([]);
+ const [previousYearResponse, setPreviousYearResponse] = useState(null);
  const userEmail = sessionStorage.getItem("username") || sessionStorage.getItem("email") || localStorage.getItem("username") || localStorage.getItem("email") || "";
  const academicYear = form.info?.ay || sessionStorage.getItem("academicYear") || "2026-2027";
 
@@ -174,6 +177,7 @@ export default function DesignArtsDashboard({ fixedRole }) {
 
   const selectedCycle = academicYearOptions.find((c) => c.academic_year === academicYear);
   const isSelectedCycleClosed = selectedCycle ? !selectedCycle.is_open : false;
+  const isLegacyTwoPartYear = isLegacyTwoPartAcademicYear(academicYear);
   const workflowRejected = hasActiveRejection(declaration, reviews);
   const locked = isSelectedCycleClosed || (Boolean(declaration) && !workflowRejected);
   const totals = calculateDesignArtsTotals(form, "score");
@@ -189,6 +193,7 @@ export default function DesignArtsDashboard({ fixedRole }) {
   const handleAcademicYearChange = (newAy) => {
     setForm((prev) => ({ ...prev, info: { ...prev.info, ay: newAy } }));
     sessionStorage.setItem("academicYear", newAy);
+    window.dispatchEvent(new CustomEvent("academicYearChanged", { detail: { academicYear: newAy } }));
   };
 
   const handleGenerateReport = () => {
@@ -222,8 +227,15 @@ export default function DesignArtsDashboard({ fixedRole }) {
  ]), []);
 
  useEffect(() =>{
+ if (isLegacyTwoPartYear && !["partA", "partB"].includes(selfSectionView)) {
+ setSelfSectionView("partA");
+ }
+ }, [isLegacyTwoPartYear, selfSectionView]);
+
+ useEffect(() =>{
  if (!userEmail || !academicYear || !canSelfSubmit) return;
  setDocs({});
+ setPreviousYearResponse(null);
  const loadAll = async () =>{
  const data = await api.get("/appraisal/status", { params: { academic_year: academicYear } }).catch((err) =>{
  console.error("Could not load workflow status:", err);
@@ -233,14 +245,17 @@ export default function DesignArtsDashboard({ fixedRole }) {
  const loadedReviews = reviewListFrom(data?.reviews);
  setDeclaration(declarationRow);
  setReviews(loadedReviews);
- const loader = isSelectedCycleClosed ? loadClosedAppraisal : loadSavedAppraisal;
- await Promise.all([
- loader({ facultyEmail: userEmail, academicYear, setters }),
+ const loadAppraisal = isLegacyTwoPartYear
+ ? fetchSavedAppraisal({ facultyEmail: userEmail, academicYear })
+ : (isSelectedCycleClosed ? loadClosedAppraisal : loadSavedAppraisal)({ facultyEmail: userEmail, academicYear, setters });
+ const [loadedAppraisal] = await Promise.all([
+ loadAppraisal,
  loadAppraisalDocuments({ facultyEmail: userEmail, academicYear, setDocs }),
  ]);
+ setPreviousYearResponse(loadedAppraisal || null);
  };
  loadAll().catch((err) =>console.error(`Could not load ${schoolDisplayName} appraisal:`, err));
- }, [userEmail, academicYear, setters, canSelfSubmit, isSelectedCycleClosed]);
+ }, [userEmail, academicYear, setters, canSelfSubmit, isSelectedCycleClosed, isLegacyTwoPartYear]);
 
  const loadQueue = async () =>{
  if (role === "faculty") return;
@@ -582,7 +597,7 @@ export default function DesignArtsDashboard({ fixedRole }) {
 
  {activeTab === "my" && canSelfSubmit && (
 <div style={{ display: "grid", gap: 16 }}>
-<div className="appraisal-status-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 316px", gap: 12, alignItems: "stretch" }}>
+{!isLegacyTwoPartYear && <div className="appraisal-status-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 316px", gap: 12, alignItems: "stretch" }}>
   <WorkflowTracker declaration={declaration} reviews={reviews} profile={{ ...profile, school: currentSchoolValue, appraisal_role: role }} />
   <div className="appraisal-progress-card" style={{ background: "#fff", borderRadius: 14, padding: "18px 22px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb", display: "flex", flexDirection: "column", justifyContent: "center", gap: 10 }}>
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
@@ -594,15 +609,15 @@ export default function DesignArtsDashboard({ fixedRole }) {
     </div>
     <div style={{ fontSize: 14, color: "#6b7280", fontWeight: 600 }}>{totals.total.toFixed(1)} / {totals.maxScores?.grand || 700} Marks</div>
   </div>
-</div>
-<RejectionNotice
+</div>}
+{!isLegacyTwoPartYear && <RejectionNotice
  declaration={declaration}
  reviews={reviews}
  form={form}
  status={declaration?.status || form.status}
  alertOnceKey={`${userEmail}:${academicYear}:${declaration?.status || form.status || ""}`}
-/>
-  {locked && (
+/>}
+  {!isLegacyTwoPartYear && locked && (
     <div style={{ background: workflowRejected ? "#fef2f2" : isSelectedCycleClosed ? "#fbfbfe" : "#ecfdf5", border: `1px solid ${workflowRejected ? "#fecaca" : isSelectedCycleClosed ? "#ddd6fe" : "#bbf7d0"}`, color: workflowRejected ? "#991b1b" : isSelectedCycleClosed ? "#4c1d95" : "#166534", borderRadius: 9, padding: "10px 14px", fontSize: 12, fontWeight: 700 }}>
       {workflowRejected
         ? "This appraisal was rejected. Review the approval status in the tracker above."
@@ -612,7 +627,17 @@ export default function DesignArtsDashboard({ fixedRole }) {
     </div>
   )}
 
-  {isSelectedCycleClosed ? (
+  {isLegacyTwoPartYear ? (
+    <DesignArtsPreviousYearView
+      form={form}
+      docs={docs}
+      response={previousYearResponse}
+      academicYear={academicYear}
+      sectionView={selfSectionView}
+      onSectionChange={handleSelfSectionChange}
+      profile={profile}
+    />
+  ) : isSelectedCycleClosed ? (
     <div className="fa-section-card appraisal-section-card" style={{ background: "#fff", borderRadius: 14, boxShadow: "0 18px 50px rgba(17,24,39,0.08)", padding: 24, border: "1px solid #e5e7eb", borderTop: "3px solid #4c1d95" }}>
       <div style={{ fontWeight: 800, fontSize: 18, color: "#4c1d95", marginBottom: 16 }}>Closed Appraisal Report — {academicYear}</div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
