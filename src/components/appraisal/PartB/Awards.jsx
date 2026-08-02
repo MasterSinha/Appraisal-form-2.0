@@ -46,7 +46,7 @@ export default function Awards({ ctx }) {
 <td style={TDC}><RO val={r.date} center /></td>
 <td style={TDV}><ViewDocsCell docKey={`awd-${i}`} docs={docs} /></td>
 <td style={TDS}><RO val={r.score} center /></td>
-<td style={TDS_HOD}><HodInput val={get("awards", i, "hod")} onChange={v =>set("awards", i, "hod", v)} /></td>
+<td style={TDS_HOD}><HodInput val={get("awards", i, "hod")} max={20} disabled={!rowHasReviewableData("awards", r, docs, `awd-${i}`)} onChange={v =>set("awards", i, "hod", v)} /></td>
 </tr>
  ))}
 </tbody>

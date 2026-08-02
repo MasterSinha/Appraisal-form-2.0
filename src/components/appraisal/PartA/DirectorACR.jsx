@@ -1,4 +1,4 @@
-﻿/* eslint-disable no-unused-vars */
+/* eslint-disable no-unused-vars */
 import { HodInput } from "../../Inputs";
 import {
   SCORE_LIMITS,
@@ -43,7 +43,7 @@ export default function DirectorACR({ ctx }) {
 <tr key={i} style={i % 2 ? { background: "#f8fafc" } : {}}>
 <td style={TDC}>{i + 1}</td>
 <td style={TD}><RO val={r.label} /></td>
-<td style={TDS_DIR}><DirInput val={String(getDir("acr", i, "dir") ?? "").trim() ? clampScore(getDir("acr", i, "dir"), SCORE_LIMITS.acrRow) : ""} max={SCORE_LIMITS.acrRow} onChange={v =>setDir("acr", i, "dir", v)} /></td>
+<td style={TDS_DIR}><DirInput val={getDir("acr", i, "dir")} max={SCORE_LIMITS.acrRow} disabled={!rowHasReviewableData("acr", r, docs, `acr-${i}`)} onChange={v =>setDir("acr", i, "dir", v)} /></td>
 </tr>
  ))}
 </tbody>

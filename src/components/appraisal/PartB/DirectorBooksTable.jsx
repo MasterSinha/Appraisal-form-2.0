@@ -48,7 +48,7 @@ export default function DirectorBooksTable({ ctx }) {
 <td style={TD}><RO val={r.coauth} /></td>
 <td style={TDV}><ViewDocsCell docKey={`book-${i}`} docs={docs} /></td>
 <td style={TDS}><RO val={r.score} center /></td>
-<td style={TDS_DIR}><DirInput val={getDir("books", i, "dir")} onChange={v =>setDir("books", i, "dir", v)} /></td>
+<td style={TDS_DIR}><DirInput val={getDir("books", i, "dir")} max={30} disabled={!rowHasReviewableData("books", r, docs, `book-${i}`)} onChange={v =>setDir("books", i, "dir", v)} /></td>
 </tr>
  ))}
 </tbody>

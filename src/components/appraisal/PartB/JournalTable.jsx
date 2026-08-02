@@ -48,7 +48,7 @@ export default function JournalTable({ ctx }) {
 <td style={TDC}><RO val={r.authorPosition || r.position} center /></td>
 <td style={TDV}><ViewDocsCell docKey={`jour-${i}`} docs={docs} /></td>
 <td style={TDS}><RO val={r.score} center /></td>
-<td style={TDS_HOD}><HodInput val={get("journals", i, "hod")} onChange={v =>set("journals", i, "hod", v)} /></td>
+<td style={TDS_HOD}><HodInput val={get("journals", i, "hod")} max={100} disabled={!rowHasReviewableData("journals", r, docs, `jour-${i}`)} onChange={v =>set("journals", i, "hod", v)} /></td>
 </tr>
  ))}
 </tbody>

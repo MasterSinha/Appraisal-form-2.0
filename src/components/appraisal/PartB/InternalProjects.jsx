@@ -48,7 +48,7 @@ export default function InternalProjects({ ctx }) {
 <td style={TD}><RO val={r.status} /></td>
 <td style={TDV}><ViewDocsCell docKey={`project2-${i}`} docs={docs} /></td>
 <td style={TDS}><RO val={r.score} center /></td>
-<td style={TDS_HOD}><HodInput val={get("projects2", i, "hod")} max={SCORE_LIMITS.researchInternalProjects} onChange={v =>set("projects2", i, "hod", v)} /></td>
+<td style={TDS_HOD}><HodInput val={get("projects2", i, "hod")} max={SCORE_LIMITS.researchInternalProjects} disabled={!rowHasReviewableData("projects2", r, docs, `project2-${i}`)} onChange={v =>set("projects2", i, "hod", v)} /></td>
 </tr>
  ))}
 </tbody>

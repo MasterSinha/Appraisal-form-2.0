@@ -48,7 +48,7 @@ export default function DirectorInternalProjects({ ctx }) {
 <td style={TD}><RO val={r.status} /></td>
 <td style={TDV}><ViewDocsCell docKey={`project2-${i}`} docs={docs} /></td>
 <td style={TDS}><RO val={r.score} center /></td>
-<td style={TDS_DIR}><DirInput val={getDir("projects2", i, "dir")} max={SCORE_LIMITS.researchInternalProjects} onChange={v =>setDir("projects2", i, "dir", v)} /></td>
+<td style={TDS_DIR}><DirInput val={getDir("projects2", i, "dir")} max={15} disabled={!rowHasReviewableData("projects2", r, docs, `project2-${i}`)} onChange={v =>setDir("projects2", i, "dir", v)} /></td>
 </tr>
  ))}
 </tbody>

@@ -46,7 +46,7 @@ export default function CourseFileTable({ ctx }) {
 <td style={TDC}><RO val={r.details} center /></td>
 <td style={TDV}><ViewDocsCell docKey={[`courseFile-${i}`, `cf-${i}`]} docs={docs} /></td>
 <td style={TDS}><RO val={courseFileRowScore(r) ? String(courseFileRowScore(r)) : ""} center /></td>
-<td style={TDS_HOD}><HodInput val={get("courseFile", i, "hod")} onChange={v =>set("courseFile", i, "hod", v)} max={SCORE_LIMITS.courseFileRow} /></td>
+<td style={TDS_HOD}><HodInput val={get("courseFile", i, "hod")} onChange={v =>set("courseFile", i, "hod", v)} max={SCORE_LIMITS.courseFileRow} disabled={!rowHasReviewableData("courseFile", r, docs, [`courseFile-${i}`, `cf-${i}`])} /></td>
 </tr>
  ))}
 </tbody>

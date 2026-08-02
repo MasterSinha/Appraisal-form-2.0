@@ -376,7 +376,11 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
  const set = (section, idx, field, val) =>{
  setVcData(prev =>{
  const updated = { ...prev };
- if (!updated[section]) updated[section] = JSON.parse(JSON.stringify(person[section] || []));
+ if (!updated[section]) {
+    updated[section] = section === "acr"
+      ? createAcrRows(person[section])
+      : JSON.parse(JSON.stringify(person[section] || []));
+ }
  const sourceRow = section === "acr" && idx !== null ? createAcrRows(person.acr)[idx] : person[section]?.[idx] || {};
  const nextVal = field === "vc" && idx !== null
  ? clampReviewScore(section, sourceRow, val, VC_SECTION_MAX[section] || 0)
@@ -434,9 +438,9 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
  const renderScoreCells = (r, section, i) =>{
  const maxForRow = vcRowMax(section, r);
  const societyLocked = section === "society" && societyRowLocked(r);
- const rowReviewable = rowHasReviewableData(section, r);
- const locked = societyLocked || !rowReviewable;
- const displayScore = (value) =>rowReviewable && maxForRow ? (String(value ?? "").trim() ? clampScore(value, maxForRow) : "") : "";
+ const rowReviewable = rowHasReviewableData(section, r, docs);
+ const locked = section === "acr" ? false : (societyLocked || !rowReviewable);
+ const displayScore = (value) => maxForRow ? (String(value ?? "").trim() ? clampScore(value, maxForRow) : "") : "";
  const facultyScore = section === "research"
  ? (r.degree || r.name || r.thesis || r.score ? researchGuidanceScore(r).toFixed(1) : "")
  : section === "society"

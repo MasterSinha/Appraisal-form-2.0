@@ -1,4 +1,4 @@
-﻿/* eslint-disable no-unused-vars */
+/* eslint-disable no-unused-vars */
 import {
   SCORE_LIMITS,
   clampScore,
@@ -71,22 +71,27 @@ const clampDirectorReviewScore = (section, row, value, maxScore) => {
 
 // - Faculty Form in HOD Review Mode -
 export default function MyAppraisalForm({ faculty, hodData, setHodData, reviewerLabel = "HOD", sectionView = "partA" }) {
- const set = (section, idx, field, val) =>{
- setHodData(prev =>{
- const updated = { ...prev };
- if (!updated[section]) updated[section] = JSON.parse(JSON.stringify(faculty[section] || []));
- const nextVal = field === "hod" && idx !== null
- ? clampReviewScore(section, faculty[section]?.[idx] || {}, val, REVIEW_SECTION_MAX[section] || 0)
- : val;
- if (idx === null) {
- updated[section] = Array.isArray(updated[section])
- ? (updated[section].length ? updated[section].map((r, i) =>i === 0 ? { ...r, [field]: nextVal } : r) : [{ [field]: nextVal }])
- : { ...updated[section], [field]: nextVal };
- }
- else { updated[section] = updated[section].map((r, i) =>i === idx ? { ...r, [field]: nextVal } : r); }
- return updated;
- });
- };
+  const set = (section, idx, field, val) =>{
+  setHodData(prev =>{
+  const updated = { ...prev };
+  if (!updated[section]) {
+    updated[section] = section === "acr"
+      ? createAcrRows(faculty[section])
+      : JSON.parse(JSON.stringify(faculty[section] || []));
+  }
+  const sourceRows = section === "acr" ? createAcrRows(faculty[section]) : (faculty[section] || []);
+  const nextVal = field === "hod" && idx !== null
+  ? clampReviewScore(section, sourceRows[idx] || {}, val, REVIEW_SECTION_MAX[section] || 0)
+  : val;
+  if (idx === null) {
+  updated[section] = Array.isArray(updated[section])
+  ? (updated[section].length ? updated[section].map((r, i) =>i === 0 ? { ...r, [field]: nextVal } : r) : [{ [field]: nextVal }])
+  : { ...updated[section], [field]: nextVal };
+  }
+  else { updated[section] = updated[section].map((r, i) =>i === idx ? { ...r, [field]: nextVal } : r); }
+  return updated;
+  });
+  };
 
  const get = (section, idx, field) =>{
  if (hodData[section]) {

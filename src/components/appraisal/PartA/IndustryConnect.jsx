@@ -1,4 +1,4 @@
-﻿/* eslint-disable no-unused-vars */
+/* eslint-disable no-unused-vars */
 import { HodInput } from "../../Inputs";
 import {
   SCORE_LIMITS,
@@ -44,7 +44,7 @@ export default function IndustryConnect({ ctx }) {
 <td style={TD}><RO val={r.date} /></td>
 <td style={TDV}><ViewDocsCell docKey={`ind-${i}`} docs={docs} /></td>
 <td style={TDS}><RO val={r.score} center /></td>
-<td style={TDS_HOD}><HodInput val={get("industry", i, "hod")} max={8} onChange={v =>set("industry", i, "hod", v)} /></td>
+<td style={TDS_HOD}><HodInput val={get("industry", i, "hod")} max={8} disabled={!rowHasReviewableData("industry", r, docs, `ind-${i}`)} onChange={v =>set("industry", i, "hod", v)} /></td>
 </tr>
  ))}
 </tbody>
