@@ -2,7 +2,7 @@ import { lazy, Suspense, useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import ProtectedRoute from "./auth/ProtectedRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
-import { getSessionItem, normalizeRole, storeUserSession } from "./auth/session";
+import { getActiveAcademicYear, getSessionItem, normalizeRole, setActiveAcademicYear, storeUserSession } from "./auth/session";
 import { APP_INFO } from "./constants/formConfig";
 import { getMe } from "./services/authService";
 import { api } from "./services/api";
@@ -86,7 +86,7 @@ function ProfileLoader() {
         if (cancelled) return;
         storeUserSession({ profile });
 
-        const storedAcademicYear = sessionStorage.getItem("academicYear");
+        const storedAcademicYear = getActiveAcademicYear(profile.academic_year || profile.academicYear || profile.ay || APP_INFO.DEFAULT_AY);
         let ay = storedAcademicYear;
         let cycles = [];
 
@@ -97,7 +97,7 @@ function ProfileLoader() {
             const matchingCycle = storedAcademicYear ? cycles.find((c) => c.academic_year === storedAcademicYear) : null;
             const openCycle = cycles.find((c) => c.is_open);
             const defaultYearCycle = cycles.find((c) => c.academic_year === APP_INFO.DEFAULT_AY);
-            const defaultCycle = matchingCycle || openCycle || defaultYearCycle || cycles[0];
+            const defaultCycle = openCycle || defaultYearCycle || matchingCycle || cycles[0];
             if (defaultCycle) {
               ay = defaultCycle.academic_year;
             }
@@ -108,8 +108,12 @@ function ProfileLoader() {
 
         if (!ay) ay = APP_INFO.DEFAULT_AY;
 
-        sessionStorage.setItem("academicYear", ay);
+        setActiveAcademicYear(ay);
         sessionStorage.setItem("availableCycles", JSON.stringify(cycles));
+        localStorage.setItem("availableCycles", JSON.stringify(cycles));
+        sessionStorage.setItem("availableCyclesSource", "backend");
+        localStorage.setItem("availableCyclesSource", "backend");
+        window.dispatchEvent(new CustomEvent("academicYearChanged", { detail: { academicYear: ay } }));
 
         const role = normalizeRole(profile.appraisal_role || profile.role, "faculty");
         const name = profile.full_name || "";
@@ -194,15 +198,18 @@ export default function App() {
         const cycles = normalizeAcademicYearCycles(cyclesData);
         if (!cycles.length) return;
 
-        const storedAcademicYear = sessionStorage.getItem("academicYear");
+        const storedAcademicYear = getActiveAcademicYear();
         const matchingCycle = cycles.find((cycle) => cycle.academic_year === storedAcademicYear);
         const openCycle = cycles.find((cycle) => cycle.is_open);
         const defaultYearCycle = cycles.find((cycle) => cycle.academic_year === APP_INFO.DEFAULT_AY);
-        const fallbackCycle = matchingCycle || openCycle || defaultYearCycle || cycles[0];
+        const fallbackCycle = openCycle || defaultYearCycle || matchingCycle || cycles[0];
         const ay = fallbackCycle?.academic_year || APP_INFO.DEFAULT_AY;
 
         sessionStorage.setItem("availableCycles", JSON.stringify(cycles));
-        sessionStorage.setItem("academicYear", ay);
+        localStorage.setItem("availableCycles", JSON.stringify(cycles));
+        sessionStorage.setItem("availableCyclesSource", "backend");
+        localStorage.setItem("availableCyclesSource", "backend");
+        setActiveAcademicYear(ay);
         window.dispatchEvent(new CustomEvent("academicYearChanged", { detail: { academicYear: ay } }));
       } catch (error) {
         console.error("Could not refresh academic year cycles:", error);

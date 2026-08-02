@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../../../services/api";
+import { getActiveAcademicYear, getSessionItem, setActiveAcademicYear } from "../../../../auth/session";
 import {
   ACR_DETAIL_POINTS,
   APP_INFO,
@@ -467,6 +468,11 @@ function normalizeAcademicYearCycles(cyclesData) {
     .sort((a, b) => b.academic_year.localeCompare(a.academic_year));
 }
 
+const storedAcademicYearCycles = () =>
+  getSessionItem("availableCyclesSource") === "backend"
+    ? JSON.parse(getSessionItem("availableCycles") || "[]")
+    : [];
+
 const sessionFacultyInfo = (academicYear, defaultDesignation = "") => ({
   name: sessionStorage.getItem("name") || "",
   qual: sessionStorage.getItem("qualification") || "",
@@ -491,7 +497,7 @@ export default function StandardMyAppraisal({
   onSectionTabChange,
   showSectionSelector = false,
   defaultDesignation = sessionStorage.getItem("designation") || "",
-  defaultAcademicYear = sessionStorage.getItem("academicYear") || APP_INFO.DEFAULT_AY,
+  defaultAcademicYear = getActiveAcademicYear(),
   titleNameFallback = "Faculty",
   subtitleSeparator = ".",
 } = {}) {
@@ -500,7 +506,7 @@ export default function StandardMyAppraisal({
   const [localAppraisalTab, setLocalAppraisalTab] = useState("partA");
   const hodAppraisalTab = sectionTab || localAppraisalTab;
   const setHodAppraisalTab = onSectionTabChange || setLocalAppraisalTab;
-  const resolvedAcademicYear = defaultAcademicYear || sessionStorage.getItem("academicYear") || APP_INFO.DEFAULT_AY;
+  const resolvedAcademicYear = defaultAcademicYear || getActiveAcademicYear();
 
   // -- HOD's own appraisal form state --
   const [info, setInfo] = useState({
@@ -512,7 +518,7 @@ export default function StandardMyAppraisal({
 
   useEffect(() => {
     const syncAcademicYear = (event) => {
-      const nextAcademicYear = event?.detail?.academicYear || sessionStorage.getItem("academicYear") || APP_INFO.DEFAULT_AY;
+      const nextAcademicYear = event?.detail?.academicYear || getActiveAcademicYear();
       setInfo((previousInfo) => profileSafeInfoForYear(previousInfo, nextAcademicYear, defaultDesignation));
     };
 
@@ -524,11 +530,11 @@ export default function StandardMyAppraisal({
     setInfo((previousInfo) => profileSafeInfoForYear(previousInfo, resolvedAcademicYear, defaultDesignation));
   }, [resolvedAcademicYear, defaultDesignation]);
 
-  const [availableCyclesState, setAvailableCyclesState] = useState(() => normalizeAcademicYearCycles(JSON.parse(sessionStorage.getItem("availableCycles") || "[]")));
+  const [availableCyclesState, setAvailableCyclesState] = useState(() => normalizeAcademicYearCycles(storedAcademicYearCycles()));
 
   useEffect(() => {
     const syncAvailableCycles = () => {
-      setAvailableCyclesState(normalizeAcademicYearCycles(JSON.parse(sessionStorage.getItem("availableCycles") || "[]")));
+      setAvailableCyclesState(normalizeAcademicYearCycles(storedAcademicYearCycles()));
     };
     window.addEventListener("academicYearChanged", syncAvailableCycles);
     return () => window.removeEventListener("academicYearChanged", syncAvailableCycles);
@@ -1505,7 +1511,7 @@ export default function StandardMyAppraisal({
     setInfo((previousInfo) => profileSafeInfoForYear(previousInfo, newAcademicYear, defaultDesignation));
     setDocs({});
     setLegacyReportTotals(null);
-    sessionStorage.setItem("academicYear", newAcademicYear);
+    setActiveAcademicYear(newAcademicYear);
     window.dispatchEvent(new CustomEvent("academicYearChanged", {
       detail: { academicYear: newAcademicYear },
     }));
@@ -1557,7 +1563,7 @@ export default function StandardMyAppraisal({
                   </select>
                 </div>
               </div>
-              <AppraisalHeaderImage height={54} />
+              <AppraisalHeaderImage height={78} />
             </div>
             <div className="appraisal-status-grid" style={{ display: "grid", gridTemplateColumns: isSelectedCycleClosed || isLegacyTwoPartYear ? "1fr" : "minmax(0, 1fr) 316px", gap: 12, alignItems: "stretch" }}>
               <WorkflowStatusTracker

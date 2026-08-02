@@ -1,6 +1,7 @@
 /* eslint-disable no-unused-vars, react-hooks/exhaustive-deps, react-hooks/set-state-in-effect */
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { getActiveAcademicYear, getSessionItem, setActiveAcademicYear } from "../auth/session";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import DashboardSidebar from "../components/dashboard/DashboardSidebar";
 import { Avatar, LogoutConfirmModal, ScoreBar, StatusBadge, ReviewMetricsStrip } from "../components/dashboard/dashboardPrimitives";
@@ -162,6 +163,11 @@ function normalizeAcademicYearCycles(cyclesData) {
     .sort((a, b) => b.academic_year.localeCompare(a.academic_year));
 }
 
+const storedAcademicYearCycles = () =>
+  getSessionItem("availableCyclesSource") === "backend"
+    ? JSON.parse(getSessionItem("availableCycles") || "[]")
+    : [];
+
 export default function MediaCommDashboard({ fixedRole }) {
  const navigate = useNavigate();
  const role = fixedRole || sessionStorage.getItem("role") || "faculty";
@@ -183,10 +189,10 @@ export default function MediaCommDashboard({ fixedRole }) {
  const [savingSection, setSavingSection] = useState(null);
  const [declaration, setDeclaration] = useState(null);
  const [reviews, setReviews] = useState([]);
- const [availableCycles, setAvailableCycles] = useState(() => normalizeAcademicYearCycles(JSON.parse(sessionStorage.getItem("availableCycles") || "[]")));
+ const [availableCycles, setAvailableCycles] = useState(() => normalizeAcademicYearCycles(storedAcademicYearCycles()));
  const [previousYearResponse, setPreviousYearResponse] = useState(null);
  const userEmail = sessionStorage.getItem("username") || sessionStorage.getItem("email") || localStorage.getItem("username") || localStorage.getItem("email") || "";
- const academicYear = form.info?.ay || sessionStorage.getItem("academicYear") || "2026-2027";
+ const academicYear = form.info?.ay || getActiveAcademicYear();
  const currentSchoolValue = form.info?.school || profile.school || sessionStorage.getItem("school") || sessionStorage.getItem("schoolName") || "SoMCS";
  const currentSchool = getSchoolByValue(currentSchoolValue);
  const currentSchoolCode = currentSchool?.code || getSchoolKey(currentSchoolValue) || "SoMCS";
@@ -194,7 +200,7 @@ export default function MediaCommDashboard({ fixedRole }) {
 
  useEffect(() => {
    const syncAvailableCycles = () => {
-     setAvailableCycles(normalizeAcademicYearCycles(JSON.parse(sessionStorage.getItem("availableCycles") || "[]")));
+     setAvailableCycles(normalizeAcademicYearCycles(storedAcademicYearCycles()));
    };
    syncAvailableCycles();
    window.addEventListener("academicYearChanged", syncAvailableCycles);
@@ -215,7 +221,7 @@ export default function MediaCommDashboard({ fixedRole }) {
 
  const handleAcademicYearChange = (newAy) => {
    setForm((prev) => ({ ...prev, info: { ...prev.info, ay: newAy } }));
-   sessionStorage.setItem("academicYear", newAy);
+   setActiveAcademicYear(newAy);
    window.dispatchEvent(new CustomEvent("academicYearChanged", { detail: { academicYear: newAy } }));
  };
 
@@ -640,7 +646,7 @@ export default function MediaCommDashboard({ fixedRole }) {
               </select>
             </div>
           </div>
-          <AppraisalHeaderImage height={54} />
+          <AppraisalHeaderImage height={78} />
         </div>
       </div>
 
