@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Avatar } from "./dashboardPrimitives";
 
@@ -181,6 +181,10 @@ function SectionIcon({ section }) {
   );
 }
 
+const isLegacyTwoPartAcademicYear = (academicYear = "") =>
+  String(academicYear).replace(/\s+/g, "") === "2025-2026" ||
+  String(academicYear).replace(/\s+/g, "") === "2025-26";
+
 export default function DashboardSidebar({
   appInfo,
   navItems,
@@ -198,14 +202,33 @@ export default function DashboardSidebar({
 }) {
   const navigate = useNavigate();
   const [sectionMenuOpen, setSectionMenuOpen] = useState(false);
-  const sectionOptions = [
-    ["partA", "Part A"],
-    ["partB", "Part B"],
-    ["partC", "Part C"],
-    ["partD", "Part D"],
-    ["summary", "Summary"],
-  ];
+  const [currentAcademicYear, setCurrentAcademicYear] = useState(() => sessionStorage.getItem("academicYear") || "");
+  const isLegacyTwoPartYear = isLegacyTwoPartAcademicYear(currentAcademicYear);
+  const sectionOptions = isLegacyTwoPartYear
+    ? [
+        ["partA", "Part A"],
+        ["partB", "Part B"],
+      ]
+    : [
+        ["partA", "Part A"],
+        ["partB", "Part B"],
+        ["partC", "Part C"],
+        ["partD", "Part D"],
+        ["summary", "Summary"],
+      ];
   const selectedSectionLabel = sectionOptions.find(([value]) => value === sectionTab)?.[1] || "Part A";
+
+  useEffect(() => {
+    const syncAcademicYear = (event) => {
+      setCurrentAcademicYear(event?.detail?.academicYear || sessionStorage.getItem("academicYear") || "");
+    };
+    window.addEventListener("academicYearChanged", syncAcademicYear);
+    window.addEventListener("storage", syncAcademicYear);
+    return () => {
+      window.removeEventListener("academicYearChanged", syncAcademicYear);
+      window.removeEventListener("storage", syncAcademicYear);
+    };
+  }, []);
 
   return (
     <aside className="appraisal-sidebar" style={sidebarShellStyle}>

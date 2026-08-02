@@ -1,6 +1,7 @@
 export { default as AppraisalHeaderImage } from "../../../components/AppraisalHeaderImage";
 export { default as RejectionNotice } from "../../../components/RejectionNotice";
 export * from "./formPrimitives";
+export { SectionCard as SC } from "./formPrimitives";
 export * from "./formPrimitiveStyles";
 export {
   default as SummaryOtherInfoField,
