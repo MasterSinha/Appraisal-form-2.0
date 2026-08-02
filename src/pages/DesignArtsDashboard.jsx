@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import DashboardSidebar from "../components/dashboard/DashboardSidebar";
-import { Avatar, LogoutConfirmModal, ScoreBar, StatusBadge } from "../components/dashboard/dashboardPrimitives";
+import { Avatar, LogoutConfirmModal, ScoreBar, StatusBadge, ReviewMetricsStrip } from "../components/dashboard/dashboardPrimitives";
 import { getSchoolByValue, getSchoolKey } from "../constants/universityHierarchy";
 import { api } from "../services/api";
 import {
@@ -769,21 +769,38 @@ export default function DesignArtsDashboard({ fixedRole }) {
  const mergedItem = mergeForm(emptyDesignArtsForm(), item);
  const facultyTotals = calculateDesignArtsTotals(mergedItem, "score");
  const reviewerTotals = calculateDesignArtsTotals(mergedItem, role);
- const hasReviewerScores = reviewerTotals.partA >0 || reviewerTotals.partB >0 || reviewerTotals.total >0;
+ const hasReviewerScores = reviewerTotals.partA >0 || reviewerTotals.partB >0 || reviewerTotals.partC >0 || reviewerTotals.partD >0 || reviewerTotals.total >0;
  const pendingForRole = isPendingReviewStatusFor([item.status, item.workflowStatus, item.workflow_status], role);
  const reviewComplete = !pendingForRole && (isReviewerReviewComplete(item, role) || hasReviewerScores);
  const savedReviewerTotals = {
  partA: n(item?.[`${role}PartA`]),
  partB: n(item?.[`${role}PartB`]),
+ partC: n(item?.[`${role}PartC`]),
+ partD: n(item?.[`${role}PartD`]),
  total: n(item?.[`${role}Total`]),
  };
- const itemTotals = reviewComplete
- ? (hasReviewerScores ? reviewerTotals : { ...reviewerTotals, ...savedReviewerTotals })
- : facultyTotals;
+ const reviewerDisplayTotals = {
+ ...reviewerTotals,
+ partA: reviewerTotals.partA || savedReviewerTotals.partA,
+ partB: reviewerTotals.partB || savedReviewerTotals.partB,
+ partC: reviewerTotals.partC || savedReviewerTotals.partC,
+ partD: reviewerTotals.partD || savedReviewerTotals.partD,
+ total: reviewerTotals.total || savedReviewerTotals.total,
+ };
+ const itemTotals = reviewComplete ? reviewerDisplayTotals : facultyTotals;
+ const submittedScore = (stored, legacy, calculated) =>
+ String(stored ?? legacy ?? "").trim() !== "" ? n(stored ?? legacy) : calculated;
+ const submittedTotals = {
+ partA: submittedScore(item.selfPartA, item.partATotal, facultyTotals.partA),
+ partB: submittedScore(item.selfPartB, item.partBTotal, facultyTotals.partB),
+ partC: submittedScore(item.selfPartC, item.partCTotal, facultyTotals.partC),
+ partD: submittedScore(item.selfPartD, item.partDTotal, facultyTotals.partD),
+ total: submittedScore(item.selfTotal, item.grandTotal, facultyTotals.total),
+ };
  const scoreLabel = reviewComplete
  ? `${roleLabel(role)} score for ${item.submittedOn || "record"}`
  : `Submitted on ${item.submittedOn || "record"}`;
- const maxScores = itemTotals.maxScores || { partA: PART_A_MAX, partB: PART_B_MAX, grand: GRAND_MAX };
+ const maxScores = itemTotals.maxScores || facultyTotals.maxScores || { partA: PART_A_MAX, partB: PART_B_MAX, partC: 0, partD: 0, grand: GRAND_MAX };
  return (
 <div key={item.id} style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", borderLeft: `4px solid ${reviewComplete ? "#22c55e" : ACCENT}`, overflow: "hidden" }}>
  {/* - Name / role / action row - */}
@@ -828,19 +845,18 @@ export default function DesignArtsDashboard({ fixedRole }) {
 </div>
  {/* - Score metrics grid - */}
 <div style={{ padding: "12px 18px 14px", background: "#fafbff", borderTop: "1px solid #f1f5f9" }}>
-<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px 20px", marginBottom: 8 }}>
- {[["Part A", itemTotals.partA, maxScores.partA, ACCENT], ["Part B", itemTotals.partB, maxScores.partB, ACCENT2], ["Grand Total", itemTotals.total, maxScores.grand, "#059669"]].map(([label, value, max, color]) =>(
-<div key={label}>
-<div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 4 }}>
-<span style={{ fontWeight: 600, color: "#475569" }}>{label}</span>
-<span style={{ fontWeight: 700, color }}>{n(value).toFixed(1)}<span style={{ color: "#94a3b8", fontWeight: 500 }}>/{max}</span></span>
-</div>
-<div style={{ height: 5, background: "#e2e8f0", borderRadius: 99, overflow: "hidden" }}>
-<div style={{ height: "100%", width: `${Math.min(100, max >0 ? (n(value) / max) * 100 : 0)}%`, background: color, borderRadius: 99, transition: "width 0.6s ease" }} />
-</div>
-</div>
- ))}
-</div>
+<ReviewMetricsStrip
+ metrics={[
+ { label: "Part A", val: (reviewComplete ? itemTotals : submittedTotals).partA, max: maxScores.partA, color: ACCENT },
+ { label: "Part B", val: (reviewComplete ? itemTotals : submittedTotals).partB, max: maxScores.partB, color: ACCENT2 },
+ { label: "Part C", val: (reviewComplete ? itemTotals : submittedTotals).partC, max: maxScores.partC, color: "#ef6f61" },
+ { label: "Part D", val: (reviewComplete ? itemTotals : submittedTotals).partD, max: maxScores.partD, color: "#f59e0b" },
+ { label: "Total", val: (reviewComplete ? itemTotals : submittedTotals).total, max: maxScores.grand, color: "#059669" },
+ ]}
+ docs={item.docs}
+ background="#f8fafc"
+ compact
+/>
 <div style={{ fontSize: 10, color: "#94a3b8", textAlign: "right" }}>{scoreLabel}</div>
 </div>
 </div>

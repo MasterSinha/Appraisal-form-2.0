@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import DashboardSidebar from "../components/dashboard/DashboardSidebar";
-import { Avatar, LogoutConfirmModal, ScoreBar, StatusBadge } from "../components/dashboard/dashboardPrimitives";
+import { Avatar, LogoutConfirmModal, ScoreBar, StatusBadge, ReviewMetricsStrip } from "../components/dashboard/dashboardPrimitives";
 import { getSchoolByValue, getSchoolKey } from "../constants/universityHierarchy";
 import { api } from "../services/api";
 import {
@@ -789,18 +789,24 @@ export default function MediaCommDashboard({ fixedRole }) {
  const mergedItem = mergeForm(emptyMediaForm(), item);
  const facultyTotals = calculateMediaTotals(mergedItem, "score");
  const reviewerTotals = calculateMediaTotals(mergedItem, role);
- const hasReviewerScores = reviewerTotals.partA >0 || reviewerTotals.partB >0 || reviewerTotals.total >0;
+ const hasReviewerScores = reviewerTotals.partA >0 || reviewerTotals.partB >0 || reviewerTotals.partC >0 || reviewerTotals.partD >0 || reviewerTotals.total >0;
  const pendingForRole = isPendingReviewStatusFor([item.status, item.workflowStatus, item.workflow_status], role);
  const reviewComplete = !pendingForRole && (isReviewerReviewComplete(item, role) || hasReviewerScores);
  const maxScores = {
  partA: n(item.effectivePartAMax) || facultyTotals.maxScores.partA,
  partB: n(item.effectivePartBMax) || facultyTotals.maxScores.partB,
+ partC: n(item.effectivePartCMax) || facultyTotals.maxScores.partC,
+ partD: n(item.effectivePartDMax) || facultyTotals.maxScores.partD,
  grand: n(item.effectiveGrandMax) || facultyTotals.maxScores.grand,
  };
+ const submittedScore = (stored, legacy, calculated) =>
+ String(stored ?? legacy ?? "").trim() !== "" ? n(stored ?? legacy) : calculated;
  const itemTotals = {
- partA: n(item.selfPartA ?? item.partATotal),
- partB: n(item.selfPartB ?? item.partBTotal),
- total: n(item.selfTotal ?? item.grandTotal),
+ partA: submittedScore(item.selfPartA, item.partATotal, facultyTotals.partA),
+ partB: submittedScore(item.selfPartB, item.partBTotal, facultyTotals.partB),
+ partC: submittedScore(item.selfPartC, item.partCTotal, facultyTotals.partC),
+ partD: submittedScore(item.selfPartD, item.partDTotal, facultyTotals.partD),
+ total: submittedScore(item.selfTotal, item.grandTotal, facultyTotals.total),
  };
  const scoreLabel = `Submitted on ${item.submittedOn || "record"}`;
  return (
@@ -829,19 +835,18 @@ export default function MediaCommDashboard({ fixedRole }) {
 </div>
  {/* - Score metrics grid - */}
 <div style={{ padding: "12px 18px 14px", background: "#fafbff", borderTop: "1px solid #f1f5f9" }}>
-<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px 20px", marginBottom: 8 }}>
- {[["Part A", itemTotals.partA, maxScores.partA, ACCENT], ["Part B", itemTotals.partB, maxScores.partB, ACCENT2], ["Grand Total", itemTotals.total, maxScores.grand, "#059669"]].map(([label, value, max, color]) =>(
-<div key={label}>
-<div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 4 }}>
-<span style={{ fontWeight: 600, color: "#475569" }}>{label}</span>
-<span style={{ fontWeight: 700, color }}>{n(value).toFixed(1)}<span style={{ color: "#94a3b8", fontWeight: 500 }}>/{max}</span></span>
-</div>
-<div style={{ height: 5, background: "#e2e8f0", borderRadius: 99, overflow: "hidden" }}>
-<div style={{ height: "100%", width: `${Math.min(100, max >0 ? (n(value) / max) * 100 : 0)}%`, background: color, borderRadius: 99, transition: "width 0.6s ease" }} />
-</div>
-</div>
- ))}
-</div>
+<ReviewMetricsStrip
+ metrics={[
+ { label: "Part A", val: itemTotals.partA, max: maxScores.partA, color: ACCENT },
+ { label: "Part B", val: itemTotals.partB, max: maxScores.partB, color: ACCENT2 },
+ { label: "Part C", val: itemTotals.partC, max: maxScores.partC, color: "#ef6f61" },
+ { label: "Part D", val: itemTotals.partD, max: maxScores.partD, color: "#f59e0b" },
+ { label: "Total", val: itemTotals.total, max: maxScores.grand, color: "#059669" },
+ ]}
+ docs={item.docs}
+ background="#f8fafc"
+ compact
+/>
 <div style={{ fontSize: 10, color: "#94a3b8", textAlign: "right" }}>{scoreLabel}</div>
 </div>
 </div>

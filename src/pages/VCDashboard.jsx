@@ -1,9 +1,9 @@
 /* eslint-disable no-unused-vars, react-hooks/set-state-in-effect */
  import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Avatar, LogoutConfirmModal, ScoreCard } from "../components/dashboard/dashboardPrimitives";
+import { Avatar, LogoutConfirmModal, ScoreCard, ReviewMetricsStrip } from "../components/dashboard/dashboardPrimitives";
 import { fetchNonTeachingQueueForRole, isNonTeachingReviewComplete } from "../services/nonTeachingWorkflow";
-import { fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, fetchSavedAppraisal, mergeFacultyInfo, ACR_DETAIL_POINTS, MAX_SCORES, APP_INFO, createAcrRows, buildReviewRemarks, openFullFormReport, SummaryOtherInfoField, summaryOtherInfoValueFrom, SCORE_LIMITS, clampScore, clampReviewScore, effectiveMaxScore, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewRowMaxForSection, reviewSectionScore, rowHasReviewableData, selfEffectivePartAMax, societyRowLocked, societyRowScore, standardReviewSummary, qualificationRowDescription, AppraisalHeaderImage, ViewDocsCell, SectionCard as SC, CreativeSchoolAuthorityReviewPanel, isCreativeSchool } from "../features/faculty-appraisal";
+import { fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, fetchSavedAppraisal, mergeFacultyInfo, ACR_DETAIL_POINTS, MAX_SCORES, APP_INFO, createAcrRows, buildReviewRemarks, openFullFormReport, SummaryOtherInfoField, summaryOtherInfoValueFrom, SCORE_LIMITS, clampScore, clampReviewScore, effectiveMaxScore, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewRowMaxForSection, reviewSectionScore, rowHasReviewableData, selfEffectivePartAMax, societyRowLocked, societyRowScore, standardReviewSummary, standardSubmittedScoreSummary, qualificationRowDescription, AppraisalHeaderImage, ViewDocsCell, SectionCard as SC, CreativeSchoolAuthorityReviewPanel, isCreativeSchool } from "../features/faculty-appraisal";
 
 import { DEAN_TRACKS, UNIVERSITY_SCHOOLS, normalizeHierarchyText } from "../constants/universityHierarchy";
 import { canReviewerRejectProfile, getSchoolKey, profileFromsessionStorage, rejectedStatusFor, visiblePreviousReviewRoles, isAppraisalFinalisedByVc, isPendingReviewStatusFor } from "../utils/hierarchy";
@@ -1268,6 +1268,7 @@ function PersonCard({ person, role, onReview, schoolColor, loading = false }) {
  const personMode = role === "Director" ? "director" : role === "HOD" ? "hod" : role === "Dean" ? "dean" : role === "Center Head" ? "center_head" : "faculty";
  const previousRoles = vcPreviousRolesFor(person, personMode);
  const vcTotal = n(person.vcTotal);
+ const sectionSummary = standardSubmittedScoreSummary(person);
  const scoreTiles = [
  {
  label: personMode === "faculty" ? "Faculty Score" : "Self Score",
@@ -1317,7 +1318,20 @@ function PersonCard({ person, role, onReview, schoolColor, loading = false }) {
 <StatusBadge status={person.status} />
 </div>
 
- {/* Score grid */}
+ {/* Submitted section scores */}
+<ReviewMetricsStrip
+ metrics={[
+ { label: "Part A", val: sectionSummary.partA, max: sectionSummary.partAMax, color: "#6366f1" },
+ { label: "Part B", val: sectionSummary.partB, max: sectionSummary.partBMax, color: "#0ea5e9" },
+ { label: "Part C", val: sectionSummary.partC, max: sectionSummary.partCMax, color: "#10b981" },
+ { label: "Part D", val: sectionSummary.partD, max: sectionSummary.partDMax, color: "#f59e0b" },
+ { label: "Total", val: sectionSummary.total, max: sectionSummary.grandMax, color: "#4338ca" },
+ ]}
+ docs={person.docs}
+ compact
+/>
+
+ {/* Review chain totals */}
 <div className="vc-score-strip" style={{ display: "grid", gridTemplateColumns: `repeat(${Math.max(scoreTiles.length, 1)}, minmax(0, 1fr))`, gap: 6, background: "#f8fafc", borderRadius: 8, padding: "10px 12px" }}>
  {scoreTiles.map((tile) =>{
  const score = n(tile.value);

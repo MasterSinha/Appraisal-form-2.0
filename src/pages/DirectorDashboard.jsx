@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import { DirectorFacultyReviewForm } from "../components/appraisal";
 import { api } from "../services/api";
-import { Avatar, ScoreCard, ScoreBar, StatusBadge } from "../components/dashboard/dashboardPrimitives";
+import { Avatar, ScoreCard, ScoreBar, StatusBadge, ReviewMetricsStrip } from "../components/dashboard/dashboardPrimitives";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import DashboardSidebar from "../components/dashboard/DashboardSidebar";
 import { ACR_DETAIL_POINTS, SOCIETY_LABELS, MAX_SCORES, APP_INFO, createAcrRows, fetchSavedAppraisal, loadAppraisalDocuments, loadSavedAppraisal, mergeFacultyInfo, saveAppraisalDraftSection, submitAppraisal, fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, INNOVATIVE_METHODS, SCORE_LIMITS, averageSectionScore, clampScore, clampReviewScore, courseFileAverageScore, courseFileRowScore, effectiveMaxScore, feedbackAverage, feedbackRowScore, feedbackSectionScore, innovativeSelectionsFromDetails, innovativeTeachingScore, isAllowedAttachmentFile, isValidDDMMYYYY, maskDateDDMMYYYY, normalizeAutoScores, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewSectionScore, rowHasReviewableData, scoreRemaining, selfEffectivePartAMax, societyRowLocked, societyRowScore, sumSectionScore, toggleInnovativeMethod, validateCompleteRows, generateStandardReport, standardSubmittedScoreSummary, AppraisalHeaderImage, SummaryOtherInfoField, summaryOtherInfoValueFrom, RejectionNotice, DocCell, ViewCell, ViewDocsCell, RowButtons as RowBtns, SectionSaveFooter, SectionCard as SC, T, TH, TH_HOD, TH_DIR, TD, TDC, TDS, TDS_HOD, TDS_DIR, TDV, MyAppraisalSection, CreativeSchoolAuthorityReviewPanel, isCreativeSchool } from "../features/faculty-appraisal";
@@ -10,9 +10,6 @@ import { canReviewerRejectProfile, rejectedStatusFor, reviewedStatusFor, profile
 import { n, pct, grade, RO, TI } from "../features/faculty-appraisal/shared";
 
 // - Helpers - (n, pct, grade, RO, TI → imported from shared)
-const NON_ENGINEERING_REVIEW_SCHOOLS = new Set(["SoCM", "SoMCS", "SoHSS", "SoD", "SoAA"]);
-const isNonEngineeringReviewSubject = (item = {}) =>
- NON_ENGINEERING_REVIEW_SCHOOLS.has(getSchoolKey(item.school || item.schoolName || item.info?.school || ""));
 const docsCount = (docs = {}) =>{
  if (!docs || typeof docs !== "object") return 0;
  return Object.values(docs).reduce((total, value) =>{
@@ -790,11 +787,17 @@ export default function DirectorDashboard() {
  const reviewed = isDirectorReviewed(item);
  const dirA = n(item.directorPartA);
  const dirB = n(item.directorPartB);
+ const dirC = n(item.directorPartC);
+ const dirD = n(item.directorPartD);
+ const dirTotal = n(item.directorTotal);
  const selfA = itemSummary.partA;
  const selfB = itemSummary.partB;
- const showDirScores = reviewed && (dirA >0 || dirB >0);
- const reviewPartAMax = isNonEngineeringReviewSubject(item) ? itemSummary.partAMax + 25 : itemSummary.partAMax;
- const noScoresAvailable = reviewed && dirA === 0 && dirB === 0 && selfA === 0 && selfB === 0;
+ const selfC = itemSummary.partC;
+ const selfD = itemSummary.partD;
+ const selfTotal = itemSummary.total;
+ const showDirScores = reviewed && (dirA >0 || dirB >0 || dirC >0 || dirD >0 || dirTotal >0);
+ const reviewPartAMax = itemSummary.partAMax;
+ const noScoresAvailable = reviewed && dirA === 0 && dirB === 0 && dirC === 0 && dirD === 0 && dirTotal === 0 && selfA === 0 && selfB === 0 && selfC === 0 && selfD === 0 && selfTotal === 0;
  if (noScoresAvailable) {
  return (
 <div style={{ background: "#f0fdf4", borderRadius: 8, padding: "14px", textAlign: "center" }}>
@@ -806,23 +809,17 @@ export default function DirectorDashboard() {
  }
  
 return (
-<div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, background: "#f8fafc", borderRadius: 8, padding: "12px 14px" }}>
- {[ 
+<ReviewMetricsStrip
+ metrics={[
  { label: showDirScores ? "Dir Part A" : "Part A", val: showDirScores ? dirA : selfA, max: showDirScores ? reviewPartAMax : itemSummary.partAMax, color: "#6366f1" },
  { label: showDirScores ? "Dir Part B" : "Part B", val: showDirScores ? dirB : selfB, max: itemSummary.partBMax, color: "#0ea5e9" },
- { label: "Docs", val: docCount, max: null, color: "#10b981" },
- ].map(({ label, val, max, color }) =>(
-<div key={label} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-<div style={{ fontSize: 9, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.6 }}>{label}</div>
-<div style={{ fontSize: 15, fontWeight: 800, color, lineHeight: 1 }}>
- {max ? scoreText(val) : val}{max &&<span style={{ fontSize: 9, color: "#94a3b8" }}>/{max}</span>}
-</div>
- {max &&<ScoreBar score={val} max={max} color={color} />}
- {!max &&<div style={{ fontSize: 9, color: "#94a3b8" }}>files uploaded</div>}
-</div>
- ))}
-</div>
- );
+ { label: showDirScores ? "Dir Part C" : "Part C", val: showDirScores ? dirC : selfC, max: itemSummary.partCMax, color: "#10b981" },
+ { label: showDirScores ? "Dir Part D" : "Part D", val: showDirScores ? dirD : selfD, max: itemSummary.partDMax, color: "#f59e0b" },
+ { label: showDirScores ? "Dir Total" : "Total", val: showDirScores ? dirTotal : selfTotal, max: itemSummary.grandMax, color: "#4338ca" },
+ ]}
+ docs={item.docs}
+/>
+);
  })()}
 
 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #f1f5f9", paddingTop: 12 }}>

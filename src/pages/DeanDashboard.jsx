@@ -2,7 +2,7 @@
 import { createContext, useContext, useState, useRef, useEffect } from "react";
 import MyAppraisalForm from "../components/appraisal";
 import { api } from "../services/api";
-import { Avatar, ScoreCard, ScoreBar, StatusBadge } from "../components/dashboard/dashboardPrimitives";
+import { Avatar, ScoreCard, ScoreBar, StatusBadge, ReviewMetricsStrip } from "../components/dashboard/dashboardPrimitives";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import DashboardSidebar from "../components/dashboard/DashboardSidebar";
 import { ACR_DETAIL_POINTS, SOCIETY_LABELS, MAX_SCORES, APP_INFO, createAcrRows, fetchSavedAppraisal, loadAppraisalDocuments, loadSavedAppraisal, mergeFacultyInfo, saveAppraisalDraftSection, submitAppraisal, fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, INNOVATIVE_METHODS, SCORE_LIMITS, averageSectionScore, clampScore, clampReviewScore, courseFileAverageScore, courseFileRowScore, effectiveMaxScore, feedbackAverage, feedbackRowScore, feedbackSectionScore, innovativeSelectionsFromDetails, innovativeTeachingScore, isAllowedAttachmentFile, isValidDDMMYYYY, maskDateDDMMYYYY, normalizeAutoScores, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewSectionScore, rowHasReviewableData, scoreRemaining, selfEffectivePartAMax, societyRowLocked, societyRowScore, sumSectionScore, toggleInnovativeMethod, validateCompleteRows, generateStandardReport, standardSubmittedScoreSummary, qualificationRowDescription, AppraisalHeaderImage, SummaryOtherInfoField, summaryOtherInfoValueFrom, RejectionNotice, DocCell, ViewCell, ViewDocsCell, RowButtons as RowBtns, SectionSaveFooter, SectionCard as SC, T, TH, TH_HOD, TH_DIR, TH_DEAN, TD, TDC, TDS, TDS_HOD, TDS_DIR, TDS_DEAN, TDV, MyAppraisalSection, CreativeSchoolAuthorityReviewPanel, isCreativeSchool } from "../features/faculty-appraisal";
@@ -123,7 +123,7 @@ function ReviewPanel({ faculty, onBack, onSubmit }) {
  };
 
  const { partA, partB, partC, partD, total } = calcHodScore();
- const g = grade(total, 625);
+ const g = grade(total, 700);
  const facultySummary = standardSubmittedScoreSummary(faculty, {
  partA: faculty.lectures?.reduce((a, r) =>a + n(r.score), 0) || 0,
  partB: faculty.journals?.reduce((a, r) =>a + n(r.score), 0) || 0,
@@ -150,7 +150,7 @@ function ReviewPanel({ faculty, onBack, onSubmit }) {
 </div>
 <div style={{ background: g.bg, border: `2px solid ${g.color}40`, borderRadius: 8, padding: "8px 14px", textAlign: "center" }}>
 <div style={{ color: g.color, fontSize: 9, textTransform: "uppercase", letterSpacing: 0.6, fontWeight: 700 }}>HOD Total</div>
-<div style={{ color: g.color, fontWeight: 800, fontSize: 16 }}>{total.toFixed(1)}<span style={{ fontSize: 10, color: "#94a3b8" }}>/575</span></div>
+<div style={{ color: g.color, fontWeight: 800, fontSize: 16 }}>{total.toFixed(1)}<span style={{ fontSize: 10, color: "#94a3b8" }}>/700</span></div>
 </div>
 </div>
 </div>
@@ -1575,23 +1575,16 @@ export default function DeanDashboard() {
                       <StatusBadge status={faculty.status} />
                     </div>
 
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 8, background: "#f8fafc", borderRadius: 8, padding: "12px 10px" }}>
-                      {[
+                    <ReviewMetricsStrip
+                      metrics={[
                         { label: "Part A", val: facultySummary.partA, max: facultySummary.partAMax, color: "#6366f1" },
                         { label: "Part B", val: facultySummary.partB, max: facultySummary.partBMax, color: "#0ea5e9" },
                         { label: "Part C", val: facultySummary.partC, max: facultySummary.partCMax, color: "#10b981" },
                         { label: "Part D", val: facultySummary.partD, max: facultySummary.partDMax, color: "#f59e0b" },
                         { label: "Total", val: facultySummary.total, max: facultySummary.grandMax, color: "#4338ca" },
-                      ].map(({ label, val, max, color }) => (
-                        <div key={label} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                          <div style={{ fontSize: 9, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5 }}>{label}</div>
-                          <div style={{ fontSize: 13, fontWeight: 800, color, lineHeight: 1 }}>
-                            {val.toFixed ? val.toFixed(1) : val}{max != null && <span style={{ fontSize: 8, color: "#94a3b8" }}>/{max}</span>}
-                          </div>
-                          {max != null && max > 0 && <ScoreBar score={val} max={max} color={color} />}
-                        </div>
-                      ))}
-                    </div>
+                      ]}
+                      docs={faculty.docs}
+                    />
 
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #f1f5f9", paddingTop: 12 }}>
                       <div style={{ fontSize: 10, color: "#94a3b8" }}>Submitted: {faculty.submittedOn}</div>

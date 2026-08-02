@@ -1,4 +1,3 @@
-/* eslint-disable no-unused-vars */
 import { HodInput } from "../../Inputs";
 import {
   ACR_DETAIL_POINTS,

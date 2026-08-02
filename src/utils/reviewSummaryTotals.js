@@ -13,6 +13,13 @@ const numericFrom = (sources, keys, fallback = 0) => {
 };
 
 const effectiveMaxFromApplicability = (baseMax) => n(baseMax);
+const CURRENT_FORM_MAX = {
+  partA: 150,
+  partB: 350,
+  partC: 150,
+  partD: 50,
+  grand: 700,
+};
 
 const parseMaybeJson = (value) => {
   if (typeof value !== "string") return value;
@@ -198,32 +205,36 @@ export const standardSubmittedScoreSummary = (subject = {}, fallback = {}) => {
     subject.info,
   ].filter(Boolean);
 
-  const inferredSelfPartAMax = effectiveMaxFromApplicability(200);
+  const inferredSelfPartAMax = effectiveMaxFromApplicability(CURRENT_FORM_MAX.partA);
   const fallbackPartAMax = n(fallback.partAMax ?? fallback.effectivePartAMax);
   const inferredPartAMax = fallbackPartAMax ? Math.min(fallbackPartAMax, inferredSelfPartAMax) : inferredSelfPartAMax;
   const inferredPartBMax = n(fallback.partBMax ?? fallback.effectivePartBMax) ||
-    effectiveMaxFromApplicability(375);
+    effectiveMaxFromApplicability(CURRENT_FORM_MAX.partB);
   const inferredPartCMax = n(fallback.partCMax ?? fallback.effectivePartCMax) ||
-    effectiveMaxFromApplicability(150);
+    effectiveMaxFromApplicability(CURRENT_FORM_MAX.partC);
   const inferredPartDMax = n(fallback.partDMax ?? fallback.effectivePartDMax) ||
-    effectiveMaxFromApplicability(0);
+    effectiveMaxFromApplicability(CURRENT_FORM_MAX.partD);
 
   const storedPartAMax = numericFrom(sources, [
     "partAMax", "part_a_max", "effectivePartAMax", "effective_part_a_max", "maxPartA", "faculty_part_a_max",
   ], inferredPartAMax);
-  const partAMax = Math.min(storedPartAMax || inferredPartAMax, inferredPartAMax);
+  const partAMax = Math.min(storedPartAMax || inferredPartAMax, CURRENT_FORM_MAX.partA);
   const partBMax = numericFrom(sources, [
     "partBMax", "part_b_max", "effectivePartBMax", "effective_part_b_max", "maxPartB", "faculty_part_b_max",
   ], inferredPartBMax);
+  const cappedPartBMax = Math.min(partBMax || inferredPartBMax, CURRENT_FORM_MAX.partB);
   const partCMax = numericFrom(sources, [
     "partCMax", "part_c_max", "effectivePartCMax", "effective_part_c_max", "maxPartC", "faculty_part_c_max",
   ], inferredPartCMax);
+  const cappedPartCMax = Math.min(partCMax || inferredPartCMax, CURRENT_FORM_MAX.partC);
   const partDMax = numericFrom(sources, [
     "partDMax", "part_d_max", "effectivePartDMax", "effective_part_d_max", "maxPartD", "faculty_part_d_max",
   ], inferredPartDMax);
+  const cappedPartDMax = Math.min(partDMax || inferredPartDMax, CURRENT_FORM_MAX.partD);
   const grandMax = numericFrom(sources, [
     "grandMax", "grand_max", "effectiveGrandMax", "effective_grand_max", "maxGrand", "totalMax", "faculty_total_max",
-  ], partAMax + partBMax + partCMax + partDMax);
+  ], partAMax + cappedPartBMax + cappedPartCMax + cappedPartDMax);
+  const cappedGrandMax = Math.min(grandMax || CURRENT_FORM_MAX.grand, CURRENT_FORM_MAX.grand);
 
   const rawPartA = numericFrom(sources, [
     "partATotal", "partA", "part_a_total", "part_a_score", "selfPartA", "self_part_a",
@@ -234,24 +245,24 @@ export const standardSubmittedScoreSummary = (subject = {}, fallback = {}) => {
     "partBTotal", "partB", "part_b_total", "part_b_score", "selfPartB", "self_part_b",
     "facultyPartB", "faculty_part_b", "facultyPartBScore", "faculty_part_b_score",
   ], fallback.partB);
-  const partB = Math.min(rawPartB, partBMax);
+  const partB = Math.min(rawPartB, cappedPartBMax);
   const rawPartC = numericFrom(sources, [
     "partCTotal", "partC", "part_c_total", "part_c_score", "selfPartC", "self_part_c",
     "facultyPartC", "faculty_part_c", "facultyPartCScore", "faculty_part_c_score",
   ], fallback.partC);
-  const partC = Math.min(rawPartC, partCMax);
+  const partC = Math.min(rawPartC, cappedPartCMax);
   const rawPartD = numericFrom(sources, [
     "partDTotal", "partD", "part_d_total", "part_d_score", "selfPartD", "self_part_d",
     "facultyPartD", "faculty_part_d", "facultyPartDScore", "faculty_part_d_score",
   ], fallback.partD);
-  const partD = Math.min(rawPartD, partDMax);
+  const partD = Math.min(rawPartD, cappedPartDMax);
   const rawTotal = numericFrom(sources, [
     "grandTotal", "grand_total", "totalScore", "total_score", "total", "selfTotal",
     "self_total", "facultyTotal", "faculty_total", "facultyScore", "faculty_score",
   ], fallback.total ?? partA + partB + partC + partD);
-  const total = Math.min(rawTotal, partA + partB + partC + partD, grandMax);
+  const total = Math.min(rawTotal, partA + partB + partC + partD, cappedGrandMax);
 
-  return { partA, partB, partC, partD, total, partAMax, partBMax, partCMax, partDMax, grandMax };
+  return { partA, partB, partC, partD, total, partAMax, partBMax: cappedPartBMax, partCMax: cappedPartCMax, partDMax: cappedPartDMax, grandMax: cappedGrandMax };
 };
 
 export const attachSubmittedScoreSummary = (target = {}, ...sources) => {

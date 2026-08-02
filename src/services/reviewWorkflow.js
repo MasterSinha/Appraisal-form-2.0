@@ -28,6 +28,103 @@ const firstValue = (...values) =>
 
 const numberValue = (...values) => n(firstValue(...values));
 
+const docCountFromValue = (value) => {
+  if (Array.isArray(value)) return value.length;
+  if (typeof value === "number") return value;
+  if (!value || typeof value !== "object") return 0;
+  if (value.url || value.file_url || value.fileUrl || value.document_url || value.documentUrl) return 1;
+  const countKeys = new Set([
+    "doc_count",
+    "docCount",
+    "docs_count",
+    "docsCount",
+    "document_count",
+    "documentCount",
+    "documents_count",
+    "documentsCount",
+    "uploaded_docs_count",
+    "uploadedDocsCount",
+    "supporting_documents_count",
+    "supportingDocumentsCount",
+  ]);
+  const explicitCount = firstValue(
+    value.doc_count,
+    value.docCount,
+    value.docs_count,
+    value.docsCount,
+    value.document_count,
+    value.documentCount,
+    value.documents_count,
+    value.documentsCount,
+    value.uploaded_docs_count,
+    value.uploadedDocsCount,
+    value.supporting_documents_count,
+    value.supportingDocumentsCount,
+  );
+  if (explicitCount !== "" && n(explicitCount) > 0) return n(explicitCount);
+  return Object.entries(value).reduce((total, [key, entry]) => {
+    if (countKeys.has(key)) return total;
+    if (Array.isArray(entry)) return total + entry.length;
+    return total + (entry ? 1 : 0);
+  }, 0);
+};
+
+const docsForQueueCard = (item = {}) => {
+  const docSources = [
+    item.docs,
+    item.payload?.docs,
+    item.payload?.form?.docs,
+    item.form?.docs,
+    item.documents,
+    item.appraisal_documents,
+    item.appraisalDocuments,
+    item.payload?.documents,
+    item.payload?.appraisal_documents,
+    item.payload?.appraisalDocuments,
+  ];
+  const populatedDocs = docSources.find((source) => docCountFromValue(source) > 0);
+  if (populatedDocs) return populatedDocs;
+
+  const explicitCount = firstValue(
+    item.doc_count,
+    item.docCount,
+    item.docs_count,
+    item.docsCount,
+    item.document_count,
+    item.documentCount,
+    item.documents_count,
+    item.documentsCount,
+    item.uploaded_docs_count,
+    item.uploadedDocsCount,
+    item.supporting_documents_count,
+    item.supportingDocumentsCount,
+    item.payload?.doc_count,
+    item.payload?.docCount,
+    item.payload?.documents_count,
+    item.payload?.documentsCount,
+  );
+  if (explicitCount !== "") return n(explicitCount);
+
+  return item.docs || item.payload?.docs || {};
+};
+
+const enrichQueueItemDocs = async (item = {}) => {
+  if (docCountFromValue(item.docs) > 0 || !item.email || !item.academicYear) return item;
+
+  try {
+    const rows = await api.get("/appraisal-documents", {
+      params: {
+        academic_year: item.academicYear,
+        faculty_email: item.email,
+      },
+    });
+    const count = docCountFromValue(rows);
+    return count > 0 ? { ...item, docs: rows, docCount: count } : item;
+  } catch {
+    return item;
+  }
+};
+
 const initialsFor = (name, fallback = "U") =>
   String(name || fallback)
     .split(/\s+/)
@@ -400,6 +497,8 @@ const normalizeQueueItem = (item = {}) => {
     },
     status,
     workflowStatus: status,
+    docs: docsForQueueCard(item),
+    docCount: docCountFromValue(docsForQueueCard(item)),
     hasSubmittedAppraisal: submitted,
     partATotal: selfSummary.partA,
     partBTotal: selfSummary.partB,
@@ -493,9 +592,10 @@ export const fetchReviewQueueForRole = async ({
     if (reviewerProfile?.department) params.reviewer_department = reviewerProfile.department;
 
     const items = await api.get("/dashboard/subordinates", { params });
-    return (items || [])
+    const normalizedItems = (items || [])
       .map(normalizeQueueItem)
       .filter((item) => isReviewableForRole(item, role, reviewerProfile));
+    return await Promise.all(normalizedItems.map(enrichQueueItemDocs));
   } catch (err) {
     throw new Error(err?.message || "Could not load review queue.", { cause: err });
   }

@@ -129,7 +129,7 @@ export const societyRowScore = (row = {}) =>
 export const effectiveMaxScore = (baseMax) =>
  toNumber(baseMax);
 
-export const selfEffectivePartAMax = (baseMax = 200) =>
+export const selfEffectivePartAMax = (baseMax = 150) =>
  effectiveMaxScore(baseMax);
 
 export const sumSectionScore = (rows = [], maxScore, scoreKey = "score", rowMax) =>
@@ -371,6 +371,7 @@ const IGNORED_METADATA_KEYS = new Set([
 
 export const rowHasReviewableData = (sectionKey, row = {}, docs = null, docKey = null) => {
   if (!row || typeof row !== "object") return false;
+  if (sectionKey === "acr" && isFilled(row.label)) return true;
 
   if (docs && docKey) {
     const keysToCheck = Array.isArray(docKey) ? docKey : [docKey];

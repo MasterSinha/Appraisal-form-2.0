@@ -74,12 +74,13 @@ export default function MyAppraisalForm({ faculty, hodData, setHodData, reviewer
   const set = (section, idx, field, val) =>{
   setHodData(prev =>{
   const updated = { ...prev };
-  if (!updated[section]) {
-    updated[section] = section === "acr"
-      ? createAcrRows(faculty[section])
-      : JSON.parse(JSON.stringify(faculty[section] || []));
-  }
   const sourceRows = section === "acr" ? createAcrRows(faculty[section]) : (faculty[section] || []);
+  if (section === "acr") {
+    const currentRows = Array.isArray(updated[section]) ? updated[section] : [];
+    updated[section] = createAcrRows(currentRows.length ? currentRows : sourceRows);
+  } else if (!Array.isArray(updated[section])) {
+    updated[section] = JSON.parse(JSON.stringify(sourceRows));
+  }
   const nextVal = field === "hod" && idx !== null
   ? clampReviewScore(section, sourceRows[idx] || {}, val, REVIEW_SECTION_MAX[section] || 0)
   : val;
@@ -94,6 +95,12 @@ export default function MyAppraisalForm({ faculty, hodData, setHodData, reviewer
   };
 
  const get = (section, idx, field) =>{
+ if (section === "acr" && idx !== null) {
+ const rows = Array.isArray(hodData[section]) && hodData[section].length
+ ? createAcrRows(hodData[section])
+ : createAcrRows(faculty[section]);
+ return rows[idx]?.[field] ?? "";
+ }
  if (hodData[section]) {
  const s = hodData[section];
  return idx === null
@@ -163,12 +170,16 @@ export function DirectorFacultyReviewForm({ faculty, hodData, setHodData, dirDat
  const setDir = (section, idx, field, val) =>{
  setDirData(prev =>{
  const updated = { ...prev };
- if (!updated[section]) {
- updated[section] = section === "acr" && !reviewLocked
- ? createAcrRows(faculty[section]).map((row) =>({ label: row.label }))
- : JSON.parse(JSON.stringify(faculty[section] || []));
- }
  const sourceRows = section === "acr" ? createAcrRows(faculty[section]) : (faculty[section] || []);
+ if (section === "acr") {
+ const currentRows = Array.isArray(updated[section]) ? updated[section] : [];
+ updated[section] = createAcrRows(currentRows.length ? currentRows : sourceRows).map((row) =>({
+ ...row,
+ label: row.label,
+ }));
+ } else if (!Array.isArray(updated[section])) {
+ updated[section] = JSON.parse(JSON.stringify(sourceRows));
+ }
  const nextVal = field === "dir" && idx !== null
  ? clampDirectorReviewScore(section, sourceRows[idx] || {}, val, DIRECTOR_REVIEW_SECTION_MAX[section] || 0)
  : val;
@@ -183,6 +194,12 @@ export function DirectorFacultyReviewForm({ faculty, hodData, setHodData, dirDat
  };
 
  const getDir = (section, idx, field) =>{
+ if (section === "acr" && idx !== null) {
+ const rows = Array.isArray(dirData[section]) && dirData[section].length
+ ? createAcrRows(dirData[section])
+ : createAcrRows(faculty[section]);
+ return rows[idx]?.[field] ?? rows[idx]?.director ?? "";
+ }
  let value;
  if (dirData[section]) {
  const s = dirData[section];

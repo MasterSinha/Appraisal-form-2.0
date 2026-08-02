@@ -20,6 +20,97 @@ export function ScoreBar({ score, max, color = "#6366f1" }) {
   );
 }
 
+const uploadedDocCount = (docs = {}) => {
+  if (Array.isArray(docs)) return docs.length;
+  if (typeof docs === "number") return docs;
+  if (!docs || typeof docs !== "object") return 0;
+  if (docs.url || docs.file_url || docs.fileUrl || docs.document_url || docs.documentUrl) return 1;
+  const countKeys = new Set([
+    "doc_count",
+    "docCount",
+    "docs_count",
+    "docsCount",
+    "document_count",
+    "documentCount",
+    "documents_count",
+    "documentsCount",
+    "uploaded_docs_count",
+    "uploadedDocsCount",
+    "supporting_documents_count",
+    "supportingDocumentsCount",
+  ]);
+  const explicitCount =
+    docs.doc_count ??
+    docs.docCount ??
+    docs.docs_count ??
+    docs.docsCount ??
+    docs.document_count ??
+    docs.documentCount ??
+    docs.documents_count ??
+    docs.documentsCount ??
+    docs.uploaded_docs_count ??
+    docs.uploadedDocsCount ??
+    docs.supporting_documents_count ??
+    docs.supportingDocumentsCount;
+  if (explicitCount !== undefined && explicitCount !== null && explicitCount !== "" && (parseFloat(explicitCount) || 0) > 0) {
+    return parseFloat(explicitCount) || 0;
+  }
+  return Object.entries(docs).reduce((total, [key, value]) => {
+    if (countKeys.has(key)) return total;
+    if (Array.isArray(value)) return total + value.length;
+    return total + (value ? 1 : 0);
+  }, 0);
+};
+
+const metricText = (value) => {
+  const score = parseFloat(value) || 0;
+  return Number.isFinite(score) ? score.toFixed(1) : "0.0";
+};
+
+export function ReviewMetricsStrip({
+  metrics = [],
+  docs,
+  includeDocs = true,
+  columns,
+  background = "#f8fafc",
+  style = {},
+  compact = false,
+}) {
+  const docCount = uploadedDocCount(docs);
+  const allMetrics = [
+    ...metrics,
+    ...(includeDocs ? [{ label: "Docs", val: docCount, color: "#10b981", helper: "files uploaded" }] : []),
+  ];
+
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: columns || "repeat(auto-fit, minmax(92px, 1fr))",
+        gap: compact ? 8 : 10,
+        background,
+        borderRadius: 8,
+        padding: compact ? "10px 12px" : "12px 14px",
+        ...style,
+      }}
+    >
+      {allMetrics.map(({ label, val, max, color = "#6366f1", helper }) => {
+        const hasMax = max !== undefined && max !== null;
+        return (
+          <div key={label} style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
+            <div style={{ fontSize: compact ? 8 : 9, fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{label}</div>
+            <div style={{ fontSize: compact ? 13 : 15, fontWeight: 900, color, lineHeight: 1, whiteSpace: "nowrap" }}>
+              {hasMax ? metricText(val) : parseFloat(val) || 0}
+              {hasMax && <span style={{ fontSize: compact ? 8 : 9, color: "#94a3b8", fontWeight: 700 }}>/{max}</span>}
+            </div>
+            {hasMax ? <ScoreBar score={val} max={max} color={color} /> : <div style={{ fontSize: 9, color: "#94a3b8" }}>{helper || "files uploaded"}</div>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 const PART_COLORS = {
   partA: "#6d5dfc",
   partB: "#0f9f9a",

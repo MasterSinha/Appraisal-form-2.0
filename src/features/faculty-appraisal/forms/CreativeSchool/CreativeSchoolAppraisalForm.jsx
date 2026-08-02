@@ -779,6 +779,7 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
   const currentRole = reviewerRole;
   const selfLocked = mode === "self" && section.key === "acr";
   const earned = scoreSectionRows(section.key, rows, section.max);
+  const docPrefix = section.doc || section.key;
   const hideIndividualB8Summary = section.key === "fdps" || section.key === "training";
   const totalLabel = section.key === "feedback"
     ? `Faculty Score (Max ${section.max})`

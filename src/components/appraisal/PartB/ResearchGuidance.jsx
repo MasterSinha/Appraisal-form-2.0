@@ -5,6 +5,7 @@ import {
   clampScore,
   courseFileRowScore,
   projectGuidanceRowMax,
+  researchGuidanceRowMax,
   researchGuidanceScore,
   rowHasReviewableData,
   societyRowLocked,

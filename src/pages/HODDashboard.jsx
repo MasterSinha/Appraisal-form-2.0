@@ -1,7 +1,7 @@
 /* eslint-disable no-unused-vars */
 import { useState, useRef, useEffect } from "react";
 import MyAppraisalForm from "../components/appraisal";
-import { Avatar, ScoreCard, ScoreBar, StatusBadge } from "../components/dashboard/dashboardPrimitives";
+import { Avatar, ScoreCard, ScoreBar, StatusBadge, ReviewMetricsStrip } from "../components/dashboard/dashboardPrimitives";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import DashboardSidebar from "../components/dashboard/DashboardSidebar";
 import { api } from "../services/api";
@@ -52,7 +52,7 @@ const preserveSavedReviewScores = (form = {}, source = {}) =>{
 const buildHodSectionScores = (faculty, hodData) =>{
  const payload = {};
  REVIEW_ARRAY_KEYS.forEach((key) =>{
- const rows = Array.isArray(faculty[key]) ? faculty[key] : [];
+ const rows = key === "acr" ? createAcrRows(faculty[key]) : (Array.isArray(faculty[key]) ? faculty[key] : []);
  payload[key] = rows.map((row, index) =>({
  ...row,
  hod: key === "society" && societyRowLocked(row)
@@ -134,7 +134,7 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false, revi
  };
  const getS = (key) =>n(hodData[key] ?? faculty[key]);
  const sumReviewRows = (section, field, max, rowMax) =>clampScore(
- (faculty[section] || []).reduce((total, row, index) =>{
+ (section === "acr" ? createAcrRows(faculty[section]) : (faculty[section] || [])).reduce((total, row, index) =>{
  if (section === "society" && societyRowLocked(row)) return total;
  if (!rowHasReviewableData(section, row)) return total;
  const limit = typeof rowMax === "function" ? rowMax(row) : rowMax;
@@ -632,22 +632,16 @@ return (
 <StatusBadge status={faculty.status} />
 </div>
 
-<div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, background: "#f8fafc", borderRadius: 8, padding: "12px 14px" }}>
- {[
+<ReviewMetricsStrip
+ metrics={[
  { label: "Part A", val: facultySummary.partA, max: facultySummary.partAMax, color: "#6366f1" },
  { label: "Part B", val: facultySummary.partB, max: facultySummary.partBMax, color: "#0ea5e9" },
- { label: "Docs", val: docCount, max: null, color: "#10b981" },
- ].map(({ label, val, max, color }) =>(
-<div key={label} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-<div style={{ fontSize: 9, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.6 }}>{label}</div>
-<div style={{ fontSize: 15, fontWeight: 800, color, lineHeight: 1 }}>
- {val.toFixed ? val.toFixed(1) : val}{max &&<span style={{ fontSize: 9, color: "#94a3b8" }}>/{max}</span>}
-</div>
- {max &&<ScoreBar score={val} max={max} color={color} />}
- {!max &&<div style={{ fontSize: 9, color: "#94a3b8" }}>files uploaded</div>}
-</div>
- ))}
-</div>
+ { label: "Part C", val: facultySummary.partC, max: facultySummary.partCMax, color: "#10b981" },
+ { label: "Part D", val: facultySummary.partD, max: facultySummary.partDMax, color: "#f59e0b" },
+ { label: "Total", val: facultySummary.total, max: facultySummary.grandMax, color: "#4338ca" },
+ ]}
+ docs={faculty.docs}
+/>
 
 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #f1f5f9", paddingTop: 12 }}>
 <div style={{ fontSize: 10, color: "#94a3b8" }}>Submitted: {faculty.submittedOn}</div>
