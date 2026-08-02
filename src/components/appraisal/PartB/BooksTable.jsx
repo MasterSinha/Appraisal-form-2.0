@@ -48,7 +48,7 @@ export default function BooksTable({ ctx }) {
 <td style={TD}><RO val={r.coauth} /></td>
 <td style={TDV}><ViewDocsCell docKey={`book-${i}`} docs={docs} /></td>
 <td style={TDS}><RO val={r.score} center /></td>
-<td style={TDS_HOD}><HodInput val={get("books", i, "hod")} onChange={v =>set("books", i, "hod", v)} /></td>
+<td style={TDS_HOD}><HodInput val={get("books", i, "hod")} max={30} disabled={!rowHasReviewableData("books", r, docs, `book-${i}`)} onChange={v =>set("books", i, "hod", v)} /></td>
 </tr>
  ))}
 </tbody>

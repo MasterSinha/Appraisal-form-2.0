@@ -48,7 +48,7 @@ export default function DirectorJournalTable({ ctx }) {
 <td style={TDC}><RO val={r.authorPosition || r.position} center /></td>
 <td style={TDV}><ViewDocsCell docKey={`jour-${i}`} docs={docs} /></td>
 <td style={TDS}><RO val={r.score} center /></td>
-<td style={TDS_DIR}><DirInput val={getDir("journals", i, "dir")} onChange={v =>setDir("journals", i, "dir", v)} /></td>
+<td style={TDS_DIR}><DirInput val={getDir("journals", i, "dir")} max={100} disabled={!rowHasReviewableData("journals", r, docs, `jour-${i}`)} onChange={v =>setDir("journals", i, "dir", v)} /></td>
 </tr>
  ))}
 </tbody>

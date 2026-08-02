@@ -314,10 +314,9 @@ export const REVIEW_ROW_VALUE_KEYS = {
   lectures: ["sem", "code", "planned", "conducted"],
   courseFile: ["course", "title", "details"],
   obeRows: ["component", "evidence"],
-  projects: ["label", "studentsCount", "industryCollab", "awardReceived", "studentPub", "details"],
+  projects: ["studentsCount", "industryCollab", "awardReceived", "studentPub", "details"],
   mentoringRows: ["activity", "evidence"],
   quals: [
-    "label",
     "title",
     "qualification_title",
     "qualificationTitle",
@@ -330,24 +329,19 @@ export const REVIEW_ROW_VALUE_KEYS = {
     "body",
     "date",
     "score",
-    "hod",
-    "director",
-    "dir",
-    "dean",
-    "vc",
   ],
-  feedback: ["code", "fb1", "fb2"],
+  feedback: ["fb1", "fb2"],
   deptActs: ["activity", "nature", "period", "durationCat"],
   uniActs: ["activity", "nature", "period", "durationCat"],
   eventRows: ["event", "role", "date", "level"],
   events: ["event", "role", "date", "level"],
-  society: ["label", "activity", "details", "date", "participated", "completed", "yesNo", "yes_no"],
+  society: ["activity", "details", "date", "participated", "completed", "yesNo", "yes_no"],
   industry: ["name", "details", "activity", "partner", "date"],
   alumniRows: ["activity", "details", "date"],
   alumni: ["activity", "details", "date"],
   placementRows: ["activityType", "type", "name", "date"],
   placements: ["activityType", "type", "name", "date"],
-  acr: ["label"],
+  acr: ["score", "details", "evidence"],
   journals: ["title", "journal", "issn", "index", "doi", "impact", "coAuthors", "firstAuthor"],
   popularWritings: ["title", "pubName", "type", "circulation", "media", "film"],
   books: ["title", "book", "issn", "pub", "publisher", "coauth", "coAuthors", "first", "type", "level"],
@@ -366,20 +360,55 @@ export const REVIEW_ROW_VALUE_KEYS = {
   innovation: ["details", "usage", "used", "title", "role", "status"],
   fdps: ["program", "duration", "org"],
   training: ["company", "duration", "nature"],
-  innovRows: ["method", "details", "score"],
+  innovRows: ["method", "details"],
   exhibitions: ["title", "type", "venueLevel", "date"],
 };
 
 const IGNORED_METADATA_KEYS = new Set([
-  "_id", "id", "hod", "director", "dir", "dean", "vc", "ro", "reg", "status", "workflowStatus", "workflow_status"
+  "_id", "id", "hod", "director", "dir", "dean", "vc", "ro", "reg", "status", "workflowStatus", "workflow_status",
+  "label", "code", "isStatic", "defaultLabel"
 ]);
 
-export const rowHasReviewableData = (sectionKey, row = {}) => {
+export const rowHasReviewableData = (sectionKey, row = {}, docs = null, docKey = null) => {
   if (!row || typeof row !== "object") return false;
-  const keys = REVIEW_ROW_VALUE_KEYS[sectionKey] || [];
-  if (keys.length && rowHasAnyValue(row, keys)) {
+
+  if (docs && docKey) {
+    const keysToCheck = Array.isArray(docKey) ? docKey : [docKey];
+    const hasDoc = keysToCheck.some((k) => {
+      if (!k) return false;
+      const file = docs[k];
+      return Boolean(file && (typeof file === "string" ? file.trim() : file.name || file.url || file.path));
+    });
+    if (hasDoc) return true;
+  }
+
+  if (
+    isFilled(row.score) ||
+    isFilled(row.marks) ||
+    isFilled(row.claimedScore) ||
+    isFilled(row.selfScore) ||
+    isFilled(row.points) ||
+    isFilled(row.facultyScore) ||
+    isFilled(row.evidence) ||
+    isFilled(row.doc) ||
+    isFilled(row.document) ||
+    isFilled(row.attachment) ||
+    isFilled(row.file) ||
+    isFilled(row.viewDocs) ||
+    isFilled(row.evidenceUrl) ||
+    isFilled(row.docUrl) ||
+    isFilled(row.proofAttached) ||
+    isFilled(row.proof) ||
+    isFilled(row.filePath)
+  ) {
     return true;
   }
+
+  const valueKeys = REVIEW_ROW_VALUE_KEYS[sectionKey] || [];
+  if (valueKeys.length && rowHasAnyValue(row, valueKeys)) {
+    return true;
+  }
+
   return Object.entries(row).some(([key, value]) => !IGNORED_METADATA_KEYS.has(key) && isFilled(value));
 };
 
@@ -389,7 +418,7 @@ export const reviewRowMaxForSection = (sectionKey, row = {}, sectionMax = 0) =>
  : rowMaxForSection(sectionKey, row, sectionMax);
 
 export const clampReviewScore = (sectionKey, row = {}, value, sectionMax = 0) =>{
- if (!rowHasReviewableData(sectionKey, row)) return "";
+ if (sectionKey !== "acr" && !rowHasReviewableData(sectionKey, row)) return "";
  if (!isFilled(value)) return "";
  const maxForRow = reviewRowMaxForSection(sectionKey, row, sectionMax);
  return String(maxForRow ? clampScore(value, maxForRow) : clampScore(value, sectionMax));

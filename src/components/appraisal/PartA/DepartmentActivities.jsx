@@ -1,4 +1,4 @@
-﻿/* eslint-disable no-unused-vars */
+/* eslint-disable no-unused-vars */
 import { HodInput } from "../../Inputs";
 import {
   SCORE_LIMITS,
@@ -44,7 +44,7 @@ export default function DepartmentActivities({ ctx }) {
 <td style={TD}><RO val={r.period} /></td>
 <td style={TDV}><ViewDocsCell docKey={`dept-${i}`} docs={docs} /></td>
 <td style={TDS}><RO val={r.score} center /></td>
-<td style={TDS_HOD}><HodInput val={get("deptActs", i, "hod")} max={30} onChange={v =>set("deptActs", i, "hod", v)} /></td>
+<td style={TDS_HOD}><HodInput val={get("deptActs", i, "hod")} max={30} disabled={!rowHasReviewableData("deptActs", r, docs, `dept-${i}`)} onChange={v =>set("deptActs", i, "hod", v)} /></td>
 </tr>
  ))}
 </tbody>

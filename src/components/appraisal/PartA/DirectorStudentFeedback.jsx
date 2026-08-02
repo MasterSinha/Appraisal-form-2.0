@@ -1,4 +1,4 @@
-﻿/* eslint-disable no-unused-vars */
+/* eslint-disable no-unused-vars */
 import { HodInput } from "../../Inputs";
 import {
   SCORE_LIMITS,
@@ -47,7 +47,7 @@ export default function DirectorStudentFeedback({ ctx }) {
  {r.fb1 && r.fb2 ? ((n(r.fb1) + n(r.fb2)) / 2).toFixed(2) : "-"}
 </td>
 <td style={TDS}><RO val={r.score} center /></td>
-<td style={TDS_DIR}><DirInput val={getDir("feedback", i, "dir")} onChange={v =>setDir("feedback", i, "dir", v)} /></td>
+<td style={TDS_DIR}><DirInput val={getDir("feedback", i, "dir")} max={SCORE_LIMITS.feedbackAverage} disabled={!rowHasReviewableData("feedback", r, docs, `fb-${i}`)} onChange={v =>setDir("feedback", i, "dir", v)} /></td>
 </tr>
  ))}
 </tbody>

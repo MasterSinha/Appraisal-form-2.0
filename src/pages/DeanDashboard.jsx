@@ -314,8 +314,8 @@ function DeanScoreCell({ sectionKey, index, row, deanData, setDeanData }) {
  const value = deanData[sectionKey]?.[index]?.dean ?? row.dean ?? "";
  const maxForRow = DEAN_ROW_MAX[sectionKey]?.(row) || DEAN_SECTION_MAX[sectionKey];
  const societyLocked = sectionKey === "society" && societyRowLocked(row);
- const locked = societyLocked || !rowHasReviewableData(sectionKey, row);
- const displayValue = societyLocked ? "0" : locked ? "" : String(value ?? "").trim() ? clampScore(value, maxForRow) : "";
+ const locked = sectionKey === "acr" ? false : (societyLocked || !rowHasReviewableData(sectionKey, row));
+ const displayValue = societyLocked ? "0" : String(value ?? "").trim() ? clampScore(value, maxForRow) : "";
 
  const update = (nextValue) =>{
  const clampedValue = clampReviewScore(sectionKey, row, nextValue, DEAN_SECTION_MAX[sectionKey] || 0);
@@ -366,11 +366,11 @@ function ReviewTable({ title, accent = "#4338ca", sectionKey, columns, docPrefix
   const dataRows = sectionRows || ctx.rows(sectionKey);
   const visibleRows = dataRows.length ? dataRows : [{}];
   const hasDocs = Boolean(docPrefix);
-  const previousScoreLabel = sectionKey === "acr" ? "Director Score" : "Faculty Score";
+  const showPreviousScoreColumn = sectionKey !== "acr";
+  const previousScoreLabel = "Faculty Score";
   const previousScoreFor = (row) => {
     if (sectionKey === "research") return row.degree || row.name || row.thesis || row.score ? researchGuidanceScore(row).toFixed(1) : "";
     if (sectionKey === "society") return String(row.score ?? "").trim() ? societyRowScore(row) : "";
-    if (sectionKey === "acr") return row.director ?? row.dir ?? row.director_score ?? row.dir_score ?? "";
     return row.score;
   };
 
@@ -385,7 +385,7 @@ function ReviewTable({ title, accent = "#4338ca", sectionKey, columns, docPrefix
                 <th key={column.label} style={TH}>{column.label}</th>
               ))}
               {hasDocs && <th style={TH}>View Docs</th>}
-              <th style={TH}>{previousScoreLabel}</th>
+              {showPreviousScoreColumn && <th style={TH}>{previousScoreLabel}</th>}
               <th style={TH_DEAN}>Dean Score</th>
             </tr>
           </thead>
@@ -399,7 +399,7 @@ function ReviewTable({ title, accent = "#4338ca", sectionKey, columns, docPrefix
                   </td>
                 ))}
                 {hasDocs && <td style={TDV}><ViewDocsCell docKey={`${docPrefix}-${index}`} docs={ctx.docs} /></td>}
-                <td style={TDS}>{ctx.cell(previousScoreFor(row), true)}</td>
+                {showPreviousScoreColumn && <td style={TDS}>{ctx.cell(previousScoreFor(row), true)}</td>}
                 <td style={TDS_DEAN}><DeanScoreCell sectionKey={sectionKey} index={index} row={row} deanData={ctx.deanData} setDeanData={ctx.setDeanData} /></td>
               </tr>
             ))}

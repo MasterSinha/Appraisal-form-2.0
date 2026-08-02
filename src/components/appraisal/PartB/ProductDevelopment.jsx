@@ -43,7 +43,7 @@ export default function ProductDevelopment({ ctx }) {
 <td style={TD}><RO val={r.status} /></td>
 <td style={TDV}><ViewDocsCell docKey={`prod-${i}`} docs={docs} /></td>
 <td style={TDS}><RO val={r.score} center /></td>
-<td style={TDS_HOD}><HodInput val={get("products", i, "hod")} onChange={v =>set("products", i, "hod", v)} /></td>
+<td style={TDS_HOD}><HodInput val={get("products", i, "hod")} max={20} disabled={!rowHasReviewableData("products", r, docs, `prod-${i}`)} onChange={v =>set("products", i, "hod", v)} /></td>
 </tr>
  ))}
 </tbody>

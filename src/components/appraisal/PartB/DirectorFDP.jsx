@@ -43,7 +43,7 @@ export default function DirectorFDP({ ctx }) {
 <td style={TD}><RO val={r.org} /></td>
 <td style={TDV}><ViewDocsCell docKey={`fdp-${i}`} docs={docs} /></td>
 <td style={TDS}><RO val={String(r.score ?? "").trim() ? clampScore(r.score, SCORE_LIMITS.fdpRow) : ""} center /></td>
-<td style={TDS_DIR}><DirInput val={getDir("fdps", i, "dir")} max={SCORE_LIMITS.fdpRow} onChange={v =>setDir("fdps", i, "dir", v)} /></td>
+<td style={TDS_DIR}><DirInput val={getDir("fdps", i, "dir")} max={SCORE_LIMITS.fdpRow} disabled={!rowHasReviewableData("fdps", r, docs, `fdp-${i}`)} onChange={v =>setDir("fdps", i, "dir", v)} /></td>
 </tr>
  ))}
 </tbody>

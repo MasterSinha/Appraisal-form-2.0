@@ -43,7 +43,7 @@ export default function DirectorProductDevelopment({ ctx }) {
 <td style={TD}><RO val={r.status} /></td>
 <td style={TDV}><ViewDocsCell docKey={`prod-${i}`} docs={docs} /></td>
 <td style={TDS}><RO val={r.score} center /></td>
-<td style={TDS_DIR}><DirInput val={getDir("products", i, "dir")} onChange={v =>setDir("products", i, "dir", v)} /></td>
+<td style={TDS_DIR}><DirInput val={getDir("products", i, "dir")} max={20} disabled={!rowHasReviewableData("products", r, docs, `prod-${i}`)} onChange={v =>setDir("products", i, "dir", v)} /></td>
 </tr>
  ))}
 </tbody>

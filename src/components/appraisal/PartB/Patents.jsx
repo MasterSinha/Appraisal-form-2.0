@@ -47,7 +47,7 @@ export default function Patents({ ctx }) {
 <td style={TDC}><RO val={r.fileNo || r.date} center /></td>
 <td style={TDV}><ViewDocsCell docKey={`pat-${i}`} docs={docs} /></td>
 <td style={TDS}><RO val={r.score} center /></td>
-<td style={TDS_HOD}><HodInput val={get("patents", i, "hod")} onChange={v =>set("patents", i, "hod", v)} /></td>
+<td style={TDS_HOD}><HodInput val={get("patents", i, "hod")} max={40} disabled={!rowHasReviewableData("patents", r, docs, `pat-${i}`)} onChange={v =>set("patents", i, "hod", v)} /></td>
 </tr>
  ))}
 </tbody>

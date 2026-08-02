@@ -940,10 +940,10 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
             <tbody>
               {rows.map((row, index) => {
                 const socRowLocked = section.key === "society" && societyRowLocked(row);
-                const rowReviewable = rowHasReviewableData(section.key, row);
-                const reviewerCanScoreRow = rowReviewable || currentRole === "director" || currentRole === "vc";
+                const rowReviewable = rowHasReviewableData(section.key, row, docs, `${docPrefix}-${index}`);
+                const reviewerCanScoreRow = rowReviewable;
                 const currentRowMax = reviewRowMaxForSection(section.key, row, section.max);
-                const displayScore = (value) => reviewerCanScoreRow && String(value ?? "").trim() ? clampScore(value, currentRowMax) : "";
+                const displayScore = (value) => String(value ?? "").trim() ? clampScore(value, currentRowMax) : "";
                 return (
                   <tr key={row._id ?? `${section.key}-${index}`} style={socRowLocked ? { background: "#f1f5f9", opacity: 0.65 } : {}}>
                     <td style={tdCenter}>{index + 1}</td>
@@ -1212,7 +1212,7 @@ function InnovativeSection({ form, setForm, docs, setDocs, mode, locked, reviewe
                 <td style={tdStyle}><ViewCell id={`innov-${index}`} docs={docs} /></td>
                 <td style={tdCenter}>{mode === "self" ? <TI type="number" center max={row.max || CREATIVE_INNOVATIVE_ROW_MAX} readOnly={!editableSelf} value={row.score} onChange={(value) => updateSelfRow(index, "score", value)} /> : <RO value={row.score || form.innovScore} center />}</td>
                 {mode === "review" && previousRoles.map((role) => <td key={role} style={tdCenter}><RO value={rowReviewScore(role, row, index)} center /></td>)}
-                {mode === "review" && <td style={tdCenter}><TI type="number" center max={row.max || CREATIVE_INNOVATIVE_ROW_MAX} readOnly={reviewLocked || !(rowReviewable || reviewerRole === "director" || reviewerRole === "vc")} value={rowReviewScore(reviewerRole, row, index)} onChange={(value) => updateReview(index, value)} /></td>}
+                {mode === "review" && <td style={tdCenter}><TI type="number" center max={row.max || CREATIVE_INNOVATIVE_ROW_MAX} readOnly={reviewLocked || !rowReviewable} value={rowReviewScore(reviewerRole, row, index)} onChange={(value) => updateReview(index, value)} /></td>}
               </tr>
             );
           })}
@@ -1358,7 +1358,7 @@ function ObeSection({ form, setForm, docs, setDocs, mode, locked, reviewerRole, 
                     )}
                   </td>
                   {mode === "review" && previousRoles.map((role) => <td key={role} style={tdCenter}><RO value={rowReviewScore(role, row, index)} center /></td>)}
-                  {mode === "review" && <td style={tdCenter}><TI type="number" center max={row.max || 20} readOnly={reviewLocked || !(rowReviewable || reviewerRole === "director" || reviewerRole === "vc")} value={rowReviewScore(reviewerRole, row, index)} onChange={(value) => updateReview(index, value)} /></td>}
+                  {mode === "review" && <td style={tdCenter}><TI type="number" center max={row.max || 20} readOnly={reviewLocked || !rowReviewable} value={rowReviewScore(reviewerRole, row, index)} onChange={(value) => updateReview(index, value)} /></td>}
                 </tr>
               );
             })}
@@ -1493,7 +1493,7 @@ function MentoringSection({ form, setForm, docs, setDocs, mode, locked, reviewer
                     )}
                   </td>
                   {mode === "review" && previousRoles.map((role) => <td key={role} style={tdCenter}><RO value={rowReviewScore(role, row, index)} center /></td>)}
-                  {mode === "review" && <td style={tdCenter}><TI type="number" center max={row.max || 10} readOnly={reviewLocked || !(rowReviewable || reviewerRole === "director" || reviewerRole === "vc")} value={rowReviewScore(reviewerRole, row, index)} onChange={(value) => updateReview(index, value)} /></td>}
+                  {mode === "review" && <td style={tdCenter}><TI type="number" center max={row.max || 10} readOnly={reviewLocked || !rowReviewable} value={rowReviewScore(reviewerRole, row, index)} onChange={(value) => updateReview(index, value)} /></td>}
                 </tr>
               );
             })}

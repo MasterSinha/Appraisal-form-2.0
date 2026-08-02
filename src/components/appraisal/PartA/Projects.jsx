@@ -46,7 +46,7 @@ export default function Projects({ ctx }) {
 <td style={TDC}><RO val={r.studentPub} center /></td>
 <td style={TDV}><ViewDocsCell docKey={`proj-${i}`} docs={docs} /></td>
 <td style={TDS}><RO val={String(r.score ?? "").trim() ? clampScore(r.score, projectGuidanceRowMax(r)) : ""} center /></td>
-<td style={TDS_HOD}><HodInput val={get("projects", i, "hod")} max={projectGuidanceRowMax(r)} onChange={v =>set("projects", i, "hod", v)} /></td>
+<td style={TDS_HOD}><HodInput val={get("projects", i, "hod")} max={projectGuidanceRowMax(r)} disabled={!rowHasReviewableData("projects", r, docs, `proj-${i}`)} onChange={v =>set("projects", i, "hod", v)} /></td>
 </tr>
  ))}
 </tbody>

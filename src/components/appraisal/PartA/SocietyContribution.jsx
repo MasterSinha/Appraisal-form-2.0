@@ -1,4 +1,4 @@
-﻿/* eslint-disable no-unused-vars */
+/* eslint-disable no-unused-vars */
 import { HodInput } from "../../Inputs";
 import {
   SCORE_LIMITS,
@@ -44,7 +44,7 @@ export default function SocietyContribution({ ctx }) {
 <td style={TD}><RO val={r.date} /></td>
 <td style={TDV}><ViewDocsCell docKey={`soc-${i}`} docs={docs} /></td>
 <td style={TDS}><RO val={String(r.score ?? "").trim() ? clampScore(r.score, 20) : ""} center /></td>
-<td style={TDS_HOD}><HodInput val={societyRowLocked(r) ? "0" : get("society", i, "hod")} max={20} disabled={societyRowLocked(r)} onChange={v =>set("society", i, "hod", v)} /></td>
+<td style={TDS_HOD}><HodInput val={societyRowLocked(r) ? "0" : get("society", i, "hod")} max={20} disabled={societyRowLocked(r) || !rowHasReviewableData("society", r, docs, `soc-${i}`)} onChange={v =>set("society", i, "hod", v)} /></td>
 </tr>
  ))}
 </tbody>

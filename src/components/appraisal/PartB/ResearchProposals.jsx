@@ -45,7 +45,7 @@ export default function ResearchProposals({ ctx }) {
 <td style={TDC}><RO val={r.amount || r.revenue} center /></td>
 <td style={TDV}><ViewDocsCell docKey={`prop-${i}`} docs={docs} /></td>
 <td style={TDS}><RO val={r.score} center /></td>
-<td style={TDS_HOD}><HodInput val={get("proposals", i, "hod")} onChange={v =>set("proposals", i, "hod", v)} /></td>
+<td style={TDS_HOD}><HodInput val={get("proposals", i, "hod")} max={20} disabled={!rowHasReviewableData("proposals", r, docs, `prop-${i}`)} onChange={v =>set("proposals", i, "hod", v)} /></td>
 </tr>
  ))}
 </tbody>

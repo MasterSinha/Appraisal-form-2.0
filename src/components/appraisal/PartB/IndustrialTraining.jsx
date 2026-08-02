@@ -1,4 +1,4 @@
-﻿/* eslint-disable no-unused-vars */
+/* eslint-disable no-unused-vars */
 import { HodInput } from "../../Inputs";
 import {
   SCORE_LIMITS,
@@ -43,7 +43,7 @@ export default function IndustrialTraining({ ctx }) {
 <td style={TD}><RO val={r.nature} /></td>
 <td style={TDV}><ViewDocsCell docKey={`train-${i}`} docs={docs} /></td>
 <td style={TDS}><RO val={String(r.score ?? "").trim() ? clampScore(r.score, SCORE_LIMITS.fdpRow) : ""} center /></td>
-<td style={TDS_HOD}><HodInput val={get("training", i, "hod")} max={SCORE_LIMITS.fdpRow} onChange={v =>set("training", i, "hod", v)} /></td>
+<td style={TDS_HOD}><HodInput val={get("training", i, "hod")} max={20} disabled={!rowHasReviewableData("training", r, docs, `train-${i}`)} onChange={v =>set("training", i, "hod", v)} /></td>
 </tr>
  ))}
 </tbody>

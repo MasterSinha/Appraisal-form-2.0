@@ -14,6 +14,7 @@ import {
   TDS_HOD,
   TDV,
   ViewDocsCell,
+  rowHasReviewableData,
 } from "../../../features/faculty-appraisal";
 import { RO } from "../../../features/faculty-appraisal/shared";
 
@@ -43,7 +44,7 @@ function SimplePartCTable({ title, rows, rowKey, docs, docPrefix, columns, get, 
               {columns.map((column) => <td key={Array.isArray(column.key) ? column.key.join("-") : column.key} style={TD}><RO val={displayValue(row, column)} /></td>)}
               <td style={TDV}><ViewDocsCell docKey={`${docPrefix}-${index}`} docs={docs || {}} /></td>
               <td style={TDS}><RO val={row.score} center /></td>
-              <td style={TDS_HOD}><HodInput val={get(rowKey, index, "hod")} max={max} onChange={(value) => set(rowKey, index, "hod", value)} /></td>
+              <td style={TDS_HOD}><HodInput val={get(rowKey, index, "hod")} max={max} disabled={!rowHasReviewableData(rowKey, row, docs, `${docPrefix}-${index}`)} onChange={(value) => set(rowKey, index, "hod", value)} /></td>
             </tr>
           ))}
         </tbody>

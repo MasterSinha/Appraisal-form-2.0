@@ -45,7 +45,7 @@ export default function DirectorResearchProposals({ ctx }) {
 <td style={TDC}><RO val={r.amount || r.revenue} center /></td>
 <td style={TDV}><ViewDocsCell docKey={`prop-${i}`} docs={docs} /></td>
 <td style={TDS}><RO val={r.score} center /></td>
-<td style={TDS_DIR}><DirInput val={getDir("proposals", i, "dir")} onChange={v =>setDir("proposals", i, "dir", v)} /></td>
+<td style={TDS_DIR}><DirInput val={getDir("proposals", i, "dir")} max={20} disabled={!rowHasReviewableData("proposals", r, docs, `prop-${i}`)} onChange={v =>setDir("proposals", i, "dir", v)} /></td>
 </tr>
  ))}
 </tbody>
