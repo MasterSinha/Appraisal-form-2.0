@@ -2,23 +2,30 @@ import { lazy, Suspense, useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import ProtectedRoute from "./auth/ProtectedRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
-import { normalizeRole, storeUserSession } from "./auth/session";
+import { getSessionItem, normalizeRole, storeUserSession } from "./auth/session";
 import { APP_INFO } from "./constants/formConfig";
 import { getMe } from "./services/authService";
 import { api } from "./services/api";
 
 const normalizeAcademicYearCycles = (cyclesData) => {
+  const normalizeAcademicYearLabel = (value) => {
+    const label = String(value || "").trim();
+    const shortMatch = label.match(/^(\d{2})-(\d{2})$/);
+    if (shortMatch) return `20${shortMatch[1]}-20${shortMatch[2]}`;
+    return label;
+  };
+
   const normalizeCycle = (cycle) => {
     if (!cycle) return null;
     if (typeof cycle === "string") {
       return { academic_year: cycle, is_open: cycle === APP_INFO.DEFAULT_AY };
     }
 
-    const academicYear = cycle.academic_year || cycle.academicYear || cycle.year || cycle.year_label || "";
+    const academicYear = normalizeAcademicYearLabel(cycle.academic_year || cycle.academicYear || cycle.year || cycle.year_label || "");
     if (!academicYear) return null;
 
     return {
-      academic_year: String(academicYear),
+      academic_year: academicYear,
       is_open: cycle.is_open ?? cycle.isOpen ?? cycle.active ?? cycle.open ?? (String(academicYear) === APP_INFO.DEFAULT_AY),
     };
   };
@@ -32,14 +39,10 @@ const normalizeAcademicYearCycles = (cyclesData) => {
     list = cyclesData.data.map(normalizeCycle).filter(Boolean);
   }
 
-  // If backend provided no cycles (e.g. offline / fallback), generate default 3 academic years
+  // If backend provided no cycles (e.g. offline / fallback), keep only the active default year.
   if (list.length === 0) {
     const openYear = APP_INFO.DEFAULT_AY || "2026-2027";
-    const startYearNum = parseInt(openYear.split("-")[0], 10) || 2026;
-    for (let i = 0; i < 3; i++) {
-      const pastYear = `${startYearNum - i}-${startYearNum - i + 1}`;
-      list.push({ academic_year: pastYear, is_open: i === 0 });
-    }
+    list.push({ academic_year: openYear, is_open: true });
   }
 
   return list
@@ -181,7 +184,7 @@ export default function App() {
     let cancelled = false;
 
     const refreshAcademicYearCycles = async () => {
-      const token = sessionStorage.getItem("accessToken") || sessionStorage.getItem("token");
+      const token = getSessionItem("accessToken") || getSessionItem("token");
       if (!token) return;
 
       try {

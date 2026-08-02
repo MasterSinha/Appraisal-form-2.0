@@ -11,9 +11,11 @@ const hasScore = (value) => String(value ?? "").trim() !== "" && (parseFloat(val
 
 function SummaryCard({ label, value, max }) {
   return (
-    <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: "11px 13px", background: "#f8fafc" }}>
-      <div style={{ color: "#64748b", fontSize: 10, fontWeight: 900, textTransform: "uppercase", letterSpacing: 0.4 }}>{label}</div>
-      <div style={{ marginTop: 4, color: "#111827", fontSize: 15, fontWeight: 900 }}>{score(value)} / {max}</div>
+    <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: "13px 14px", background: "linear-gradient(180deg,#ffffff 0%,#f8fafc 100%)", boxShadow: "0 10px 22px rgba(15,23,42,0.04)", minWidth: 0 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+        <div style={{ color: "#64748b", fontSize: 10, fontWeight: 950, textTransform: "uppercase", letterSpacing: 0.4 }}>{label}</div>
+      </div>
+      <div style={{ marginTop: 6, color: "#111827", fontSize: 18, fontWeight: 950, lineHeight: 1 }}>{score(value)} / {max}</div>
     </div>
   );
 }

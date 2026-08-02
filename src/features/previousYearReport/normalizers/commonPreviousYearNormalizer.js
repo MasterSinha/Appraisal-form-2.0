@@ -61,6 +61,19 @@ const responseProfile = (response = {}, form = {}) => {
   return data?.profile || data?.faculty || data?.payload?.submitterProfile || data?.payload?.submitter_profile || form?.info || {};
 };
 
+const mergeProfiles = (...profiles) => {
+  const merged = {};
+  profiles.filter((profile) => profile && typeof profile === "object").forEach((profile) => {
+    Object.entries(profile).forEach(([key, value]) => {
+      if (String(merged[key] ?? "").trim()) return;
+      if (value !== undefined && value !== null && String(value).trim() !== "") {
+        merged[key] = value;
+      }
+    });
+  });
+  return merged;
+};
+
 const responseDocs = (response = {}, fallbackDocs = {}) => {
   const data = unwrapResponse(response);
   return parseMaybeJson(data?.payload?.docs || data?.docs || data?.data?.payload?.docs || data?.data?.docs || fallbackDocs || {});
@@ -157,11 +170,20 @@ const normalizeDocFile = (file) => {
   };
 };
 
+const escapeRegExp = (value = "") => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const docKeyMatchesPrefix = (key = "", prefix = "") => {
+  if (!prefix) return false;
+  if (key === prefix) return true;
+  if (key.startsWith(`${prefix}-`) || key.startsWith(`${prefix}_`)) return true;
+  return new RegExp(`^${escapeRegExp(prefix)}\\d+$`).test(key);
+};
+
 const docsForSection = (docs = {}, section = {}, academicYear = "", part = "A", formType = "") => {
   const prefixes = [section.doc, section.key, ...(section.sourceKeys || [])].filter(Boolean);
   return Object.entries(docs || {}).flatMap(([docKey, value]) => {
     const key = String(docKey);
-    if (!prefixes.some((prefix) => key === prefix || key.startsWith(`${prefix}-`) || key.startsWith(`${prefix}_`) || key.startsWith(prefix))) return [];
+    if (!prefixes.some((prefix) => docKeyMatchesPrefix(key, prefix))) return [];
     const rowMatch = key.match(/(\d+)$/);
     return filesForDocValue(value).map(normalizeDocFile).filter((file) => {
       if (!file) return false;
@@ -201,7 +223,7 @@ export const normalizePreviousYearReport = ({
   const fetchedForm = responseForm(response);
   const form = formHasOldRows(fetchedForm) ? fetchedForm : formOverride || fetchedForm;
   const totals = responseTotals(response);
-  const profile = profileOverride || responseProfile(response, form);
+  const profile = mergeProfiles(profileOverride, form?.info, responseProfile(response, form));
   const docs = responseDocs(response, docsOverride);
   const resolvedAcademicYear = academicYear || form?.info?.ay || unwrapResponse(response)?.academic_year || unwrapResponse(response)?.academicYear || "";
   const normalizedPartA = attachSectionDocs(partASections.map((section) => normalizeSection(form, section)), docs, resolvedAcademicYear, "A", formType);

@@ -1,4 +1,4 @@
-import { previousYearCellValue, previousYearScore } from "../normalizers/commonPreviousYearNormalizer";
+import { previousYearCellValue, previousYearRemarks, previousYearScore } from "../normalizers/commonPreviousYearNormalizer";
 import {
   SectionCard as SC,
   T,
@@ -12,6 +12,7 @@ import { RO } from "../../faculty-appraisal/shared";
 export default function PreviousYearSectionTable({ section }) {
   const rows = section.rows?.length ? section.rows : [];
   const columns = section.fields || [];
+  const showRemarks = rows.some((row) => String(previousYearRemarks(row)).trim() !== "");
 
   return (
     <SC title={`${section.label} (Max ${section.max})`} accent={section.accent || "#6366f1"}>
@@ -23,6 +24,7 @@ export default function PreviousYearSectionTable({ section }) {
               {columns.map(([label]) => <th key={label} style={TH}>{label}</th>)}
               <th style={TH}>View Docs</th>
               <th style={TH}>Faculty Score</th>
+              {showRemarks && <th style={TH}>Remarks</th>}
             </tr>
           </thead>
           <tbody>
@@ -36,10 +38,11 @@ export default function PreviousYearSectionTable({ section }) {
                 ))}
                 <td style={TD}><ViewDocsButton attachments={attachmentsForRow(section.attachments, index)} /></td>
                 <td style={TDS}><RO val={previousYearScore(row, "faculty")} center /></td>
+                {showRemarks && <td style={TD}><RO val={previousYearRemarks(row)} /></td>}
               </tr>
             )) : (
               <tr>
-                <td style={{ ...TD, textAlign: "center", color: "#94a3b8", fontWeight: 700 }} colSpan={columns.length + 3}>No records found for this section.</td>
+                <td style={{ ...TD, textAlign: "center", color: "#94a3b8", fontWeight: 700 }} colSpan={columns.length + (showRemarks ? 4 : 3)}>No records found for this section.</td>
               </tr>
             )}
           </tbody>

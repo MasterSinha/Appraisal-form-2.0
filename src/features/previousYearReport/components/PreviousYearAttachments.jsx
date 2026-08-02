@@ -1,3 +1,5 @@
+import { downloadDocumentFile, openDocumentFile } from "../../faculty-appraisal/components";
+
 export default function PreviousYearAttachments({ attachments = [] }) {
   if (!attachments.length) {
     return (
@@ -18,7 +20,10 @@ export default function PreviousYearAttachments({ attachments = [] }) {
             </div>
           </div>
           {file.fileUrl ? (
-            <a href={file.fileUrl} target="_blank" rel="noreferrer" style={{ color: "#4c1d95", fontSize: 12, fontWeight: 900, textDecoration: "none" }}>Open</a>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+              <button type="button" onClick={() => openDocumentFile(file)} style={actionButton("#f5f3ff", "#4c1d95", "#ddd6fe")}>Open</button>
+              <button type="button" onClick={() => downloadDocumentFile(file)} style={actionButton("#ecfdf5", "#047857", "#bbf7d0")}>Download</button>
+            </div>
           ) : (
             <span style={{ color: "#94a3b8", fontSize: 12, fontWeight: 900 }}>Unavailable</span>
           )}
@@ -27,3 +32,16 @@ export default function PreviousYearAttachments({ attachments = [] }) {
     </div>
   );
 }
+
+const actionButton = (background, color, border) => ({
+  border: `1px solid ${border}`,
+  borderRadius: 7,
+  background,
+  color,
+  cursor: "pointer",
+  fontFamily: "inherit",
+  fontSize: 11,
+  fontWeight: 900,
+  minHeight: 30,
+  padding: "6px 10px",
+});

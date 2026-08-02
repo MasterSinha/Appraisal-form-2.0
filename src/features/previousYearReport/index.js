@@ -6,3 +6,4 @@ export { default as EngineeringPreviousYearView } from "./forms/EngineeringPrevi
 export { normalizeDesignArtsPreviousYearReport } from "./normalizers/designArtsPreviousYearNormalizer";
 export { normalizeMediaCommunicationPreviousYearReport } from "./normalizers/mediaCommunicationPreviousYearNormalizer";
 export { normalizeEngineeringPreviousYearReport } from "./normalizers/engineeringPreviousYearNormalizer";
+export { openPreviousYearReport } from "./report/openPreviousYearReport";

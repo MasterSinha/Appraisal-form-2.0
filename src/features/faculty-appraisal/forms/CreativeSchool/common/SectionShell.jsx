@@ -131,7 +131,7 @@ export default function SectionShell({ title, children }) {
       </div>
 
       {/* Rounded Table Card Box Container */}
-      <div className="appraisal-table-box" style={{ border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden", background: "#fff", boxShadow: "0 1px 3px rgba(0,0,0,0.03)" }}>
+      <div className="appraisal-table-box" style={{ border: "1px solid #e2e8f0", borderRadius: 6, overflow: "hidden", background: "#fff", boxShadow: "0 1px 3px rgba(0,0,0,0.03)" }}>
         {tableNodes.length > 0 ? tableNodes : childArray}
       </div>
 

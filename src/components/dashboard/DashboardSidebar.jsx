@@ -204,6 +204,7 @@ export default function DashboardSidebar({
   const [sectionMenuOpen, setSectionMenuOpen] = useState(false);
   const [currentAcademicYear, setCurrentAcademicYear] = useState(() => sessionStorage.getItem("academicYear") || "");
   const isLegacyTwoPartYear = isLegacyTwoPartAcademicYear(currentAcademicYear);
+  const showCurrentYearSectionSelector = showSectionSelector && !isLegacyTwoPartYear;
   const sectionOptions = isLegacyTwoPartYear
     ? [
         ["partA", "Part A"],
@@ -298,7 +299,7 @@ export default function DashboardSidebar({
 
       {afterNav}
 
-      {showSectionSelector && (
+      {showCurrentYearSectionSelector && (
         <div style={{ marginTop: 3, background: "rgba(15,23,42,0.18)", border: "1px solid rgba(148,163,184,0.12)", borderRadius: 14, padding: "11px 10px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 9.5, color: "#94a3b8", fontWeight: 900, textTransform: "uppercase", marginBottom: 8 }}>
             <Icon name="layers" size={13} />
