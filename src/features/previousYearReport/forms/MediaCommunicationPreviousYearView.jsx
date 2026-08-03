@@ -1,7 +1,7 @@
 import PreviousYearReportShell from "../components/PreviousYearReportShell";
 import { normalizeMediaCommunicationPreviousYearReport } from "../normalizers/mediaCommunicationPreviousYearNormalizer";
 
-export default function MediaCommunicationPreviousYearView({ form, docs, response, academicYear, profile, sectionView, onSectionChange, reviews = [] }) {
+export default function MediaCommunicationPreviousYearView({ form, docs, response, academicYear, profile, sectionView, onSectionChange, reviews = [], showTables = false, visibleLevels }) {
   const report = normalizeMediaCommunicationPreviousYearReport({ form, docs, response, academicYear, profile });
   return (
     <PreviousYearReportShell
@@ -10,6 +10,8 @@ export default function MediaCommunicationPreviousYearView({ form, docs, respons
       sectionView={sectionView}
       onSectionChange={onSectionChange}
       reviews={reviews}
+      showTables={showTables}
+      visibleLevels={visibleLevels}
     />
   );
 }

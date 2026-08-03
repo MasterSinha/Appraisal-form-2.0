@@ -1,7 +1,7 @@
 import PreviousYearReportShell from "../components/PreviousYearReportShell";
 import { normalizeDesignArtsPreviousYearReport } from "../normalizers/designArtsPreviousYearNormalizer";
 
-export default function DesignArtsPreviousYearView({ form, docs, response, academicYear, profile, sectionView, onSectionChange, reviews = [] }) {
+export default function DesignArtsPreviousYearView({ form, docs, response, academicYear, profile, sectionView, onSectionChange, reviews = [], showTables = false, visibleLevels }) {
   const report = normalizeDesignArtsPreviousYearReport({ form, docs, response, academicYear, profile });
   return (
     <PreviousYearReportShell
@@ -10,6 +10,8 @@ export default function DesignArtsPreviousYearView({ form, docs, response, acade
       sectionView={sectionView}
       onSectionChange={onSectionChange}
       reviews={reviews}
+      showTables={showTables}
+      visibleLevels={visibleLevels}
     />
   );
 }

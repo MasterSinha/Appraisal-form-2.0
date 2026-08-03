@@ -403,6 +403,34 @@ function ReviewTable({ title, accent = "#4338ca", sectionKey, columns, docPrefix
  );
 }
 
+function DeanFacultyInfoTable({ approval, info }) {
+ const rows = [
+ ["Academic Year", approval.academicYear || info.ay],
+ ["Name", info.name || approval.name],
+ ["Qualification", info.qual || info.qualification || approval.qualification],
+ ["Designation", info.desig || info.designation || approval.designation],
+ ["School", info.school || approval.school || approval.department],
+ ["Experience", info.experience || info.teachingExperience || approval.experience || approval.teachingExperience],
+ ];
+
+ return (
+<SC title="Faculty Information" accent="#4338ca">
+<div style={{ border: "1px solid #dbe3ef", borderRadius: 8, background: "#fff", overflow: "hidden" }}>
+<table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", fontSize: 13 }}>
+<tbody>
+ {rows.map(([label, value]) =>(
+<tr key={label}>
+<td style={{ width: "32%", border: "1px solid #e5e7eb", background: "#f8fafc", padding: "11px 16px", color: "#334155", fontWeight: 900, textTransform: "uppercase" }}>{label}</td>
+<td style={{ border: "1px solid #e5e7eb", padding: "11px 16px", color: "#1e293b", fontWeight: 700, overflowWrap: "anywhere" }}>{value || "-"}</td>
+</tr>
+ ))}
+</tbody>
+</table>
+</div>
+</SC>
+ );
+}
+
 function DeanReviewScoreForm({ approval, deanData, setDeanData, sectionView = "partA" }) {
  const info = mergeFacultyInfo(approval.info, approval);
  const docs = approval.docs || {};
@@ -419,18 +447,7 @@ function DeanReviewScoreForm({ approval, deanData, setDeanData, sectionView = "p
 <strong>Dean Review Mode</strong>- Faculty self-scores are read-only. Only the Dean score column is editable.
 </div>
 
-<SC title="Faculty Information" accent="#4338ca">
-<table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-<tbody>
- {[["Name", info.name || approval.name], ["Qualification", info.qual], ["Designation", info.desig || approval.designation], ["Academic Year", approval.academicYear || info.ay]].map(([label, value]) =>(
-<tr key={label}>
-<td style={{ padding: "6px 10px", background: "#f8fafc", fontWeight: 600, border: "1px solid #e2e8f0", width: "35%" }}>{label}</td>
-<td style={{ padding: "5px 10px", border: "1px solid #e2e8f0", color: "#334155" }}>{value || "-"}</td>
-</tr>
- ))}
-</tbody>
-</table>
-</SC>
+<DeanFacultyInfoTable approval={approval} info={info} />
 
  {sectionView === "partA" && (<>
 <div style={{ fontWeight: 800, fontSize: 13, color: "#1e293b", background: "#dbeafe", padding: "8px 14px", borderRadius: 6, marginBottom: 10, letterSpacing: 0.3 }}>
@@ -994,12 +1011,6 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
 <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>{approval.name} - {approval.designation}</div>
 </div>
 </div>
-
- {finalisedByVc && (
-<div style={{ background: "#ecfdf5", border: "1px solid #86efac", color: "#065f46", borderRadius: 8, padding: "10px 12px", fontSize: 12, fontWeight: 700, marginBottom: 14 }}>
- This appraisal has been finalised by the VC.
-</div>
- )}
 
 <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
  {[["partA", "Part A"], ["partB", "Part B"], ["partC", "Part C"], ["partD", "Part D"], ["summary", "Summary"]].map(([id, label]) =>(

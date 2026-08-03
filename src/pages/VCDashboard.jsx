@@ -3,10 +3,13 @@
 import { useNavigate } from "react-router-dom";
 import { Avatar, LogoutConfirmModal, ScoreCard, ReviewMetricsStrip } from "../components/dashboard/dashboardPrimitives";
 import { fetchNonTeachingQueueForRole, isNonTeachingReviewComplete } from "../services/nonTeachingWorkflow";
-import { fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, fetchSavedAppraisal, mergeFacultyInfo, ACR_DETAIL_POINTS, MAX_SCORES, APP_INFO, createAcrRows, buildReviewRemarks, openFullFormReport, SummaryOtherInfoField, summaryOtherInfoValueFrom, SCORE_LIMITS, clampScore, clampReviewScore, effectiveMaxScore, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewRowMaxForSection, reviewSectionScore, rowHasReviewableData, selfEffectivePartAMax, societyRowLocked, societyRowScore, standardReviewSummary, standardSubmittedScoreSummary, qualificationRowDescription, AppraisalHeaderImage, ViewDocsCell, SectionCard as SC, CreativeSchoolAuthorityReviewPanel, isCreativeSchool } from "../features/faculty-appraisal";
+import { fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, fetchSavedAppraisal, mergeFacultyInfo, ACR_DETAIL_POINTS, MAX_SCORES, APP_INFO, createAcrRows, buildReviewRemarks, openFullFormReport, SummaryOtherInfoField, summaryOtherInfoValueFrom, SCORE_LIMITS, clampScore, clampReviewScore, effectiveMaxScore, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewRowMaxForSection, reviewSectionScore, rowHasReviewableData, selfEffectivePartAMax, societyRowLocked, societyRowScore, standardReviewSummary, standardSubmittedScoreSummary, qualificationRowDescription, AppraisalHeaderImage, ViewDocsCell, SectionCard as SC, CreativeSchoolAuthorityReviewPanel, isCreativeSchool, isDesignArtsSchool, isMediaCommSchool } from "../features/faculty-appraisal";
+import { getActiveAcademicYear, getSessionItem, normalizeAcademicYearLabel, setActiveAcademicYear } from "../auth/session";
+import { PreviousYearReportViewer } from "../features/previousYearReport";
+import { isLegacyTwoPartAcademicYear } from "../features/faculty-appraisal/forms/standard/legacyPreviousYearReportUtils";
 
 import { DEAN_TRACKS, UNIVERSITY_SCHOOLS, normalizeHierarchyText } from "../constants/universityHierarchy";
-import { canReviewerRejectProfile, getSchoolKey, profileFromsessionStorage, rejectedStatusFor, visiblePreviousReviewRoles, isAppraisalFinalisedByVc, isPendingReviewStatusFor } from "../utils/hierarchy";
+import { canReviewerRejectProfile, getSchoolKey, profileFromsessionStorage, rejectedStatusFor, visiblePreviousReviewRoles, isAppraisalFinalisedByVc, isPendingReviewStatusFor, reviewListFrom } from "../utils/hierarchy";
 import { NonTeachingAuthorityReviewPanel } from "./NonTeachingStaffDashboard";
 import { n, pct, grade, RO } from "../features/faculty-appraisal/shared";
 import FacultyInfoSection from "../components/appraisal/common/FacultyInfoSection";
@@ -1632,6 +1635,35 @@ const withVcSchoolId = (item) =>({
  schoolId: item.schoolId || schoolIdForPerson(item),
 });
 
+const storedAcademicYearCycles = () =>{
+ try {
+ if (getSessionItem("availableCyclesSource") !== "backend") return [];
+ return JSON.parse(getSessionItem("availableCycles") || "[]")
+ .map((cycle) =>{
+ const academicYear = normalizeAcademicYearLabel(cycle?.academic_year || cycle?.academicYear || cycle?.year || cycle?.year_label || cycle);
+ return academicYear ? { academic_year: academicYear, is_open: cycle?.is_open ?? cycle?.isOpen ?? cycle?.active ?? cycle?.open ?? academicYear === APP_INFO.DEFAULT_AY } : null;
+ })
+ .filter(Boolean);
+ } catch {
+ return [];
+ }
+};
+
+const previousYearFormTypeFor = (profile = {}) =>{
+ if (isMediaCommSchool(profile, profile.info?.school, profile.school)) return "mediaCommunication";
+ if (isDesignArtsSchool(profile, profile.info?.school, profile.school)) return "designArts";
+ return "engineering";
+};
+
+function PreviousYearAuthorityResult({ item, onBack }) {
+ return (
+ <div style={{ display: "grid", gap: 12 }}>
+ <button type="button" onClick={onBack} style={{ justifySelf: "start", border: "1px solid #cbd5e1", background: "#fff", color: "#334155", borderRadius: 8, padding: "8px 14px", fontWeight: 800, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>Back</button>
+ <PreviousYearReportViewer showTables visibleLevels={["faculty", "hod", "director", "dean", "vc"]} formType={previousYearFormTypeFor(item)} form={item} docs={item.docs || {}} response={item.previousYearResponse || item} academicYear={item.academicYear || item.academic_year || item.info?.ay} profile={item} reviews={reviewListFrom(item.reviews || item.previousYearResponse?.reviews || item.previousYearResponse?.payload?.reviews)} />
+ </div>
+ );
+}
+
 export default function VCDashboard() {
  const navigate = useNavigate();
  const [deanTypeFilter, setDeanTypeFilter] = useState("engg");
@@ -1646,9 +1678,28 @@ export default function VCDashboard() {
  const [facList, setFacList] = useState([]);
  const [nonTeachingList, setNonTeachingList] = useState([]);
  const [nonTeachingReviewedList, setNonTeachingReviewedList] = useState([]);
+ const [selectedAcademicYear, setSelectedAcademicYear] = useState(() =>getActiveAcademicYear());
+ const [availableCycles, setAvailableCycles] = useState(() =>storedAcademicYearCycles());
+ const academicYearOptions = availableCycles.length ? availableCycles : [{ academic_year: selectedAcademicYear || APP_INFO.DEFAULT_AY, is_open: true }];
 
  const pollingActiveRef = useRef(true);
  const prevDataRef = useRef(null);
+
+ const handleReviewAcademicYearChange = (academicYear) =>{
+ const nextAcademicYear = setActiveAcademicYear(academicYear);
+ setSelectedAcademicYear(nextAcademicYear);
+ setReviewing(null);
+ window.dispatchEvent(new CustomEvent("academicYearChanged", { detail: { academicYear: nextAcademicYear } }));
+ };
+
+ useEffect(() =>{
+ const syncAcademicYear = (event) =>{
+ setSelectedAcademicYear(event?.detail?.academicYear || getActiveAcademicYear());
+ setAvailableCycles(storedAcademicYearCycles());
+ };
+ window.addEventListener("academicYearChanged", syncAcademicYear);
+ return () =>window.removeEventListener("academicYearChanged", syncAcademicYear);
+ }, []);
 
  const loadReviewQueue = useCallback(async (silent = false) =>{
  if (!pollingActiveRef.current) return;
@@ -1656,6 +1707,7 @@ export default function VCDashboard() {
  const items = await fetchReviewQueueForRole({
  reviewerRole: "vc",
  reviewerProfile: { ...profileFromsessionStorage(), appraisal_role: "vc" },
+ academicYear: selectedAcademicYear,
  schoolValues: [
  ...UNIVERSITY_SCHOOLS.flatMap((school) =>[school.code, school.name, school.label]),
  "CioD",
@@ -1667,7 +1719,7 @@ export default function VCDashboard() {
  try {
  nonTeachingItems = await fetchNonTeachingQueueForRole({
  reviewerRole: "vc",
- academicYear: APP_INFO.DEFAULT_AY,
+ academicYear: selectedAcademicYear,
  });
  } catch (nonTeachingErr) {
  console.warn("Could not load VC non-teaching review queue:", nonTeachingErr.message);
@@ -1701,7 +1753,7 @@ export default function VCDashboard() {
  setNonTeachingReviewedList([]);
  }
  }
- }, []);
+ }, [selectedAcademicYear]);
 
  useEffect(() =>{
  pollingActiveRef.current = true;
@@ -1783,7 +1835,7 @@ export default function VCDashboard() {
  const mergedForm = preserveSavedReviewScores(form, person);
  const declaration = data?.declaration || person.declaration || null;
  setReviewing({
- person: { ...person, ...mergedForm, ...reviewSummary, docs, academicYear, academic_year: academicYear, declaration, status: declaration?.status || data?.status || person.status, workflowStatus: declaration?.status || data?.workflowStatus || person.workflowStatus },
+ person: { ...person, ...mergedForm, ...reviewSummary, docs, academicYear, academic_year: academicYear, declaration, previousYearResponse: data, previousYearResultOnly: isLegacyTwoPartAcademicYear(academicYear), status: declaration?.status || data?.status || person.status, workflowStatus: declaration?.status || data?.workflowStatus || person.workflowStatus },
  personMode,
  });
  } catch (err) {
@@ -1826,7 +1878,17 @@ export default function VCDashboard() {
 <div className="vc-sidebar-role-card" style={{ background: "#3b0764", borderRadius: 10, padding: "12px", fontSize: 11, color: "#c4b5fd" }}>
 <div style={{ fontWeight: 800, marginBottom: 2, color: "#fff" }}>Vice Chancellor</div>
 <div style={{ color: "#c4b5fd", fontSize: 10 }}>Full university oversight</div>
-<div style={{ color: "#93c5fd", fontSize: 9, marginTop: 6 }}>AY {APP_INFO.DEFAULT_AY}</div>
+<select
+ value={selectedAcademicYear}
+ onChange={(event) =>handleReviewAcademicYearChange(event.target.value)}
+ style={{ width: "100%", height: 28, marginTop: 8, border: "1px solid rgba(255,255,255,0.18)", borderRadius: 7, background: "rgba(255,255,255,0.08)", color: "#e0f2fe", fontSize: 10, fontWeight: 800, padding: "3px 8px", fontFamily: "inherit", outline: "none" }}
+>
+ {academicYearOptions.map((cycle) =>(
+ <option key={cycle.academic_year} value={cycle.academic_year}>
+ AY {cycle.academic_year} {cycle.is_open ? "(Active)" : "(Closed)"}
+ </option>
+ ))}
+</select>
 </div>
 
 <div style={{ height: 1, background: "rgba(255,255,255,0.08)" }} />
@@ -1908,7 +1970,18 @@ export default function VCDashboard() {
 <h1 style={{ margin: 0, fontSize: 26, fontWeight: 900, color: "#0f172a", lineHeight: 1.15, letterSpacing: -0.5 }}>School-wise Appraisal Reviews</h1>
 <p style={{ margin: "5px 0 0", color: "#64748b", fontSize: 12, display: "flex", alignItems: "center", gap: 8 }}>
 <span style={{ background: "#e0e7ff", color: "#3730a3", borderRadius: 6, padding: "2px 8px", fontSize: 10, fontWeight: 700 }}>{APP_INFO.SHORT_NAME}</span>
-<span>AY {APP_INFO.DEFAULT_AY}</span>
+<span>AY</span>
+<select
+ value={selectedAcademicYear}
+ onChange={(event) =>handleReviewAcademicYearChange(event.target.value)}
+ style={{ height: 28, border: "1px solid #cbd5e1", borderRadius: 7, background: "#fff", color: "#0f172a", fontSize: 11, fontWeight: 800, padding: "3px 28px 3px 9px", fontFamily: "inherit", outline: "none" }}
+>
+ {academicYearOptions.map((cycle) =>(
+ <option key={cycle.academic_year} value={cycle.academic_year}>
+ {cycle.academic_year} {cycle.is_open ? "(Active)" : "(Closed)"}
+ </option>
+ ))}
+</select>
 </p>
 </div>
 <div className="vc-hero-right" style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -2001,13 +2074,17 @@ export default function VCDashboard() {
  }}
  />
  ) : (
+reviewing.person?.previousYearResultOnly ? (
+<PreviousYearAuthorityResult item={reviewing.person} onBack={() =>setReviewing(null)} />
+) : (
 <VCReviewPanel
- person={reviewing.person}
- personMode={reviewing.personMode}
- onBack={() =>setReviewing(null)}
- onSubmit={handleSubmit}
- readOnly={isVcReviewed(reviewing.person)}
- />
+person={reviewing.person}
+personMode={reviewing.personMode}
+onBack={() =>setReviewing(null)}
+onSubmit={handleSubmit}
+readOnly={isVcReviewed(reviewing.person)}
+/>
+)
  ))}
 </main>
 

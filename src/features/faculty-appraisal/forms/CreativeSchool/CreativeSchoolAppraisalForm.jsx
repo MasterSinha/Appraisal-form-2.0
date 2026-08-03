@@ -2592,11 +2592,6 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
           </button>
         </div>
       )}
-      {finalisedByVc && reviewerRole !== "vc" && (
-        <div style={{ background: "#ecfdf5", border: "1px solid #86efac", color: "#065f46", borderRadius: 8, padding: "10px 12px", fontSize: 12, fontWeight: 700 }}>
-          This appraisal has been finalised by the VC.
-        </div>
-      )}
       {(sectionView === "partA" || sectionView === "partB" || sectionView === "partC" || sectionView === "partD") && (
         <CreativeSchoolForm
           form={form}

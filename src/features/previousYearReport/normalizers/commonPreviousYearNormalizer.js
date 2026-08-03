@@ -5,6 +5,7 @@ const FACULTY_SCORE_KEYS = ["score", "self_score", "faculty_score", "selfScore",
 const HOD_SCORE_KEYS = ["hod", "hod_score", "hodScore", "center_head", "center_head_score", "centerHeadScore"];
 const DIRECTOR_SCORE_KEYS = ["director", "director_score", "directorScore"];
 const DEAN_SCORE_KEYS = ["dean", "dean_score", "deanScore"];
+const VC_SCORE_KEYS = ["vc", "vc_score", "vcScore"];
 const REMARK_KEYS = ["remarks", "remark", "reviewer_remarks", "reviewerRemarks"];
 
 export const previousYearNumber = (value) => {
@@ -40,6 +41,7 @@ export const previousYearScore = (row = {}, role = "faculty") => {
     hod: HOD_SCORE_KEYS,
     director: DIRECTOR_SCORE_KEYS,
     dean: DEAN_SCORE_KEYS,
+    vc: VC_SCORE_KEYS,
   }[role] || FACULTY_SCORE_KEYS;
   return readFromAliases(row, aliases);
 };
@@ -115,7 +117,7 @@ const sectionRows = (form = {}, section = {}) => {
 const rowHasData = (row = {}, section = {}) => {
   const fields = section.fields || [];
   const fieldHasData = fields.some(([, ...aliases]) => String(readFromAliases(row, aliases)).trim() !== "");
-  const scoreHasData = ["faculty", "hod", "director", "dean"].some((role) => String(previousYearScore(row, role)).trim() !== "");
+  const scoreHasData = ["faculty", "hod", "director", "dean", "vc"].some((role) => String(previousYearScore(row, role)).trim() !== "");
   return fieldHasData || scoreHasData || String(readFromAliases(row, REMARK_KEYS)).trim() !== "";
 };
 
@@ -130,6 +132,7 @@ const normalizeSection = (form, section) => {
       hod: clampScore(rows.reduce((total, row) => total + previousYearNumber(previousYearScore(row, "hod")), 0), section.max),
       director: clampScore(rows.reduce((total, row) => total + previousYearNumber(previousYearScore(row, "director")), 0), section.max),
       dean: clampScore(rows.reduce((total, row) => total + previousYearNumber(previousYearScore(row, "dean")), 0), section.max),
+      vc: clampScore(rows.reduce((total, row) => total + previousYearNumber(previousYearScore(row, "vc")), 0), section.max),
     },
   };
 };
@@ -257,12 +260,13 @@ export const normalizePreviousYearReport = ({
       hod: reviewerTotals("hod", "hod"),
       director: reviewerTotals("director", "director"),
       dean: reviewerTotals("dean", "dean"),
+      vc: reviewerTotals("vc", "vc"),
     },
     attachments: {
       partA: normalizedPartA.flatMap((section) => section.attachments),
       partB: normalizedPartB.flatMap((section) => section.attachments),
     },
-    reviewLevels: ["faculty", "hod", "director", "dean"],
+    reviewLevels: ["faculty", "hod", "director", "dean", "vc"],
   };
 };
 

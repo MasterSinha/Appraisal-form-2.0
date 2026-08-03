@@ -9,10 +9,21 @@ import {
 } from "../../faculty-appraisal/components";
 import { RO } from "../../faculty-appraisal/shared";
 
-export default function PreviousYearSectionTable({ section }) {
+const SCORE_LABELS = {
+  faculty: "Faculty Score",
+  hod: "HOD Score",
+  director: "Director Score",
+  dean: "Dean Score",
+  vc: "VC Score",
+};
+
+const hasScore = (row, level) => String(previousYearScore(row, level)).trim() !== "";
+
+export default function PreviousYearSectionTable({ section, levels = ["faculty"] }) {
   const rows = section.rows?.length ? section.rows : [];
   const columns = section.fields || [];
   const showRemarks = rows.some((row) => String(previousYearRemarks(row)).trim() !== "");
+  const scoreLevels = levels.filter((level) => level === "faculty" || rows.some((row) => hasScore(row, level)));
 
   return (
     <SC title={`${section.label} (Max ${section.max})`} accent={section.accent || "#6366f1"}>
@@ -23,7 +34,7 @@ export default function PreviousYearSectionTable({ section }) {
               <th style={{ ...TH, width: 34 }}>SN</th>
               {columns.map(([label]) => <th key={label} style={TH}>{label}</th>)}
               <th style={TH}>View Docs</th>
-              <th style={TH}>Faculty Score</th>
+              {scoreLevels.map((level) => <th key={level} style={TH}>{SCORE_LABELS[level] || `${level} Score`}</th>)}
               {showRemarks && <th style={TH}>Remarks</th>}
             </tr>
           </thead>
@@ -37,12 +48,12 @@ export default function PreviousYearSectionTable({ section }) {
                   </td>
                 ))}
                 <td style={TD}><ViewDocsButton attachments={attachmentsForRow(section.attachments, index)} /></td>
-                <td style={TDS}><RO val={previousYearScore(row, "faculty")} center /></td>
+                {scoreLevels.map((level) => <td key={level} style={TDS}><RO val={previousYearScore(row, level)} center /></td>)}
                 {showRemarks && <td style={TD}><RO val={previousYearRemarks(row)} /></td>}
               </tr>
             )) : (
               <tr>
-                <td style={{ ...TD, textAlign: "center", color: "#94a3b8", fontWeight: 700 }} colSpan={columns.length + (showRemarks ? 4 : 3)}>No records found for this section.</td>
+                <td style={{ ...TD, textAlign: "center", color: "#94a3b8", fontWeight: 700 }} colSpan={columns.length + scoreLevels.length + (showRemarks ? 3 : 2)}>No records found for this section.</td>
               </tr>
             )}
           </tbody>
