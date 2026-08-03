@@ -1086,6 +1086,7 @@ export const submitNonTeachingReview = async ({
   form,
   reviewerRole,
   remarks = "",
+  decision = "approved",
 } = {}) => {
   const role = normalizeNonTeachingRole(reviewerRole, reviewerRole);
   const authority = role === "vc" ? "vc" : role;
@@ -1100,14 +1101,26 @@ export const submitNonTeachingReview = async ({
     item?.appraisalRole,
   );
 
-  validateNonTeachingForm(finalForm, authority, true);
+  if (decision !== "rejected") {
+    validateNonTeachingForm(finalForm, authority, true);
+  }
 
   const staffEmail = emailKey(item?.email || finalForm.info.email);
   const ay = academicYear(item?.academicYear || finalForm.info.ay);
+  const rejected = decision === "rejected";
   const requestPayload = {
     academic_year: ay,
     total_score: calculateNonTeachingTotals(finalForm, authority).total,
     payload: finalForm,
+    remarks,
+    ...(rejected
+      ? {
+          decision: "rejected",
+          action: "reject",
+          status: `${roleLabel(role)} Rejected`,
+          rejection_reason: remarks,
+        }
+      : {}),
   };
 
   const data = await api.put(

@@ -20,11 +20,7 @@ export function ScoreBar({ score, max, color = "#6366f1" }) {
   );
 }
 
-const uploadedDocCount = (docs = {}) => {
-  if (Array.isArray(docs)) return docs.length;
-  if (typeof docs === "number") return docs;
-  if (!docs || typeof docs !== "object") return 0;
-  if (docs.url || docs.file_url || docs.fileUrl || docs.document_url || docs.documentUrl) return 1;
+export const uploadedDocCount = (docs = {}, item = {}) => {
   const countKeys = new Set([
     "doc_count",
     "docCount",
@@ -39,27 +35,80 @@ const uploadedDocCount = (docs = {}) => {
     "supporting_documents_count",
     "supportingDocumentsCount",
   ]);
-  const explicitCount =
-    docs.doc_count ??
-    docs.docCount ??
-    docs.docs_count ??
-    docs.docsCount ??
-    docs.document_count ??
-    docs.documentCount ??
-    docs.documents_count ??
-    docs.documentsCount ??
-    docs.uploaded_docs_count ??
-    docs.uploadedDocsCount ??
-    docs.supporting_documents_count ??
-    docs.supportingDocumentsCount;
-  if (explicitCount !== undefined && explicitCount !== null && explicitCount !== "" && (parseFloat(explicitCount) || 0) > 0) {
-    return parseFloat(explicitCount) || 0;
-  }
-  return Object.entries(docs).reduce((total, [key, value]) => {
-    if (countKeys.has(key)) return total;
-    if (Array.isArray(value)) return total + value.length;
-    return total + (value ? 1 : 0);
-  }, 0);
+  const fileFieldKeys = [
+    "url",
+    "file_url",
+    "fileUrl",
+    "document_url",
+    "documentUrl",
+    "path",
+    "location",
+    "storage_path",
+    "storagePath",
+    "public_id",
+    "publicId",
+    "file_name",
+    "fileName",
+    "filename",
+    "original_name",
+    "originalName",
+    "name",
+  ];
+
+  const hasFileIdentity = (src) =>
+    src && typeof src === "object" && fileFieldKeys.some((key) => String(src?.[key] ?? "").trim() !== "");
+  const isFileReference = (src) => {
+    const value = String(src ?? "").trim();
+    return /^(https?:|blob:|data:)/i.test(value) || /[\\/]/.test(value) || /\.[a-z0-9]{2,8}($|[?#])/i.test(value);
+  };
+
+  const countFromSource = (src) => {
+    if (typeof src === "number") return src;
+    if (typeof src === "string") return isFileReference(src) ? 1 : 0;
+    if (Array.isArray(src)) return src.reduce((total, entry) => total + countFromSource(entry), 0);
+    if (!src || typeof src !== "object") return 0;
+    if (hasFileIdentity(src)) return 1;
+    return Object.entries(src).reduce((total, [key, value]) => {
+      if (countKeys.has(key)) return total;
+      return total + countFromSource(value);
+    }, 0);
+  };
+
+  const parseNum = (v) => {
+    if (v === undefined || v === null || v === "") return 0;
+    const parsed = parseFloat(v);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+  };
+
+  const explicit = Math.max(
+    parseNum(item?.docCount),
+    parseNum(item?.doc_count),
+    parseNum(item?.docsCount),
+    parseNum(item?.docs_count),
+    parseNum(item?.documentCount),
+    parseNum(item?.document_count),
+    parseNum(item?.documentsCount),
+    parseNum(item?.documents_count),
+    parseNum(item?.uploadedDocsCount),
+    parseNum(item?.uploaded_docs_count),
+    parseNum(item?.payload?.docCount),
+    parseNum(item?.payload?.doc_count),
+    parseNum(docs?.docCount),
+    parseNum(docs?.doc_count),
+    parseNum(docs?.docsCount),
+    parseNum(docs?.docs_count)
+  );
+
+  const c1 = countFromSource(docs);
+  const c2 = countFromSource(item?.docs);
+  const c3 = countFromSource(item?.documents);
+  const c4 = countFromSource(item?.appraisal_documents);
+  const c5 = countFromSource(item?.appraisalDocuments);
+  const c6 = countFromSource(item?.payload?.docs);
+  const c7 = countFromSource(item?.payload?.documents);
+  const c8 = countFromSource(item?.payload?.appraisal_documents);
+
+  return Math.max(c1, c2, c3, c4, c5, c6, c7, c8, explicit);
 };
 
 const metricText = (value) => {
@@ -70,13 +119,14 @@ const metricText = (value) => {
 export function ReviewMetricsStrip({
   metrics = [],
   docs,
+  item,
   includeDocs = true,
   columns,
   background = "#f8fafc",
   style = {},
   compact = false,
 }) {
-  const docCount = uploadedDocCount(docs);
+  const docCount = uploadedDocCount(docs, item || (typeof docs === "object" ? docs : {}));
   const allMetrics = [
     ...metrics,
     ...(includeDocs ? [{ label: "Docs", val: docCount, color: "#10b981", helper: "files uploaded" }] : []),
