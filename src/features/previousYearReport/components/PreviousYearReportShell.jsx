@@ -1,7 +1,9 @@
 import PreviousYearReportActions from "./PreviousYearReportActions";
+import PreviousYearScoreSummary from "./PreviousYearScoreSummary";
+import PreviousYearSectionTable from "./PreviousYearSectionTable";
 import { SectionCard as SC } from "../../faculty-appraisal/components";
 
-export default function PreviousYearReportShell({ report, title, reviews = [] }) {
+export default function PreviousYearReportShell({ report, title, reviews = [], showTables = false, visibleLevels }) {
   if (!report?.academicYear) {
     return <EmptyNotice title="Select an academic year">Choose an academic year from the header to view its previous-year appraisal report.</EmptyNotice>;
   }
@@ -20,8 +22,66 @@ export default function PreviousYearReportShell({ report, title, reviews = [] })
 
   return (
     <SC title={`${title} - ${report.academicYear}`} accent="#4c1d95">
-      <PreviousYearReportActions report={report} title={title} reviews={reviews} />
+      {showTables ? (
+        <PreviousYearTableView report={report} visibleLevels={visibleLevels} />
+      ) : (
+        <PreviousYearReportActions report={report} title={title} reviews={reviews} />
+      )}
     </SC>
+  );
+}
+
+function PreviousYearTableView({ report, visibleLevels }) {
+  const levels = visibleLevels?.length ? visibleLevels : (report.reviewLevels || ["faculty", "hod", "director", "dean"]);
+  return (
+    <div style={{ display: "grid", gap: 16 }}>
+      <PreviousYearFacultyInfo report={report} />
+      <PreviousYearScoreSummary report={report} visibleLevels={levels} variant="table" />
+      <PartBand title="Part A - Teaching & Academic Activities" />
+      {report.partA.sections.map((section) => (
+        <PreviousYearSectionTable key={section.key || section.label} section={section} levels={levels} />
+      ))}
+      <PartBand title="Part B - Research & Academic Contributions" tone="#ede9fe" />
+      {report.partB.sections.map((section) => (
+        <PreviousYearSectionTable key={section.key || section.label} section={section} levels={levels} />
+      ))}
+    </div>
+  );
+}
+
+function PreviousYearFacultyInfo({ report }) {
+  const profile = report.profile || {};
+  const infoRows = [
+    ["Academic Year", report.academicYear],
+    ["Name", profile.name || profile.full_name || profile.fullName],
+    ["Qual", profile.qual || profile.qualification],
+    ["Desig", profile.desig || profile.designation || profile.present_designation],
+    ["School", profile.school || profile.school_name || profile.department],
+    ["Experience", profile.exp || profile.experience || profile.teaching_experience],
+    ["Email", profile.email || profile.faculty_email],
+  ].filter(([, value]) => String(value ?? "").trim() !== "");
+
+  return (
+    <div style={{ border: "1px solid #dbe3ef", borderRadius: 8, background: "#fff", overflow: "hidden" }}>
+      <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+        <tbody>
+          {infoRows.map(([label, value]) => (
+            <tr key={label}>
+              <td style={{ width: "32%", border: "1px solid #e5e7eb", background: "#f8fafc", padding: "9px 12px", color: "#172033", fontSize: 13, fontWeight: 900 }}>{label}</td>
+              <td style={{ border: "1px solid #e5e7eb", padding: "9px 12px", color: "#334155", fontSize: 13, fontWeight: 650, overflowWrap: "anywhere" }}>{value}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function PartBand({ title, tone = "#dbeafe" }) {
+  return (
+    <div style={{ background: tone, color: "#172033", borderRadius: 6, padding: "9px 12px", fontSize: 13, fontWeight: 950 }}>
+      {title}
+    </div>
   );
 }
 

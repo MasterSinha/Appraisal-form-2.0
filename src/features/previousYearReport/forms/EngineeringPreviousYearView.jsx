@@ -1,7 +1,7 @@
 import PreviousYearReportShell from "../components/PreviousYearReportShell";
 import { normalizeEngineeringPreviousYearReport } from "../normalizers/engineeringPreviousYearNormalizer";
 
-export default function EngineeringPreviousYearView({ form, docs, response, academicYear, profile, sectionView, onSectionChange }) {
+export default function EngineeringPreviousYearView({ form, docs, response, academicYear, profile, sectionView, onSectionChange, showTables = false, visibleLevels }) {
   const report = normalizeEngineeringPreviousYearReport({ form, docs, response, academicYear, profile });
   return (
     <PreviousYearReportShell
@@ -9,6 +9,8 @@ export default function EngineeringPreviousYearView({ form, docs, response, acad
       title="Previous Year Appraisal Report"
       sectionView={sectionView}
       onSectionChange={onSectionChange}
+      showTables={showTables}
+      visibleLevels={visibleLevels}
     />
   );
 }

@@ -79,6 +79,7 @@ import { emptyMediaForm, ALL_ARRAY_KEYS, titleCase, calculateMediaTotals, getMed
 import { loadClosedAppraisal } from "../services/appraisalPersistence";
 import { MediaCommunicationPreviousYearView } from "../features/previousYearReport";
 import { isLegacyTwoPartAcademicYear } from "../features/faculty-appraisal/forms/standard/legacyPreviousYearReportUtils";
+import { legacyDashboardMetrics } from "../utils/legacyDashboardMetrics";
 
 function InlineSvgIcon({ paths, size = 16, strokeWidth = 2.2 }) {
  return (
@@ -1040,6 +1041,19 @@ export default function MediaCommDashboard({ fixedRole }) {
  total: submittedScore(item.selfTotal, item.grandTotal, facultyTotals.total),
  };
  const scoreLabel = `Submitted on ${item.submittedOn || "record"}`;
+ const itemAcademicYear = item.academic_year || item.academicYear || item.info?.ay || academicYear || APP_INFO.DEFAULT_AY;
+ const reviewMetrics = legacyDashboardMetrics({
+ academicYear: itemAcademicYear,
+ partA: itemTotals.partA,
+ partB: itemTotals.partB,
+ total: itemTotals.total,
+ }) || [
+ { label: "Part A", val: itemTotals.partA, max: maxScores.partA, color: ACCENT },
+ { label: "Part B", val: itemTotals.partB, max: maxScores.partB, color: ACCENT2 },
+ { label: "Part C", val: itemTotals.partC, max: maxScores.partC, color: "#ef6f61" },
+ { label: "Part D", val: itemTotals.partD, max: maxScores.partD, color: "#f59e0b" },
+ { label: "Total", val: itemTotals.total, max: maxScores.grand, color: "#059669" },
+ ];
  return (
 <div key={item.id} style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", borderLeft: `4px solid ${reviewComplete ? "#22c55e" : ACCENT}`, overflow: "hidden" }}>
  {/* - Name / role / action row - */}
@@ -1067,13 +1081,7 @@ export default function MediaCommDashboard({ fixedRole }) {
  {/* - Score metrics grid - */}
 <div style={{ padding: "12px 18px 14px", background: "#fafbff", borderTop: "1px solid #f1f5f9" }}>
 <ReviewMetricsStrip
- metrics={[
- { label: "Part A", val: itemTotals.partA, max: maxScores.partA, color: ACCENT },
- { label: "Part B", val: itemTotals.partB, max: maxScores.partB, color: ACCENT2 },
- { label: "Part C", val: itemTotals.partC, max: maxScores.partC, color: "#ef6f61" },
- { label: "Part D", val: itemTotals.partD, max: maxScores.partD, color: "#f59e0b" },
- { label: "Total", val: itemTotals.total, max: maxScores.grand, color: "#059669" },
- ]}
+ metrics={reviewMetrics}
  docs={item.docs}
  background="#f8fafc"
  compact

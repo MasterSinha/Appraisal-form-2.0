@@ -9,6 +9,7 @@ import { ACR_DETAIL_POINTS, SOCIETY_LABELS, MAX_SCORES, APP_INFO, createAcrRows,
 import { DEAN_TRACKS, getSchoolKey, getSchoolsByDeanTrack } from "../constants/universityHierarchy";
 import { canReviewerRejectProfile, rejectedStatusFor, reviewedStatusFor, profileFromsessionStorage, workflowValidationError, roleLabel, isAppraisalFinalisedByVc, isRejectedStatus, isPendingReviewStatusFor, hasActiveRejection, reviewListFrom, getDeanTrack } from "../utils/hierarchy";
 import { n, pct, grade, RO, TI } from "../features/faculty-appraisal/shared";
+import { legacyDashboardMetrics } from "../utils/legacyDashboardMetrics";
 
 const NON_ENGINEERING_SCHOOLS = getSchoolsByDeanTrack(DEAN_TRACKS.NON_ENGINEERING);
 const NON_ENGINEERING_SCHOOL_VALUES = NON_ENGINEERING_SCHOOLS.flatMap((school) =>[
@@ -403,6 +404,34 @@ function ReviewTable({ title, accent = "#4338ca", sectionKey, columns, docPrefix
  );
 }
 
+function DeanFacultyInfoTable({ approval, info }) {
+ const rows = [
+ ["Academic Year", approval.academicYear || info.ay],
+ ["Name", info.name || approval.name],
+ ["Qualification", info.qual || info.qualification || approval.qualification],
+ ["Designation", info.desig || info.designation || approval.designation],
+ ["School", info.school || approval.school || approval.department],
+ ["Experience", info.experience || info.teachingExperience || approval.experience || approval.teachingExperience],
+ ];
+
+ return (
+<SC title="Faculty Information" accent="#4338ca">
+<div style={{ border: "1px solid #dbe3ef", borderRadius: 8, background: "#fff", overflow: "hidden" }}>
+<table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", fontSize: 13 }}>
+<tbody>
+ {rows.map(([label, value]) =>(
+<tr key={label}>
+<td style={{ width: "32%", border: "1px solid #e5e7eb", background: "#f8fafc", padding: "11px 16px", color: "#334155", fontWeight: 900, textTransform: "uppercase" }}>{label}</td>
+<td style={{ border: "1px solid #e5e7eb", padding: "11px 16px", color: "#1e293b", fontWeight: 700, overflowWrap: "anywhere" }}>{value || "-"}</td>
+</tr>
+ ))}
+</tbody>
+</table>
+</div>
+</SC>
+ );
+}
+
 function DeanReviewScoreForm({ approval, deanData, setDeanData, sectionView = "partA" }) {
  const info = mergeFacultyInfo(approval.info, approval);
  const docs = approval.docs || {};
@@ -419,18 +448,7 @@ function DeanReviewScoreForm({ approval, deanData, setDeanData, sectionView = "p
 <strong>Dean Review Mode</strong>- Faculty self-scores are read-only. Only the Dean score column is editable.
 </div>
 
-<SC title="Faculty Information" accent="#4338ca">
-<table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-<tbody>
- {[["Name", info.name || approval.name], ["Qualification", info.qual], ["Designation", info.desig || approval.designation], ["Academic Year", approval.academicYear || info.ay]].map(([label, value]) =>(
-<tr key={label}>
-<td style={{ padding: "6px 10px", background: "#f8fafc", fontWeight: 600, border: "1px solid #e2e8f0", width: "35%" }}>{label}</td>
-<td style={{ padding: "5px 10px", border: "1px solid #e2e8f0", color: "#334155" }}>{value || "-"}</td>
-</tr>
- ))}
-</tbody>
-</table>
-</SC>
+<DeanFacultyInfoTable approval={approval} info={info} />
 
  {sectionView === "partA" && (<>
 <div style={{ fontWeight: 800, fontSize: 13, color: "#1e293b", background: "#dbeafe", padding: "8px 14px", borderRadius: 6, marginBottom: 10, letterSpacing: 0.3 }}>
@@ -995,12 +1013,6 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
 </div>
 </div>
 
- {finalisedByVc && (
-<div style={{ background: "#ecfdf5", border: "1px solid #86efac", color: "#065f46", borderRadius: 8, padding: "10px 12px", fontSize: 12, fontWeight: 700, marginBottom: 14 }}>
- This appraisal has been finalised by the VC.
-</div>
- )}
-
 <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
  {[["partA", "Part A"], ["partB", "Part B"], ["partC", "Part C"], ["partD", "Part D"], ["summary", "Summary"]].map(([id, label]) =>(
 <button key={id} onClick={() =>{
@@ -1499,6 +1511,19 @@ export default function NonEngineeringDeanDashboard() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 14 }}>
               {filtered.map((faculty) => {
                 const facultySummary = standardSubmittedScoreSummary(faculty);
+                const facultyAcademicYear = faculty.academic_year || faculty.academicYear || selectedAcademicYear || APP_INFO.DEFAULT_AY;
+                const facultyMetrics = legacyDashboardMetrics({
+                  academicYear: facultyAcademicYear,
+                  partA: facultySummary.partA,
+                  partB: facultySummary.partB,
+                  total: facultySummary.total,
+                }) || [
+                  { label: "Part A", val: facultySummary.partA, max: facultySummary.partAMax, color: "#6366f1" },
+                  { label: "Part B", val: facultySummary.partB, max: facultySummary.partBMax, color: "#0ea5e9" },
+                  { label: "Part C", val: facultySummary.partC, max: facultySummary.partCMax, color: "#10b981" },
+                  { label: "Part D", val: facultySummary.partD, max: facultySummary.partDMax, color: "#f59e0b" },
+                  { label: "Total", val: facultySummary.total, max: facultySummary.grandMax, color: "#4338ca" },
+                ];
                 const courseFilePartA = Array.isArray(faculty.courseFile)
                   ? (() => {
                       const filled = faculty.courseFile.filter((row) => String(row?.score ?? "").trim() !== "");
@@ -1520,13 +1545,7 @@ export default function NonEngineeringDeanDashboard() {
                     </div>
 
                     <ReviewMetricsStrip
-                      metrics={[
-                        { label: "Part A", val: facultySummary.partA, max: facultySummary.partAMax, color: "#6366f1" },
-                        { label: "Part B", val: facultySummary.partB, max: facultySummary.partBMax, color: "#0ea5e9" },
-                        { label: "Part C", val: facultySummary.partC, max: facultySummary.partCMax, color: "#10b981" },
-                        { label: "Part D", val: facultySummary.partD, max: facultySummary.partDMax, color: "#f59e0b" },
-                        { label: "Total", val: facultySummary.total, max: facultySummary.grandMax, color: "#4338ca" },
-                      ]}
+                      metrics={facultyMetrics}
                       docs={faculty.docs}
                     />
 

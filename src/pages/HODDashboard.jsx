@@ -5,7 +5,11 @@ import { Avatar, ScoreCard, ScoreBar, StatusBadge, ReviewMetricsStrip, uploadedD
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import DashboardSidebar from "../components/dashboard/DashboardSidebar";
 import { api } from "../services/api";
-import { ACR_DETAIL_POINTS, APP_INFO, createAcrRows, fetchSavedAppraisal, loadAppraisalDocuments, loadSavedAppraisal, mergeFacultyInfo, saveAppraisalDraftSection, submitAppraisal, fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, INNOVATIVE_METHODS, SCORE_LIMITS, averageSectionScore, clampScore, clampReviewScore, courseFileAverageScore, courseFileRowScore, effectiveMaxScore, feedbackAverage, feedbackRowScore, feedbackSectionScore, innovativeSelectionsFromDetails, innovativeTeachingScore, isAllowedAttachmentFile, isValidDDMMYYYY, maskDateDDMMYYYY, normalizeAutoScores, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewSectionScore, rowHasReviewableData, scoreRemaining, selfEffectivePartAMax, societyRowLocked, societyRowScore, sumSectionScore, toggleInnovativeMethod, validateCompleteRows, standardSubmittedScoreSummary, AppraisalHeaderImage, SummaryOtherInfoField, summaryOtherInfoValueFrom, RejectionNotice, DocCell, ViewCell, ViewDocsCell, RowButtons as RowBtns, SectionSaveFooter, SectionCard as SC, T, TH, TH_HOD, TD, TDC, TDS, TDS_HOD, TDV, MyAppraisalSection, CreativeSchoolAuthorityReviewPanel, isCreativeSchool } from "../features/faculty-appraisal";
+import { ACR_DETAIL_POINTS, APP_INFO, createAcrRows, fetchSavedAppraisal, loadAppraisalDocuments, loadSavedAppraisal, mergeFacultyInfo, saveAppraisalDraftSection, submitAppraisal, fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, INNOVATIVE_METHODS, SCORE_LIMITS, averageSectionScore, clampScore, clampReviewScore, courseFileAverageScore, courseFileRowScore, effectiveMaxScore, feedbackAverage, feedbackRowScore, feedbackSectionScore, innovativeSelectionsFromDetails, innovativeTeachingScore, isAllowedAttachmentFile, isValidDDMMYYYY, maskDateDDMMYYYY, normalizeAutoScores, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewSectionScore, rowHasReviewableData, scoreRemaining, selfEffectivePartAMax, societyRowLocked, societyRowScore, sumSectionScore, toggleInnovativeMethod, validateCompleteRows, standardSubmittedScoreSummary, AppraisalHeaderImage, SummaryOtherInfoField, summaryOtherInfoValueFrom, RejectionNotice, DocCell, ViewCell, ViewDocsCell, RowButtons as RowBtns, SectionSaveFooter, SectionCard as SC, T, TH, TH_HOD, TD, TDC, TDS, TDS_HOD, TDV, MyAppraisalSection, CreativeSchoolAuthorityReviewPanel, isCreativeSchool, isDesignArtsSchool, isMediaCommSchool } from "../features/faculty-appraisal";
+import { getActiveAcademicYear, getSessionItem, normalizeAcademicYearLabel, setActiveAcademicYear } from "../auth/session";
+import { PreviousYearReportViewer } from "../features/previousYearReport";
+import { isLegacyTwoPartAcademicYear } from "../features/faculty-appraisal/forms/standard/legacyPreviousYearReportUtils";
+import { legacyDashboardMetrics } from "../utils/legacyDashboardMetrics";
 import { canReviewerRejectProfile, rejectedStatusFor, reviewedStatusFor, profileFromsessionStorage, workflowValidationError, roleLabel, isAppraisalFinalisedByVc, isRejectedStatus, isPendingReviewStatusFor, hasActiveRejection, reviewListFrom } from "../utils/hierarchy";
 import { n, pct, grade, reportValue, reportTextValue, reportQualification, reportExperience, RO, TI } from "../features/faculty-appraisal/shared";
 
@@ -14,6 +18,32 @@ import { n, pct, grade, reportValue, reportTextValue, reportQualification, repor
 const REVIEW_ARRAY_KEYS = ["lectures", "courseFile", "obeRows", "projects", "mentoringRows", "quals", "feedback", "deptActs", "uniActs", "eventRows", "society", "industry", "alumniRows", "placementRows", "acr", "journals", "books", "ict", "research", "projects2", "patents", "awards", "confs", "proposals", "products", "fdps"];
 const REVIEW_SECTION_MAX = { lectures: 40, courseFile: 20, obeRows: 20, projects: 20, mentoringRows: 10, quals: 10, feedback: 10, deptActs: 30, uniActs: 50, eventRows: 20, society: 20, industry: 8, alumniRows: 10, placementRows: 20, acr: 50, journals: 100, books: 30, ict: 20, research: 20, projects2: 40, patents: 40, awards: 20, confs: 20, proposals: 20, products: 20, fdps: 20 };
 const REVIEW_SCORE_FIELDS = ["hod", "director", "dean", "vc"];
+const storedAcademicYearCycles = () => {
+ try {
+ if (getSessionItem("availableCyclesSource") !== "backend") return [];
+ return JSON.parse(getSessionItem("availableCycles") || "[]")
+ .map((cycle) => {
+ const academicYear = normalizeAcademicYearLabel(cycle?.academic_year || cycle?.academicYear || cycle?.year || cycle?.year_label || cycle);
+ return academicYear ? { academic_year: academicYear, is_open: cycle?.is_open ?? cycle?.isOpen ?? cycle?.active ?? cycle?.open ?? academicYear === APP_INFO.DEFAULT_AY } : null;
+ })
+ .filter(Boolean);
+ } catch {
+ return [];
+ }
+};
+const previousYearFormTypeFor = (profile = {}) => {
+ if (isMediaCommSchool(profile, profile.info?.school, profile.school)) return "mediaCommunication";
+ if (isDesignArtsSchool(profile, profile.info?.school, profile.school)) return "designArts";
+ return "engineering";
+};
+function PreviousYearAuthorityResult({ item, onBack }) {
+ return (
+ <div style={{ display: "grid", gap: 12 }}>
+ <button type="button" onClick={onBack} style={{ justifySelf: "start", border: "1px solid #cbd5e1", background: "#fff", color: "#334155", borderRadius: 8, padding: "8px 14px", fontWeight: 800, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>Back</button>
+ <PreviousYearReportViewer showTables visibleLevels={["faculty", "hod"]} formType={previousYearFormTypeFor(item)} form={item} docs={item.docs || {}} response={item.previousYearResponse || item} academicYear={item.academicYear || item.academic_year || item.info?.ay} profile={item} reviews={reviewListFrom(item.reviews || item.previousYearResponse?.reviews || item.previousYearResponse?.payload?.reviews)} />
+ </div>
+ );
+}
 const preserveSavedReviewScores = (form = {}, source = {}) =>{
  const merged = { ...form };
  merged.info = mergeFacultyInfo(form.info, source, form);
@@ -304,12 +334,6 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false, revi
 </div>
 </div>
 </div>
- {finalisedByVc && (
-<div style={{ background: "#ecfdf5", border: "1px solid #86efac", color: "#065f46", borderRadius: 8, padding: "10px 12px", fontSize: 12, fontWeight: 700, marginBottom: 14 }}>
- This appraisal has been finalised by the VC.
-</div>
- )}
-
  {/* Section switcher */}
 <div style={{ display: "inline-flex", gap: 6, marginBottom: 16, padding: 4, background: "#eef2ff", border: "1px solid #dbe3ff", borderRadius: 12, width: "fit-content", flexWrap: "wrap" }}>
  {[["partA", "Part A"], ["partB", "Part B"], ["partC", "Part C"], ["partD", "Part D"], ["summary", "Summary"]].map(([id, label]) =>(
@@ -446,9 +470,27 @@ export default function HODDashboard({
  const [reviewingFaculty, setReviewingFaculty] = useState(null);
  const [reviewLoading, setReviewLoading] = useState(null);
  const [facultyList, setFacultyList] = useState([]);
+ const [selectedAcademicYear, setSelectedAcademicYear] = useState(() => getActiveAcademicYear());
+ const [availableCycles, setAvailableCycles] = useState(() => storedAcademicYearCycles());
 
  const hodSchool = sessionStorage.getItem("school");
  const hodDept = sessionStorage.getItem("department");
+ const academicYearOptions = availableCycles.length ? availableCycles : [{ academic_year: selectedAcademicYear || APP_INFO.DEFAULT_AY, is_open: true }];
+
+ const handleReviewAcademicYearChange = (academicYear) => {
+ const nextAcademicYear = setActiveAcademicYear(academicYear);
+ setSelectedAcademicYear(nextAcademicYear);
+ window.dispatchEvent(new CustomEvent("academicYearChanged", { detail: { academicYear: nextAcademicYear } }));
+ };
+
+ useEffect(() =>{
+ const syncAcademicYear = (event) =>{
+ setSelectedAcademicYear(event?.detail?.academicYear || getActiveAcademicYear());
+ setAvailableCycles(storedAcademicYearCycles());
+ };
+ window.addEventListener("academicYearChanged", syncAcademicYear);
+ return () =>window.removeEventListener("academicYearChanged", syncAcademicYear);
+ }, []);
 
  useEffect(() =>{
  const loadReviewQueue = async () =>{
@@ -456,6 +498,7 @@ export default function HODDashboard({
  const items = await fetchReviewQueueForRole({
  reviewerRole,
  reviewerProfile: { ...profileFromsessionStorage(), appraisal_role: reviewerRole, school: hodSchool, department: hodDept },
+ academicYear: selectedAcademicYear,
  schoolValues: [hodSchool],
  });
  setFacultyList(items);
@@ -466,7 +509,7 @@ export default function HODDashboard({
  };
 
  loadReviewQueue();
- }, [hodDept, hodSchool, reviewerLabel, reviewerRole]);
+ }, [hodDept, hodSchool, reviewerLabel, reviewerRole, selectedAcademicYear]);
 
  const [filterStatus, setFilterStatus] = useState("All");
  const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -568,7 +611,21 @@ export default function HODDashboard({
 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
 <div>
 <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "#0f172a", letterSpacing: -0.5 }}>Faculty's Appraisal</h1>
-<p style={{ margin: "4px 0 0", color: "#64748b", fontSize: 11 }}>{sessionStorage.getItem("department") || ""} - AY {APP_INFO.DEFAULT_AY}</p>
+<div style={{ marginTop: 5, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", color: "#64748b", fontSize: 11 }}>
+<span>{sessionStorage.getItem("department") || ""}</span>
+<span>AY</span>
+<select
+ value={selectedAcademicYear}
+ onChange={(event) =>handleReviewAcademicYearChange(event.target.value)}
+ style={{ height: 28, border: "1px solid #cbd5e1", borderRadius: 7, background: "#fff", color: "#0f172a", fontSize: 11, fontWeight: 800, padding: "3px 28px 3px 9px", fontFamily: "inherit", outline: "none" }}
+>
+ {academicYearOptions.map((cycle) =>(
+ <option key={cycle.academic_year} value={cycle.academic_year}>
+ {cycle.academic_year} {cycle.is_open ? "(Active)" : "(Closed)"}
+ </option>
+ ))}
+</select>
+</div>
 </div>
 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
 <div style={{ fontSize: 11, fontWeight: 700, padding: "5px 12px", borderRadius: 20, background: "#fef3c7", color: "#92400e" }}>{pendingCount} Pending</div>
@@ -592,6 +649,19 @@ export default function HODDashboard({
 <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 14 }}>
  {filtered.map(faculty =>{
  const facultySummary = standardSubmittedScoreSummary(faculty);
+ const facultyAcademicYear = faculty.academic_year || faculty.academicYear || selectedAcademicYear || APP_INFO.DEFAULT_AY;
+ const facultyMetrics = legacyDashboardMetrics({
+ academicYear: facultyAcademicYear,
+ partA: facultySummary.partA,
+ partB: facultySummary.partB,
+ total: facultySummary.total,
+ }) || [
+ { label: "Part A", val: facultySummary.partA, max: facultySummary.partAMax, color: "#6366f1" },
+ { label: "Part B", val: facultySummary.partB, max: facultySummary.partBMax, color: "#0ea5e9" },
+ { label: "Part C", val: facultySummary.partC, max: facultySummary.partCMax, color: "#10b981" },
+ { label: "Part D", val: facultySummary.partD, max: facultySummary.partDMax, color: "#f59e0b" },
+ { label: "Total", val: facultySummary.total, max: facultySummary.grandMax, color: "#4338ca" },
+ ];
  const courseFilePartA = Array.isArray(faculty.courseFile)
  ? (() =>{
  const filled = faculty.courseFile.filter(row =>String(row?.score ?? "").trim() !== "");
@@ -633,13 +703,7 @@ return (
 </div>
 
 <ReviewMetricsStrip
- metrics={[
- { label: "Part A", val: facultySummary.partA, max: facultySummary.partAMax, color: "#6366f1" },
- { label: "Part B", val: facultySummary.partB, max: facultySummary.partBMax, color: "#0ea5e9" },
- { label: "Part C", val: facultySummary.partC, max: facultySummary.partCMax, color: "#10b981" },
- { label: "Part D", val: facultySummary.partD, max: facultySummary.partDMax, color: "#f59e0b" },
- { label: "Total", val: facultySummary.total, max: facultySummary.grandMax, color: "#4338ca" },
- ]}
+ metrics={facultyMetrics}
  docs={faculty.docs}
 />
 
@@ -650,16 +714,17 @@ return (
  onClick={async () =>{
  setReviewLoading(faculty.id);
  try {
+ const academicYear = faculty.academic_year || faculty.academicYear || selectedAcademicYear || APP_INFO.DEFAULT_AY || "2026-2027";
  const data = await fetchSavedAppraisal({
  facultyEmail: faculty.email,
- academicYear: faculty.academic_year || faculty.academicYear || APP_INFO.DEFAULT_AY || "2026-2027",
+ academicYear,
  reviewerRole,
  });
  const form = data?.payload?.form || data?.form || {};
  const docs = data?.payload?.docs || data?.docs || {};
  const mergedForm = preserveSavedReviewScores(form, faculty);
  const declaration = data?.declaration || faculty.declaration || null;
- setReviewingFaculty({ ...faculty, ...mergedForm, docs, declaration, status: declaration?.status || data?.status || faculty.status, workflowStatus: declaration?.status || data?.workflowStatus || faculty.workflowStatus });
+ setReviewingFaculty({ ...faculty, ...mergedForm, docs, declaration, academicYear, academic_year: academicYear, previousYearResponse: data, previousYearResultOnly: isLegacyTwoPartAcademicYear(academicYear), status: declaration?.status || data?.status || faculty.status, workflowStatus: declaration?.status || data?.workflowStatus || faculty.workflowStatus });
  } catch (err) {
  alert(`Unable to open submitted form.\n\n${err.message}`);
  } finally {
@@ -687,14 +752,18 @@ return (
 
  {/* REVIEW PANEL */}
  {activeMainTab === "approvals" && reviewingFaculty && (
+reviewingFaculty.previousYearResultOnly ? (
+<PreviousYearAuthorityResult item={reviewingFaculty} onBack={() =>setReviewingFaculty(null)} />
+) : (
 <ReviewPanel
- faculty={reviewingFaculty}
- onBack={() =>setReviewingFaculty(null)}
+faculty={reviewingFaculty}
+onBack={() =>setReviewingFaculty(null)}
  onSubmit={handleSubmitReview}
  readOnly={isHodReviewed(reviewingFaculty)}
- reviewerLabel={reviewerLabel}
- reviewerRole={reviewerRole}
- />
+reviewerLabel={reviewerLabel}
+reviewerRole={reviewerRole}
+/>
+)
  )}
 </DashboardLayout>
  );
