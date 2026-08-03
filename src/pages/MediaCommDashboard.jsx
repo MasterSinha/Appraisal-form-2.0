@@ -8,6 +8,14 @@ import { Avatar, LogoutConfirmModal, ScoreBar, StatusBadge, ReviewMetricsStrip }
 import { getSchoolByValue, getSchoolKey } from "../constants/universityHierarchy";
 import { api } from "../services/api";
 import {
+ canEditSelfAppraisal,
+ canSaveDraft,
+ canSubmitAppraisal,
+ appraisalWindowMessage,
+ appraisalWindowErrorMessage,
+ getAppraisalWindowStatus,
+} from "../services/appraisalWindowService";
+import {
  ACR_DETAIL_POINTS,
  APP_INFO,
  createAcrRows,
@@ -191,6 +199,8 @@ export default function MediaCommDashboard({ fixedRole }) {
  const [reviews, setReviews] = useState([]);
  const [availableCycles, setAvailableCycles] = useState(() => normalizeAcademicYearCycles(storedAcademicYearCycles()));
  const [previousYearResponse, setPreviousYearResponse] = useState(null);
+ const [appraisalWindowStatus, setAppraisalWindowStatus] = useState(null);
+ const [appraisalWindowError, setAppraisalWindowError] = useState("");
  const userEmail = sessionStorage.getItem("username") || sessionStorage.getItem("email") || localStorage.getItem("username") || localStorage.getItem("email") || "";
  const academicYear = form.info?.ay || getActiveAcademicYear();
  const currentSchoolValue = form.info?.school || profile.school || sessionStorage.getItem("school") || sessionStorage.getItem("schoolName") || "SoMCS";
@@ -211,11 +221,37 @@ export default function MediaCommDashboard({ fixedRole }) {
     ? availableCycles
     : [{ academic_year: academicYear || APP_INFO.DEFAULT_AY, is_open: true }];
 
+ useEffect(() =>{
+   let active = true;
+   setAppraisalWindowStatus(null);
+   setAppraisalWindowError("");
+   if (!academicYear) {
+     setAppraisalWindowError("Please select an academic year.");
+     return undefined;
+   }
+   getAppraisalWindowStatus({ academicYear })
+     .then((status) =>{
+       if (!active) return;
+       setAppraisalWindowStatus(status);
+     })
+     .catch((err) =>{
+       if (!active) return;
+       setAppraisalWindowError(appraisalWindowErrorMessage(err));
+     });
+   return () =>{
+     active = false;
+   };
+ }, [academicYear]);
+
  const selectedCycle = academicYearOptions.find((c) => c.academic_year === academicYear);
  const isSelectedCycleClosed = selectedCycle ? !selectedCycle.is_open : false;
+ const isSelectedCycleOpen = selectedCycle ? Boolean(selectedCycle.is_open) : false;
  const isLegacyTwoPartYear = isLegacyTwoPartAcademicYear(academicYear);
  const workflowRejected = hasActiveRejection(declaration, reviews);
- const locked = isSelectedCycleClosed || (Boolean(declaration) && !workflowRejected);
+ const appraisalWindowLocked = !isSelectedCycleOpen && !canEditSelfAppraisal(appraisalWindowStatus, { declaration });
+ const locked = appraisalWindowLocked || isSelectedCycleClosed || (Boolean(declaration) && !workflowRejected);
+ const closedAppraisalCycleMessage = `Appraisal cycle for Academic Year ${academicYear} is closed. The next appraisal cycle form will be available soon. For any queries, please contact appraisal@dypiu.ac.in.`;
+ const appraisalWindowLockMessage = isSelectedCycleOpen || isSelectedCycleClosed ? "" : appraisalWindowError || (appraisalWindowLocked ? appraisalWindowMessage(appraisalWindowStatus, academicYear) : "");
  const totals = calculateMediaTotals(form, "score");
  const partWiseProgressRows = [
    ["Part A", totals.partA, totals.maxScores?.partA || 0],
@@ -401,6 +437,23 @@ export default function MediaCommDashboard({ fixedRole }) {
  navigate("/login", { replace: true });
  return;
  }
+ if (!isSelectedCycleOpen) {
+ let latestWindowStatus;
+ try {
+ latestWindowStatus = await getAppraisalWindowStatus({ academicYear });
+ setAppraisalWindowStatus(latestWindowStatus);
+ setAppraisalWindowError("");
+ } catch (err) {
+ const message = appraisalWindowErrorMessage(err);
+ setAppraisalWindowError(message);
+ alert(message);
+ return;
+ }
+ if (!canSaveDraft(latestWindowStatus)) {
+ alert("Draft saving is disabled because appraisal submission is closed.");
+ return;
+ }
+ }
  const nextStatus = { ...sectionSaveStatus, [section]: true };
  setSavingSection(section);
  try {
@@ -448,6 +501,23 @@ export default function MediaCommDashboard({ fixedRole }) {
  if (locked) {
  alert("This appraisal has already been submitted and is locked for review.");
  return;
+ }
+ if (!isSelectedCycleOpen) {
+ let latestWindowStatus;
+ try {
+ latestWindowStatus = await getAppraisalWindowStatus({ academicYear });
+ setAppraisalWindowStatus(latestWindowStatus);
+ setAppraisalWindowError("");
+ } catch (err) {
+ const message = appraisalWindowErrorMessage(err);
+ setAppraisalWindowError(message);
+ alert(message);
+ return;
+ }
+ if (!canSubmitAppraisal(latestWindowStatus)) {
+ alert("Appraisal submission is closed for this academic year.");
+ return;
+ }
  }
  if (!confirmed || !attachmentsConfirmed) {
  alert("Please tick both declaration checkboxes before submitting.");
@@ -768,12 +838,17 @@ export default function MediaCommDashboard({ fixedRole }) {
  alertOnceKey={`${userEmail}:${academicYear}:${declaration?.status || form.status || ""}`}
 />}
   {!isLegacyTwoPartYear && locked && (
-    <div style={{ background: workflowRejected ? "#fef2f2" : isSelectedCycleClosed ? "#fbfbfe" : "#ecfdf5", border: `1px solid ${workflowRejected ? "#fecaca" : isSelectedCycleClosed ? "#ddd6fe" : "#bbf7d0"}`, color: workflowRejected ? "#991b1b" : isSelectedCycleClosed ? "#4c1d95" : "#166534", borderRadius: 9, padding: "10px 14px", fontSize: 12, fontWeight: 700 }}>
-      {workflowRejected
-        ? "This appraisal was rejected. Review the approval status in the tracker above."
-        : isSelectedCycleClosed
-          ? `This appraisal form for Academic Year ${academicYear} is closed for editing and displayed in Read-Only mode.`
-          : "Submitted and locked for review. Your saved data is visible here, but editing is disabled while authorities review it."}
+    <div style={{ background: appraisalWindowLockMessage || isSelectedCycleClosed ? "#fffbeb" : workflowRejected ? "#fef2f2" : "#ecfdf5", border: `1px solid ${appraisalWindowLockMessage || isSelectedCycleClosed ? "#fde68a" : workflowRejected ? "#fecaca" : "#bbf7d0"}`, color: appraisalWindowLockMessage || isSelectedCycleClosed ? "#92400e" : workflowRejected ? "#991b1b" : "#166534", borderRadius: 9, padding: "11px 14px", fontSize: 12, fontWeight: 750, display: "flex", alignItems: "center", gap: 10 }}>
+      <span aria-hidden="true" style={{ width: 24, height: 24, borderRadius: "50%", background: appraisalWindowLockMessage || isSelectedCycleClosed ? "#fef3c7" : workflowRejected ? "#fee2e2" : "#dcfce7", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 14, fontWeight: 950 }}>{appraisalWindowLockMessage || isSelectedCycleClosed ? "!" : "i"}</span>
+      <span>
+        {appraisalWindowLockMessage
+          ? appraisalWindowLockMessage
+          : workflowRejected
+          ? "This appraisal was rejected. Review the approval status in the tracker above."
+          : isSelectedCycleClosed
+            ? closedAppraisalCycleMessage
+            : "Submitted and locked for review. Your saved data is visible here, but editing is disabled while authorities review it."}
+      </span>
     </div>
   )}
 
