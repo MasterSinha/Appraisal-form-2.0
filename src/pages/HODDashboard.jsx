@@ -1,7 +1,7 @@
 /* eslint-disable no-unused-vars */
 import { useState, useRef, useEffect } from "react";
 import MyAppraisalForm from "../components/appraisal";
-import { Avatar, ScoreCard, ScoreBar, StatusBadge, ReviewMetricsStrip } from "../components/dashboard/dashboardPrimitives";
+import { Avatar, ScoreCard, ScoreBar, StatusBadge, ReviewMetricsStrip, uploadedDocCount } from "../components/dashboard/dashboardPrimitives";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import DashboardSidebar from "../components/dashboard/DashboardSidebar";
 import { api } from "../services/api";
@@ -617,7 +617,7 @@ export default function HODDashboard({
  ...(faculty.patents || []).map(r =>n(r.score)),
  ].reduce((a, b) =>a + b, 0);
 
- const docCount = Object.values(faculty.docs || {}).reduce((a, arr) =>a + arr.length, 0);
+ const docCount = uploadedDocCount(faculty.docs, faculty);
 
  
 return (

@@ -922,6 +922,36 @@ export function NonTeachingAuthorityReviewPanel({ item, reviewerRole, onBack, on
     }
   };
 
+  const handleReject = async () => {
+    if (!confirmed) {
+      alert("Please verify and confirm the declaration before rejecting.");
+      return;
+    }
+    if (!remarks?.trim()) {
+      alert("Remarks are mandatory when rejecting. Please enter your remarks before rejecting.");
+      return;
+    }
+    if (!window.confirm(`Reject this appraisal and send it back to ${item.name} for editing?`)) return;
+
+    setSubmitting(true);
+    try {
+      const updated = await submitNonTeachingReview({
+        item,
+        form,
+        reviewerRole: role,
+        remarks,
+        decision: "rejected",
+      });
+      alert(`${reviewerDesignation} review submitted (Rejected).`);
+      onSubmitted?.(updated);
+    } catch (err) {
+      console.error("Could not reject non-teaching review:", err);
+      alert(`Unable to reject review.\n\n${err.message}`);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!confirmed) {
       alert("Please verify and confirm the accuracy declaration before submitting the review.");
@@ -1087,6 +1117,9 @@ export function NonTeachingAuthorityReviewPanel({ item, reviewerRole, onBack, on
               <>
               <button type="button" onClick={handleSaveDraft} disabled={savingDraft} style={{ padding: "10px 24px", border: "none", borderRadius: 7, background: savingDraft ? "#94a3b8" : "#2563eb", color: "#fff", cursor: savingDraft ? "not-allowed" : "pointer", fontWeight: 800, fontFamily: "inherit" }}>
                 {savingDraft ? "Saving..." : "Save Draft"}
+              </button>
+              <button type="button" onClick={handleReject} disabled={!confirmed || !remarks.trim() || submitting} style={{ padding: "10px 24px", border: "none", borderRadius: 7, background: (confirmed && remarks.trim()) ? "#dc2626" : "#94a3b8", color: "#fff", cursor: confirmed && remarks.trim() && !submitting ? "pointer" : "not-allowed", fontWeight: 800, fontFamily: "inherit" }}>
+                Reject Form
               </button>
               <button type="button" onClick={handleSubmit} disabled={!confirmed || !remarks.trim() || submitting} style={{ padding: "10px 24px", border: "none", borderRadius: 7, background: (confirmed && remarks.trim()) ? accent : "#94a3b8", color: "#fff", cursor: confirmed && remarks.trim() && !submitting ? "pointer" : "not-allowed", fontWeight: 800, fontFamily: "inherit" }}>
                 {submitting ? "Submitting..." : "Submit"}

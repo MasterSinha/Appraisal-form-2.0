@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import { DirectorFacultyReviewForm } from "../components/appraisal";
 import { api } from "../services/api";
-import { Avatar, ScoreCard, ScoreBar, StatusBadge, ReviewMetricsStrip } from "../components/dashboard/dashboardPrimitives";
+import { Avatar, ScoreCard, ScoreBar, StatusBadge, ReviewMetricsStrip, uploadedDocCount } from "../components/dashboard/dashboardPrimitives";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import DashboardSidebar from "../components/dashboard/DashboardSidebar";
 import { ACR_DETAIL_POINTS, SOCIETY_LABELS, MAX_SCORES, APP_INFO, createAcrRows, fetchSavedAppraisal, loadAppraisalDocuments, loadSavedAppraisal, mergeFacultyInfo, saveAppraisalDraftSection, submitAppraisal, fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, INNOVATIVE_METHODS, SCORE_LIMITS, averageSectionScore, clampScore, clampReviewScore, courseFileAverageScore, courseFileRowScore, effectiveMaxScore, feedbackAverage, feedbackRowScore, feedbackSectionScore, innovativeSelectionsFromDetails, innovativeTeachingScore, isAllowedAttachmentFile, isValidDDMMYYYY, maskDateDDMMYYYY, normalizeAutoScores, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewSectionScore, rowHasReviewableData, scoreRemaining, selfEffectivePartAMax, societyRowLocked, societyRowScore, sumSectionScore, toggleInnovativeMethod, validateCompleteRows, generateStandardReport, standardSubmittedScoreSummary, AppraisalHeaderImage, SummaryOtherInfoField, summaryOtherInfoValueFrom, RejectionNotice, DocCell, ViewCell, ViewDocsCell, RowButtons as RowBtns, SectionSaveFooter, SectionCard as SC, T, TH, TH_HOD, TH_DIR, TD, TDC, TDS, TDS_HOD, TDS_DIR, TDV, MyAppraisalSection, CreativeSchoolAuthorityReviewPanel, isCreativeSchool } from "../features/faculty-appraisal";
@@ -10,13 +10,7 @@ import { canReviewerRejectProfile, rejectedStatusFor, reviewedStatusFor, profile
 import { n, pct, grade, RO, TI } from "../features/faculty-appraisal/shared";
 
 // - Helpers - (n, pct, grade, RO, TI → imported from shared)
-const docsCount = (docs = {}) =>{
- if (!docs || typeof docs !== "object") return 0;
- return Object.values(docs).reduce((total, value) =>{
- if (Array.isArray(value)) return total + value.length;
- return total + (value ? 1 : 0);
- }, 0);
-};
+const docsCount = (docs = {}, item = {}) => uploadedDocCount(docs, item);
 const scoreText = (value) =>{
  const score = n(value);
  return Number.isFinite(score) ? score.toFixed(1) : "0.0";
@@ -769,7 +763,7 @@ export default function DirectorDashboard() {
  ...(item.patents || []).map(r =>n(r.score)),
  ].reduce((a, b) =>a + b, 0);
 
- const docCount = docsCount(item.docs);
+ const docCount = docsCount(item.docs, item);
 
  return (
 <div key={item.id} style={{ background: "#fff", borderRadius: 12, padding: "18px 20px", boxShadow: "0 1px 6px rgba(0,0,0,.07)", display: "flex", flexDirection: "column", gap: 14 }}>
@@ -816,8 +810,9 @@ return (
  { label: showDirScores ? "Dir Part C" : "Part C", val: showDirScores ? dirC : selfC, max: itemSummary.partCMax, color: "#10b981" },
  { label: showDirScores ? "Dir Part D" : "Part D", val: showDirScores ? dirD : selfD, max: itemSummary.partDMax, color: "#f59e0b" },
  { label: showDirScores ? "Dir Total" : "Total", val: showDirScores ? dirTotal : selfTotal, max: itemSummary.grandMax, color: "#4338ca" },
- ]}
- docs={item.docs}
+]}
+docs={item.docs}
+item={item}
 />
 );
  })()}

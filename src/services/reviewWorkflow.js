@@ -29,11 +29,7 @@ const firstValue = (...values) =>
 
 const numberValue = (...values) => n(firstValue(...values));
 
-const docCountFromValue = (value) => {
-  if (Array.isArray(value)) return value.length;
-  if (typeof value === "number") return value;
-  if (!value || typeof value !== "object") return 0;
-  if (value.url || value.file_url || value.fileUrl || value.document_url || value.documentUrl) return 1;
+const docCountFromValue = (value, item = {}) => {
   const countKeys = new Set([
     "doc_count",
     "docCount",
@@ -48,26 +44,71 @@ const docCountFromValue = (value) => {
     "supporting_documents_count",
     "supportingDocumentsCount",
   ]);
-  const explicitCount = firstValue(
-    value.doc_count,
-    value.docCount,
-    value.docs_count,
-    value.docsCount,
-    value.document_count,
-    value.documentCount,
-    value.documents_count,
-    value.documentsCount,
-    value.uploaded_docs_count,
-    value.uploadedDocsCount,
-    value.supporting_documents_count,
-    value.supportingDocumentsCount,
+  const fileFieldKeys = [
+    "url",
+    "file_url",
+    "fileUrl",
+    "document_url",
+    "documentUrl",
+    "path",
+    "location",
+    "storage_path",
+    "storagePath",
+    "public_id",
+    "publicId",
+    "file_name",
+    "fileName",
+    "filename",
+    "original_name",
+    "originalName",
+    "name",
+  ];
+  const hasFileIdentity = (src) =>
+    src && typeof src === "object" && fileFieldKeys.some((key) => clean(src?.[key]) !== "");
+  const isFileReference = (src) => {
+    const fileRef = clean(src);
+    return /^(https?:|blob:|data:)/i.test(fileRef) || /[\\/]/.test(fileRef) || /\.[a-z0-9]{2,8}($|[?#])/i.test(fileRef);
+  };
+
+  const parseNum = (v) => {
+    if (v === undefined || v === null || v === "") return 0;
+    const parsed = n(v);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+  };
+
+  const explicit = Math.max(
+    parseNum(item?.docCount),
+    parseNum(item?.doc_count),
+    parseNum(item?.docsCount),
+    parseNum(item?.docs_count),
+    parseNum(item?.documentCount),
+    parseNum(item?.document_count),
+    parseNum(item?.documentsCount),
+    parseNum(item?.documents_count),
+    parseNum(item?.uploadedDocsCount),
+    parseNum(item?.uploaded_docs_count),
+    parseNum(item?.payload?.docCount),
+    parseNum(item?.payload?.doc_count),
+    parseNum(typeof value === "object" ? value?.docCount : null),
+    parseNum(typeof value === "object" ? value?.doc_count : null),
+    parseNum(typeof value === "object" ? value?.docsCount : null),
+    parseNum(typeof value === "object" ? value?.docs_count : null)
   );
-  if (explicitCount !== "" && n(explicitCount) > 0) return n(explicitCount);
-  return Object.entries(value).reduce((total, [key, entry]) => {
+
+  if (typeof value === "number") return Math.max(value, explicit);
+  if (typeof value === "string") return Math.max(isFileReference(value) ? 1 : 0, explicit);
+  if (Array.isArray(value)) {
+    return Math.max(value.reduce((total, entry) => total + docCountFromValue(entry), 0), explicit);
+  }
+  if (!value || typeof value !== "object") return explicit;
+  if (hasFileIdentity(value)) return Math.max(1, explicit);
+
+  const mapCount = Object.entries(value).reduce((total, [key, entry]) => {
     if (countKeys.has(key)) return total;
-    if (Array.isArray(entry)) return total + entry.length;
-    return total + (entry ? 1 : 0);
+    return total + docCountFromValue(entry);
   }, 0);
+
+  return Math.max(mapCount, explicit);
 };
 
 const docsForQueueCard = (item = {}) => {
@@ -83,8 +124,14 @@ const docsForQueueCard = (item = {}) => {
     item.payload?.appraisal_documents,
     item.payload?.appraisalDocuments,
   ];
-  const populatedDocs = docSources.find((source) => docCountFromValue(source) > 0);
-  if (populatedDocs) return populatedDocs;
+
+  const validSources = docSources
+    .filter((source) => docCountFromValue(source, item) > 0)
+    .sort((a, b) => docCountFromValue(b, item) - docCountFromValue(a, item));
+
+  if (validSources.length > 0) {
+    return validSources[0];
+  }
 
   const explicitCount = firstValue(
     item.doc_count,
@@ -110,7 +157,7 @@ const docsForQueueCard = (item = {}) => {
 };
 
 const enrichQueueItemDocs = async (item = {}) => {
-  if (docCountFromValue(item.docs) > 0 || !item.email || !item.academicYear) return item;
+  if (!item.email || !item.academicYear) return item;
 
   try {
     const rows = await api.get("/appraisal-documents", {
@@ -119,8 +166,12 @@ const enrichQueueItemDocs = async (item = {}) => {
         faculty_email: item.email,
       },
     });
-    const count = docCountFromValue(rows);
-    return count > 0 ? { ...item, docs: rows, docCount: count } : item;
+    const fetchedCount = docCountFromValue(rows);
+    const currentCount = docCountFromValue(item.docs, item);
+    if (fetchedCount > currentCount) {
+      return { ...item, docs: rows, docCount: fetchedCount };
+    }
+    return item;
   } catch {
     return item;
   }

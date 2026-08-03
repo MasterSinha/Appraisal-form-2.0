@@ -2,7 +2,7 @@
 import { createContext, useContext, useState, useRef, useEffect } from "react";
 import MyAppraisalForm from "../components/appraisal";
 import { api } from "../services/api";
-import { Avatar, ScoreCard, ScoreBar, StatusBadge, ReviewMetricsStrip } from "../components/dashboard/dashboardPrimitives";
+import { Avatar, ScoreCard, ScoreBar, StatusBadge, ReviewMetricsStrip, uploadedDocCount } from "../components/dashboard/dashboardPrimitives";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import DashboardSidebar from "../components/dashboard/DashboardSidebar";
 import { ACR_DETAIL_POINTS, SOCIETY_LABELS, MAX_SCORES, APP_INFO, createAcrRows, fetchSavedAppraisal, loadAppraisalDocuments, loadSavedAppraisal, mergeFacultyInfo, saveAppraisalDraftSection, submitAppraisal, fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, INNOVATIVE_METHODS, SCORE_LIMITS, averageSectionScore, clampScore, clampReviewScore, courseFileAverageScore, courseFileRowScore, effectiveMaxScore, feedbackAverage, feedbackRowScore, feedbackSectionScore, innovativeSelectionsFromDetails, innovativeTeachingScore, isAllowedAttachmentFile, isValidDDMMYYYY, maskDateDDMMYYYY, normalizeAutoScores, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewSectionScore, rowHasReviewableData, scoreRemaining, selfEffectivePartAMax, societyRowLocked, societyRowScore, sumSectionScore, toggleInnovativeMethod, validateCompleteRows, generateStandardReport, standardSubmittedScoreSummary, qualificationRowDescription, AppraisalHeaderImage, SummaryOtherInfoField, summaryOtherInfoValueFrom, RejectionNotice, DocCell, ViewCell, ViewDocsCell, RowButtons as RowBtns, SectionSaveFooter, SectionCard as SC, T, TH, TH_HOD, TH_DIR, TH_DEAN, TD, TDC, TDS, TDS_HOD, TDS_DIR, TDS_DEAN, TDV, MyAppraisalSection, CreativeSchoolAuthorityReviewPanel, isCreativeSchool } from "../features/faculty-appraisal";
@@ -249,8 +249,8 @@ const preserveSavedReviewScores = (form = {}, source = {}) =>{
  }
  return merged;
 };
-const DEAN_SECTION_MAX = { lectures: 40, courseFile: 20, projects: 20, obeRows: 20, mentoringRows: 10, quals: 10, feedback: 10, deptActs: 30, uniActs: 50, eventRows: 20, society: 20, industry: 8, alumniRows: 10, placementRows: 20, acr: 50, journals: 120, books: 50, ict: 20, research: 30, projects2: SCORE_LIMITS.researchInternalProjects, externalProjects: SCORE_LIMITS.researchExternalProjects, patents: 40, awards: 10, confs: 30, proposals: 10, products: 10, fdps: 10, training: 10 };
-const DEAN_ROW_MAX = { courseFile: () =>SCORE_LIMITS.courseFileRow, projects: projectGuidanceRowMax, obeRows: (row) =>row.max || 20, mentoringRows: (row) =>row.max || 10, quals: () =>SCORE_LIMITS.qualificationRow, feedback: () =>10, uniActs: () =>50, deptActs: () =>30, eventRows: () =>20, society: () =>20, industry: () =>8, alumniRows: () =>10, placementRows: () =>20, acr: () =>SCORE_LIMITS.acrRow, research: researchGuidanceRowMax, fdps: () =>SCORE_LIMITS.fdpRow, training: () =>SCORE_LIMITS.fdpRow };
+const DEAN_SECTION_MAX = { lectures: 40, courseFile: 20, projects: 20, obeRows: 20, mentoringRows: 10, quals: 10, feedback: 10, deptActs: 30, uniActs: 50, eventRows: 20, society: 20, industry: 8, alumniRows: 10, placementRows: 20, acr: 50, journals: 120, books: 50, ict: 20, research: 30, projects2: 40, externalProjects: SCORE_LIMITS.researchExternalProjects, patents: 40, awards: 10, confs: 30, proposals: 10, products: 10, fdps: 10, training: 10 };
+const DEAN_ROW_MAX = { courseFile: () =>SCORE_LIMITS.courseFileRow, projects: projectGuidanceRowMax, projects2: (row) =>row.max || 40, obeRows: (row) =>row.max || 20, mentoringRows: (row) =>row.max || 10, quals: () =>SCORE_LIMITS.qualificationRow, feedback: () =>10, uniActs: () =>50, deptActs: () =>30, eventRows: () =>20, society: () =>20, industry: () =>8, alumniRows: () =>10, placementRows: () =>20, acr: () =>SCORE_LIMITS.acrRow, research: researchGuidanceRowMax, fdps: () =>SCORE_LIMITS.fdpRow, training: () =>SCORE_LIMITS.fdpRow };
 
 const deanScorePayload = (approval, deanData) =>{
  const payload = {};
@@ -1479,7 +1479,7 @@ export default function NonEngineeringDeanDashboard() {
                       return filled.length ? filled.reduce((total, row) => total + courseFileRowScore(row), 0) / filled.length : 0;
                     })()
                   : n(faculty.courseFile?.score);
-                const docCount = Object.values(faculty.docs || {}).reduce((a, arr) => a + arr.length, 0);
+                const docCount = uploadedDocCount(faculty.docs, faculty);
 
                 return (
                   <div key={faculty.id} style={{ background: "#fff", borderRadius: 12, padding: "18px 20px", boxShadow: "0 1px 6px rgba(0,0,0,.07)", display: "flex", flexDirection: "column", gap: 14, border: "1px solid #e2e8f0" }}>
