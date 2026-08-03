@@ -253,7 +253,7 @@ export default function MediaCommDashboard({ fixedRole }) {
  ["setInnovVc", (value) =>setForm((prev) =>({ ...prev, innovVc: value }))],
  ["setSummaryOtherInfo", (value) =>setForm((prev) =>({ ...prev, summaryOtherInfo: value }))],
  ["setSectionSaveStatus", (value) =>setSectionSaveStatus((prev) =>({ ...prev, ...(value || {}) }))],
- ]), []);
+ ]), [setForm, setSectionSaveStatus]);
 
  useEffect(() =>{
  if (isLegacyTwoPartYear && !["partA", "partB"].includes(selfSectionView)) {
@@ -316,6 +316,77 @@ export default function MediaCommDashboard({ fixedRole }) {
  window.scrollTo({ top: 0, left: 0, behavior: "auto" });
  });
  };
+
+ const autoSaveReadyRef = useRef(false);
+ const autoSaveInFlightRef = useRef(false);
+ const queuedAutoSaveRef = useRef(null);
+ const lastAutoSavedFingerprintRef = useRef("");
+
+ useEffect(() =>{
+ if (!autoSaveReadyRef.current) {
+ autoSaveReadyRef.current = true;
+ return undefined;
+ }
+ if (!userEmail || !academicYear || locked || submitting || isLegacyTwoPartYear) return undefined;
+
+ const formToSave = { ...form, sectionSaveStatus };
+ const totalsToSave = {
+ partATotal: totals.partA,
+ partBTotal: totals.partB,
+ partCTotal: totals.partC,
+ partDTotal: totals.partD,
+ grandTotal: totals.total,
+ effectivePartAMax: totals.maxScores.partA,
+ effectivePartBMax: totals.maxScores.partB,
+ effectivePartCMax: totals.maxScores.partC,
+ effectivePartDMax: totals.maxScores.partD,
+ effectiveGrandMax: totals.maxScores.grand,
+ };
+ const fingerprint = JSON.stringify({ form: formToSave, docs, totals: totalsToSave });
+ if (fingerprint === lastAutoSavedFingerprintRef.current) return undefined;
+
+ const payload = {
+ fingerprint,
+ facultyEmail: userEmail,
+ academicYear,
+ form: formToSave,
+ docs,
+ totals: totalsToSave,
+ submitterProfile: { ...profile, appraisal_role: role },
+ sectionSaveStatus,
+ };
+
+ const runAutoSave = async (snapshot) =>{
+ if (autoSaveInFlightRef.current) {
+ queuedAutoSaveRef.current = snapshot;
+ return;
+ }
+ autoSaveInFlightRef.current = true;
+ try {
+ await saveAppraisalDraftSection(snapshot);
+ lastAutoSavedFingerprintRef.current = snapshot.fingerprint;
+ } catch (err) {
+ if (err?.statusCode === 403 || err?.response?.status === 403) {
+ setDeclaration((current) =>current || { status: "Submitted" });
+ } else {
+ console.warn("Auto-save failed:", err);
+ }
+ } finally {
+ autoSaveInFlightRef.current = false;
+ const queuedSnapshot = queuedAutoSaveRef.current;
+ queuedAutoSaveRef.current = null;
+ if (queuedSnapshot && queuedSnapshot.fingerprint !== lastAutoSavedFingerprintRef.current) {
+ window.setTimeout(() =>runAutoSave(queuedSnapshot), 0);
+ }
+ }
+ };
+
+ const timer = window.setTimeout(() =>{
+ runAutoSave(payload);
+ }, 1800);
+
+ return () =>window.clearTimeout(timer);
+ }, [form, docs, sectionSaveStatus, userEmail, academicYear, locked, submitting, isLegacyTwoPartYear, totals, profile, role]);
 
  const handleSaveSelfSection = async (section) =>{
  if (locked) return;

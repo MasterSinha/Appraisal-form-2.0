@@ -984,6 +984,67 @@ export default function StandardMyAppraisal({
     setWorkflowDeclaration((current) => current || { status: "Submitted" });
   };
 
+  const autoSaveReadyRef = useRef(false);
+  const autoSaveInFlightRef = useRef(false);
+  const queuedAutoSaveRef = useRef(null);
+  const lastAutoSavedFingerprintRef = useRef("");
+
+  useEffect(() => {
+    const userEmail = sessionStorage.getItem("username") || sessionStorage.getItem("email") || localStorage.getItem("username") || localStorage.getItem("email");
+    if (!autoSaveReadyRef.current) {
+      autoSaveReadyRef.current = true;
+      return undefined;
+    }
+    if (!userEmail || !info.ay || appraisalLocked || submitting || showClosedReportOnly || isLegacyTwoPartYear) return undefined;
+
+    const formSnapshot = buildSelfDraftForm();
+    const totalsSnapshot = { partATotal, partBTotal, partCTotal, partDTotal, grandTotal, effectivePartAMax, effectivePartBMax, effectivePartCMax: PART_C_MAX, effectivePartDMax: PART_D_MAX, effectiveGrandMax };
+    const fingerprint = JSON.stringify({ form: formSnapshot, docs, totals: totalsSnapshot });
+    if (fingerprint === lastAutoSavedFingerprintRef.current) return undefined;
+
+    const payload = {
+      fingerprint,
+      facultyEmail: userEmail,
+      academicYear: info.ay,
+      form: formSnapshot,
+      totals: totalsSnapshot,
+      docs,
+      submitterProfile: profileFromsessionStorage(),
+      sectionSaveStatus,
+    };
+
+    const runAutoSave = async (snapshot) => {
+      if (autoSaveInFlightRef.current) {
+        queuedAutoSaveRef.current = snapshot;
+        return;
+      }
+      autoSaveInFlightRef.current = true;
+      try {
+        await saveAppraisalDraftSection(snapshot);
+        lastAutoSavedFingerprintRef.current = snapshot.fingerprint;
+      } catch (err) {
+        if (err?.statusCode === 403 || err?.response?.status === 403) {
+          markSnapshotLocked();
+        } else {
+          console.warn("Auto-save failed:", err);
+        }
+      } finally {
+        autoSaveInFlightRef.current = false;
+        const queuedSnapshot = queuedAutoSaveRef.current;
+        queuedAutoSaveRef.current = null;
+        if (queuedSnapshot && queuedSnapshot.fingerprint !== lastAutoSavedFingerprintRef.current) {
+          window.setTimeout(() => runAutoSave(queuedSnapshot), 0);
+        }
+      }
+    };
+
+    const timer = window.setTimeout(() => {
+      runAutoSave(payload);
+    }, 1800);
+
+    return () => window.clearTimeout(timer);
+  }, [info, lectures, courseFile, innovRows, projects, obeRows, mentoringRows, quals, feedback, deptActs, uniActs, eventRows, society, industry, alumniRows, placementRows, acr, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, exhibitions, summaryOtherInfo, docs, sectionSaveStatus, appraisalLocked, submitting, showClosedReportOnly, isLegacyTwoPartYear, partATotal, partBTotal, partCTotal, partDTotal, grandTotal, effectivePartAMax, effectivePartBMax, effectiveGrandMax]);
+
   const handleSaveCurrentSection = async (section, navigateNext = true) => {
     if (appraisalLocked) return;
     const userEmail = sessionStorage.getItem("username") || sessionStorage.getItem("email") || localStorage.getItem("username") || localStorage.getItem("email");
