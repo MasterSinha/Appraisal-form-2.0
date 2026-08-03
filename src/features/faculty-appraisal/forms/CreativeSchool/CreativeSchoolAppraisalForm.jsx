@@ -2313,21 +2313,23 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
     return () => { active = false; };
   }, [academicYear, panelReadOnly, reviewerRole, subjectEmail]);
 
+  const buildReviewerDraftPayload = () => ({
+    subjectEmail,
+    academicYear,
+    reviewerRole,
+    partAScore: totals.partA,
+    partBScore: totals.partB,
+    partCScore: totals.partC,
+    partDScore: totals.partD,
+    totalScore: totals.total,
+    remarks,
+    sectionScores: buildCreativeSchoolSectionScores(form, reviewData, reviewerRole),
+  });
+
   const handleSaveDraft = async () => {
     try {
       setSavingDraft(true);
-      await saveReviewerDraft({
-        subjectEmail,
-        academicYear,
-        reviewerRole,
-        partAScore: totals.partA,
-        partBScore: totals.partB,
-        partCScore: totals.partC,
-        partDScore: totals.partD,
-        totalScore: totals.total,
-        remarks,
-        sectionScores: buildCreativeSchoolSectionScores(form, reviewData, reviewerRole),
-      });
+      await saveReviewerDraft(buildReviewerDraftPayload());
       setDraftStatus(`Draft saved: ${new Date().toLocaleString()}`);
     } catch (err) {
       console.error("Could not save reviewer draft:", err);
@@ -2336,6 +2338,62 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
       setSavingDraft(false);
     }
   };
+
+  const autoSaveReadyRef = useRef(false);
+  const autoSaveInFlightRef = useRef(false);
+  const queuedAutoSaveRef = useRef(null);
+  const lastAutoSavedFingerprintRef = useRef("");
+
+  useEffect(() => {
+    if (!autoSaveReadyRef.current) {
+      autoSaveReadyRef.current = true;
+      return undefined;
+    }
+    if (panelReadOnly || !subjectEmail || !academicYear || !reviewerRole) return undefined;
+
+    const payload = {
+      subjectEmail,
+      academicYear,
+      reviewerRole,
+      partAScore: totals.partA,
+      partBScore: totals.partB,
+      partCScore: totals.partC,
+      partDScore: totals.partD,
+      totalScore: totals.total,
+      remarks,
+      sectionScores: buildCreativeSchoolSectionScores(form, reviewData, reviewerRole),
+    };
+    const fingerprint = JSON.stringify(payload);
+    if (fingerprint === lastAutoSavedFingerprintRef.current) return undefined;
+    const snapshot = { fingerprint, payload };
+
+    const runAutoSave = async (nextSnapshot) => {
+      if (autoSaveInFlightRef.current) {
+        queuedAutoSaveRef.current = nextSnapshot;
+        return;
+      }
+      autoSaveInFlightRef.current = true;
+      try {
+        await saveReviewerDraft(nextSnapshot.payload);
+        lastAutoSavedFingerprintRef.current = nextSnapshot.fingerprint;
+      } catch (err) {
+        console.warn("Auto-save failed:", err);
+      } finally {
+        autoSaveInFlightRef.current = false;
+        const queuedSnapshot = queuedAutoSaveRef.current;
+        queuedAutoSaveRef.current = null;
+        if (queuedSnapshot && queuedSnapshot.fingerprint !== lastAutoSavedFingerprintRef.current) {
+          window.setTimeout(() => runAutoSave(queuedSnapshot), 0);
+        }
+      }
+    };
+
+    const timer = window.setTimeout(() => {
+      runAutoSave(snapshot);
+    }, 1800);
+
+    return () => window.clearTimeout(timer);
+  }, [academicYear, form, panelReadOnly, remarks, reviewData, reviewerRole, subjectEmail, totals.partA, totals.partB, totals.partC, totals.partD, totals.total]);
 
   const handleSaveAndNext = async () => {
     await handleSaveDraft();

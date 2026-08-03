@@ -1,6 +1,7 @@
 /* eslint-disable no-unused-vars, react-hooks/exhaustive-deps, react-hooks/set-state-in-effect */
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { getActiveAcademicYear, getSessionItem, setActiveAcademicYear } from "../auth/session";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import DashboardSidebar from "../components/dashboard/DashboardSidebar";
 import { Avatar, LogoutConfirmModal, ScoreBar, StatusBadge, ReviewMetricsStrip } from "../components/dashboard/dashboardPrimitives";
@@ -67,6 +68,8 @@ import { n, pct, RO, TI } from "../features/faculty-appraisal/shared";
 
 import { emptyDesignArtsForm, ALL_ARRAY_KEYS, titleCase, calculateDesignArtsTotals, getDesignArtsEffectiveMaxScores, validateDesignArtsBeforeSubmit, mergeForm, preserveSavedReviewScores, designArtsSchoolName, PART_A_SECTIONS, PART_B_SECTIONS, PART_C_SECTIONS, PART_D_SECTIONS, DesignArtsForm, DesignArtsAuthorityReviewPanel, SectionSelector, AccuracyCheckbox, CompactAuthoritySummaryCard, isReviewerReviewComplete, normalizeScoresForSubmit, summaryRow, b8summaryRow, SECTION_OPTIONS, SummaryBox, WorkflowTracker, ACCENT, ACCENT2, PART_A_MAX, PART_B_MAX, GRAND_MAX, userInitials } from "../features/faculty-appraisal";
 import { loadClosedAppraisal } from "../services/appraisalPersistence";
+import { DesignArtsPreviousYearView } from "../features/previousYearReport";
+import { isLegacyTwoPartAcademicYear } from "../features/faculty-appraisal/forms/standard/legacyPreviousYearReportUtils";
 
 function InlineSvgIcon({ paths, size = 16, strokeWidth = 2.2 }) {
  return (
@@ -84,6 +87,7 @@ const SUMMARY_ICONS = {
  sigma: ["M18 4H7l6 8-6 8h11"],
  report: ["M6 2h9l5 5v15H6z", "M14 2v6h6", "M9 13h6M9 17h6"],
  send: ["M22 2 11 13", "M22 2 15 22l-4-9-9-4 20-7Z"],
+ user: ["M20 21a8 8 0 0 0-16 0", "M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"],
  cap: ["M12 3 3 7l9 4 9-4-9-4Z", "M5 10v5c2 2 12 2 14 0v-5", "M12 11v8"],
 };
 
@@ -113,6 +117,56 @@ function SummaryRow({ label, score, max, color, tone, iconTone, icon }) {
  );
 }
 
+function normalizeAcademicYearCycles(cyclesData) {
+  const normalizeAcademicYearLabel = (value) => {
+    const label = String(value || "").trim();
+    const shortMatch = label.match(/^(\d{2})-(\d{2})$/);
+    if (shortMatch) return `20${shortMatch[1]}-20${shortMatch[2]}`;
+    return label;
+  };
+
+  const normalizeCycle = (cycle) => {
+    if (!cycle) return null;
+    if (typeof cycle === "string") {
+      return { academic_year: cycle, is_open: cycle === APP_INFO.DEFAULT_AY };
+    }
+    const academicYear = normalizeAcademicYearLabel(cycle.academic_year || cycle.academicYear || cycle.year || cycle.year_label || "");
+    if (!academicYear) return null;
+    return {
+      academic_year: academicYear,
+      is_open: cycle.is_open ?? cycle.isOpen ?? cycle.active ?? cycle.open ?? (String(academicYear) === APP_INFO.DEFAULT_AY),
+    };
+  };
+
+  let list = [];
+  if (Array.isArray(cyclesData)) {
+    list = cyclesData.map(normalizeCycle).filter(Boolean);
+  } else if (Array.isArray(cyclesData?.cycles)) {
+    list = cyclesData.cycles.map(normalizeCycle).filter(Boolean);
+  } else if (Array.isArray(cyclesData?.data)) {
+    list = cyclesData.data.map(normalizeCycle).filter(Boolean);
+  }
+
+  if (list.length === 0) {
+    const openYear = APP_INFO.DEFAULT_AY || "2026-2027";
+    list.push({ academic_year: openYear, is_open: true });
+  }
+
+  return list
+    .reduce((acc, cycle) => {
+      if (!acc.some((existing) => existing.academic_year === cycle.academic_year)) {
+        acc.push(cycle);
+      }
+      return acc;
+    }, [])
+    .sort((a, b) => b.academic_year.localeCompare(a.academic_year));
+}
+
+const storedAcademicYearCycles = () =>
+  getSessionItem("availableCyclesSource") === "backend"
+    ? JSON.parse(getSessionItem("availableCycles") || "[]")
+    : [];
+
 export default function DesignArtsDashboard({ fixedRole }) {
  const navigate = useNavigate();
  const role = fixedRole || sessionStorage.getItem("role") || "faculty";
@@ -134,46 +188,27 @@ export default function DesignArtsDashboard({ fixedRole }) {
  const [savingSection, setSavingSection] = useState(null);
  const [declaration, setDeclaration] = useState(null);
  const [reviews, setReviews] = useState([]);
- const [availableCycles, setAvailableCycles] = useState([]);
+ const [availableCycles, setAvailableCycles] = useState(() => normalizeAcademicYearCycles(storedAcademicYearCycles()));
+ const [previousYearResponse, setPreviousYearResponse] = useState(null);
  const userEmail = sessionStorage.getItem("username") || sessionStorage.getItem("email") || localStorage.getItem("username") || localStorage.getItem("email") || "";
- const academicYear = form.info?.ay || sessionStorage.getItem("academicYear") || "2026-2027";
+ const academicYear = form.info?.ay || getActiveAcademicYear();
 
  useEffect(() => {
-    const fetchCycles = async () => {
-      try {
-        const res = await api.get("/academic-years/available");
-        const cycles = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
-        if (cycles.length > 0) {
-          const currentStartYear = parseInt(academicYear.split("-")[0], 10) || 2026;
-          const minYear = currentStartYear - 4;
-          const formatted = cycles
-            .map((c) => ({
-              academic_year: c.academic_year || c.academicYear || c.year || String(c),
-              is_open: c.is_open !== undefined ? Boolean(c.is_open) : true,
-            }))
-            .filter((c) => {
-              const yStart = parseInt(c.academic_year.split("-")[0], 10);
-              return !isNaN(yStart) && yStart >= minYear;
-            });
-          setAvailableCycles(formatted);
-        }
-      } catch (err) {
-        console.warn("Could not fetch available cycles:", err);
-      }
+    const syncAvailableCycles = () => {
+      setAvailableCycles(normalizeAcademicYearCycles(storedAcademicYearCycles()));
     };
-    fetchCycles();
+    syncAvailableCycles();
+    window.addEventListener("academicYearChanged", syncAvailableCycles);
+    return () => window.removeEventListener("academicYearChanged", syncAvailableCycles);
   }, []);
 
   const academicYearOptions = availableCycles.length > 0
     ? availableCycles
-    : [
-        { academic_year: "2026-2027", is_open: true },
-        { academic_year: "2025-2026", is_open: false },
-        { academic_year: "2024-2025", is_open: false },
-      ];
+    : [{ academic_year: academicYear || APP_INFO.DEFAULT_AY, is_open: true }];
 
   const selectedCycle = academicYearOptions.find((c) => c.academic_year === academicYear);
   const isSelectedCycleClosed = selectedCycle ? !selectedCycle.is_open : false;
+  const isLegacyTwoPartYear = isLegacyTwoPartAcademicYear(academicYear);
   const workflowRejected = hasActiveRejection(declaration, reviews);
   const locked = isSelectedCycleClosed || (Boolean(declaration) && !workflowRejected);
   const totals = calculateDesignArtsTotals(form, "score");
@@ -188,7 +223,8 @@ export default function DesignArtsDashboard({ fixedRole }) {
 
   const handleAcademicYearChange = (newAy) => {
     setForm((prev) => ({ ...prev, info: { ...prev.info, ay: newAy } }));
-    sessionStorage.setItem("academicYear", newAy);
+    setActiveAcademicYear(newAy);
+    window.dispatchEvent(new CustomEvent("academicYearChanged", { detail: { academicYear: newAy } }));
   };
 
   const handleGenerateReport = () => {
@@ -219,11 +255,18 @@ export default function DesignArtsDashboard({ fixedRole }) {
  ["setInnovVc", (value) =>setForm((prev) =>({ ...prev, innovVc: value }))],
  ["setSummaryOtherInfo", (value) =>setForm((prev) =>({ ...prev, summaryOtherInfo: value }))],
  ["setSectionSaveStatus", (value) =>setSectionSaveStatus((prev) =>({ ...prev, ...(value || {}) }))],
- ]), []);
+ ]), [setForm, setSectionSaveStatus]);
+
+ useEffect(() =>{
+ if (isLegacyTwoPartYear && !["partA", "partB"].includes(selfSectionView)) {
+ setSelfSectionView("partA");
+ }
+ }, [isLegacyTwoPartYear, selfSectionView]);
 
  useEffect(() =>{
  if (!userEmail || !academicYear || !canSelfSubmit) return;
  setDocs({});
+ setPreviousYearResponse(null);
  const loadAll = async () =>{
  const data = await api.get("/appraisal/status", { params: { academic_year: academicYear } }).catch((err) =>{
  console.error("Could not load workflow status:", err);
@@ -233,14 +276,17 @@ export default function DesignArtsDashboard({ fixedRole }) {
  const loadedReviews = reviewListFrom(data?.reviews);
  setDeclaration(declarationRow);
  setReviews(loadedReviews);
- const loader = isSelectedCycleClosed ? loadClosedAppraisal : loadSavedAppraisal;
- await Promise.all([
- loader({ facultyEmail: userEmail, academicYear, setters }),
+ const loadAppraisal = isLegacyTwoPartYear
+ ? fetchSavedAppraisal({ facultyEmail: userEmail, academicYear })
+ : (isSelectedCycleClosed ? loadClosedAppraisal : loadSavedAppraisal)({ facultyEmail: userEmail, academicYear, setters });
+ const [loadedAppraisal] = await Promise.all([
+ loadAppraisal,
  loadAppraisalDocuments({ facultyEmail: userEmail, academicYear, setDocs }),
  ]);
+ setPreviousYearResponse(loadedAppraisal || null);
  };
  loadAll().catch((err) =>console.error(`Could not load ${schoolDisplayName} appraisal:`, err));
- }, [userEmail, academicYear, setters, canSelfSubmit, isSelectedCycleClosed]);
+ }, [userEmail, academicYear, setters, canSelfSubmit, isSelectedCycleClosed, isLegacyTwoPartYear]);
 
  const loadQueue = async () =>{
  if (role === "faculty") return;
@@ -272,6 +318,81 @@ export default function DesignArtsDashboard({ fixedRole }) {
  window.scrollTo({ top: 0, left: 0, behavior: "auto" });
  });
  };
+
+ const autoSaveReadyRef = useRef(false);
+ const autoSaveInFlightRef = useRef(false);
+ const queuedAutoSaveRef = useRef(null);
+ const lastAutoSavedFingerprintRef = useRef("");
+
+ useEffect(() =>{
+ if (!autoSaveReadyRef.current) {
+ autoSaveReadyRef.current = true;
+ return undefined;
+ }
+ if (!userEmail || !academicYear || locked || submitting || isLegacyTwoPartYear) return undefined;
+
+ const formToSave = {
+ ...form,
+ info: { ...form.info, school: currentSchoolValue },
+ sectionSaveStatus,
+ };
+ const totalsToSave = {
+ partATotal: totals.partA,
+ partBTotal: totals.partB,
+ partCTotal: totals.partC,
+ partDTotal: totals.partD,
+ grandTotal: totals.total,
+ effectivePartAMax: totals.maxScores.partA,
+ effectivePartBMax: totals.maxScores.partB,
+ effectivePartCMax: totals.maxScores.partC,
+ effectivePartDMax: totals.maxScores.partD,
+ effectiveGrandMax: totals.maxScores.grand,
+ };
+ const fingerprint = JSON.stringify({ form: formToSave, docs, totals: totalsToSave });
+ if (fingerprint === lastAutoSavedFingerprintRef.current) return undefined;
+
+ const payload = {
+ fingerprint,
+ facultyEmail: userEmail,
+ academicYear,
+ form: formToSave,
+ docs,
+ totals: totalsToSave,
+ submitterProfile: { ...profile, school: currentSchoolValue, appraisal_role: role },
+ sectionSaveStatus,
+ };
+
+ const runAutoSave = async (snapshot) =>{
+ if (autoSaveInFlightRef.current) {
+ queuedAutoSaveRef.current = snapshot;
+ return;
+ }
+ autoSaveInFlightRef.current = true;
+ try {
+ await saveAppraisalDraftSection(snapshot);
+ lastAutoSavedFingerprintRef.current = snapshot.fingerprint;
+ } catch (err) {
+ if (err?.statusCode === 403 || err?.response?.status === 403) {
+ setDeclaration((current) =>current || { status: "Submitted" });
+ } else {
+ console.warn("Auto-save failed:", err);
+ }
+ } finally {
+ autoSaveInFlightRef.current = false;
+ const queuedSnapshot = queuedAutoSaveRef.current;
+ queuedAutoSaveRef.current = null;
+ if (queuedSnapshot && queuedSnapshot.fingerprint !== lastAutoSavedFingerprintRef.current) {
+ window.setTimeout(() =>runAutoSave(queuedSnapshot), 0);
+ }
+ }
+ };
+
+ const timer = window.setTimeout(() =>{
+ runAutoSave(payload);
+ }, 1800);
+
+ return () =>window.clearTimeout(timer);
+ }, [form, docs, sectionSaveStatus, userEmail, academicYear, locked, submitting, isLegacyTwoPartYear, totals, profile, currentSchoolValue, role]);
 
  const handleSaveSelfSection = async (section) =>{
  if (locked) return;
@@ -554,19 +675,24 @@ export default function DesignArtsDashboard({ fixedRole }) {
       )}
     >
       <div style={{ marginBottom: 0, display: "flex", flexDirection: "column", gap: 0 }}>
-        <div className="appraisal-page-header" style={{ background: "#fff", borderRadius: 14, padding: "16px 24px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 20, flexWrap: "wrap" }}>
+        <div className="appraisal-page-header" style={{ background: "#fff", borderRadius: 14, padding: "16px 24px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 18, flexWrap: "wrap" }}>
           <div style={{ minWidth: 260 }}>
-            <h2 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: "#111827", letterSpacing: 0, lineHeight: 1.1 }}>{schoolDisplayName} — My Appraisal Form</h2>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6, fontSize: 13, color: "#6b7280", fontWeight: 600, flexWrap: "wrap" }}>
-              <span>{form.info?.name || profile.name || sessionStorage.getItem("name") || "Faculty Member"}</span>
-              <span>•</span>
-              <span>{roleLabel(role)} Workflow Dashboard</span>
-              <span>•</span>
+            <h2 style={{ margin: 0, fontSize: 26, fontWeight: 900, color: "#111827", letterSpacing: 0, lineHeight: 1.05 }}>My Appraisal Form</h2>
+            <div style={{ marginTop: 6, color: "#4b5563", fontSize: 13, fontWeight: 800, lineHeight: 1.25 }}>{schoolDisplayName}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 10, fontSize: 13, color: "#6b7280", fontWeight: 700, flexWrap: "wrap" }}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 8, color: "#111827", fontWeight: 800 }}>
+                <span style={{ width: 24, height: 24, borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#ede9fe", color: "#6d28d9", border: "1px solid #ddd6fe" }}>
+                  <InlineSvgIcon paths={SUMMARY_ICONS.user} size={14} />
+                </span>
+                <span>{form.info?.name || profile.name || sessionStorage.getItem("name") || "Faculty Member"}</span>
+              </span>
+              <span aria-hidden="true" style={{ width: 1, height: 20, background: "#cbd5e1", display: "inline-block" }} />
               <span>Academic Year:</span>
               <select
                 value={academicYear}
                 onChange={(event) => handleAcademicYearChange(event.target.value)}
-                style={{ height: 32, border: "1px solid #d1d5db", borderRadius: 8, padding: "0 10px", fontSize: 13, fontFamily: "inherit", color: "#374151", background: "#fff", outline: "none", fontWeight: 700 }}
+                className="appraisal-year-select"
+                style={{ height: 36, minWidth: 176, border: "1px solid #d1d5db", borderRadius: 9, padding: "0 12px", fontSize: 13, fontFamily: "inherit", color: "#111827", background: "#fff", outline: "none", fontWeight: 800, boxShadow: "0 1px 2px rgba(15,23,42,0.04)" }}
               >
                 {academicYearOptions.map((cycle) => (
                   <option key={cycle.academic_year} value={cycle.academic_year}>
@@ -576,12 +702,15 @@ export default function DesignArtsDashboard({ fixedRole }) {
               </select>
             </div>
           </div>
-          <AppraisalHeaderImage height={54} />
+          <AppraisalHeaderImage height={78} />
         </div>
       </div>
 
  {activeTab === "my" && canSelfSubmit && (
 <div style={{ display: "grid", gap: 16 }}>
+{isLegacyTwoPartYear ? (
+<WorkflowTracker declaration={declaration} reviews={reviews} profile={{ ...profile, school: currentSchoolValue, appraisal_role: role }} />
+) : (
 <div className="appraisal-status-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 316px", gap: 12, alignItems: "stretch" }}>
   <WorkflowTracker declaration={declaration} reviews={reviews} profile={{ ...profile, school: currentSchoolValue, appraisal_role: role }} />
   <div className="appraisal-progress-card" style={{ background: "#fff", borderRadius: 14, padding: "18px 22px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb", display: "flex", flexDirection: "column", justifyContent: "center", gap: 10 }}>
@@ -595,14 +724,15 @@ export default function DesignArtsDashboard({ fixedRole }) {
     <div style={{ fontSize: 14, color: "#6b7280", fontWeight: 600 }}>{totals.total.toFixed(1)} / {totals.maxScores?.grand || 700} Marks</div>
   </div>
 </div>
-<RejectionNotice
+)}
+{!isLegacyTwoPartYear && <RejectionNotice
  declaration={declaration}
  reviews={reviews}
  form={form}
  status={declaration?.status || form.status}
  alertOnceKey={`${userEmail}:${academicYear}:${declaration?.status || form.status || ""}`}
-/>
-  {locked && (
+/>}
+  {!isLegacyTwoPartYear && locked && (
     <div style={{ background: workflowRejected ? "#fef2f2" : isSelectedCycleClosed ? "#fbfbfe" : "#ecfdf5", border: `1px solid ${workflowRejected ? "#fecaca" : isSelectedCycleClosed ? "#ddd6fe" : "#bbf7d0"}`, color: workflowRejected ? "#991b1b" : isSelectedCycleClosed ? "#4c1d95" : "#166534", borderRadius: 9, padding: "10px 14px", fontSize: 12, fontWeight: 700 }}>
       {workflowRejected
         ? "This appraisal was rejected. Review the approval status in the tracker above."
@@ -612,7 +742,18 @@ export default function DesignArtsDashboard({ fixedRole }) {
     </div>
   )}
 
-  {isSelectedCycleClosed ? (
+  {isLegacyTwoPartYear ? (
+    <DesignArtsPreviousYearView
+      form={form}
+      docs={docs}
+      response={previousYearResponse}
+      academicYear={academicYear}
+      sectionView={selfSectionView}
+      onSectionChange={handleSelfSectionChange}
+      profile={profile}
+      reviews={reviews}
+    />
+  ) : isSelectedCycleClosed ? (
     <div className="fa-section-card appraisal-section-card" style={{ background: "#fff", borderRadius: 14, boxShadow: "0 18px 50px rgba(17,24,39,0.08)", padding: 24, border: "1px solid #e5e7eb", borderTop: "3px solid #4c1d95" }}>
       <div style={{ fontWeight: 800, fontSize: 18, color: "#4c1d95", marginBottom: 16 }}>Closed Appraisal Report — {academicYear}</div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
@@ -688,10 +829,10 @@ export default function DesignArtsDashboard({ fixedRole }) {
     <table className="appraisal-summary-table" style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, marginBottom: 0, border: "1px solid #e5e7eb", borderRadius: 12, overflow: "hidden", boxShadow: "0 12px 26px rgba(15,23,42,0.04)" }}>
       <tbody>
         <SummaryRow label="Part A - Teaching & Learning" score={totals.partA} max={totals.maxScores?.partA || PART_A_MAX} color="#4f46e5" tone="#eef2ff" iconTone="#eef2ff" icon="book" />
-        <SummaryRow label="Part B - Research & Innovation" score={totals.partB} max={totals.maxScores?.partB || PART_B_MAX} color="#4338ca" tone="#eef2ff" iconTone="#eef2ff" icon="flask" />
-        <SummaryRow label="Part C - Administrative Contribution" score={totals.partC} max={totals.maxScores?.partC || 150} color="#4f46e5" tone="#eef2ff" iconTone="#eef2ff" icon="building" />
-        <SummaryRow label="Part D - Annual Confidential Report" score={totals.partD} max={totals.maxScores?.partD || 50} color="#4338ca" tone="#eef2ff" iconTone="#eef2ff" icon="document" />
-        <SummaryRow label="Grand Total" score={totals.total} max={totals.maxScores?.grand || GRAND_MAX} color="#3730a3" tone="#eef2ff" iconTone="#eef2ff" icon="sigma" />
+        <SummaryRow label="Part B - Research & Innovation" score={totals.partB} max={totals.maxScores?.partB || PART_B_MAX} color="#7c3aed" tone="#f5f3ff" iconTone="#f5f3ff" icon="flask" />
+        <SummaryRow label="Part C - Administrative Contribution" score={totals.partC} max={totals.maxScores?.partC || 150} color="#0f766e" tone="#ccfbf1" iconTone="#ccfbf1" icon="building" />
+        <SummaryRow label="Part D - Annual Confidential Report" score={totals.partD} max={totals.maxScores?.partD || 50} color="#ea580c" tone="#ffedd5" iconTone="#ffedd5" icon="document" />
+        <SummaryRow label="Grand Total" score={totals.total} max={totals.maxScores?.grand || GRAND_MAX} color="#dc2626" tone="#fee2e2" iconTone="#fee2e2" icon="sigma" />
       </tbody>
     </table>
 <SummaryOtherInfoField

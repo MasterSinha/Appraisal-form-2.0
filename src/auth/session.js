@@ -7,6 +7,7 @@ import {
   normalizeHierarchyText,
 } from "../constants/universityHierarchy";
 import { NON_TEACHING_ROLES, isNonTeachingRole } from "../constants/nonTeachingHierarchy";
+import { APP_INFO } from "../constants/formConfig";
 import { departmentHasHod, getDeanTrack } from "../utils/hierarchy";
 
 export const VALID_ROLES = ["faculty", "hod", "center_head", "director", "dean", "vc", ...NON_TEACHING_ROLES];
@@ -47,6 +48,31 @@ export const normalizeRole = (role, fallback = "faculty") => {
 };
 
 export const hasValidRole = (role) => VALID_ROLES.includes(normalizeRole(role, ""));
+
+export const normalizeAcademicYearLabel = (value) => {
+  const label = String(value || "").trim();
+  const shortMatch = label.match(/^(\d{2})-(\d{2})$/);
+  if (shortMatch) return `20${shortMatch[1]}-20${shortMatch[2]}`;
+  return label;
+};
+
+export const getActiveAcademicYear = (fallback = APP_INFO.DEFAULT_AY) => {
+  if (typeof window === "undefined") return normalizeAcademicYearLabel(fallback || APP_INFO.DEFAULT_AY);
+  return normalizeAcademicYearLabel(
+    sessionStorage.getItem("academicYear") ||
+    localStorage.getItem("academicYear") ||
+    fallback ||
+    APP_INFO.DEFAULT_AY,
+  );
+};
+
+export const setActiveAcademicYear = (academicYear) => {
+  const normalized = normalizeAcademicYearLabel(academicYear);
+  if (!normalized || typeof window === "undefined") return normalized;
+  sessionStorage.setItem("academicYear", normalized);
+  localStorage.setItem("academicYear", normalized);
+  return normalized;
+};
 
 export const schoolHasHod = (school) => {
   if (!school) return false;
@@ -137,6 +163,7 @@ export const storeUserSession = ({ token, profile = {}, fallbackEmail = "" }) =>
     safeProfile.directToRegistrar,
   );
   const profilePictureUrl = profilePictureValue(safeProfile);
+  const academicYear = getActiveAcademicYear(firstValue(safeProfile.academic_year, safeProfile.academicYear, safeProfile.ay, APP_INFO.DEFAULT_AY));
 
   if (token) {
     sessionStorage.setItem("accessToken", token);
@@ -160,6 +187,7 @@ export const storeUserSession = ({ token, profile = {}, fallbackEmail = "" }) =>
     avatarUrl: profilePictureUrl,
     reports_to_registrar: reportsToRegistrar ? "true" : "false",
     reportsToRegistrar: reportsToRegistrar ? "true" : "false",
+    academicYear,
   };
 
   Object.entries(items).forEach(([k, v]) => {

@@ -2,7 +2,8 @@ const numberValue = (value) => parseFloat(value) || 0;
 
 export const isLegacyTwoPartAcademicYear = (academicYear = "") =>
   String(academicYear).replace(/\s+/g, "") === "2025-2026" ||
-  String(academicYear).replace(/\s+/g, "") === "2025-26";
+  String(academicYear).replace(/\s+/g, "") === "2025-26" ||
+  String(academicYear).replace(/\s+/g, "") === "25-26";
 
 const legacyFirstNumber = (sources, keys) => {
   for (const source of sources) {

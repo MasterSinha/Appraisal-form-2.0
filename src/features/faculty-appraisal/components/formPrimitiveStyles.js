@@ -9,7 +9,7 @@ export const tableStyles = {
     color: "#111827",
     background: "#fff",
     border: "1px solid #e2e8f0",
-    borderRadius: 12,
+    borderRadius: 6,
     overflow: "hidden",
     boxShadow: "none",
   },

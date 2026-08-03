@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../../../services/api";
+import { getActiveAcademicYear, getSessionItem, setActiveAcademicYear } from "../../../../auth/session";
 import {
   ACR_DETAIL_POINTS,
   APP_INFO,
@@ -68,6 +69,7 @@ import {
   roleLabel,
   workflowValidationError,
 } from "../../../../utils/hierarchy";
+import { getSchoolByValue } from "../../../../constants/universityHierarchy";
 import LegacyPreviousYearReport from "./LegacyPreviousYearReport";
 import {
   isLegacyTwoPartAcademicYear,
@@ -422,15 +424,22 @@ const partDParameters = [
 ];
 
 function normalizeAcademicYearCycles(cyclesData) {
+  const normalizeAcademicYearLabel = (value) => {
+    const label = String(value || "").trim();
+    const shortMatch = label.match(/^(\d{2})-(\d{2})$/);
+    if (shortMatch) return `20${shortMatch[1]}-20${shortMatch[2]}`;
+    return label;
+  };
+
   const normalizeCycle = (cycle) => {
     if (!cycle) return null;
     if (typeof cycle === "string") {
       return { academic_year: cycle, is_open: cycle === APP_INFO.DEFAULT_AY };
     }
-    const academicYear = cycle.academic_year || cycle.academicYear || cycle.year || cycle.year_label || "";
+    const academicYear = normalizeAcademicYearLabel(cycle.academic_year || cycle.academicYear || cycle.year || cycle.year_label || "");
     if (!academicYear) return null;
     return {
-      academic_year: String(academicYear),
+      academic_year: academicYear,
       is_open: cycle.is_open ?? cycle.isOpen ?? cycle.active ?? cycle.open ?? (String(academicYear) === APP_INFO.DEFAULT_AY),
     };
   };
@@ -446,11 +455,7 @@ function normalizeAcademicYearCycles(cyclesData) {
 
   if (list.length === 0) {
     const openYear = APP_INFO.DEFAULT_AY || "2026-2027";
-    const startYearNum = parseInt(openYear.split("-")[0], 10) || 2026;
-    for (let i = 0; i < 3; i++) {
-      const pastYear = `${startYearNum - i}-${startYearNum - i + 1}`;
-      list.push({ academic_year: pastYear, is_open: i === 0 });
-    }
+    list.push({ academic_year: openYear, is_open: true });
   }
 
   return list
@@ -462,6 +467,11 @@ function normalizeAcademicYearCycles(cyclesData) {
     }, [])
     .sort((a, b) => b.academic_year.localeCompare(a.academic_year));
 }
+
+const storedAcademicYearCycles = () =>
+  getSessionItem("availableCyclesSource") === "backend"
+    ? JSON.parse(getSessionItem("availableCycles") || "[]")
+    : [];
 
 const sessionFacultyInfo = (academicYear, defaultDesignation = "") => ({
   name: sessionStorage.getItem("name") || "",
@@ -487,7 +497,7 @@ export default function StandardMyAppraisal({
   onSectionTabChange,
   showSectionSelector = false,
   defaultDesignation = sessionStorage.getItem("designation") || "",
-  defaultAcademicYear = sessionStorage.getItem("academicYear") || APP_INFO.DEFAULT_AY,
+  defaultAcademicYear = getActiveAcademicYear(),
   titleNameFallback = "Faculty",
   subtitleSeparator = ".",
 } = {}) {
@@ -496,7 +506,7 @@ export default function StandardMyAppraisal({
   const [localAppraisalTab, setLocalAppraisalTab] = useState("partA");
   const hodAppraisalTab = sectionTab || localAppraisalTab;
   const setHodAppraisalTab = onSectionTabChange || setLocalAppraisalTab;
-  const resolvedAcademicYear = defaultAcademicYear || sessionStorage.getItem("academicYear") || APP_INFO.DEFAULT_AY;
+  const resolvedAcademicYear = defaultAcademicYear || getActiveAcademicYear();
 
   // -- HOD's own appraisal form state --
   const [info, setInfo] = useState({
@@ -508,7 +518,7 @@ export default function StandardMyAppraisal({
 
   useEffect(() => {
     const syncAcademicYear = (event) => {
-      const nextAcademicYear = event?.detail?.academicYear || sessionStorage.getItem("academicYear") || APP_INFO.DEFAULT_AY;
+      const nextAcademicYear = event?.detail?.academicYear || getActiveAcademicYear();
       setInfo((previousInfo) => profileSafeInfoForYear(previousInfo, nextAcademicYear, defaultDesignation));
     };
 
@@ -520,11 +530,11 @@ export default function StandardMyAppraisal({
     setInfo((previousInfo) => profileSafeInfoForYear(previousInfo, resolvedAcademicYear, defaultDesignation));
   }, [resolvedAcademicYear, defaultDesignation]);
 
-  const [availableCyclesState, setAvailableCyclesState] = useState(() => normalizeAcademicYearCycles(JSON.parse(sessionStorage.getItem("availableCycles") || "[]")));
+  const [availableCyclesState, setAvailableCyclesState] = useState(() => normalizeAcademicYearCycles(storedAcademicYearCycles()));
 
   useEffect(() => {
     const syncAvailableCycles = () => {
-      setAvailableCyclesState(normalizeAcademicYearCycles(JSON.parse(sessionStorage.getItem("availableCycles") || "[]")));
+      setAvailableCyclesState(normalizeAcademicYearCycles(storedAcademicYearCycles()));
     };
     window.addEventListener("academicYearChanged", syncAvailableCycles);
     return () => window.removeEventListener("academicYearChanged", syncAvailableCycles);
@@ -973,6 +983,67 @@ export default function StandardMyAppraisal({
     setAppraisalLocked(true);
     setWorkflowDeclaration((current) => current || { status: "Submitted" });
   };
+
+  const autoSaveReadyRef = useRef(false);
+  const autoSaveInFlightRef = useRef(false);
+  const queuedAutoSaveRef = useRef(null);
+  const lastAutoSavedFingerprintRef = useRef("");
+
+  useEffect(() => {
+    const userEmail = sessionStorage.getItem("username") || sessionStorage.getItem("email") || localStorage.getItem("username") || localStorage.getItem("email");
+    if (!autoSaveReadyRef.current) {
+      autoSaveReadyRef.current = true;
+      return undefined;
+    }
+    if (!userEmail || !info.ay || appraisalLocked || submitting || showClosedReportOnly || isLegacyTwoPartYear) return undefined;
+
+    const formSnapshot = buildSelfDraftForm();
+    const totalsSnapshot = { partATotal, partBTotal, partCTotal, partDTotal, grandTotal, effectivePartAMax, effectivePartBMax, effectivePartCMax: PART_C_MAX, effectivePartDMax: PART_D_MAX, effectiveGrandMax };
+    const fingerprint = JSON.stringify({ form: formSnapshot, docs, totals: totalsSnapshot });
+    if (fingerprint === lastAutoSavedFingerprintRef.current) return undefined;
+
+    const payload = {
+      fingerprint,
+      facultyEmail: userEmail,
+      academicYear: info.ay,
+      form: formSnapshot,
+      totals: totalsSnapshot,
+      docs,
+      submitterProfile: profileFromsessionStorage(),
+      sectionSaveStatus,
+    };
+
+    const runAutoSave = async (snapshot) => {
+      if (autoSaveInFlightRef.current) {
+        queuedAutoSaveRef.current = snapshot;
+        return;
+      }
+      autoSaveInFlightRef.current = true;
+      try {
+        await saveAppraisalDraftSection(snapshot);
+        lastAutoSavedFingerprintRef.current = snapshot.fingerprint;
+      } catch (err) {
+        if (err?.statusCode === 403 || err?.response?.status === 403) {
+          markSnapshotLocked();
+        } else {
+          console.warn("Auto-save failed:", err);
+        }
+      } finally {
+        autoSaveInFlightRef.current = false;
+        const queuedSnapshot = queuedAutoSaveRef.current;
+        queuedAutoSaveRef.current = null;
+        if (queuedSnapshot && queuedSnapshot.fingerprint !== lastAutoSavedFingerprintRef.current) {
+          window.setTimeout(() => runAutoSave(queuedSnapshot), 0);
+        }
+      }
+    };
+
+    const timer = window.setTimeout(() => {
+      runAutoSave(payload);
+    }, 1800);
+
+    return () => window.clearTimeout(timer);
+  }, [info, lectures, courseFile, innovRows, projects, obeRows, mentoringRows, quals, feedback, deptActs, uniActs, eventRows, society, industry, alumniRows, placementRows, acr, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, exhibitions, summaryOtherInfo, docs, sectionSaveStatus, appraisalLocked, submitting, showClosedReportOnly, isLegacyTwoPartYear, partATotal, partBTotal, partCTotal, partDTotal, grandTotal, effectivePartAMax, effectivePartBMax, effectiveGrandMax]);
 
   const handleSaveCurrentSection = async (section, navigateNext = true) => {
     if (appraisalLocked) return;
@@ -1456,6 +1527,7 @@ export default function StandardMyAppraisal({
     win.document.close();
   };
   const workflowRejected = hasActiveRejection(workflowDeclaration, workflowReviews);
+  const headerSchoolName = getSchoolByValue(info.school)?.name || info.school || "";
 
   const academicYearOptions = availableCyclesState.length
     ? availableCyclesState
@@ -1500,7 +1572,7 @@ export default function StandardMyAppraisal({
     setInfo((previousInfo) => profileSafeInfoForYear(previousInfo, newAcademicYear, defaultDesignation));
     setDocs({});
     setLegacyReportTotals(null);
-    sessionStorage.setItem("academicYear", newAcademicYear);
+    setActiveAcademicYear(newAcademicYear);
     window.dispatchEvent(new CustomEvent("academicYearChanged", {
       detail: { academicYear: newAcademicYear },
     }));
@@ -1508,7 +1580,7 @@ export default function StandardMyAppraisal({
 
   return (
     <div className="appraisal-form-shell" style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-      {showSectionSelector && !showClosedReportOnly && (
+      {showSectionSelector && !showClosedReportOnly && !isLegacyTwoPartYear && (
       <div className="appraisal-section-selector" style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 20, padding: "16px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, flexWrap: "wrap", boxShadow: "0 12px 30px rgba(17,24,39,0.06)" }}>
         <div style={{ fontSize: 13, color: "#6b7280", fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.6 }}>My Appraisal Section</div>
         <select
@@ -1526,6 +1598,9 @@ export default function StandardMyAppraisal({
             <div className="appraisal-page-header" style={{ background: "#fff", borderRadius: 14, padding: "16px 24px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 18, flexWrap: "wrap" }}>
               <div style={{ minWidth: 260 }}>
                 <h2 style={{ margin: 0, fontSize: 26, fontWeight: 900, color: "#111827", letterSpacing: 0, lineHeight: 1.05 }}>My Appraisal Form</h2>
+                {headerSchoolName && (
+                  <div style={{ marginTop: 6, color: "#4b5563", fontSize: 13, fontWeight: 800, lineHeight: 1.25 }}>{headerSchoolName}</div>
+                )}
                 <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 10, fontSize: 13, color: "#6b7280", fontWeight: 700, flexWrap: "wrap" }}>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 8, color: "#111827", fontWeight: 800 }}>
                     <span style={{ width: 24, height: 24, borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#ede9fe", color: "#6d28d9", border: "1px solid #ddd6fe" }}>
@@ -1549,15 +1624,15 @@ export default function StandardMyAppraisal({
                   </select>
                 </div>
               </div>
-              <AppraisalHeaderImage height={54} />
+              <AppraisalHeaderImage height={78} />
             </div>
-            <div className="appraisal-status-grid" style={{ display: "grid", gridTemplateColumns: isSelectedCycleClosed ? "1fr" : "minmax(0, 1fr) 316px", gap: 12, alignItems: "stretch" }}>
+            <div className="appraisal-status-grid" style={{ display: "grid", gridTemplateColumns: isSelectedCycleClosed || isLegacyTwoPartYear ? "1fr" : "minmax(0, 1fr) 316px", gap: 12, alignItems: "stretch" }}>
               <WorkflowStatusTracker
                 declaration={workflowDeclaration}
                 reviews={workflowReviews}
                 profile={profileFromsessionStorage()}
               />
-              {!isSelectedCycleClosed && (
+              {!isSelectedCycleClosed && !isLegacyTwoPartYear && (
                 <div className="appraisal-progress-card" style={{ background: "#fff", borderRadius: 14, padding: "18px 22px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb", display: "flex", flexDirection: "column", justifyContent: "center", gap: 10 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
                     <div style={{ fontSize: 14, color: "#374151", fontWeight: 800 }}>Overall Progress</div>
@@ -1636,6 +1711,9 @@ export default function StandardMyAppraisal({
             ) : isLegacyTwoPartYear ? (
               <LegacyPreviousYearReport
                 sectionView={hodAppraisalTab}
+                academicYear={info.ay}
+                profile={{ ...profileFromsessionStorage(), ...info }}
+                reviews={workflowReviews}
                 storedTotals={legacyReportTotals}
                 docs={docs}
                 lectures={lectures}
