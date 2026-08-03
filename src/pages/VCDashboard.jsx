@@ -269,6 +269,62 @@ const vcAverageBeforeVc = (person = {}, personMode = "faculty", previousRoles = 
  if (!scores.length) return 0;
  return scores.reduce((sum, value) =>sum + value, 0) / scores.length;
 };
+const firstNumberFrom = (sources = [], keys = []) =>{
+ for (const source of sources) {
+ if (!source || typeof source !== "object") continue;
+ for (const key of keys) {
+ const value = source[key];
+ if (value !== undefined && value !== null && String(value).trim() !== "") return n(value);
+ }
+ }
+ return null;
+};
+const legacyCardPrefixesForMode = (personMode) =>{
+ if (personMode === "director") return ["director", "dir"];
+ if (personMode === "dean") return ["dean"];
+ if (personMode === "hod" || personMode === "center_head") return ["hod", "centerHead", "center_head"];
+ return ["faculty", "self"];
+};
+const legacyCardTotalsForPerson = (person = {}, personMode = "faculty") =>{
+ const sources = [
+ person,
+ person.info,
+ person.payload,
+ person.previousYearResponse?.payload?.totals,
+ person.previousYearResponse?.totals,
+ ];
+ const prefixes = legacyCardPrefixesForMode(personMode);
+ const partAKeys = prefixes.flatMap((prefix) =>[
+ `${prefix}PartA`,
+ `${prefix}PartATotal`,
+ `${prefix}_part_a`,
+ `${prefix}_part_a_total`,
+ `${prefix}_part_a_score`,
+ ]);
+ const partBKeys = prefixes.flatMap((prefix) =>[
+ `${prefix}PartB`,
+ `${prefix}PartBTotal`,
+ `${prefix}_part_b`,
+ `${prefix}_part_b_total`,
+ `${prefix}_part_b_score`,
+ ]);
+ const totalKeys = prefixes.flatMap((prefix) =>[
+ `${prefix}Total`,
+ `${prefix}Grand`,
+ `${prefix}GrandTotal`,
+ `${prefix}_total`,
+ `${prefix}_grand`,
+ `${prefix}_grand_total`,
+ ]);
+ const partA = firstNumberFrom(sources, ["partATotal", "partA", "part_a_total", ...partAKeys]);
+ const partB = firstNumberFrom(sources, ["partBTotal", "partB", "part_b_total", ...partBKeys]);
+ const total = firstNumberFrom(sources, ["grandTotal", "grand_total", "totalScore", "total_score", "total", ...totalKeys]);
+ return {
+ partA: partA ?? 0,
+ partB: partB ?? 0,
+ total: total ?? n(partA) + n(partB),
+ };
+};
 
 const vcReviewSummaryFrom = standardReviewSummary;
 
@@ -1271,7 +1327,25 @@ function PersonCard({ person, role, onReview, schoolColor, loading = false }) {
  const personMode = role === "Director" ? "director" : role === "HOD" ? "hod" : role === "Dean" ? "dean" : role === "Center Head" ? "center_head" : "faculty";
  const previousRoles = vcPreviousRolesFor(person, personMode);
  const vcTotal = n(person.vcTotal);
+ const academicYear = person.academicYear || person.academic_year || person.info?.ay;
+ const legacyTwoPartCard = isLegacyTwoPartAcademicYear(academicYear);
+ const scoreGrandMax = legacyTwoPartCard ? 575 : MAX_SCORES.GRAND_TOTAL;
  const sectionSummary = standardSubmittedScoreSummary(person);
+ const legacySummary = legacyCardTotalsForPerson(person, personMode);
+ const roleMetricPrefix = personMode === "director" ? "Dir" : personMode === "dean" ? "Dean" : (personMode === "hod" || personMode === "center_head") ? "HOD" : "Faculty";
+ const sectionMetrics = legacyTwoPartCard
+ ? [
+ { label: `${roleMetricPrefix} Part A`, val: legacySummary.partA, max: 200, color: "#6366f1" },
+ { label: `${roleMetricPrefix} Part B`, val: legacySummary.partB, max: 375, color: "#0ea5e9" },
+ { label: `${roleMetricPrefix} Total`, val: legacySummary.total, max: 575, color: "#4338ca" },
+ ]
+ : [
+ { label: "Part A", val: sectionSummary.partA, max: sectionSummary.partAMax, color: "#6366f1" },
+ { label: "Part B", val: sectionSummary.partB, max: sectionSummary.partBMax, color: "#0ea5e9" },
+ { label: "Part C", val: sectionSummary.partC, max: sectionSummary.partCMax, color: "#10b981" },
+ { label: "Part D", val: sectionSummary.partD, max: sectionSummary.partDMax, color: "#f59e0b" },
+ { label: "Total", val: sectionSummary.total, max: sectionSummary.grandMax, color: "#4338ca" },
+ ];
  const scoreTiles = [
  {
  label: personMode === "faculty" ? "Faculty Score" : "Self Score",
@@ -1323,13 +1397,7 @@ function PersonCard({ person, role, onReview, schoolColor, loading = false }) {
 
  {/* Submitted section scores */}
 <ReviewMetricsStrip
- metrics={[
- { label: "Part A", val: sectionSummary.partA, max: sectionSummary.partAMax, color: "#6366f1" },
- { label: "Part B", val: sectionSummary.partB, max: sectionSummary.partBMax, color: "#0ea5e9" },
- { label: "Part C", val: sectionSummary.partC, max: sectionSummary.partCMax, color: "#10b981" },
- { label: "Part D", val: sectionSummary.partD, max: sectionSummary.partDMax, color: "#f59e0b" },
- { label: "Total", val: sectionSummary.total, max: sectionSummary.grandMax, color: "#4338ca" },
- ]}
+ metrics={sectionMetrics}
  docs={person.docs}
  compact
 />
@@ -1344,9 +1412,9 @@ function PersonCard({ person, role, onReview, schoolColor, loading = false }) {
  {score >0 || tile.isVc ? (
 <>
 <div style={{ fontSize: 15, fontWeight: 900, color: tile.color, lineHeight: 1 }}>
- {score >0 ? score.toFixed(1) : "-"}<span style={{ fontSize: 8, color: "#cbd5e1", fontWeight: 600 }}>/{MAX_SCORES.GRAND_TOTAL}</span>
+ {score >0 ? score.toFixed(1) : "-"}<span style={{ fontSize: 8, color: "#cbd5e1", fontWeight: 600 }}>/{scoreGrandMax}</span>
 </div>
-<ScoreBar score={score} max={MAX_SCORES.GRAND_TOTAL} color={tile.color} />
+<ScoreBar score={score} max={scoreGrandMax} color={tile.color} />
 </>
  ) : (
 <div style={{ fontSize: 15, fontWeight: 900, color: "#cbd5e1" }}>-</div>

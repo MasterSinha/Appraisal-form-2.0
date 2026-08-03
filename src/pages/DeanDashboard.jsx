@@ -9,6 +9,7 @@ import { ACR_DETAIL_POINTS, SOCIETY_LABELS, MAX_SCORES, APP_INFO, createAcrRows,
 import { getActiveAcademicYear, getSessionItem, normalizeAcademicYearLabel, setActiveAcademicYear } from "../auth/session";
 import { PreviousYearReportViewer } from "../features/previousYearReport";
 import { isLegacyTwoPartAcademicYear } from "../features/faculty-appraisal/forms/standard/legacyPreviousYearReportUtils";
+import { legacyDashboardMetrics } from "../utils/legacyDashboardMetrics";
 import { DEAN_TRACKS, getSchoolKey, getSchoolsByDeanTrack } from "../constants/universityHierarchy";
 import { canReviewerRejectProfile, rejectedStatusFor, reviewedStatusFor, profileFromsessionStorage, workflowValidationError, roleLabel, isAppraisalFinalisedByVc, isRejectedStatus, isPendingReviewStatusFor, hasActiveRejection, reviewListFrom, getDeanTrack } from "../utils/hierarchy";
 import { n, pct, grade, RO, TI } from "../features/faculty-appraisal/shared";
@@ -1625,6 +1626,19 @@ export default function DeanDashboard() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 14 }}>
               {filtered.map((faculty) => {
                 const facultySummary = standardSubmittedScoreSummary(faculty);
+                const facultyAcademicYear = faculty.academic_year || faculty.academicYear || selectedAcademicYear || APP_INFO.DEFAULT_AY;
+                const facultyMetrics = legacyDashboardMetrics({
+                  academicYear: facultyAcademicYear,
+                  partA: facultySummary.partA,
+                  partB: facultySummary.partB,
+                  total: facultySummary.total,
+                }) || [
+                  { label: "Part A", val: facultySummary.partA, max: facultySummary.partAMax, color: "#6366f1" },
+                  { label: "Part B", val: facultySummary.partB, max: facultySummary.partBMax, color: "#0ea5e9" },
+                  { label: "Part C", val: facultySummary.partC, max: facultySummary.partCMax, color: "#10b981" },
+                  { label: "Part D", val: facultySummary.partD, max: facultySummary.partDMax, color: "#f59e0b" },
+                  { label: "Total", val: facultySummary.total, max: facultySummary.grandMax, color: "#4338ca" },
+                ];
                 const courseFilePartA = Array.isArray(faculty.courseFile)
                   ? (() => {
                       const filled = faculty.courseFile.filter((row) => String(row?.score ?? "").trim() !== "");
@@ -1646,13 +1660,7 @@ export default function DeanDashboard() {
                     </div>
 
                     <ReviewMetricsStrip
-                      metrics={[
-                        { label: "Part A", val: facultySummary.partA, max: facultySummary.partAMax, color: "#6366f1" },
-                        { label: "Part B", val: facultySummary.partB, max: facultySummary.partBMax, color: "#0ea5e9" },
-                        { label: "Part C", val: facultySummary.partC, max: facultySummary.partCMax, color: "#10b981" },
-                        { label: "Part D", val: facultySummary.partD, max: facultySummary.partDMax, color: "#f59e0b" },
-                        { label: "Total", val: facultySummary.total, max: facultySummary.grandMax, color: "#4338ca" },
-                      ]}
+                      metrics={facultyMetrics}
                       docs={faculty.docs}
                     />
 

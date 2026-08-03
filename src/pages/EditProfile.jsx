@@ -534,16 +534,6 @@ export default function EditProfile() {
         {/* - Profile hero - */}
         <div className="ep-hero" style={{ display: "grid", gridTemplateColumns: "minmax(340px, 1fr) minmax(520px, 1.12fr)", alignItems: "center", gap: 22, marginBottom: 16, position: "relative", overflow: "hidden", background: "#fff", borderRadius: 22, border: "1px solid #e5e7eb", padding: "20px 28px", boxShadow: "0 14px 42px rgba(15,23,42,.06)" }}>
           <div style={{ position: "absolute", right: -44, top: -60, width: 210, height: 210, borderRadius: "50%", background: "linear-gradient(135deg,rgba(99,102,241,.08),rgba(124,58,237,.16))" }} />
-          <button
-            type="button"
-            className="ep-edit-hero"
-            onClick={() => editableCardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
-            style={{ position: "absolute", top: 16, right: 22, height: 38, display: "flex", alignItems: "center", gap: 8, border: "1px solid #bfdbfe", borderRadius: 10, background: "#fff", color: "#2563eb", padding: "0 16px", fontWeight: 800, fontSize: 12, cursor: "pointer", fontFamily: "inherit", zIndex: 2 }}
-          >
-            <IconGlyph name="edit" size={16} />
-            Edit Profile
-          </button>
-
           <div className="ep-hero-left" style={{ display: "flex", alignItems: "center", gap: 20, minWidth: 0, position: "relative", zIndex: 1 }}>
             <div style={{ position: "relative", flexShrink: 0 }}>
               <div style={{ width: 96, height: 96, borderRadius: "50%", background: "linear-gradient(135deg,#6366f1,#2563eb)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 900, fontSize: 32, letterSpacing: 1, boxShadow: "0 12px 28px rgba(37,99,235,.25)", overflow: "hidden", border: "4px solid #fff" }}>

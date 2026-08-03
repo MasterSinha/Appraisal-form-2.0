@@ -9,6 +9,7 @@ import { ACR_DETAIL_POINTS, SOCIETY_LABELS, MAX_SCORES, APP_INFO, createAcrRows,
 import { getActiveAcademicYear, getSessionItem, normalizeAcademicYearLabel, setActiveAcademicYear } from "../auth/session";
 import { PreviousYearReportViewer } from "../features/previousYearReport";
 import { isLegacyTwoPartAcademicYear } from "../features/faculty-appraisal/forms/standard/legacyPreviousYearReportUtils";
+import { legacyDashboardMetrics } from "../utils/legacyDashboardMetrics";
 import { canReviewerRejectProfile, rejectedStatusFor, reviewedStatusFor, profileFromsessionStorage, workflowValidationError, roleLabel, getSchoolKey, isAppraisalFinalisedByVc, isRejectedStatus, isPendingReviewStatusFor, hasActiveRejection, reviewListFrom } from "../utils/hierarchy";
 import { n, pct, grade, RO, TI } from "../features/faculty-appraisal/shared";
 
@@ -794,6 +795,7 @@ export default function DirectorDashboard() {
 <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 14 }}>
  {filtered.map(item =>{
  const itemSummary = standardSubmittedScoreSummary(item);
+ const itemAcademicYear = item.academic_year || item.academicYear || selectedAcademicYear || APP_INFO.DEFAULT_AY;
  const courseFilePartA = Array.isArray(item.courseFile)
  ? (() =>{
  const filled = item.courseFile.filter(row =>String(row?.score ?? "").trim() !== "");
@@ -847,6 +849,19 @@ export default function DirectorDashboard() {
  const selfTotal = itemSummary.total;
  const showDirScores = reviewed && (dirA >0 || dirB >0 || dirC >0 || dirD >0 || dirTotal >0);
  const reviewPartAMax = itemSummary.partAMax;
+ const directorMetrics = legacyDashboardMetrics({
+ academicYear: itemAcademicYear,
+ labelPrefix: showDirScores ? "Dir" : "",
+ partA: showDirScores ? dirA : selfA,
+ partB: showDirScores ? dirB : selfB,
+ total: showDirScores ? dirTotal : selfTotal,
+ }) || [
+ { label: showDirScores ? "Dir Part A" : "Part A", val: showDirScores ? dirA : selfA, max: showDirScores ? reviewPartAMax : itemSummary.partAMax, color: "#6366f1" },
+ { label: showDirScores ? "Dir Part B" : "Part B", val: showDirScores ? dirB : selfB, max: itemSummary.partBMax, color: "#0ea5e9" },
+ { label: showDirScores ? "Dir Part C" : "Part C", val: showDirScores ? dirC : selfC, max: itemSummary.partCMax, color: "#10b981" },
+ { label: showDirScores ? "Dir Part D" : "Part D", val: showDirScores ? dirD : selfD, max: itemSummary.partDMax, color: "#f59e0b" },
+ { label: showDirScores ? "Dir Total" : "Total", val: showDirScores ? dirTotal : selfTotal, max: itemSummary.grandMax, color: "#4338ca" },
+ ];
  const noScoresAvailable = reviewed && dirA === 0 && dirB === 0 && dirC === 0 && dirD === 0 && dirTotal === 0 && selfA === 0 && selfB === 0 && selfC === 0 && selfD === 0 && selfTotal === 0;
  if (noScoresAvailable) {
  return (
@@ -860,13 +875,7 @@ export default function DirectorDashboard() {
  
 return (
 <ReviewMetricsStrip
- metrics={[
- { label: showDirScores ? "Dir Part A" : "Part A", val: showDirScores ? dirA : selfA, max: showDirScores ? reviewPartAMax : itemSummary.partAMax, color: "#6366f1" },
- { label: showDirScores ? "Dir Part B" : "Part B", val: showDirScores ? dirB : selfB, max: itemSummary.partBMax, color: "#0ea5e9" },
- { label: showDirScores ? "Dir Part C" : "Part C", val: showDirScores ? dirC : selfC, max: itemSummary.partCMax, color: "#10b981" },
- { label: showDirScores ? "Dir Part D" : "Part D", val: showDirScores ? dirD : selfD, max: itemSummary.partDMax, color: "#f59e0b" },
- { label: showDirScores ? "Dir Total" : "Total", val: showDirScores ? dirTotal : selfTotal, max: itemSummary.grandMax, color: "#4338ca" },
-]}
+ metrics={directorMetrics}
 docs={item.docs}
 item={item}
 />

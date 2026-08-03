@@ -78,6 +78,7 @@ import { emptyDesignArtsForm, ALL_ARRAY_KEYS, titleCase, calculateDesignArtsTota
 import { loadClosedAppraisal } from "../services/appraisalPersistence";
 import { DesignArtsPreviousYearView } from "../features/previousYearReport";
 import { isLegacyTwoPartAcademicYear } from "../features/faculty-appraisal/forms/standard/legacyPreviousYearReportUtils";
+import { legacyDashboardMetrics } from "../utils/legacyDashboardMetrics";
 
 function InlineSvgIcon({ paths, size = 16, strokeWidth = 2.2 }) {
  return (
@@ -1037,6 +1038,20 @@ export default function DesignArtsDashboard({ fixedRole }) {
  ? `${roleLabel(role)} score for ${item.submittedOn || "record"}`
  : `Submitted on ${item.submittedOn || "record"}`;
  const maxScores = itemTotals.maxScores || facultyTotals.maxScores || { partA: PART_A_MAX, partB: PART_B_MAX, partC: 0, partD: 0, grand: GRAND_MAX };
+ const displayTotals = reviewComplete ? itemTotals : submittedTotals;
+ const itemAcademicYear = item.academic_year || item.academicYear || item.info?.ay || academicYear || APP_INFO.DEFAULT_AY;
+ const reviewMetrics = legacyDashboardMetrics({
+ academicYear: itemAcademicYear,
+ partA: displayTotals.partA,
+ partB: displayTotals.partB,
+ total: displayTotals.total,
+ }) || [
+ { label: "Part A", val: displayTotals.partA, max: maxScores.partA, color: ACCENT },
+ { label: "Part B", val: displayTotals.partB, max: maxScores.partB, color: ACCENT2 },
+ { label: "Part C", val: displayTotals.partC, max: maxScores.partC, color: "#ef6f61" },
+ { label: "Part D", val: displayTotals.partD, max: maxScores.partD, color: "#f59e0b" },
+ { label: "Total", val: displayTotals.total, max: maxScores.grand, color: "#059669" },
+ ];
  return (
 <div key={item.id} style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", borderLeft: `4px solid ${reviewComplete ? "#22c55e" : ACCENT}`, overflow: "hidden" }}>
  {/* - Name / role / action row - */}
@@ -1082,13 +1097,7 @@ export default function DesignArtsDashboard({ fixedRole }) {
  {/* - Score metrics grid - */}
 <div style={{ padding: "12px 18px 14px", background: "#fafbff", borderTop: "1px solid #f1f5f9" }}>
 <ReviewMetricsStrip
- metrics={[
- { label: "Part A", val: (reviewComplete ? itemTotals : submittedTotals).partA, max: maxScores.partA, color: ACCENT },
- { label: "Part B", val: (reviewComplete ? itemTotals : submittedTotals).partB, max: maxScores.partB, color: ACCENT2 },
- { label: "Part C", val: (reviewComplete ? itemTotals : submittedTotals).partC, max: maxScores.partC, color: "#ef6f61" },
- { label: "Part D", val: (reviewComplete ? itemTotals : submittedTotals).partD, max: maxScores.partD, color: "#f59e0b" },
- { label: "Total", val: (reviewComplete ? itemTotals : submittedTotals).total, max: maxScores.grand, color: "#059669" },
- ]}
+ metrics={reviewMetrics}
  docs={item.docs}
  background="#f8fafc"
  compact
