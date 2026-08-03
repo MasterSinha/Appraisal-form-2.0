@@ -217,6 +217,12 @@ export default function MediaCommDashboard({ fixedRole }) {
  const workflowRejected = hasActiveRejection(declaration, reviews);
  const locked = isSelectedCycleClosed || (Boolean(declaration) && !workflowRejected);
  const totals = calculateMediaTotals(form, "score");
+ const partWiseProgressRows = [
+   ["Part A", totals.partA, totals.maxScores?.partA || 0],
+   ["Part B", totals.partB, totals.maxScores?.partB || 0],
+   ["Part C", totals.partC, totals.maxScores?.partC || 0],
+   ["Part D", totals.partD, totals.maxScores?.partD || 0],
+ ];
  const canSelfSubmit = role !== "vc";
 
  const handleAcademicYearChange = (newAy) => {
@@ -737,6 +743,20 @@ export default function MediaCommDashboard({ fixedRole }) {
       <div style={{ width: `${Math.round((totals.total / (totals.maxScores?.grand || 700)) * 100)}%`, height: "100%", borderRadius: 999, background: "linear-gradient(90deg,#06b6d4,#10b981)", transition: "width 300ms ease" }} />
     </div>
     <div style={{ fontSize: 14, color: "#6b7280", fontWeight: 600 }}>{totals.total.toFixed(1)} / {totals.maxScores?.grand || 700} Marks</div>
+    <div aria-label="Part-wise progress" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 5, borderTop: "1px solid #e5e7eb", paddingTop: 8 }}>
+      {partWiseProgressRows.map(([label, score, max], index) =>{
+        const partColor = ["#4f46e5", "#0891b2", "#059669", "#dc2626"][index] || "#4f46e5";
+        const partLetter = label.replace("Part ", "");
+        return (
+        <div key={label} title={`${label}: ${score.toFixed(1)} / ${max}`} style={{ minWidth: 0, background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 6, padding: "5px 4px", textAlign: "center" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 3, marginBottom: 1 }}>
+            <span style={{ width: 14, height: 14, borderRadius: 999, display: "inline-flex", alignItems: "center", justifyContent: "center", background: `${partColor}14`, border: `1px solid ${partColor}33`, color: partColor, fontSize: 9, fontWeight: 950 }}>{partLetter}</span>
+          </div>
+          <div style={{ fontSize: 10, color: "#0f172a", fontWeight: 900, whiteSpace: "nowrap" }}>{score.toFixed(0)}/{max}</div>
+        </div>
+        );
+      })}
+    </div>
   </div>
 </div>
 )}

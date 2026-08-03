@@ -877,6 +877,12 @@ export default function StandardMyAppraisal({
   };
   const g = gradeFunc();
   const overallProgress = pct(grandTotal, effectiveGrandMax);
+  const partWiseProgressRows = [
+    ["Part A", partATotal, effectivePartAMax],
+    ["Part B", partBTotal, effectivePartBMax],
+    ["Part C", partCTotal, PART_C_MAX],
+    ["Part D", partDTotal, PART_D_MAX],
+  ];
   const [submitting, setSubmitting] = useState(false);
   const [declarationConfirmed, setDeclarationConfirmed] = useState(false);
   const [attachmentsConfirmed, setAttachmentsConfirmed] = useState(false);
@@ -1642,6 +1648,20 @@ export default function StandardMyAppraisal({
                     <div style={{ width: `${overallProgress}%`, height: "100%", borderRadius: 999, background: "linear-gradient(90deg,#06b6d4,#10b981)", transition: "width 300ms ease" }} />
                   </div>
                   <div style={{ fontSize: 14, color: "#6b7280", fontWeight: 600 }}>{grandTotal.toFixed(1)} / {effectiveGrandMax} Marks</div>
+                  <div aria-label="Part-wise progress" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 5, borderTop: "1px solid #e5e7eb", paddingTop: 8 }}>
+                    {partWiseProgressRows.map(([label, score, max], index) => {
+                      const partColor = ["#4f46e5", "#0891b2", "#059669", "#dc2626"][index] || "#4f46e5";
+                      const partLetter = label.replace("Part ", "");
+                      return (
+                      <div key={label} title={`${label}: ${score.toFixed(1)} / ${max}`} style={{ minWidth: 0, background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 6, padding: "5px 4px", textAlign: "center" }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 3, marginBottom: 1 }}>
+                          <span style={{ width: 14, height: 14, borderRadius: 999, display: "inline-flex", alignItems: "center", justifyContent: "center", background: `${partColor}14`, border: `1px solid ${partColor}33`, color: partColor, fontSize: 9, fontWeight: 950 }}>{partLetter}</span>
+                        </div>
+                        <div style={{ fontSize: 10, color: "#0f172a", fontWeight: 900, whiteSpace: "nowrap" }}>{score.toFixed(0)}/{max}</div>
+                      </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </div>
