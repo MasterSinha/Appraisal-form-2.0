@@ -4,6 +4,14 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../../../../services/api";
 import { getActiveAcademicYear, getSessionItem, setActiveAcademicYear } from "../../../../auth/session";
 import {
+  appraisalWindowMessage,
+  appraisalWindowErrorMessage,
+  canEditSelfAppraisal,
+  canSaveDraft,
+  canSubmitAppraisal,
+  getAppraisalWindowStatus,
+} from "../../../../services/appraisalWindowService";
+import {
   ACR_DETAIL_POINTS,
   APP_INFO,
   createAcrRows,
@@ -703,9 +711,16 @@ export default function StandardMyAppraisal({
   const [workflowDeclaration, setWorkflowDeclaration] = useState(null);
   const [workflowReviews, setWorkflowReviews] = useState([]);
   const [legacyReportTotals, setLegacyReportTotals] = useState(null);
+  const [appraisalWindowStatus, setAppraisalWindowStatus] = useState(null);
+  const [appraisalWindowError, setAppraisalWindowError] = useState("");
   const selectedCycle = availableCyclesState.find((cycle) => cycle.academic_year === info.ay);
   const isSelectedCycleClosed = selectedCycle ? !selectedCycle.is_open : false;
+  const isSelectedCycleOpen = selectedCycle ? Boolean(selectedCycle.is_open) : false;
   const isLegacyTwoPartYear = isLegacyTwoPartAcademicYear(info.ay);
+  const appraisalWindowLocked = !isLegacyTwoPartYear && !isSelectedCycleOpen && !canEditSelfAppraisal(appraisalWindowStatus, { declaration: workflowDeclaration });
+  const formLocked = appraisalLocked || appraisalWindowLocked;
+  const closedAppraisalCycleMessage = `Appraisal cycle for Academic Year ${info.ay} is closed. The next appraisal cycle form will be available soon. For any queries, please contact appraisal@dypiu.ac.in.`;
+  const appraisalWindowLockMessage = isSelectedCycleOpen || isSelectedCycleClosed ? "" : appraisalWindowError || (appraisalWindowLocked ? appraisalWindowMessage(appraisalWindowStatus, info.ay) : "");
   const showClosedReportOnly = isSelectedCycleClosed && !isLegacyTwoPartYear;
   const sectionOptions = isLegacyTwoPartYear
     ? [
@@ -732,6 +747,32 @@ export default function StandardMyAppraisal({
     setConfs, setProposals, setProducts, setFdps, setTraining, setExhibitions, setDocs,
     setSummaryOtherInfo, setSectionSaveStatus,
   };
+
+  useEffect(() => {
+    let active = true;
+    setAppraisalWindowStatus(null);
+    setAppraisalWindowError("");
+    if (!info.ay) {
+      setAppraisalWindowError("Please select an academic year.");
+      return undefined;
+    }
+    if (isLegacyTwoPartYear) {
+      setAppraisalWindowStatus({ academic_year: info.ay, is_open: true, status: "open" });
+      return undefined;
+    }
+    getAppraisalWindowStatus({ academicYear: info.ay })
+      .then((status) => {
+        if (!active) return;
+        setAppraisalWindowStatus(status);
+      })
+      .catch((err) => {
+        if (!active) return;
+        setAppraisalWindowError(appraisalWindowErrorMessage(err));
+      });
+    return () => {
+      active = false;
+    };
+  }, [info.ay, isLegacyTwoPartYear]);
 
   useEffect(() => {
     const userEmail = sessionStorage.getItem("username") || sessionStorage.getItem("email") || localStorage.getItem("username") || localStorage.getItem("email");
@@ -877,6 +918,12 @@ export default function StandardMyAppraisal({
   };
   const g = gradeFunc();
   const overallProgress = pct(grandTotal, effectiveGrandMax);
+  const partWiseProgressRows = [
+    ["Part A", partATotal, effectivePartAMax],
+    ["Part B", partBTotal, effectivePartBMax],
+    ["Part C", partCTotal, PART_C_MAX],
+    ["Part D", partDTotal, PART_D_MAX],
+  ];
   const [submitting, setSubmitting] = useState(false);
   const [declarationConfirmed, setDeclarationConfirmed] = useState(false);
   const [attachmentsConfirmed, setAttachmentsConfirmed] = useState(false);
@@ -995,7 +1042,7 @@ export default function StandardMyAppraisal({
       autoSaveReadyRef.current = true;
       return undefined;
     }
-    if (!userEmail || !info.ay || appraisalLocked || submitting || showClosedReportOnly || isLegacyTwoPartYear) return undefined;
+    if (!userEmail || !info.ay || formLocked || submitting || showClosedReportOnly || isLegacyTwoPartYear || (!isSelectedCycleOpen && !canSaveDraft(appraisalWindowStatus))) return undefined;
 
     const formSnapshot = buildSelfDraftForm();
     const totalsSnapshot = { partATotal, partBTotal, partCTotal, partDTotal, grandTotal, effectivePartAMax, effectivePartBMax, effectivePartCMax: PART_C_MAX, effectivePartDMax: PART_D_MAX, effectiveGrandMax };
@@ -1043,15 +1090,32 @@ export default function StandardMyAppraisal({
     }, 1800);
 
     return () => window.clearTimeout(timer);
-  }, [info, lectures, courseFile, innovRows, projects, obeRows, mentoringRows, quals, feedback, deptActs, uniActs, eventRows, society, industry, alumniRows, placementRows, acr, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, exhibitions, summaryOtherInfo, docs, sectionSaveStatus, appraisalLocked, submitting, showClosedReportOnly, isLegacyTwoPartYear, partATotal, partBTotal, partCTotal, partDTotal, grandTotal, effectivePartAMax, effectivePartBMax, effectiveGrandMax]);
+  }, [info, lectures, courseFile, innovRows, projects, obeRows, mentoringRows, quals, feedback, deptActs, uniActs, eventRows, society, industry, alumniRows, placementRows, acr, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, exhibitions, summaryOtherInfo, docs, sectionSaveStatus, formLocked, submitting, showClosedReportOnly, isLegacyTwoPartYear, isSelectedCycleOpen, appraisalWindowStatus, partATotal, partBTotal, partCTotal, partDTotal, grandTotal, effectivePartAMax, effectivePartBMax, effectiveGrandMax]);
 
   const handleSaveCurrentSection = async (section, navigateNext = true) => {
-    if (appraisalLocked) return;
+    if (formLocked) return;
     const userEmail = sessionStorage.getItem("username") || sessionStorage.getItem("email") || localStorage.getItem("username") || localStorage.getItem("email");
     if (!userEmail) {
       alert("Please login again before saving. Your session email was not found.");
       navigate("/login", { replace: true });
       return;
+    }
+    if (!isSelectedCycleOpen) {
+      let latestWindowStatus;
+      try {
+        latestWindowStatus = await getAppraisalWindowStatus({ academicYear: info.ay });
+        setAppraisalWindowStatus(latestWindowStatus);
+        setAppraisalWindowError("");
+      } catch (err) {
+        const message = appraisalWindowErrorMessage(err);
+        setAppraisalWindowError(message);
+        alert(message);
+        return;
+      }
+      if (!canSaveDraft(latestWindowStatus)) {
+        alert("Draft saving is disabled because appraisal submission is closed.");
+        return;
+      }
     }
     const nextStatus = { ...sectionSaveStatus, [section]: true };
     setSavingSection(section);
@@ -1087,9 +1151,26 @@ export default function StandardMyAppraisal({
     }
   };
   const handleSubmitAppraisal = async () => {
-    if (appraisalLocked) {
+    if (formLocked) {
       alert("This appraisal has already been submitted and is locked for review.");
       return;
+    }
+    if (!isSelectedCycleOpen) {
+      let latestWindowStatus;
+      try {
+        latestWindowStatus = await getAppraisalWindowStatus({ academicYear: info.ay });
+        setAppraisalWindowStatus(latestWindowStatus);
+        setAppraisalWindowError("");
+      } catch (err) {
+        const message = appraisalWindowErrorMessage(err);
+        setAppraisalWindowError(message);
+        alert(message);
+        return;
+      }
+      if (!canSubmitAppraisal(latestWindowStatus)) {
+        alert("Appraisal submission is closed for this academic year.");
+        return;
+      }
     }
     if (!declarationConfirmed) {
       alert("Please tick the declaration checkbox before submitting.");
@@ -1642,6 +1723,20 @@ export default function StandardMyAppraisal({
                     <div style={{ width: `${overallProgress}%`, height: "100%", borderRadius: 999, background: "linear-gradient(90deg,#06b6d4,#10b981)", transition: "width 300ms ease" }} />
                   </div>
                   <div style={{ fontSize: 14, color: "#6b7280", fontWeight: 600 }}>{grandTotal.toFixed(1)} / {effectiveGrandMax} Marks</div>
+                  <div aria-label="Part-wise progress" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 5, borderTop: "1px solid #e5e7eb", paddingTop: 8 }}>
+                    {partWiseProgressRows.map(([label, score, max], index) => {
+                      const partColor = ["#4f46e5", "#0891b2", "#059669", "#dc2626"][index] || "#4f46e5";
+                      const partLetter = label.replace("Part ", "");
+                      return (
+                      <div key={label} title={`${label}: ${score.toFixed(1)} / ${max}`} style={{ minWidth: 0, background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 6, padding: "5px 4px", textAlign: "center" }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 3, marginBottom: 1 }}>
+                          <span style={{ width: 14, height: 14, borderRadius: 999, display: "inline-flex", alignItems: "center", justifyContent: "center", background: `${partColor}14`, border: `1px solid ${partColor}33`, color: partColor, fontSize: 9, fontWeight: 950 }}>{partLetter}</span>
+                        </div>
+                        <div style={{ fontSize: 10, color: "#0f172a", fontWeight: 900, whiteSpace: "nowrap" }}>{score.toFixed(0)}/{max}</div>
+                      </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </div>
@@ -1651,13 +1746,18 @@ export default function StandardMyAppraisal({
               status={workflowDeclaration?.status}
               alertOnceKey={`${sessionStorage.getItem("username") || localStorage.getItem("username") || ""}:${info.ay || ""}:${workflowDeclaration?.status || ""}`}
             />
-            {appraisalLocked && (
-              <div style={{ background: workflowRejected ? "#fef2f2" : "#ecfdf5", border: `1px solid ${workflowRejected ? "#fecaca" : "#bbf7d0"}`, color: workflowRejected ? "#991b1b" : "#166534", borderRadius: 9, padding: "10px 14px", fontSize: 12, fontWeight: 700 }}>
-                {workflowRejected
-                  ? "This appraisal was rejected. Review the approval status in the tracker above."
-                  : isSelectedCycleClosed
-                    ? "This appraisal year is closed. The submitted report and stored attachments are shown in read-only mode."
-                    : "Submitted and locked for review. Your saved data is visible here, but editing is disabled while authorities review it."}
+            {formLocked && (
+              <div style={{ background: appraisalWindowLockMessage || isSelectedCycleClosed ? "#fffbeb" : workflowRejected ? "#fef2f2" : "#ecfdf5", border: `1px solid ${appraisalWindowLockMessage || isSelectedCycleClosed ? "#fde68a" : workflowRejected ? "#fecaca" : "#bbf7d0"}`, color: appraisalWindowLockMessage || isSelectedCycleClosed ? "#92400e" : workflowRejected ? "#991b1b" : "#166534", borderRadius: 9, padding: "11px 14px", fontSize: 12, fontWeight: 750, display: "flex", alignItems: "center", gap: 10 }}>
+                <span aria-hidden="true" style={{ width: 24, height: 24, borderRadius: "50%", background: appraisalWindowLockMessage || isSelectedCycleClosed ? "#fef3c7" : workflowRejected ? "#fee2e2" : "#dcfce7", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 14, fontWeight: 950 }}>{appraisalWindowLockMessage || isSelectedCycleClosed ? "!" : "i"}</span>
+                <span>
+                  {appraisalWindowLockMessage
+                    ? appraisalWindowLockMessage
+                    : workflowRejected
+                    ? "This appraisal was rejected. Review the approval status in the tracker above."
+                    : isSelectedCycleClosed
+                      ? closedAppraisalCycleMessage
+                      : "Submitted and locked for review. Your saved data is visible here, but editing is disabled while authorities review it."}
+                </span>
               </div>
             )}
 
@@ -1743,7 +1843,7 @@ export default function StandardMyAppraisal({
               />
             ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <fieldset disabled={appraisalLocked && hodAppraisalTab !== "summary"} style={{ flex: 1, minWidth: 0, border: 0, padding: 0, margin: 0, opacity: appraisalLocked && hodAppraisalTab !== "summary" ? 0.86 : 1 }}>
+              <fieldset disabled={formLocked && hodAppraisalTab !== "summary"} style={{ flex: 1, minWidth: 0, border: 0, padding: 0, margin: 0, opacity: formLocked && hodAppraisalTab !== "summary" ? 0.86 : 1 }}>
 
                 {/* Part A Tab */}
                 {hodAppraisalTab === "partA" && (
@@ -3021,12 +3121,12 @@ export default function StandardMyAppraisal({
                   </SC>
                 )}
 
-                {["partA", "partB", "partC", "partD"].includes(hodAppraisalTab) && !appraisalLocked && (
+                {["partA", "partB", "partC", "partD"].includes(hodAppraisalTab) && !formLocked && (
                   <SectionSaveFooter
                     label={{ partA: "Part A", partB: "Part B", partC: "Part C", partD: "Part D" }[hodAppraisalTab]}
                     saved={Boolean(sectionSaveStatus[hodAppraisalTab])}
                     saving={savingSection === hodAppraisalTab}
-                    locked={appraisalLocked}
+                    locked={formLocked}
                     onSaveDraft={() => handleSaveCurrentSection(hodAppraisalTab, false)}
                     onSaveNext={() => handleSaveCurrentSection(hodAppraisalTab, true)}
                   />
@@ -3048,27 +3148,27 @@ export default function StandardMyAppraisal({
                     <SummaryOtherInfoField
                       value={summaryOtherInfo}
                       onChange={setSummaryOtherInfo}
-                      readOnly={appraisalLocked}
+                      readOnly={formLocked}
                       rows={5}
                     />
 
-                    <label className={declarationConfirmed ? "appraisal-declaration-card appraisal-confirmation-card is-checked" : "appraisal-declaration-card appraisal-confirmation-card"} style={{ display: "flex", alignItems: "flex-start", gap: 14, padding: "14px 18px", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 12, marginBottom: 0, color: "#334155", fontSize: 13, lineHeight: 1.5, cursor: appraisalLocked ? "not-allowed" : "pointer", transition: "background 180ms ease, border-color 180ms ease, box-shadow 180ms ease" }}>
+                    <label className={declarationConfirmed ? "appraisal-declaration-card appraisal-confirmation-card is-checked" : "appraisal-declaration-card appraisal-confirmation-card"} style={{ display: "flex", alignItems: "flex-start", gap: 14, padding: "14px 18px", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 12, marginBottom: 0, color: "#334155", fontSize: 13, lineHeight: 1.5, cursor: formLocked ? "not-allowed" : "pointer", transition: "background 180ms ease, border-color 180ms ease, box-shadow 180ms ease" }}>
                       <input
                         type="checkbox"
                         checked={declarationConfirmed}
                         onChange={(e) => setDeclarationConfirmed(e.target.checked)}
-                        disabled={submitting || appraisalLocked}
+                        disabled={submitting || formLocked}
                         style={{ marginTop: 2, width: 18, height: 18, accentColor: "#2563eb", flexShrink: 0 }}
                       />
                       <span>I hereby declare that the information furnished above is true and correct to the best of my knowledge and belief, and is supported by documentary evidence enclosed with this form. I understand that any false claim, if detected at any stage, may render this appraisal liable to cancellation and may attract disciplinary action as per university policy.</span>
                     </label>
 
-                    <label className={attachmentsConfirmed ? "appraisal-declaration-card is-checked" : "appraisal-declaration-card"} style={{ display: "flex", alignItems: "flex-start", gap: 14, padding: "14px 18px", background: attachmentsConfirmed ? "#dcfce7" : "#ecfdf5", border: `1px solid ${attachmentsConfirmed ? "#86efac" : "#bbf7d0"}`, borderRadius: 12, marginBottom: 0, color: "#334155", fontSize: 13, lineHeight: 1.5, cursor: appraisalLocked ? "not-allowed" : "pointer", transition: "background 180ms ease, border-color 180ms ease, box-shadow 180ms ease", boxShadow: attachmentsConfirmed ? "0 10px 24px rgba(16,185,129,0.10)" : "none" }}>
+                    <label className={attachmentsConfirmed ? "appraisal-declaration-card is-checked" : "appraisal-declaration-card"} style={{ display: "flex", alignItems: "flex-start", gap: 14, padding: "14px 18px", background: attachmentsConfirmed ? "#dcfce7" : "#ecfdf5", border: `1px solid ${attachmentsConfirmed ? "#86efac" : "#bbf7d0"}`, borderRadius: 12, marginBottom: 0, color: "#334155", fontSize: 13, lineHeight: 1.5, cursor: formLocked ? "not-allowed" : "pointer", transition: "background 180ms ease, border-color 180ms ease, box-shadow 180ms ease", boxShadow: attachmentsConfirmed ? "0 10px 24px rgba(16,185,129,0.10)" : "none" }}>
                       <input
                         type="checkbox"
                         checked={attachmentsConfirmed}
                         onChange={(e) => setAttachmentsConfirmed(e.target.checked)}
-                        disabled={submitting || appraisalLocked}
+                        disabled={submitting || formLocked}
                         style={{ marginTop: 2, width: 18, height: 18, accentColor: "#10b981", flexShrink: 0 }}
                       />
                       <span>I confirm that <strong>all required supporting documents and attachments have been uploaded</strong> against the respective entries. I understand that any <strong>missing or false attachment is my sole responsibility</strong> and may result in the rejection or revision of my appraisal.</span>
@@ -3087,12 +3187,12 @@ export default function StandardMyAppraisal({
                       <button
                         type="button"
                         onClick={handleSubmitAppraisal}
-                        disabled={submitting || appraisalLocked || !declarationConfirmed || !attachmentsConfirmed}
+                        disabled={submitting || formLocked || !declarationConfirmed || !attachmentsConfirmed}
                         className="appraisal-submit-button"
-                        style={{ minWidth: 172, minHeight: 42, padding: "10px 24px", background: (appraisalLocked || !declarationConfirmed || !attachmentsConfirmed) ? "#64748b" : "linear-gradient(180deg,#334155 0%,#1e293b 100%)", color: "#fff", border: "none", borderRadius: 9, cursor: (appraisalLocked || !declarationConfirmed || !attachmentsConfirmed) ? "not-allowed" : "pointer", fontWeight: 800, fontSize: 13, fontFamily: "inherit", opacity: submitting ? 0.76 : 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 9, boxShadow: (appraisalLocked || !declarationConfirmed || !attachmentsConfirmed) ? "none" : "0 10px 20px rgba(30,41,59,0.18)" }}
+                        style={{ minWidth: 172, minHeight: 42, padding: "10px 24px", background: (formLocked || !declarationConfirmed || !attachmentsConfirmed) ? "#64748b" : "linear-gradient(180deg,#334155 0%,#1e293b 100%)", color: "#fff", border: "none", borderRadius: 9, cursor: (formLocked || !declarationConfirmed || !attachmentsConfirmed) ? "not-allowed" : "pointer", fontWeight: 800, fontSize: 13, fontFamily: "inherit", opacity: submitting ? 0.76 : 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 9, boxShadow: (formLocked || !declarationConfirmed || !attachmentsConfirmed) ? "none" : "0 10px 20px rgba(30,41,59,0.18)" }}
                       >
                         {submitting ? <span className="appraisal-button-spinner" aria-hidden="true" /> : <InlineSvgIcon paths={SUMMARY_ICONS.send} size={16} />}
-                        {appraisalLocked ? "Submitted & Locked" : submitting ? "Submitting..." : "Submit Appraisal"}
+                        {formLocked ? "Submitted & Locked" : submitting ? "Submitting..." : "Submit Appraisal"}
                       </button>
                     </div>
                   </SC>
