@@ -6,6 +6,7 @@ export const tableStyle = {
   ...T,
   minWidth: 0,
   maxWidth: "100%",
+  lineHeight: 1.3,
 };
 export const thStyle = {
   ...TH,
@@ -16,8 +17,29 @@ export const thStyle = {
   overflow: "hidden",
   lineHeight: 1.3,
   minWidth: 0,
-  padding: "10px 6px",
+  height: "auto",
+  minHeight: 0,
+  padding: "8px 6px",
+  verticalAlign: "middle",
 };
-export const tdStyle = TD;
-export const tdCenter = TDC;
-export const tdScore = TDS;
+export const tdStyle = {
+  ...TD,
+  height: "auto",
+  minHeight: 0,
+  padding: "8px 10px",
+  verticalAlign: "middle",
+};
+export const tdCenter = {
+  ...TDC,
+  height: "auto",
+  minHeight: 0,
+  padding: "8px 10px",
+  verticalAlign: "middle",
+};
+export const tdScore = {
+  ...TDS,
+  height: "auto",
+  minHeight: 0,
+  padding: "8px 10px",
+  verticalAlign: "middle",
+};

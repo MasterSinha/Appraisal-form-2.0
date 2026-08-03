@@ -777,6 +777,8 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
   const editableSelf = mode === "self" && !locked;
   const reviewLocked = mode === "review" && locked;
   const currentRole = reviewerRole;
+  const showingReviewColumns = mode === "review" && currentRole;
+  const reviewColumnCount = showingReviewColumns ? previousRoles.length + 1 : 0;
   const selfLocked = mode === "self" && section.key === "acr";
   const earned = scoreSectionRows(section.key, rows, section.max);
   const docPrefix = section.doc || section.key;
@@ -799,13 +801,43 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
   };
   const columnWidthFor = (key) => {
     if (section.key === "feedback") {
-      return {
-        code: "28%",
-        fb1: "15%",
-        fb2: "15%",
-      }[key];
+      if (showingReviewColumns) {
+        return {
+          code: "20%",
+          fb1: "10%",
+          fb2: "10%",
+        }[key];
+      }
+      return { code: "28%", fb1: "15%", fb2: "15%" }[key];
     }
     if (section.key !== "books") return undefined;
+    if (showingReviewColumns) {
+      if (reviewColumnCount >= 4) {
+        return {
+          title: "10%",
+          publisher: "10%",
+          type: "7%",
+          level: "7%",
+          coAuthors: "9%",
+        }[key];
+      }
+      if (reviewColumnCount >= 3) {
+        return {
+          title: "11%",
+          publisher: "11%",
+          type: "8%",
+          level: "8%",
+          coAuthors: "10%",
+        }[key];
+      }
+      return {
+        title: "12%",
+        publisher: "12%",
+        type: "8%",
+        level: "8%",
+        coAuthors: "10%",
+      }[key];
+    }
     return {
       title: "14%",
       publisher: "14%",
@@ -823,7 +855,7 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
         <div style={{ overflowX: "visible", width: "100%" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
             <thead>
-              <tr>
+              <tr style={{ height: "auto" }}>
                 <th style={thStyle}>SN</th>
                 <th style={thStyle}>Parameter</th>
                 <th style={thStyle}>Assessment Points</th>
@@ -920,6 +952,20 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
       [section.key]: prev[section.key].slice(0, -1),
     }));
   };
+  const booksReviewScoreWidth = reviewColumnCount >= 4 ? "7%" : "9%";
+  const booksColumnWidthFor = (kind) => {
+    if (section.key !== "books") return undefined;
+    if (!showingReviewColumns) {
+      return { sn: "5%", attachment: "9%", viewDocs: "8%", facultyScore: "7%", reviewScore: undefined }[kind];
+    }
+    return {
+      sn: "4%",
+      attachment: reviewColumnCount >= 4 ? "6%" : "7%",
+      viewDocs: reviewColumnCount >= 4 ? "6%" : "7%",
+      facultyScore: reviewColumnCount >= 4 ? "7%" : "8%",
+      reviewScore: booksReviewScoreWidth,
+    }[kind];
+  };
 
   return (
     <SectionShell title={section.title} max={section.max} earned={earned} accent={ACCENT2}>
@@ -927,15 +973,15 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
         <div style={{ overflowX: "visible", width: "100%" }}>
           <table style={{ ...tableStyle, tableLayout: section.key === "feedback" || section.key === "books" ? "fixed" : tableStyle.tableLayout }}>
             <thead>
-              <tr>
-                <th style={{ ...thStyle, width: section.key === "feedback" ? "5%" : section.key === "books" ? "5%" : 46 }}>SN</th>
+              <tr style={{ height: "auto" }}>
+                <th style={{ ...thStyle, width: section.key === "feedback" ? (showingReviewColumns ? "4%" : "5%") : section.key === "books" ? booksColumnWidthFor("sn") : 46 }}>SN</th>
                 {section.fields.map(([key, label]) => <th key={label} style={{ ...thStyle, width: columnWidthFor(key) }}>{renderHeaderLabel(label)}</th>)}
-                {section.key === "feedback" && <th style={{ ...thStyle, width: "10%" }}>Average</th>}
-                <th style={{ ...thStyle, width: section.key === "feedback" ? "9%" : section.key === "books" ? "9%" : undefined }}>Attachment</th>
-                <th style={{ ...thStyle, width: section.key === "feedback" ? "8%" : section.key === "books" ? "8%" : undefined }}>View Docs</th>
-                <th style={{ ...thStyle, width: section.key === "feedback" ? "10%" : section.key === "books" ? "7%" : undefined }}>Faculty Score</th>
-                {mode === "review" && previousRoles.map((role) => <th key={role} style={thStyle}>{roleLabel(role)} Score</th>)}
-                {mode === "review" && <th style={thStyle}>{roleLabel(currentRole)} Score</th>}
+                {section.key === "feedback" && <th style={{ ...thStyle, width: showingReviewColumns ? "8%" : "10%" }}>Average</th>}
+                <th style={{ ...thStyle, width: section.key === "feedback" ? (showingReviewColumns ? "8%" : "9%") : booksColumnWidthFor("attachment") }}>Attachment</th>
+                <th style={{ ...thStyle, width: section.key === "feedback" ? (showingReviewColumns ? "7%" : "8%") : booksColumnWidthFor("viewDocs") }}>View Docs</th>
+                <th style={{ ...thStyle, width: section.key === "feedback" ? (showingReviewColumns ? "8%" : "10%") : booksColumnWidthFor("facultyScore") }}>Faculty Score</th>
+                {mode === "review" && previousRoles.map((role) => <th key={role} style={{ ...thStyle, width: section.key === "feedback" ? "10%" : booksColumnWidthFor("reviewScore") }}>{roleLabel(role)} Score</th>)}
+                {mode === "review" && <th style={{ ...thStyle, width: section.key === "feedback" ? "10%" : booksColumnWidthFor("reviewScore") }}>{roleLabel(currentRole)} Score</th>}
               </tr>
             </thead>
             <tbody>
@@ -946,7 +992,7 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
                 const currentRowMax = reviewRowMaxForSection(section.key, row, section.max);
                 const displayScore = (value) => String(value ?? "").trim() ? clampScore(value, currentRowMax) : "";
                 return (
-                  <tr key={row._id ?? `${section.key}-${index}`} style={socRowLocked ? { background: "#f1f5f9", opacity: 0.65 } : {}}>
+                  <tr key={row._id ?? `${section.key}-${index}`} style={socRowLocked ? { background: "#f1f5f9", opacity: 0.65, height: "auto" } : { height: "auto" }}>
                     <td style={tdCenter}>{index + 1}</td>
                     {section.fields.map(([key, , readOnlyField]) => (
                       <td key={key} style={tdStyle}>
@@ -1048,7 +1094,7 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
                 );
               })}
               {!hideIndividualB8Summary && (
-                <tr className="appraisal-total-row" style={{ background: "#f0f3ff", borderTop: "1px solid #c7d2fe" }}>
+                <tr className="appraisal-total-row" style={{ background: "#f0f3ff", borderTop: "1px solid #c7d2fe", height: "auto" }}>
                   <td style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center", background: "#f0f3ff" }} colSpan={totalLabelColSpan}>{totalLabel}</td>
                   <td style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center", background: "#f0f3ff" }}>{earned.toFixed(1)}</td>
                   {mode === "review" && previousRoles.map((role) => (
@@ -1173,7 +1219,7 @@ function InnovativeSection({ form, setForm, docs, setDocs, mode, locked, reviewe
           {visibleInnovRows.map((row, index) => {
             const rowReviewable = rowHasReviewableData("innovRows", row);
             return (
-              <tr key={index}>
+                  <tr key={index} style={{ height: "auto" }}>
                 <td style={tdCenter}>{index + 1}</td>
                 <td style={tdStyle}>
                   {mode === "self" ? (
@@ -1363,7 +1409,7 @@ function ObeSection({ form, setForm, docs, setDocs, mode, locked, reviewerRole, 
                 </tr>
               );
             })}
-            <tr className="appraisal-total-row" style={{ background: "#f0f3ff", borderTop: "1px solid #c7d2fe" }}>
+                <tr className="appraisal-total-row" style={{ background: "#f0f3ff", borderTop: "1px solid #c7d2fe", height: "auto" }}>
               <td style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center", background: "#f0f3ff" }} colSpan={5}>Total (Max: 20)</td>
               <td style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center", background: "#f0f3ff" }}>{facultyScore.toFixed(1)}</td>
               {mode === "review" && previousRoles.map((role) => <td key={role} style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center", background: "#f0f3ff" }}><RO value={roleObeTotal(role)} center /></td>)}
@@ -2049,10 +2095,14 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
   const [confirmed, setConfirmed] = useState(false);
   const [draftStatus, setDraftStatus] = useState("");
   const [savingDraft, setSavingDraft] = useState(false);
-  const form = mergeForm(emptyCreativeSchoolForm(), person || {});
+  const form = useMemo(() => mergeForm(emptyCreativeSchoolForm(), person || {}), [person]);
   const [docs, setDocs] = useState(form.docs || {});
-  const subjectProfile = { school: person?.school || form.info?.school, department: person?.department, appraisal_role: person?.appraisalRole };
+  const subjectProfile = { school: person?.school || form.info?.school, department: person?.department, appraisal_role: person?.appraisalRole || person?.appraisal_role || person?.role };
   const visiblePreviousRoles = visiblePreviousReviewRoles(reviewerRole, subjectProfile);
+  const workflowChain = getReviewChain(subjectProfile);
+  const workflowPreviousRoles = workflowChain.includes(reviewerRole)
+    ? workflowChain.slice(0, workflowChain.indexOf(reviewerRole))
+    : [];
   const schoolDisplayName = creativeSchoolName(person, form);
   const finalisedByVc = isAppraisalFinalisedByVc(person);
   const [editingFinalised, setEditingFinalised] = useState(false);
@@ -2139,9 +2189,9 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
     if (normalizedSubjectRole !== "faculty") return [];
     if (reviewerRole === "dean") {
       const roles = [];
-      if (visiblePreviousRoles.includes("center_head")) roles.push("center_head");
-      else if (isSoemrFacultyReview && visiblePreviousRoles.includes("hod")) roles.push("hod");
-      if (visiblePreviousRoles.includes("director")) roles.push("director");
+      if (workflowPreviousRoles.includes("center_head")) roles.push("center_head");
+      else if (isSoemrFacultyReview && workflowPreviousRoles.includes("hod")) roles.push("hod");
+      if (workflowPreviousRoles.includes("director")) roles.push("director");
       return roles;
     }
     if (reviewerRole === "director") {
@@ -2255,6 +2305,20 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
     ? vcSummaryCards.filter((card) => !["self", "vc"].includes(card.key))
     : vcSummaryCards;
   const reviewerAccent = reviewerRole === "dean" ? "#7c3aed" : reviewerRole === "director" ? "#2563eb" : "#0f766e";
+  const deanRemarksSideContent = (
+    <div style={{ background: "#eff6ff", border: "2px solid #93c5fd", borderRadius: 10, padding: "14px 15px", display: "flex", flexDirection: "column", minWidth: 0, boxShadow: "0 0 0 4px rgba(147,197,253,0.16), 0 14px 28px rgba(37,99,235,0.08)" }}>
+      <div style={{ fontSize: 11, fontWeight: 900, color: "#1d4ed8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 5 }}>Dean Remarks Required</div>
+      <div style={{ color: "#1e40af", fontSize: 11, fontWeight: 700, marginBottom: 10 }}>Please enter remarks before submitting the review.</div>
+      <textarea value={remarks} readOnly={panelReadOnly} onChange={(event) => setRemarks(event.target.value)} rows={7} placeholder="Enter dean remarks, observations, and recommendations..." style={{ width: "100%", height: 235, minHeight: 235, boxSizing: "border-box", border: "1px solid #bfdbfe", borderRadius: 8, padding: "10px 11px", fontFamily: "inherit", fontSize: 12, color: "#334155", resize: "none", background: "#fff", outline: "none", lineHeight: 1.5 }} />
+    </div>
+  );
+  const directorRemarksSideContent = (
+    <div style={{ background: "#eff6ff", border: "2px solid #93c5fd", borderRadius: 10, padding: "14px 15px", display: "flex", flexDirection: "column", minWidth: 0, boxShadow: "0 0 0 4px rgba(147,197,253,0.16), 0 14px 28px rgba(37,99,235,0.08)" }}>
+      <div style={{ fontSize: 11, fontWeight: 900, color: "#1d4ed8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 5 }}>Director Remarks Required</div>
+      <div style={{ color: "#1e40af", fontSize: 11, fontWeight: 700, marginBottom: 10 }}>Please enter remarks before submitting the review.</div>
+      <textarea value={remarks} readOnly={panelReadOnly} onChange={(event) => setRemarks(event.target.value)} rows={7} placeholder="Enter director remarks, observations, and recommendations..." style={{ width: "100%", height: 235, minHeight: 235, boxSizing: "border-box", border: "1px solid #bfdbfe", borderRadius: 8, padding: "10px 11px", fontFamily: "inherit", fontSize: 12, color: "#334155", resize: "none", background: "#fff", outline: "none", lineHeight: 1.5 }} />
+    </div>
+  );
   const authoritySummaryCards = [
     ...(["faculty", "hod", "director", "dean", "center_head"].includes(normalizedSubjectRole) ? [{
       key: "self",
@@ -2284,15 +2348,33 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
       maxScores: totals.maxScores,
       accent: reviewerAccent,
       isFinal: true,
-      remarksTitle: `${roleLabel(reviewerRole)} Remarks`,
-      remarksContent: <textarea value={remarks} readOnly={panelReadOnly} onChange={(event) => setRemarks(event.target.value)} rows={7} style={{ width: "100%", height: 235, minHeight: 235, border: "none", padding: 0, fontFamily: "inherit", fontSize: 12, color: "#334155", resize: "none", background: "transparent", outline: "none", lineHeight: 1.5 }} />,
+      ...(["dean", "director"].includes(reviewerRole)
+        ? { sideContent: reviewerRole === "director" ? directorRemarksSideContent : deanRemarksSideContent }
+        : {
+            remarksTitle: `${roleLabel(reviewerRole)} Remarks`,
+            remarksContent: <textarea value={remarks} readOnly={panelReadOnly} onChange={(event) => setRemarks(event.target.value)} rows={7} style={{ width: "100%", height: 235, minHeight: 235, border: "none", padding: 0, fontFamily: "inherit", fontSize: 12, color: "#334155", resize: "none", background: "transparent", outline: "none", lineHeight: 1.5 }} />,
+          }),
     },
   ];
+  const splitAuthorityDirectorFacultyRows = reviewerRole === "director" && normalizedSubjectRole === "faculty" && !isSoemrFacultyReview;
   const splitAuthorityDeanFacultyRows = reviewerRole === "dean" && normalizedSubjectRole === "faculty" && !isSoemrFacultyReview;
-  const authorityReferenceCards = splitAuthorityDeanFacultyRows
+  const splitAuthorityDeanDirectorRows = reviewerRole === "dean" && normalizedSubjectRole === "director";
+  const authorityDirectorFacultySelfCards = splitAuthorityDirectorFacultyRows
+    ? authoritySummaryCards.filter((card) => card.key === "self")
+    : [];
+  const authorityDirectorFacultyReviewCards = splitAuthorityDirectorFacultyRows
+    ? authoritySummaryCards.filter((card) => card.key === reviewerRole)
+    : [];
+  const authorityFacultyReferenceCards = splitAuthorityDeanFacultyRows
     ? authoritySummaryCards.filter((card) => card.key !== reviewerRole)
-    : authoritySummaryCards;
-  const authorityReviewCards = splitAuthorityDeanFacultyRows
+    : [];
+  const authorityFacultyReviewCards = splitAuthorityDeanFacultyRows
+    ? authoritySummaryCards.filter((card) => card.key === reviewerRole)
+    : [];
+  const authorityDirectorSelfCards = splitAuthorityDeanDirectorRows
+    ? authoritySummaryCards.filter((card) => card.key === "self")
+    : [];
+  const authorityDirectorReviewCards = splitAuthorityDeanDirectorRows
     ? authoritySummaryCards.filter((card) => card.key === reviewerRole)
     : [];
   useEffect(() => {
@@ -2576,19 +2658,37 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
                 </div>
               )}
             </>
+          ) : splitAuthorityDirectorFacultyRows ? (
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(280px, 0.72fr) minmax(640px, 1.28fr)", gap: 16, width: "100%", alignItems: "stretch" }}>
+              {authorityDirectorFacultySelfCards.map((card) => (
+                <ScoreCard key={card.key} {...card} cardStyle={{ ...(card.cardStyle || {}), width: "100%", minWidth: 0 }} />
+              ))}
+              {authorityDirectorFacultyReviewCards.map((card) => (
+                <ScoreCard key={card.key} {...card} cardStyle={{ ...(card.cardStyle || {}), width: "100%", minWidth: 0 }} />
+              ))}
+            </div>
           ) : splitAuthorityDeanFacultyRows ? (
             <>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 16, width: "100%" }}>
-                {authorityReferenceCards.map((card) => (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 16, width: "100%", alignItems: "stretch" }}>
+                {authorityFacultyReferenceCards.map((card) => (
                   <ScoreCard key={card.key} {...card} cardStyle={{ ...(card.cardStyle || {}), width: "100%", minWidth: 0 }} />
                 ))}
               </div>
               <div style={{ display: "grid", gap: 16, width: "100%" }}>
-                {authorityReviewCards.map((card) => (
+                {authorityFacultyReviewCards.map((card) => (
                   <ScoreCard key={card.key} {...card} />
                 ))}
               </div>
             </>
+          ) : splitAuthorityDeanDirectorRows ? (
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(280px, 0.72fr) minmax(640px, 1.28fr)", gap: 16, width: "100%", alignItems: "stretch" }}>
+              {authorityDirectorSelfCards.map((card) => (
+                <ScoreCard key={card.key} {...card} cardStyle={{ ...(card.cardStyle || {}), width: "100%", minWidth: 0 }} />
+              ))}
+              {authorityDirectorReviewCards.map((card) => (
+                <ScoreCard key={card.key} {...card} cardStyle={{ ...(card.cardStyle || {}), width: "100%", minWidth: 0 }} />
+              ))}
+            </div>
           ) : (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(330px, 1fr))", gap: 16 }}>
               {authoritySummaryCards.map((card) => (

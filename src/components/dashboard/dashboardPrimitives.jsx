@@ -35,7 +35,7 @@ export const uploadedDocCount = (docs = {}, item = {}) => {
     "supporting_documents_count",
     "supportingDocumentsCount",
   ]);
-  const fileFieldKeys = [
+  const fileLocatorKeys = [
     "url",
     "file_url",
     "fileUrl",
@@ -47,6 +47,8 @@ export const uploadedDocCount = (docs = {}, item = {}) => {
     "storagePath",
     "public_id",
     "publicId",
+  ];
+  const fileNameKeys = [
     "file_name",
     "fileName",
     "filename",
@@ -55,23 +57,32 @@ export const uploadedDocCount = (docs = {}, item = {}) => {
     "name",
   ];
 
-  const hasFileIdentity = (src) =>
-    src && typeof src === "object" && fileFieldKeys.some((key) => String(src?.[key] ?? "").trim() !== "");
   const isFileReference = (src) => {
     const value = String(src ?? "").trim();
     return /^(https?:|blob:|data:)/i.test(value) || /[\\/]/.test(value) || /\.[a-z0-9]{2,8}($|[?#])/i.test(value);
   };
+  const hasFileMimeType = (src) =>
+    ["type", "file_type", "fileType", "mime_type", "mimeType"].some((key) =>
+      /^(image|application|text|video|audio)\//i.test(String(src?.[key] ?? "").trim())
+    );
+  const hasFileIdentity = (src) => {
+    if (!src || typeof src !== "object") return false;
+    const hasLocator = fileLocatorKeys.some((key) => String(src?.[key] ?? "").trim() !== "");
+    const hasFileName = fileNameKeys.some((key) => String(src?.[key] ?? "").trim() !== "");
+    return hasLocator || fileNameKeys.some((key) => isFileReference(src?.[key])) || (hasFileName && hasFileMimeType(src));
+  };
+  const ignoredFileMetaKeys = new Set([...fileLocatorKeys, ...fileNameKeys, "type", "file_type", "fileType", "mime_type", "mimeType", "size", "lastModified"]);
 
   const countFromSource = (src) => {
     if (typeof src === "number") return src;
     if (typeof src === "string") return isFileReference(src) ? 1 : 0;
     if (Array.isArray(src)) return src.reduce((total, entry) => total + countFromSource(entry), 0);
     if (!src || typeof src !== "object") return 0;
-    if (hasFileIdentity(src)) return 1;
-    return Object.entries(src).reduce((total, [key, value]) => {
-      if (countKeys.has(key)) return total;
+    const nestedCount = Object.entries(src).reduce((total, [key, value]) => {
+      if (countKeys.has(key) || ignoredFileMetaKeys.has(key)) return total;
       return total + countFromSource(value);
     }, 0);
+    return Math.max(hasFileIdentity(src) ? 1 : 0, nestedCount);
   };
 
   const parseNum = (v) => {

@@ -919,6 +919,17 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
  directorApprovals: "Director's Appraisal Review",
  facultyApprovals: "Faculty's Appraisal Review",
  };
+ const deanRemarksSideContent = (
+<div style={{ background: "#eff6ff", border: "2px solid #93c5fd", borderRadius: 10, padding: "14px 15px", display: "flex", flexDirection: "column", minWidth: 0, boxShadow: "0 0 0 4px rgba(147,197,253,0.16), 0 14px 28px rgba(37,99,235,0.08)" }}>
+<div style={{ fontSize: 11, fontWeight: 900, color: "#1d4ed8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 5 }}>Dean Remarks</div>
+<div style={{ color: "#1e40af", fontSize: 11, fontWeight: 700, marginBottom: 10 }}>Please enter remarks before submitting the review.</div>
+<textarea value={remarks} onChange={(e) =>setRemarks(e.target.value)} rows={7} readOnly={reviewLocked}
+ placeholder="Enter dean remarks, observations, and recommendations..."
+ style={{ width: "100%", height: 235, minHeight: 235, border: "1px solid #bfdbfe", borderRadius: 8, padding: "10px 11px", fontFamily: "inherit", fontSize: 12, lineHeight: 1.5, color: "#334155", resize: "none", background: "#fff", outline: "none", boxSizing: "border-box" }}
+/>
+</div>
+ );
+ const useFacultyDeanSummaryRows = subjectRole === "faculty" && !isSoemrFaculty;
  useEffect(() =>{
  let active = true;
  if (reviewLocked || !subjectEmail) return undefined;
@@ -984,23 +995,6 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
 </div>
 </div>
 
-<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginBottom: 20 }}>
- {[
- { label: "Employee ID", value: approval.employeeId },
- { label: "Submitted", value: approval.submittedOn },
- { label: "Self Part A", value: `${selfSummary.partA.toFixed(1)} / ${selfSummary.partAMax}` },
- { label: "Self Part B", value: `${selfSummary.partB.toFixed(1)} / ${selfSummary.partBMax}` },
- { label: "Self Part C", value: `${selfSummary.partC.toFixed(1)} / ${selfSummary.partCMax}` },
- { label: "Self Part D", value: `${selfSummary.partD.toFixed(1)} / ${selfSummary.partDMax}` },
- { label: "Self Total", value: `${selfSummary.total.toFixed(1)} / ${selfSummary.grandMax}` },
- { label: "Dean Total", value: displayedDeanScores.total.toFixed(1) },
- ].map((item) =>(
-<div key={item.label} style={{ background: "#f8fafc", borderRadius: 12, padding: "18px 16px" }}>
-<div style={{ fontSize: 10, color: "#64748b", fontWeight: 700, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.7 }}>{item.label}</div>
-<div style={{ fontSize: 16, fontWeight: 800, color: "#0f172a" }}>{item.value}</div>
-</div>
- ))}
-</div>
  {finalisedByVc && (
 <div style={{ background: "#ecfdf5", border: "1px solid #86efac", color: "#065f46", borderRadius: 8, padding: "10px 12px", fontSize: 12, fontWeight: 700, marginBottom: 14 }}>
  This appraisal has been finalised by the VC.
@@ -1050,7 +1044,42 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
 
  {sectionView === "summary" && (
 <>
-<div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 14, display: "grid", gridTemplateColumns: useDirectorDeanSummaryRow ? "minmax(280px, 0.72fr) minmax(640px, 1.28fr)" : "repeat(auto-fit, minmax(320px, 1fr))", gap: 14, boxShadow: "0 1px 6px rgba(0,0,0,.06)", marginBottom: 14 }}>
+<div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 14, display: "grid", gap: 14, boxShadow: "0 1px 6px rgba(0,0,0,.06)", marginBottom: 14 }}>
+{useFacultyDeanSummaryRows ? (
+<>
+<div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 14, width: "100%", alignItems: "stretch" }}>
+{deanSummaryCards.map((card) =>(
+<ScoreCard key={card.key} {...card} cardStyle={{ ...(card.cardStyle || {}), width: "100%", minWidth: 0 }} />
+))}
+</div>
+<ScoreCard
+ title="Dean Score"
+ subtitle="Dean score for the non-engineering appraisal form."
+ totals={displayedDeanScores}
+ maxScores={reviewerMaxScores}
+ isFinal
+ accent="#7c3aed"
+ sideContent={deanRemarksSideContent}
+/>
+</>
+) : useDirectorDeanSummaryRow ? (
+<div style={{ display: "grid", gridTemplateColumns: "minmax(280px, 0.72fr) minmax(640px, 1.28fr)", gap: 14, width: "100%", alignItems: "stretch" }}>
+{deanSummaryCards.map((card) =>(
+<ScoreCard key={card.key} {...card} cardStyle={{ ...(card.cardStyle || {}), width: "100%", minWidth: 0 }} />
+))}
+<ScoreCard
+ title="Dean Score"
+ subtitle="Dean score for the non-engineering appraisal form."
+ totals={displayedDeanScores}
+ maxScores={reviewerMaxScores}
+ isFinal
+ accent="#7c3aed"
+ sideContent={deanRemarksSideContent}
+ cardStyle={{ width: "100%", minWidth: 0 }}
+/>
+</div>
+) : (
+<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 14, width: "100%" }}>
 {deanSummaryCards.map((card) =>(
 <ScoreCard key={card.key} {...card} />
 ))}
@@ -1059,15 +1088,12 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
  subtitle="Dean score for the non-engineering appraisal form."
  totals={displayedDeanScores}
  maxScores={reviewerMaxScores}
- remarksTitle="Dean Remarks"
  isFinal
  accent="#7c3aed"
- remarksContent={(
-<textarea value={remarks} onChange={(e) =>setRemarks(e.target.value)} rows={7} readOnly={reviewLocked}
- style={{ width: "100%", height: 235, minHeight: 235, border: "none", padding: 0, fontFamily: "inherit", fontSize: 12, color: "#334155", resize: "none", background: "transparent", outline: "none", lineHeight: 1.5 }}
- />
- )}
+ sideContent={deanRemarksSideContent}
 />
+</div>
+)}
 </div>
 </>
  )}

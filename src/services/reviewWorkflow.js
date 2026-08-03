@@ -44,7 +44,7 @@ const docCountFromValue = (value, item = {}) => {
     "supporting_documents_count",
     "supportingDocumentsCount",
   ]);
-  const fileFieldKeys = [
+  const fileLocatorKeys = [
     "url",
     "file_url",
     "fileUrl",
@@ -56,6 +56,8 @@ const docCountFromValue = (value, item = {}) => {
     "storagePath",
     "public_id",
     "publicId",
+  ];
+  const fileNameKeys = [
     "file_name",
     "fileName",
     "filename",
@@ -63,12 +65,21 @@ const docCountFromValue = (value, item = {}) => {
     "originalName",
     "name",
   ];
-  const hasFileIdentity = (src) =>
-    src && typeof src === "object" && fileFieldKeys.some((key) => clean(src?.[key]) !== "");
   const isFileReference = (src) => {
     const fileRef = clean(src);
     return /^(https?:|blob:|data:)/i.test(fileRef) || /[\\/]/.test(fileRef) || /\.[a-z0-9]{2,8}($|[?#])/i.test(fileRef);
   };
+  const hasFileMimeType = (src) =>
+    ["type", "file_type", "fileType", "mime_type", "mimeType"].some((key) =>
+      /^(image|application|text|video|audio)\//i.test(clean(src?.[key]))
+    );
+  const hasFileIdentity = (src) => {
+    if (!src || typeof src !== "object") return false;
+    const hasLocator = fileLocatorKeys.some((key) => clean(src?.[key]) !== "");
+    const hasFileName = fileNameKeys.some((key) => clean(src?.[key]) !== "");
+    return hasLocator || fileNameKeys.some((key) => isFileReference(src?.[key])) || (hasFileName && hasFileMimeType(src));
+  };
+  const ignoredFileMetaKeys = new Set([...fileLocatorKeys, ...fileNameKeys, "type", "file_type", "fileType", "mime_type", "mimeType", "size", "lastModified"]);
 
   const parseNum = (v) => {
     if (v === undefined || v === null || v === "") return 0;
@@ -101,18 +112,16 @@ const docCountFromValue = (value, item = {}) => {
     return Math.max(value.reduce((total, entry) => total + docCountFromValue(entry), 0), explicit);
   }
   if (!value || typeof value !== "object") return explicit;
-  if (hasFileIdentity(value)) return Math.max(1, explicit);
 
   const mapCount = Object.entries(value).reduce((total, [key, entry]) => {
-    if (countKeys.has(key)) return total;
+    if (countKeys.has(key) || ignoredFileMetaKeys.has(key)) return total;
     return total + docCountFromValue(entry);
   }, 0);
 
-  return Math.max(mapCount, explicit);
+  return Math.max(hasFileIdentity(value) ? 1 : 0, mapCount, explicit);
 };
 
-const docsForQueueCard = (item = {}) => {
-  const docSources = [
+const documentSourcesFromItem = (item = {}) => [
     item.docs,
     item.payload?.docs,
     item.payload?.form?.docs,
@@ -123,11 +132,26 @@ const docsForQueueCard = (item = {}) => {
     item.payload?.documents,
     item.payload?.appraisal_documents,
     item.payload?.appraisalDocuments,
+    item.payload?.form?.documents,
+    item.payload?.form?.appraisal_documents,
+    item.payload?.form?.appraisalDocuments,
+    item.form?.documents,
+    item.form?.appraisal_documents,
+    item.form?.appraisalDocuments,
+    item.data?.docs,
+    item.data?.documents,
+    item.data?.appraisal_documents,
+    item.data?.appraisalDocuments,
+    item.data?.payload?.docs,
+    item.data?.payload?.documents,
+    item.data?.payload?.appraisal_documents,
+    item.data?.payload?.appraisalDocuments,
   ];
 
-  const validSources = docSources
-    .filter((source) => docCountFromValue(source, item) > 0)
-    .sort((a, b) => docCountFromValue(b, item) - docCountFromValue(a, item));
+const docsForQueueCard = (item = {}) => {
+  const validSources = documentSourcesFromItem(item)
+    .filter((source) => docCountFromValue(source) > 0)
+    .sort((a, b) => docCountFromValue(b) - docCountFromValue(a));
 
   if (validSources.length > 0) {
     return validSources[0];
@@ -170,6 +194,20 @@ const enrichQueueItemDocs = async (item = {}) => {
     const currentCount = docCountFromValue(item.docs, item);
     if (fetchedCount > currentCount) {
       return { ...item, docs: rows, docCount: fetchedCount };
+    }
+  } catch {
+    // Fall through to the submitted-form endpoint below.
+  }
+
+  try {
+    const submitted = await api.get(`/dashboard/faculty/${encodeURIComponent(item.email)}`, {
+      params: { academic_year: item.academicYear },
+    });
+    const bestSubmittedDocs = docsForQueueCard(submitted);
+    const submittedCount = docCountFromValue(bestSubmittedDocs, submitted);
+    const currentCount = docCountFromValue(item.docs, item);
+    if (submittedCount > currentCount) {
+      return { ...item, docs: bestSubmittedDocs, docCount: submittedCount };
     }
     return item;
   } catch {
