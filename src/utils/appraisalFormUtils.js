@@ -377,8 +377,10 @@ export const rowHasReviewableData = (sectionKey, row = {}, docs = null, docKey =
     const keysToCheck = Array.isArray(docKey) ? docKey : [docKey];
     const hasDoc = keysToCheck.some((k) => {
       if (!k) return false;
-      const file = docs[k];
-      return Boolean(file && (typeof file === "string" ? file.trim() : file.name || file.url || file.path));
+      const files = Array.isArray(docs[k]) ? docs[k] : docs[k] ? [docs[k]] : [];
+      return files.some((file) =>
+        Boolean(file && (typeof file === "string" ? file.trim() : file.name || file.url || file.path))
+      );
     });
     if (hasDoc) return true;
   }

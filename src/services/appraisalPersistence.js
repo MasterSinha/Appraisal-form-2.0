@@ -95,16 +95,77 @@ const normalizeDocFile = (file) =>{
  };
 };
 
+const DOC_PREFIX_ALIASES = {
+ lec: ["lec", "lectures", "lecture", "teaching_process", "teachingProcess"],
+ courseFile: ["courseFile", "course_file", "courseFiles", "course_files", "cf"],
+ innov: ["innov", "innovRows", "innovativeTeachingRows", "innovative_teaching_rows", "innovativeTeaching"],
+ obe: ["obe", "obeRows", "obe_rows", "learning_outcomes", "learningOutcomes"],
+ mentor: ["mentor", "mentoringRows", "mentoring_rows", "student_mentoring", "studentMentoring"],
+ proj: ["proj", "projects", "projects_guided", "projectsGuided"],
+ qual: ["qual", "quals", "qualification", "qualifications", "qualification_enhancement", "qualificationEnhancement"],
+ fb: ["fb", "feedback", "student_feedback", "studentFeedback"],
+ uni: ["uni", "uniActs", "university_activities", "universityActivities", "uni_acts"],
+ dept: ["dept", "deptActs", "department_activities", "departmentActivities", "departmental_activities", "departmentalActivities", "dept_acts"],
+ event: ["event", "eventRows", "event_rows", "events", "event_organisation", "eventOrganisation"],
+ soc: ["soc", "society", "social_contributions", "socialContributions", "contribution_to_society", "contributionToSociety"],
+ ind: ["ind", "industry", "industry_connect", "industryConnect"],
+ alumni: ["alumni", "alumniRows", "alumni_rows", "alumni_engagement", "alumniEngagement"],
+ placement: ["placement", "placementRows", "placement_rows", "placements", "student_placements", "studentPlacements"],
+ jour: ["jour", "journal", "journals", "journal_publication", "journalPublication", "journal_publications", "journalPublications", "research_papers", "researchPapers"],
+ book: ["book", "books", "book_publications", "bookPublications", "book_chapters", "bookChapters", "books_book_chapters", "booksBookChapters"],
+ ict: ["ict", "ict_pedagogy", "ictPedagogy", "e_content", "eContent", "ict_e_content", "ictEContent"],
+ res: ["res", "research", "research_guidance", "researchGuidance"],
+ project2: ["project2", "projects2", "internalProjects", "internal_projects", "research_projects", "researchProjects", "consultancy_internal_projects", "consultancyInternalProjects"],
+ externalProject: ["externalProject", "externalProjects", "external_projects", "external_research_projects", "externalResearchProjects", "external_projects_consultancy", "externalProjectsConsultancy", "extproj"],
+ pat: ["pat", "patents", "patent_records", "patentRecords"],
+ awd: ["awd", "awards", "research_awards", "researchAwards"],
+ conf: ["conf", "confs", "conferences", "invited_lectures", "invitedLectures"],
+ prop: ["prop", "proposals", "research_proposals", "researchProposals", "submitted_research_proposals", "submittedResearchProposals"],
+ prod: ["prod", "products", "products_developed", "productsDeveloped", "innovation", "startupRows", "startups"],
+ fdp: ["fdp", "fdps", "fdp_workshops", "fdpWorkshops", "self_development", "selfDevelopment"],
+ train: ["train", "training", "industrial_training", "industrialTraining"],
+ exhibition: ["exhibition", "exhibitions"],
+};
+
+const DOC_PREFIX_LOOKUP = Object.fromEntries(
+ Object.entries(DOC_PREFIX_ALIASES).flatMap(([canonical, aliases]) =>
+ aliases.map((alias) =>[String(alias).toLowerCase(), canonical])
+ )
+);
+
+const splitDocKey = (docKey) =>{
+ const cleanKey = String(docKey ?? "").trim();
+ if (!cleanKey) return null;
+ const match = cleanKey.match(/^(.+?)-?(\d+)$/);
+ if (!match) return { prefix: cleanKey, index: null };
+ return { prefix: match[1], index: match[2] };
+};
+
+const docKeyAliasesFor = (docKey) =>{
+ const parts = splitDocKey(docKey);
+ if (!parts) return [];
+ const canonical = DOC_PREFIX_LOOKUP[String(parts.prefix).toLowerCase()] || parts.prefix;
+ const prefixes = new Set([canonical, parts.prefix, ...(DOC_PREFIX_ALIASES[canonical] || [])]);
+ const aliases = new Set();
+ prefixes.forEach((prefix) =>{
+ if (!prefix) return;
+ aliases.add(parts.index == null ? prefix : `${prefix}-${parts.index}`);
+ if (parts.index != null) aliases.add(`${prefix}${parts.index}`);
+ });
+ return [...aliases];
+};
+
 const normalizeDocsMap = (docs = {}) =>{
  if (!docs || typeof docs !== "object" || Array.isArray(docs)) return {};
- return Object.fromEntries(
- Object.entries(docs || {})
- .map(([key, files]) =>[
- key,
- filesForDocValue(files).map(normalizeDocFile).filter(Boolean),
- ])
- .filter(([, files]) =>files.length >0),
- );
+ const normalized = {};
+ Object.entries(docs || {}).forEach(([key, files]) =>{
+ const normalizedFiles = filesForDocValue(files).map(normalizeDocFile).filter(Boolean);
+ if (!normalizedFiles.length) return;
+ docKeyAliasesFor(key).forEach((alias) =>{
+ normalized[alias] = [...(normalized[alias] || []), ...normalizedFiles];
+ });
+ });
+ return normalized;
 };
 
 const normalizeDocFilterValue = (value) =>String(value ?? "").trim().toLowerCase();
@@ -131,8 +192,10 @@ const docsRowsToMap = (rows = [], scope = {}) =>{
  const key = row.doc_key || row.docKey || row.document_key || row.documentKey || (section ? `${section}-${Math.max((Number(rowNo) || 1) - 1, 0)}` : "");
  const file = normalizeDocFile(row);
  if (!key || !file) return;
- if (!groupedDocs[key]) groupedDocs[key] = [];
- groupedDocs[key].push(file);
+ docKeyAliasesFor(key).forEach((alias) =>{
+ if (!groupedDocs[alias]) groupedDocs[alias] = [];
+ groupedDocs[alias].push(file);
+ });
  });
  return groupedDocs;
 };
@@ -1684,6 +1747,7 @@ export const submitAppraisal = async ({
  form: mapFormForSubmit(form),
  totals: normalizeTotalsForSubmit(totals),
  docs: normalizeDocsMap(docs),
+ documents: docsToRows(docs, facultyEmail, academicYear),
  submitter_profile: submitterProfile || activeProfile,
  };
 

@@ -33,7 +33,7 @@ export default function DirectorExternalProjects({ ctx }) {
 <table style={T}>
 <thead><tr>
 <th style={TH}>SN</th><th style={TH}>Title</th><th style={TH}>Agency</th>
-<th style={TH}>Sanction Date</th><th style={TH}>Amount</th><th style={TH}>Role</th><th style={TH}>Status</th>
+<th style={TH}>Sanction Date</th><th style={TH}>Amount</th><th style={TH}>Role</th><th style={TH}>Status</th><th style={TH}>View Docs</th>
 <th style={TH}>Faculty Score</th><th style={TH_DIR}>Director Score</th>
 </tr></thead>
 <tbody>
@@ -46,8 +46,9 @@ export default function DirectorExternalProjects({ ctx }) {
 <td style={TDC}><RO val={r.amount} center /></td>
 <td style={TD}><RO val={r.role} /></td>
 <td style={TD}><RO val={r.status} /></td>
+<td style={TDV}><ViewDocsCell docKey={[`externalProject-${i}`, `extproj-${i}`]} docs={docs} /></td>
 <td style={TDS}><RO val={r.score} center /></td>
-<td style={TDS_DIR}><DirInput val={getDir("externalProjects", i, "dir")} max={30} disabled={!rowHasReviewableData("externalProjects", r, docs, `extproj-${i}`)} onChange={v =>setDir("externalProjects", i, "dir", v)} /></td>
+<td style={TDS_DIR}><DirInput val={getDir("externalProjects", i, "dir")} max={30} disabled={!rowHasReviewableData("externalProjects", r, docs, [`externalProject-${i}`, `extproj-${i}`])} onChange={v =>setDir("externalProjects", i, "dir", v)} /></td>
 </tr>
  ))}
 </tbody>
