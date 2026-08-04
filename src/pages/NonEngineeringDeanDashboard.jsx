@@ -1511,7 +1511,7 @@ export default function NonEngineeringDeanDashboard() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 14 }}>
               {filtered.map((faculty) => {
                 const facultySummary = standardSubmittedScoreSummary(faculty);
-                const facultyAcademicYear = faculty.academic_year || faculty.academicYear || sessionStorage.getItem("academicYear") || APP_INFO.DEFAULT_AY;
+                const facultyAcademicYear = faculty.academic_year || faculty.academicYear || selectedAcademicYear || APP_INFO.DEFAULT_AY;
                 const facultyMetrics = legacyDashboardMetrics({
                   academicYear: facultyAcademicYear,
                   partA: facultySummary.partA,
