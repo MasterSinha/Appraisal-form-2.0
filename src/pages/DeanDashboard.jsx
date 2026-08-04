@@ -241,7 +241,7 @@ function ReviewPanel({ faculty, onBack, onSubmit }) {
 }
 
 const DEAN_REVIEW_PART_A_KEYS = ["lectures", "courseFile", "obeRows", "projects", "mentoringRows", "quals", "feedback"];
-const DEAN_REVIEW_PART_B_KEYS = ["journals", "books", "patents", "projects2", "externalProjects", "research", "proposals", "confs", "fdps", "training", "awards", "products", "ict"];
+const DEAN_REVIEW_PART_B_KEYS = ["journals", "books", "patents", "projects2", "research", "proposals", "confs", "fdps", "awards", "products", "ict"];
 const DEAN_REVIEW_PART_C_KEYS = ["uniActs", "deptActs", "eventRows", "society", "industry", "alumniRows", "placementRows"];
 const DEAN_REVIEW_PART_D_KEYS = ["acr"];
 const DEAN_REVIEW_ARRAY_KEYS = [...DEAN_REVIEW_PART_A_KEYS, ...DEAN_REVIEW_PART_B_KEYS, ...DEAN_REVIEW_PART_C_KEYS, ...DEAN_REVIEW_PART_D_KEYS];
@@ -277,8 +277,8 @@ const preserveSavedReviewScores = (form = {}, source = {}) =>{
  }
  return merged;
 };
-const DEAN_SECTION_MAX = { lectures: 40, courseFile: 20, obeRows: 20, projects: 20, mentoringRows: 10, quals: 10, feedback: 10, uniActs: 50, deptActs: 30, eventRows: 20, society: 20, industry: 8, alumniRows: 10, placementRows: 20, acr: 50, journals: 100, books: 30, ict: 20, research: 20, projects2: 40, externalProjects: SCORE_LIMITS.researchExternalProjects, patents: 40, awards: 20, confs: 20, proposals: 20, products: 20, fdps: 20, training: 20 };
-const DEAN_ROW_MAX = { courseFile: () =>SCORE_LIMITS.courseFileRow, obeRows: (row) =>row.max || 20, projects: projectGuidanceRowMax, projects2: (row) =>row.max || 40, externalProjects: (row) =>row.max || SCORE_LIMITS.researchExternalProjects, mentoringRows: (row) =>row.max || 10, quals: () =>SCORE_LIMITS.qualificationRow, feedback: () =>10, society: () =>SCORE_LIMITS.societyRow, acr: () =>SCORE_LIMITS.acrRow, research: researchGuidanceRowMax, fdps: () =>SCORE_LIMITS.fdpRow, training: () =>SCORE_LIMITS.fdpRow };
+const DEAN_SECTION_MAX = { lectures: 40, courseFile: 20, obeRows: 20, projects: 20, mentoringRows: 10, quals: 10, feedback: 10, uniActs: 50, deptActs: 30, eventRows: 20, society: 20, industry: 8, alumniRows: 10, placementRows: 20, acr: 50, journals: 100, books: 30, ict: 20, research: 20, projects2: 40, patents: 40, awards: 20, confs: 20, proposals: 20, products: 20, fdps: 20 };
+const DEAN_ROW_MAX = { courseFile: () =>SCORE_LIMITS.courseFileRow, obeRows: (row) =>row.max || 20, projects: projectGuidanceRowMax, projects2: (row) =>row.max || 40, mentoringRows: (row) =>row.max || 10, quals: () =>SCORE_LIMITS.qualificationRow, feedback: () =>10, society: () =>SCORE_LIMITS.societyRow, acr: () =>SCORE_LIMITS.acrRow, research: researchGuidanceRowMax, fdps: () =>SCORE_LIMITS.fdpRow };
 
 const deanScorePayload = (approval, deanData) =>{
  const payload = {};
@@ -332,8 +332,8 @@ reviewerMaxScores.grand = reviewerMaxScores.partA + reviewerMaxScores.partB + re
  ? reviewSectionScore("innovRows", payload.innovRows, 10, "dean")
  : clampScore(payload.innovativeTeaching?.dean, 10);
  const partA = clampScore(sumDeanRows(payload, DEAN_REVIEW_PART_A_KEYS) + innovativeScore, reviewerMaxScores.partA);
- const b8 = clampScore(sumDeanRows(payload, ["fdps"]) + sumDeanRows(payload, ["training"]), 20);
- const partBWithoutB8 = sumDeanRows(payload, DEAN_REVIEW_PART_B_KEYS.filter(k =>k !== "fdps" && k !== "training"));
+ const b8 = sumDeanRows(payload, ["fdps"]);
+ const partBWithoutB8 = sumDeanRows(payload, DEAN_REVIEW_PART_B_KEYS.filter(k =>k !== "fdps"));
  const cappedPartB = clampScore(partBWithoutB8 + b8, reviewerMaxScores.partB);
  const partC = clampScore(sumDeanRows(payload, DEAN_REVIEW_PART_C_KEYS), reviewerMaxScores.partC);
  const partD = clampScore(sumDeanRows(payload, DEAN_REVIEW_PART_D_KEYS), reviewerMaxScores.partD);
