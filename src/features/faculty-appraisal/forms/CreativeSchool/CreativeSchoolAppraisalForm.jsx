@@ -58,6 +58,7 @@ import {
   RejectionNotice,
   DocCell,
   ViewCell,
+  ViewDocsCell,
   SectionSaveFooter,
   RowButtons as RowBtns,
   SectionCard as SC,
@@ -424,20 +425,26 @@ const firstPresent = (row, keys = []) => {
   return "";
 };
 
+const rowHasSubmittedValue = (row = {}) =>
+  Object.entries(row || {}).some(([key, value]) =>
+    !["_id", "id", "max", "sectionMax", "section_max"].includes(key) &&
+    String(value ?? "").trim() !== ""
+  );
+
 const sourceRowsForKey = (source = {}, key) => {
-  if (Array.isArray(source[key]) && source[key].length > 0) return source[key];
   const aliases = {
     events: ["eventRows"],
     alumni: ["alumniRows"],
     placements: ["placementRows"],
     popularWritings: ["popularWritingRows"],
-    externalProjects: ["fundedProjects"],
+    ipr: ["patents"],
+    externalProjects: ["fundedProjects", "projects2"],
     confs: ["conferenceRows"],
-    consultancy: ["consultancyRows", "creativeCommissions"],
+    consultancy: ["consultancyRows", "creativeCommissions", "proposals"],
     innovation: ["products", "startupRows", "innovationRows"],
   }[key] || [];
-  for (const alias of aliases) {
-    if (Array.isArray(source[alias]) && source[alias].length > 0) return source[alias];
+  for (const sourceKey of [key, ...aliases]) {
+    if (Array.isArray(source[sourceKey]) && source[sourceKey].some(rowHasSubmittedValue)) return source[sourceKey];
   }
   return [];
 };
@@ -446,6 +453,17 @@ const withFallbackValue = (next, source, target, aliases) => {
   if (String(next[target] ?? "").trim() !== "") return next;
   const value = firstPresent(source, aliases);
   return String(value ?? "").trim() !== "" ? { ...next, [target]: value } : next;
+};
+
+const DOC_KEY_ALIASES = {
+  courseFile: ["courseFile"],
+  events: ["event"],
+  alumni: ["alumni"],
+  placements: ["placement"],
+  ipr: ["pat"],
+  externalProjects: ["project2", "externalProject"],
+  consultancy: ["prop", "con"],
+  innovation: ["prod"],
 };
 
 const normalizeCreativeRow = (key, row = {}, index = 0) => {
@@ -478,6 +496,17 @@ const normalizeCreativeRow = (key, row = {}, index = 0) => {
   }
 
   const fieldAliases = {
+    journals: {
+      doi: ["doi", "issn", "eissn", "e_issn"],
+      impact: ["impact", "impactFactor", "impact_factor"],
+      coAuthors: ["coAuthors", "coauthors", "co_authors", "authorPosition", "author_position", "position"],
+      firstAuthor: ["firstAuthor", "first_author", "first", "authorPosition", "author_position", "position"],
+    },
+    books: {
+      publisher: ["publisher", "pub", "book", "isbn", "issn"],
+      coAuthors: ["coAuthors", "coauthors", "co_authors", "coauth"],
+      first: ["first", "firstAuthor", "first_author"],
+    },
     quals: {
       title: ["title", "label", "qualification", "qualificationTitle", "certification", "certificationTitle", "name"],
       body: ["body", "details", "awardingBody", "awarding_body", "agency", "institution", "institute", "university"],
@@ -502,6 +531,8 @@ const normalizeCreativeRow = (key, row = {}, index = 0) => {
     },
     externalProjects: {
       date: ["date", "sanctionDate", "sanction_date", "projectDate", "project_date"],
+      amount: ["amount", "grantAmount", "grant_amount", "sanctionedAmount", "sanctioned_amount"],
+      role: ["role", "position", "responsibility"],
       status: ["status", "projectStatus", "project_status"],
     },
     confs: {
@@ -514,6 +545,12 @@ const normalizeCreativeRow = (key, row = {}, index = 0) => {
       role: ["role", "responsibility"],
       date: ["date", "period"],
       level: ["level", "scope"],
+    },
+    uniActs: {
+      durationCat: ["durationCat", "duration_cat", "nature", "duration"],
+    },
+    deptActs: {
+      durationCat: ["durationCat", "duration_cat", "nature", "duration"],
     },
     alumni: {
       activity: ["activity", "event", "title", "type"],
@@ -530,6 +567,7 @@ const normalizeCreativeRow = (key, row = {}, index = 0) => {
       reach: ["reach", "quad", "quadrant", "views"],
     },
     innovation: {
+      title: ["title", "details", "name"],
       role: ["role", "details", "nature"],
       status: ["status", "impact", "usage", "used"],
     },
@@ -782,6 +820,10 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
   const selfLocked = mode === "self" && section.key === "acr";
   const earned = scoreSectionRows(section.key, rows, section.max);
   const docPrefix = section.doc || section.key;
+  const docKeysForRow = (index) => [
+    `${docPrefix}-${index}`,
+    ...(DOC_KEY_ALIASES[section.key] || []).map((prefix) => `${prefix}-${index}`),
+  ];
   const hideIndividualB8Summary = section.key === "fdps" || section.key === "training";
   const totalLabel = section.key === "feedback"
     ? `Faculty Score (Max ${section.max})`
@@ -987,7 +1029,8 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
             <tbody>
               {rows.map((row, index) => {
                 const socRowLocked = section.key === "society" && societyRowLocked(row);
-                const rowReviewable = rowHasReviewableData(section.key, row, docs, `${docPrefix}-${index}`);
+                const rowReviewable = rowHasReviewableData(section.key, row, docs, `${docPrefix}-${index}`) ||
+                  docKeysForRow(index).some((docKey) => rowHasReviewableData(section.key, row, docs, docKey));
                 const reviewerCanScoreRow = rowReviewable;
                 const currentRowMax = reviewRowMaxForSection(section.key, row, section.max);
                 const displayScore = (value) => String(value ?? "").trim() ? clampScore(value, currentRowMax) : "";
@@ -1076,7 +1119,7 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
                     ))}
                     {section.key === "feedback" && <td style={tdCenter}>{row.fb1 || row.fb2 ? feedbackAverage(row).toFixed(2) : ""}</td>}
                     <td style={tdStyle}><DocCell id={`${section.doc}-${index}`} docs={docs} setDocs={setDocs} readOnly={!editableSelf || selfLocked || socRowLocked} /></td>
-                    <td style={tdStyle}><ViewCell id={`${section.doc}-${index}`} docs={docs} /></td>
+                    <td style={tdStyle}><ViewDocsCell docKey={docKeysForRow(index)} docs={docs} emptyText="" compact /></td>
                     <td style={tdCenter}>
                       {mode === "self"
                         ? section.autoScore
