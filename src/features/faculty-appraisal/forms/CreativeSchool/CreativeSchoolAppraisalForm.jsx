@@ -1,5 +1,5 @@
 /* @refresh skip */
-/* eslint-disable no-unused-vars, react-hooks/preserve-manual-memoization, react-refresh/only-export-components */
+/* eslint-disable no-unused-vars, react-refresh/only-export-components */
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Avatar, LogoutConfirmModal, ScoreBar, ScoreCard, StatusBadge } from "../../../../components/dashboard/dashboardPrimitives";

@@ -328,8 +328,8 @@ const legacyCardTotalsForPerson = (person = {}, personMode = "faculty") =>{
 
 const vcReviewSummaryFrom = standardReviewSummary;
 
-const VC_REVIEW_ARRAY_KEYS = ["lectures", "courseFile", "obeRows", "projects", "mentoringRows", "quals", "feedback", "deptActs", "uniActs", "eventRows", "society", "industry", "alumniRows", "placementRows", "acr", "journals", "books", "ict", "research", "projects2", "patents", "awards", "confs", "proposals", "products", "fdps"];
-const VC_SECTION_MAX = { lectures: 40, courseFile: 20, obeRows: 20, projects: 20, mentoringRows: 10, quals: 10, feedback: 10, deptActs: 30, uniActs: 50, eventRows: 20, society: 20, industry: 8, alumniRows: 10, placementRows: 20, acr: 50, journals: 100, books: 30, ict: 20, research: 20, projects2: 40, patents: 40, awards: 20, confs: 20, proposals: 20, products: 20, fdps: 20 };
+const VC_REVIEW_ARRAY_KEYS = ["lectures", "courseFile", "obeRows", "projects", "mentoringRows", "quals", "feedback", "deptActs", "uniActs", "eventRows", "society", "industry", "alumniRows", "placementRows", "acr", "journals", "books", "ict", "research", "projects2", "externalProjects", "patents", "awards", "confs", "proposals", "products", "fdps", "training"];
+const VC_SECTION_MAX = { lectures: 40, courseFile: 20, obeRows: 20, projects: 20, mentoringRows: 10, quals: 10, feedback: 10, deptActs: 30, uniActs: 50, eventRows: 20, society: 20, industry: 8, alumniRows: 10, placementRows: 20, acr: 50, journals: 100, books: 30, ict: 20, research: 20, projects2: 40, externalProjects: SCORE_LIMITS.researchExternalProjects, patents: 40, awards: 20, confs: 20, proposals: 20, products: 20, fdps: 20, training: 20 };
 const REVIEW_SCORE_FIELDS = ["hod", "director", "dean", "vc"];
 const preserveSavedReviewScores = (form = {}, source = {}) =>{
  const merged = { ...form };
@@ -388,10 +388,12 @@ const VC_REPORT_PART_B_SECTIONS = [
  { key: "books", title: "B2. Books, Book Chapters & Edited Volumes", max: 30, doc: "book", fields: [["title", "Title"], ["book", "Publisher & ISBN"], ["pub", "Type"], ["level", "Level"], ["coauth", "Co-authors from DYPIU"]] },
  { key: "patents", title: "B3. Patents, Copyrights & IP and Product Development", max: 40, doc: "pat", fields: [["title", "Title"], ["type", "National / International"], ["status", "Status (Published/Granted)"], ["fileNo", "Filing / Grant No. & Date"]] },
  { key: "projects2", title: "B4. Funded Research Projects", max: 40, doc: "project2", fields: [["title", "Title of Project"], ["agency", "Funding Agency"], ["date", "Sanction Date"], ["amount", "Amount (₹)"], ["role", "PI / Co-PI"], ["status", "Status"]] },
+ { key: "externalProjects", title: "B4(c). Research / Consultancy External Projects", max: SCORE_LIMITS.researchExternalProjects, doc: "externalProject", fields: [["title", "Title of Project"], ["agency", "Funding Agency"], ["date", "Sanction Date"], ["amount", "Amount"], ["role", "Role"], ["status", "Status"]] },
  { key: "research", title: "B5. Research Guidance", max: 20, doc: "res", fields: [["degree", "Degree (PhD/PG)"], ["name", "Name of Student / Scholar"], ["status", "Status (Ongoing/Awarded)"], ["date", "Date"]] },
  { key: "proposals", title: "B6. Consultancy, Testing & Training", max: 20, doc: "prop", fields: [["agency", "Client / Organisation"], ["duration", "Nature of Engagement"], ["amount", "Revenue Generated (₹)"]] },
  { key: "confs", title: "B7. Conference / FDP / Training / Workshop Contributions Organised", max: 20, doc: "conf", fields: [["title", "Event / Session Title"], ["role", "Role"], ["date", "Date"], ["level", "Level (Intl./National)"]] },
  { key: "fdps", title: "B8. Conference / FDP / Industry Training - Attended", max: 20, doc: "fdp", fields: [["program", "Programme / Event"], ["duration", "Duration"], ["org", "Organised By"]] },
+ { key: "training", title: "B8(b). Industrial Training", max: 20, doc: "train", fields: [["company", "Company"], ["duration", "Duration"], ["nature", "Nature"]] },
  { key: "awards", title: "B9. Research Awards, Fellowships, Reviewer of Journal & Citations", max: 20, doc: "awd", fields: [["title", "Title of Award / Fellowship / Metric"], ["agency", "Awarding Agency"], ["level", "Level"], ["date", "Date"]] },
  { key: "products", title: "B10. Innovation, Start-ups & Technology Transfer", max: 20, doc: "prod", fields: [["details", "Title / Start-up / Product"], ["role", "Role"], ["status", "Status"]] },
  { key: "ict", title: "B11. ICT Content, MOOCs & E-Learning", max: 20, doc: "ict", fields: [["title", "Title"], ["type", "Platform / Type"], ["quad", "Reach / Views (if available)"]] },
@@ -783,7 +785,7 @@ function calcVCScore(person, vcData) {
  return idx === null ? n(Array.isArray(source) ? source[0]?.[field] : source?.[field]) : n(source?.[idx]?.[field]);
  };
  const sectionMax = VC_SECTION_MAX;
- const rowMax = { courseFile: () =>SCORE_LIMITS.courseFileRow, obeRows: (row) =>row.max || 20, projects: projectGuidanceRowMax, mentoringRows: (row) =>row.max || 10, quals: () =>SCORE_LIMITS.qualificationRow, feedback: () =>10, society: () =>SCORE_LIMITS.societyRow, acr: () =>SCORE_LIMITS.acrRow, research: researchGuidanceRowMax, fdps: () =>SCORE_LIMITS.fdpRow };
+ const rowMax = { courseFile: () =>SCORE_LIMITS.courseFileRow, obeRows: (row) =>row.max || 20, projects: projectGuidanceRowMax, projects2: (row) =>row.max || 40, externalProjects: (row) =>row.max || SCORE_LIMITS.researchExternalProjects, mentoringRows: (row) =>row.max || 10, quals: () =>SCORE_LIMITS.qualificationRow, feedback: () =>10, society: () =>SCORE_LIMITS.societyRow, acr: () =>SCORE_LIMITS.acrRow, research: researchGuidanceRowMax, fdps: () =>SCORE_LIMITS.fdpRow, training: () =>SCORE_LIMITS.fdpRow };
  const sum = (arr, s, f) =>{
  if (s === "lectures" || s === "courseFile" || s === "feedback") {
  const averageRows = (arr || []).map((row, i) =>({
@@ -811,10 +813,10 @@ function calcVCScore(person, vcData) {
  sum(person.quals, "quals", "vc");
 
  const partB = sum(person.journals, "journals", "vc") + sum(person.books, "books", "vc") +
- sum(person.patents, "patents", "vc") + sum(person.projects2, "projects2", "vc") +
+  sum(person.patents, "patents", "vc") + sum(person.projects2, "projects2", "vc") + sum(person.externalProjects, "externalProjects", "vc") +
  sum(person.research, "research", "vc") + sum(person.proposals, "proposals", "vc") +
  sum(person.confs, "confs", "vc") + sum(person.products, "products", "vc") +
- sum(person.fdps, "fdps", "vc") + sum(person.awards, "awards", "vc") + sum(person.ict, "ict", "vc");
+  clampScore(sum(person.fdps, "fdps", "vc") + sum(person.training, "training", "vc"), 20) + sum(person.awards, "awards", "vc") + sum(person.ict, "ict", "vc");
 
  const partC = sum(person.uniActs, "uniActs", "vc") + sum(person.deptActs, "deptActs", "vc") +
  sum(person.eventRows, "eventRows", "vc") + sum(person.society, "society", "vc") +
