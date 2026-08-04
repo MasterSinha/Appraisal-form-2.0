@@ -33,7 +33,7 @@ export default function ExternalProjects({ ctx }) {
 <table style={T}>
 <thead><tr>
 <th style={TH}>SN</th><th style={TH}>Title</th><th style={TH}>Agency</th>
-<th style={TH}>Sanction Date</th><th style={TH}>Amount</th><th style={TH}>Role</th><th style={TH}>Status</th><th style={TH}>View Docs</th>
+<th style={TH}>Sanction Date</th><th style={TH}>Amount</th><th style={TH}>Role</th><th style={TH}>Status</th>
 <th style={TH}>Faculty Score</th><th style={TH_HOD}>{reviewerScoreLabel}</th>
 </tr></thead>
 <tbody>
@@ -46,9 +46,8 @@ export default function ExternalProjects({ ctx }) {
 <td style={TDC}><RO val={r.amount} center /></td>
 <td style={TD}><RO val={r.role} /></td>
 <td style={TD}><RO val={r.status} /></td>
-<td style={TDV}><ViewDocsCell docKey={[`externalProject-${i}`, `extproj-${i}`]} docs={docs} /></td>
 <td style={TDS}><RO val={r.score} center /></td>
-<td style={TDS_HOD}><HodInput val={get("externalProjects", i, "hod")} max={30} disabled={!rowHasReviewableData("externalProjects", r, docs, [`externalProject-${i}`, `extproj-${i}`])} onChange={v =>set("externalProjects", i, "hod", v)} /></td>
+<td style={TDS_HOD}><HodInput val={get("externalProjects", i, "hod")} max={30} disabled={!rowHasReviewableData("externalProjects", r, docs, `extproj-${i}`)} onChange={v =>set("externalProjects", i, "hod", v)} /></td>
 </tr>
  ))}
 </tbody>

@@ -1,4 +1,3 @@
-/* eslint-disable react-refresh/only-export-components */
 const percent = (score, max) => Math.min(100, Math.round(((parseFloat(score) || 0) / (parseFloat(max) || 1)) * 100)) || 0;
 
 export function Avatar({ initials, src, alt = "Profile picture", color = "#6366f1", size = 40 }) {

@@ -1117,7 +1117,7 @@ export const submitNonTeachingReview = async ({
       ? {
           decision: "rejected",
           action: "reject",
-          status: `${nonTeachingRoleLabel(role)} Rejected`,
+          status: `${roleLabel(role)} Rejected`,
           rejection_reason: remarks,
         }
       : {}),
