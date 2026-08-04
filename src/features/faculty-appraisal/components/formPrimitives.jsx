@@ -1,7 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import { useRef, useState } from "react";
 import { api } from "../../../services/api";
-import { stripMaxMarksFromTitle } from "../../../utils/appraisalFormUtils";
+import { filesForDocValue, stripMaxMarksFromTitle } from "../../../utils/appraisalFormUtils";
 
 const documentRawUrl = (file) =>
   typeof file === "string" ? file : file?.url || file?.file_url || file?.fileUrl || file?.document_url || file?.documentUrl || file?.path || file?.location;
@@ -642,7 +642,7 @@ export function DocCell({ id, docs, setDocs, readOnly = false }) {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
 
-  const files = Array.isArray(docs?.[id]) ? docs[id] : docs?.[id] ? [docs[id]] : [];
+  const files = filesForDocValue(docs?.[id]);
 
   const handleFiles = async (fileList) => {
     if (readOnly) return;
@@ -688,7 +688,7 @@ export function DocCell({ id, docs, setDocs, readOnly = false }) {
 
       setDocs((prev) => ({
         ...prev,
-        [id]: [...(Array.isArray(prev[id]) ? prev[id] : prev[id] ? [prev[id]] : []), ...uploadedFiles],
+        [id]: filesForDocValue([...filesForDocValue(prev[id]), ...uploadedFiles]),
       }));
     } catch (err) {
       console.error("Upload error:", err);
@@ -701,7 +701,7 @@ export function DocCell({ id, docs, setDocs, readOnly = false }) {
 
   const removeFile = (idx) => {
     setDocs((prev) => {
-      const updated = [...(Array.isArray(prev[id]) ? prev[id] : prev[id] ? [prev[id]] : [])];
+      const updated = [...filesForDocValue(prev[id])];
       updated.splice(idx, 1);
       return { ...prev, [id]: updated };
     });
@@ -730,7 +730,7 @@ export function ViewCell({ id, docs }) {
 
 export function ViewDocsCell({ docKey, docs, emptyText = "No docs", compact = false }) {
   const docKeys = Array.isArray(docKey) ? docKey : [docKey];
-  const files = docKeys.flatMap((key) => Array.isArray(docs?.[key]) ? docs[key] : docs?.[key] ? [docs[key]] : []);
+  const files = filesForDocValue(docKeys.flatMap((key) => filesForDocValue(docs?.[key])));
 
   if (!files.length) {
     return emptyText ? <span style={{ color: "#cbd5e1", fontSize: 10 }}>{emptyText}</span> : null;

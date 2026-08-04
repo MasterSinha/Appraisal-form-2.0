@@ -71,10 +71,10 @@ export const uploadedDocCount = (docs = {}, item = {}) => {
     const hasFileName = fileNameKeys.some((key) => String(src?.[key] ?? "").trim() !== "");
     return hasLocator || fileNameKeys.some((key) => isFileReference(src?.[key])) || (hasFileName && hasFileMimeType(src));
   };
-  const ignoredFileMetaKeys = new Set([...fileLocatorKeys, ...fileNameKeys, "type", "file_type", "fileType", "mime_type", "mimeType", "size", "lastModified"]);
+  const ignoredFileMetaKeys = new Set([...fileLocatorKeys, ...fileNameKeys, "type", "file_type", "fileType", "mime_type", "mimeType", "size", "file_size", "fileSize", "lastModified"]);
 
   const countFromSource = (src) => {
-    if (typeof src === "number") return src;
+    if (typeof src === "number") return 0;
     if (typeof src === "string") return isFileReference(src) ? 1 : 0;
     if (Array.isArray(src)) return src.reduce((total, entry) => total + countFromSource(entry), 0);
     if (!src || typeof src !== "object") return 0;
@@ -118,8 +118,9 @@ export const uploadedDocCount = (docs = {}, item = {}) => {
   const c6 = countFromSource(item?.payload?.docs);
   const c7 = countFromSource(item?.payload?.documents);
   const c8 = countFromSource(item?.payload?.appraisal_documents);
+  const actual = Math.max(c1, c2, c3, c4, c5, c6, c7, c8);
 
-  return Math.max(c1, c2, c3, c4, c5, c6, c7, c8, explicit);
+  return actual > 0 ? actual : explicit;
 };
 
 const metricText = (value) => {
