@@ -20,6 +20,7 @@ export function ScoreBar({ score, max, color = "#6366f1" }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const uploadedDocCount = (docs = {}, item = {}) => {
   const countKeys = new Set([
     "doc_count",

@@ -831,8 +831,7 @@ function DeanReviewScoreForm({ approval, deanData, setDeanData, sectionView = "p
 }
 
 function ApprovalReviewPanel({ approval, approvalType, onBack, onSubmit, readOnly = false }) {
-  const subjectRole = (approval?.appraisalRole || approval?.appraisal_role || approval?.role || "").toLowerCase();
-  if (isCreativeSchool(approval) && subjectRole !== "director") {
+  if (isCreativeSchool(approval)) {
     return (
       <CreativeSchoolAuthorityReviewPanel
         person={approval}
@@ -1512,7 +1511,7 @@ export default function NonEngineeringDeanDashboard() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 14 }}>
               {filtered.map((faculty) => {
                 const facultySummary = standardSubmittedScoreSummary(faculty);
-                const facultyAcademicYear = faculty.academic_year || faculty.academicYear || selectedAcademicYear || APP_INFO.DEFAULT_AY;
+                const facultyAcademicYear = faculty.academic_year || faculty.academicYear || APP_INFO.DEFAULT_AY;
                 const facultyMetrics = legacyDashboardMetrics({
                   academicYear: facultyAcademicYear,
                   partA: facultySummary.partA,

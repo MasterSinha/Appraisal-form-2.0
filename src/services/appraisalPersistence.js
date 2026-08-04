@@ -184,6 +184,80 @@ const applySubmittedAppraisalToSetters = (submittedAppraisal, setters, scope = {
 const docsHaveFiles = (docs = {}) =>
  Object.values(docs || {}).some((files) =>filesForDocValue(files).length >0);
 
+const hasRows = (value) =>Array.isArray(value) && value.length >0;
+
+const rowHasMeaningfulApplicantData = (row = {}) =>
+ Object.entries(row || {}).some(([key, value]) =>
+ ![
+ "_id",
+ "id",
+ "max",
+ "sectionMax",
+ "section_max",
+ "hod",
+ "director",
+ "dean",
+ "vc",
+ "hod_score",
+ "director_score",
+ "dean_score",
+ "vc_score",
+ ].includes(key) &&
+ String(value ?? "").trim() !== ""
+ );
+
+const hasMeaningfulRows = (rows) =>
+ Array.isArray(rows) && rows.some(rowHasMeaningfulApplicantData);
+
+const B6_B10_SECTION_KEYS = [
+ "consultancy",
+ "consultancyRows",
+ "creativeCommissions",
+ "proposals",
+ "training",
+ "innovation",
+ "startupRows",
+ "products",
+];
+
+const mergeMissingSubmittedFormData = (submittedForm = {}, snapshotPayload = null) =>{
+ const snapshotForm = normalizeFetchedForm(snapshotFormFromPayload(snapshotPayload));
+ if (!snapshotForm || typeof snapshotForm !== "object") return submittedForm;
+
+ const merged = { ...snapshotForm, ...submittedForm };
+ merged.info = {
+ ...(snapshotForm.info || {}),
+ ...(submittedForm.info || {}),
+ };
+
+ FORM_SECTION_KEYS.forEach((key) =>{
+ if (!hasRows(submittedForm[key]) && hasRows(snapshotForm[key])) {
+ merged[key] = snapshotForm[key];
+ }
+ });
+
+ B6_B10_SECTION_KEYS.forEach((key) =>{
+ if (!hasMeaningfulRows(submittedForm[key]) && hasMeaningfulRows(snapshotForm[key])) {
+ merged[key] = snapshotForm[key];
+ }
+ });
+
+ ["innovDetails", "innovScore", "innovHod", "innovDirector", "innovDean", "innovVc", "summaryOtherInfo", "sectionSaveStatus"].forEach((key) =>{
+ if ((submittedForm[key] === undefined || submittedForm[key] === null || submittedForm[key] === "") && snapshotForm[key] !== undefined) {
+ merged[key] = snapshotForm[key];
+ }
+ });
+
+ if (submittedForm.innovativeTeaching && snapshotForm.innovativeTeaching) {
+ merged.innovativeTeaching = {
+ ...snapshotForm.innovativeTeaching,
+ ...submittedForm.innovativeTeaching,
+ };
+ }
+
+ return merged;
+};
+
 const normalizeTotalsForSubmit = (totals = {}) =>({
  ...totals,
  part_a_total: totals.part_a_total ?? totals.partATotal,
@@ -218,8 +292,6 @@ const legacyFormForSubmit = (form = {}) => {
  "acr",
  "exhibitions",
  "popularWritings",
- "consultancyRows",
- "startupRows",
  ].forEach((key) => {
  delete legacyForm[key];
  });
@@ -369,7 +441,10 @@ export const loadAppraisalDocuments = async ({ facultyEmail, academicYear, setDo
  params: { academic_year: academicYear, faculty_email: facultyEmail },
  });
 
- setDocs(docsRowsToMap(data, { facultyEmail, academicYear }));
+ const fetchedDocs = docsRowsToMap(data, { facultyEmail, academicYear });
+ if (docsHaveFiles(fetchedDocs)) {
+ setDocs((currentDocs = {}) =>mergeDocsMaps(currentDocs, fetchedDocs));
+ }
  } catch {
  // non-fatal
  }
@@ -387,12 +462,37 @@ const fetchSubmittedDocsMap = async ({ facultyEmail, academicYear }) =>{
  }
 };
 
-export const loadSavedAppraisal = async ({ facultyEmail, academicYear, setters }) =>{
+const isCurrentSessionUser = (email) =>{
+ const target = String(email || "").trim().toLowerCase();
+ if (!target || typeof window === "undefined") return false;
+ return [
+ sessionStorage.getItem("username"),
+ sessionStorage.getItem("email"),
+ localStorage.getItem("username"),
+ localStorage.getItem("email"),
+ ].some((value) =>String(value || "").trim().toLowerCase() === target);
+};
+
+export const loadSavedAppraisal = async ({ facultyEmail, academicYear, setters, preferSubmitted = false }) =>{
  if (!facultyEmail || !academicYear || !setters) return;
 
- const snapshotPayload = await loadAppraisalSnapshot({ facultyEmail, academicYear });
+ if (preferSubmitted) {
+ try {
+ const submittedAppraisal = await fetchSavedAppraisal({ facultyEmail, academicYear });
+ if (applySubmittedAppraisalToSetters(submittedAppraisal, setters, { facultyEmail, academicYear })) {
+ return submittedAppraisal;
+ }
+ } catch (err) {
+ console.warn("Could not load submitted rejected appraisal; falling back to snapshot:", err);
+ }
+ }
+
+ const snapshotPayload = isCurrentSessionUser(facultyEmail)
+ ? await loadAppraisalSnapshot({ facultyEmail, academicYear })
+ : null;
  if (snapshotPayload) {
  applySnapshotToSetters(snapshotPayload, setters);
+ return snapshotPayload;
  } else {
  resetSnapshotSetters(academicYear, setters);
  }
@@ -454,7 +554,10 @@ const readSubmittedAppraisalResponse = async (data, facultyEmail, academicYear) 
  if (!data) {
  throw new Error(`No saved appraisal snapshot was found for ${facultyEmail} in academic year ${academicYear}. Check that the academic year matches the submitted record.`);
  }
- const normalized = normalizeFetchedAppraisal(data, { facultyEmail, academicYear });
+ const snapshotPayload = isCurrentSessionUser(facultyEmail)
+ ? await loadAppraisalSnapshot({ facultyEmail, academicYear })
+ : null;
+ const normalized = normalizeFetchedAppraisal(data, { facultyEmail, academicYear, snapshotPayload });
  const form = normalized.payload?.form || normalized.form;
  if (!hasSubmittedFormData(form)) {
  throw new Error(`The saved appraisal snapshot for ${facultyEmail} does not contain submitted form section data. The user may need to resubmit the appraisal for academic year ${academicYear}.`);
@@ -1567,24 +1670,25 @@ const normalizeFetchedAppraisal = (data = {}, scope = {}) =>{
  const reviews = reviewsFromAppraisalResponse(data);
  const payload = data.payload ? { ...data.payload } : null;
  const declaration = data.declaration || payload?.declaration || null;
- const docs = normalizeDocsMap(submittedDocsFromResponse(data, scope) || {});
+ const snapshotPayload = scope?.snapshotPayload || null;
+ const docs = mergeDocsMaps(snapshotPayload?.docs, snapshotPayload?.form?.docs, submittedDocsFromResponse(data, scope) || {});
  const withResponseInfo = (form = {}, ...sources) =>({
  ...form,
  info: normalizeInfo(form.info || {}, form, ...sources),
  });
  const payloadForm = payload?.form ? attachSubmittedScoreSummary(
- mergeReviewScoresIntoForm(withResponseInfo(normalizeFetchedForm(payload.form), payload, data), reviews),
+ mergeReviewScoresIntoForm(withResponseInfo(mergeMissingSubmittedFormData(normalizeFetchedForm(payload.form), snapshotPayload), payload, data), reviews),
  data,
  payload,
  payload.totals,
  ) : null;
  const directForm = data.form ? attachSubmittedScoreSummary(
- mergeReviewScoresIntoForm(withResponseInfo(normalizeFetchedForm(data.form), data, payload), reviews),
+ mergeReviewScoresIntoForm(withResponseInfo(mergeMissingSubmittedFormData(normalizeFetchedForm(data.form), snapshotPayload), data, payload), reviews),
  data,
  data.totals,
  ) : null;
  const directData = attachSubmittedScoreSummary(
- mergeReviewScoresIntoForm(withResponseInfo(normalizeFetchedForm(data), data, payload), reviews),
+ mergeReviewScoresIntoForm(withResponseInfo(mergeMissingSubmittedFormData(normalizeFetchedForm(data), snapshotPayload), data, payload), reviews),
  data,
  data.totals,
  payload,
@@ -1700,12 +1804,11 @@ export const submitAppraisal = async ({
  });
 
  const submitWithWorkflow = {
- ...basePayload,
- form: legacyFormForSubmit(basePayload.form),
- totals: legacyTotalsForSubmit(totals),
- status: workflowStatus,
- workflow_status: workflowStatus,
- next_reviewer: nextReviewer,
+  ...basePayload,
+  totals: legacyTotalsForSubmit(totals),
+  status: workflowStatus,
+  workflow_status: workflowStatus,
+  next_reviewer: nextReviewer,
  next_reviewer_role: nextReviewer,
  review_chain: reviewChain,
  };

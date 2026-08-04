@@ -294,11 +294,12 @@ export default function DesignArtsDashboard({ fixedRole }) {
  ["setInnovRows", (value) =>setForm((prev) =>({ ...prev, innovRows: value }))],
  ["setInnovHod", (value) =>setForm((prev) =>({ ...prev, innovHod: value }))],
  ["setInnovDirector", (value) =>setForm((prev) =>({ ...prev, innovDirector: value }))],
- ["setInnovDean", (value) =>setForm((prev) =>({ ...prev, innovDean: value }))],
- ["setInnovVc", (value) =>setForm((prev) =>({ ...prev, innovVc: value }))],
- ["setSummaryOtherInfo", (value) =>setForm((prev) =>({ ...prev, summaryOtherInfo: value }))],
- ["setSectionSaveStatus", (value) =>setSectionSaveStatus((prev) =>({ ...prev, ...(value || {}) }))],
- ]), [setForm, setSectionSaveStatus]);
+  ["setInnovDean", (value) =>setForm((prev) =>({ ...prev, innovDean: value }))],
+  ["setInnovVc", (value) =>setForm((prev) =>({ ...prev, innovVc: value }))],
+  ["setDocs", setDocs],
+  ["setSummaryOtherInfo", (value) =>setForm((prev) =>({ ...prev, summaryOtherInfo: value }))],
+  ["setSectionSaveStatus", (value) =>setSectionSaveStatus((prev) =>({ ...prev, ...(value || {}) }))],
+  ]), [setForm, setSectionSaveStatus, setDocs]);
 
  useEffect(() =>{
  if (isLegacyTwoPartYear && !["partA", "partB"].includes(selfSectionView)) {
@@ -319,9 +320,10 @@ export default function DesignArtsDashboard({ fixedRole }) {
  const loadedReviews = reviewListFrom(data?.reviews);
  setDeclaration(declarationRow);
  setReviews(loadedReviews);
+ const preferSubmitted = Boolean(declarationRow) && hasActiveRejection(declarationRow, loadedReviews);
  const loadAppraisal = isLegacyTwoPartYear
  ? fetchSavedAppraisal({ facultyEmail: userEmail, academicYear })
- : (isSelectedCycleClosed ? loadClosedAppraisal : loadSavedAppraisal)({ facultyEmail: userEmail, academicYear, setters });
+ : (isSelectedCycleClosed ? loadClosedAppraisal : loadSavedAppraisal)({ facultyEmail: userEmail, academicYear, setters, preferSubmitted });
  const [loadedAppraisal] = await Promise.all([
  loadAppraisal,
  loadAppraisalDocuments({ facultyEmail: userEmail, academicYear, setDocs }),

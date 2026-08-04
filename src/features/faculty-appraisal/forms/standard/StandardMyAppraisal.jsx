@@ -812,6 +812,7 @@ export default function StandardMyAppraisal({
           facultyEmail: userEmail,
           academicYear: requestedAcademicYear,
           setters: scopedAppraisalSetters,
+          preferSubmitted: Boolean(declaration) && hasActiveRejection(declaration, loadedReviews),
         });
         if (!isCurrentLoad()) return;
         setLegacyReportTotals(isLegacyTwoPartAcademicYear(requestedAcademicYear)

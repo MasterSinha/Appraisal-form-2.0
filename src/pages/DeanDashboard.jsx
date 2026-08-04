@@ -854,8 +854,7 @@ function DeanReviewScoreForm({ approval, deanData, setDeanData, sectionView = "p
 }
 
 function ApprovalReviewPanel({ approval, approvalType, onBack, onSubmit, readOnly = false }) {
-  const subjectRole = (approval?.appraisalRole || approval?.appraisal_role || approval?.role || "").toLowerCase();
-  if (isCreativeSchool(approval) && subjectRole !== "director") {
+  if (isCreativeSchool(approval)) {
     return (
       <CreativeSchoolAuthorityReviewPanel
         person={approval}
