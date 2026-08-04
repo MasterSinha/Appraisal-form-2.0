@@ -722,43 +722,38 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
  {/* B2-B8 */}
  {[
  { title: "B2. Books, Book Chapters & Edited Volumes (Max 30)", key: "books", docPfx: "book",
- render: (r) =>[r.title, r.book || r.publisherIsbn, r.pub || r.type, r.level, r.coauth] },
+ columns: [["Title", (r) =>r.title], ["Publisher & ISBN", (r) =>r.book || r.publisherIsbn], ["Type", (r) =>r.pub || r.type], ["Level", (r) =>r.level], ["Co-authors from DYPIU", (r) =>r.coauth]] },
  { title: "B3. Patents, Copyrights & IP and Product Development (Max 40)", key: "patents", docPfx: "pat",
- render: (r) =>[r.title, r.type || r.level, r.status, r.fileNo || r.date] },
+ columns: [["Title", (r) =>r.title], ["National / International", (r) =>r.type || r.level], ["Status", (r) =>r.status], ["Filing / Grant No. & Date", (r) =>r.fileNo || r.date]] },
  { title: "B4. Funded Research Projects (Max 40)", key: "projects2", docPfx: "project2",
- render: (r) =>[r.title, r.agency, r.date, r.amount, r.role, r.status] },
+ columns: [["Title of Project", (r) =>r.title], ["Funding Agency", (r) =>r.agency], ["Sanction Date", (r) =>r.date], ["Amount", (r) =>r.amount], ["Role", (r) =>r.role], ["Status", (r) =>r.status]] },
  { title: "B5. Research Guidance (Max 20)", key: "research", docPfx: "res",
- render: (r) =>[r.degree, r.name, r.status || r.thesis, r.date] },
+ columns: [["Degree", (r) =>r.degree], ["Name of Student / Scholar", (r) =>r.name], ["Status", (r) =>r.status || r.thesis], ["Date", (r) =>r.date]] },
  { title: "B6. Consultancy, Testing & Training (Max 20)", key: "proposals", docPfx: "prop",
- render: (r) =>[r.agency || r.title, r.duration || r.nature, r.amount || r.revenue] },
+ columns: [["Client / Organisation", (r) =>r.agency || r.title], ["Nature of Engagement", (r) =>r.duration || r.nature], ["Revenue Generated", (r) =>r.amount || r.revenue]] },
  { title: "B7. Conference / FDP / Training / Workshop Contributions Organised (Max 20)", key: "confs", docPfx: "conf",
- render: (r) =>[r.title, r.role || r.type, r.date, r.level || r.org] },
+ columns: [["Event / Session Title", (r) =>r.title], ["Role", (r) =>r.role || r.type], ["Date", (r) =>r.date], ["Level", (r) =>r.level || r.org]] },
  { title: "B8. Conference / FDP / Industry Training - Attended (Max 20)", key: "fdps", docPfx: "fdp",
- render: (r) =>[r.program, r.duration, r.org] },
+ columns: [["Programme / Event", (r) =>r.program], ["Duration", (r) =>r.duration], ["Organised By", (r) =>r.org]] },
  { title: "B9. Research Awards, Fellowships, Reviewer of Journal & Citations (Max 20)", key: "awards", docPfx: "awd",
- render: (r) =>[r.title, r.agency, r.level, r.date] },
+ columns: [["Title", (r) =>r.title], ["Awarding Agency", (r) =>r.agency], ["Level", (r) =>r.level], ["Date", (r) =>r.date]] },
  { title: "B10. Innovation, Start-ups & Technology Transfer (Max 20)", key: "products", docPfx: "prod",
- render: (r) =>[r.details || r.title, r.role || r.usage, r.status] },
+ columns: [["Title / Start-up / Product", (r) =>r.details || r.title], ["Role", (r) =>r.role || r.usage], ["Status", (r) =>r.status]] },
  { title: "B11. ICT Content, MOOCs & E-Learning (Max 20)", key: "ict", docPfx: "ict",
- render: (r) =>[r.title, r.type || r.desc, r.quad || r.reach] },
- ].map(({ title, key, docPfx, render }) =>(
+ columns: [["Title", (r) =>r.title], ["Platform / Type", (r) =>r.type || r.desc], ["Reach / Views", (r) =>r.quad || r.reach]] },
+ ].map(({ title, key, docPfx, columns }) =>(
 <SC key={key} title={title} accent="#7c3aed">
 <div style={{ overflowX: "auto" }}><table style={T}><thead>
 <tr>
-<th style={TH}>SN</th><th style={TH}>Details</th><th style={TH}>Docs</th>
+<th style={TH}>SN</th>{columns.map(([label]) =><th key={label} style={TH}>{label}</th>)}<th style={TH}>Docs</th>
  {renderScoreHeaders()}
 </tr>
 </thead>
 <tbody>{rows(person[key]).map((r, i) =>{
- const cells = render(r);
  return (
 <tr key={i} style={i % 2 ? { background: "#f8fafc" } : {}}>
 <td style={TDC}>{i + 1}</td>
-<td style={TD}>
- {cells.filter(Boolean).map((c, ci) =>(
-<span key={ci} style={{ display: "inline-block", marginRight: 8, color: "#334155" }}>{c}</span>
- ))}
-</td>
+ {columns.map(([label, value]) =><td key={label} style={TD}><RO val={value(r)} /></td>)}
 <td style={TDV}><ViewDocsCell docKey={`${docPfx}-${i}`} docs={docs} /></td>
  {renderScoreCells(r, key, i)}
 </tr>

@@ -109,6 +109,8 @@ export const researchGuidanceRowMax = (row = {}) =>{
 export const researchGuidanceScore = (row = {}) =>{
  const rowMax = researchGuidanceRowMax(row);
  if (!rowMax) return 0;
+ const storedScore = String(row.score ?? "").trim();
+ if (storedScore !== "") return clampScore(storedScore, rowMax);
  return rowHasAnyValue(row, ["name", "thesis"])
  ? rowMax
  : clampScore(row.score, rowMax);
