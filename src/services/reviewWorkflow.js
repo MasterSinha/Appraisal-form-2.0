@@ -79,7 +79,7 @@ const docCountFromValue = (value, item = {}) => {
     const hasFileName = fileNameKeys.some((key) => clean(src?.[key]) !== "");
     return hasLocator || fileNameKeys.some((key) => isFileReference(src?.[key])) || (hasFileName && hasFileMimeType(src));
   };
-  const ignoredFileMetaKeys = new Set([...fileLocatorKeys, ...fileNameKeys, "type", "file_type", "fileType", "mime_type", "mimeType", "size", "lastModified"]);
+  const ignoredFileMetaKeys = new Set([...fileLocatorKeys, ...fileNameKeys, "type", "file_type", "fileType", "mime_type", "mimeType", "size", "file_size", "fileSize", "lastModified"]);
 
   const parseNum = (v) => {
     if (v === undefined || v === null || v === "") return 0;
@@ -106,10 +106,11 @@ const docCountFromValue = (value, item = {}) => {
     parseNum(typeof value === "object" ? value?.docs_count : null)
   );
 
-  if (typeof value === "number") return Math.max(value, explicit);
+  if (typeof value === "number") return explicit;
   if (typeof value === "string") return Math.max(isFileReference(value) ? 1 : 0, explicit);
   if (Array.isArray(value)) {
-    return Math.max(value.reduce((total, entry) => total + docCountFromValue(entry), 0), explicit);
+    const actual = value.reduce((total, entry) => total + docCountFromValue(entry), 0);
+    return actual > 0 ? actual : explicit;
   }
   if (!value || typeof value !== "object") return explicit;
 
@@ -118,7 +119,8 @@ const docCountFromValue = (value, item = {}) => {
     return total + docCountFromValue(entry);
   }, 0);
 
-  return Math.max(hasFileIdentity(value) ? 1 : 0, mapCount, explicit);
+  const actual = Math.max(hasFileIdentity(value) ? 1 : 0, mapCount);
+  return actual > 0 ? actual : explicit;
 };
 
 const documentSourcesFromItem = (item = {}) => [
@@ -192,7 +194,7 @@ const enrichQueueItemDocs = async (item = {}) => {
     });
     const fetchedCount = docCountFromValue(rows);
     const currentCount = docCountFromValue(item.docs, item);
-    if (fetchedCount > currentCount) {
+    if (fetchedCount > 0 && fetchedCount !== currentCount) {
       return { ...item, docs: rows, docCount: fetchedCount };
     }
   } catch {
@@ -206,7 +208,7 @@ const enrichQueueItemDocs = async (item = {}) => {
     const bestSubmittedDocs = docsForQueueCard(submitted);
     const submittedCount = docCountFromValue(bestSubmittedDocs, submitted);
     const currentCount = docCountFromValue(item.docs, item);
-    if (submittedCount > currentCount) {
+    if (submittedCount > 0 && submittedCount !== currentCount) {
       return { ...item, docs: bestSubmittedDocs, docCount: submittedCount };
     }
     return item;

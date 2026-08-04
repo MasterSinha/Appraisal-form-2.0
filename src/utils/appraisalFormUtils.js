@@ -508,8 +508,25 @@ export const ATTACHMENT_REQUIREMENT_TEXT = "";
 
 export const isAllowedAttachmentFile = () => true;
 
-export const filesForDocValue = (value) =>
- (Array.isArray(value) ? value : value ? [value] : []).filter(Boolean);
+const docFileIdentity = (file) =>{
+ if (!file) return "";
+ if (typeof file === "string") return file.trim();
+ const url = file.url || file.file_url || file.fileUrl || file.document_url || file.documentUrl || file.path || file.location;
+ if (url) return String(url).trim();
+ return [file.name || file.file_name || file.fileName || "", file.size || "", file.type || file.file_type || file.fileType || ""].join("|");
+};
+
+export const filesForDocValue = (value) =>{
+ const seen = new Set();
+ return (Array.isArray(value) ? value : value ? [value] : []).filter((file) =>{
+ if (!file) return false;
+ const identity = docFileIdentity(file);
+ if (!identity) return true;
+ if (seen.has(identity)) return false;
+ seen.add(identity);
+ return true;
+ });
+};
 
 export const docsForRow = (docs = {}, docPrefix = "", index = 0, docKey) =>{
  if (docKey) return filesForDocValue(docs?.[docKey]);
