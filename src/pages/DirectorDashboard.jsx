@@ -20,8 +20,8 @@ const scoreText = (value) =>{
  return Number.isFinite(score) ? score.toFixed(1) : "0.0";
 };
 
-const REVIEW_ARRAY_KEYS = ["lectures", "courseFile", "obeRows", "projects", "mentoringRows", "quals", "feedback", "deptActs", "uniActs", "eventRows", "society", "industry", "alumniRows", "placementRows", "acr", "journals", "books", "ict", "research", "projects2", "externalProjects", "patents", "awards", "confs", "proposals", "products", "fdps", "training"];
-const REVIEW_SECTION_MAX = { lectures: 40, courseFile: 20, obeRows: 20, projects: 20, mentoringRows: 10, quals: 10, feedback: 10, deptActs: 30, uniActs: 50, eventRows: 20, society: 20, industry: 8, alumniRows: 10, placementRows: 20, acr: 50, journals: 100, books: 30, ict: 20, research: 20, projects2: 40, externalProjects: SCORE_LIMITS.researchExternalProjects, patents: 40, awards: 20, confs: 20, proposals: 20, products: 20, fdps: 20, training: 20 };
+const REVIEW_ARRAY_KEYS = ["lectures", "courseFile", "obeRows", "projects", "mentoringRows", "quals", "feedback", "deptActs", "uniActs", "eventRows", "society", "industry", "alumniRows", "placementRows", "acr", "journals", "books", "ict", "research", "projects2", "patents", "awards", "confs", "proposals", "products", "fdps"];
+const REVIEW_SECTION_MAX = { lectures: 40, courseFile: 20, obeRows: 20, projects: 20, mentoringRows: 10, quals: 10, feedback: 10, deptActs: 30, uniActs: 50, eventRows: 20, society: 20, industry: 8, alumniRows: 10, placementRows: 20, acr: 50, journals: 100, books: 30, ict: 20, research: 20, projects2: 40, patents: 40, awards: 20, confs: 20, proposals: 20, products: 20, fdps: 20 };
 const REVIEW_SCORE_FIELDS = ["hod", "director", "dean", "vc"];
 const storedAcademicYearCycles = () => {
  try {
@@ -137,8 +137,8 @@ const normalizeDirectorDraftData = (sectionScores = {}) =>{
 };
 
 const STANDARD_ARRAY_SECTIONS = [
- "lectures", "courseFile", "obeRows", "projects", "mentoringRows", "quals", "feedback", "deptActs", "uniActs",
- "eventRows", "society", "industry", "alumniRows", "placementRows", "acr", "journals", "books", "ict", "research", "projects2",
+ "lectures", "courseFile", "projects", "quals", "feedback", "deptActs", "uniActs",
+ "society", "industry", "acr", "journals", "books", "ict", "research", "projects2",
  "externalProjects", "patents", "awards", "confs", "proposals", "products", "fdps", "training",
 ];
 
@@ -237,15 +237,13 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
  const ictT = sumReviewRows("ict", "hod", 20);
  const res = sumReviewRows("research", "hod", 20, researchGuidanceRowMax);
  const resProjects = sumReviewRows("projects2", "hod", 40);
-  const externalResProjects = sumReviewRows("externalProjects", "hod", SCORE_LIMITS.researchExternalProjects);
-  const pat = sumReviewRows("patents", "hod", 40);
+ const pat = sumReviewRows("patents", "hod", 40);
  const awd = sumReviewRows("awards", "hod", 20);
  const conf = sumReviewRows("confs", "hod", 20);
  const prop = sumReviewRows("proposals", "hod", 20);
  const prod = sumReviewRows("products", "hod", 20);
-  const train = sumReviewRows("training", "hod", 20, SCORE_LIMITS.fdpRow);
-  const b8 = clampScore(sumReviewRows("fdps", "hod", 20, SCORE_LIMITS.fdpRow) + train, 20);
-  const partB = clampScore(jour + bk + pat + resProjects + externalResProjects + res + prop + conf + b8 + awd + prod + ictT, reviewerMaxScores.partB);
+ const b8 = sumReviewRows("fdps", "hod", 20, SCORE_LIMITS.fdpRow);
+ const partB = clampScore(jour + bk + pat + resProjects + res + prop + conf + b8 + awd + prod + ictT, reviewerMaxScores.partB);
 
  const uni = sumReviewRows("uniActs", "hod", 50);
  const dept = sumReviewRows("deptActs", "hod", 30);
@@ -316,15 +314,13 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
  const ictT = sumReviewRows("ict", "dir", 20);
  const res = sumReviewRows("research", "dir", 20, researchGuidanceRowMax);
  const resProjects = sumReviewRows("projects2", "dir", 40);
-  const externalResProjects = sumReviewRows("externalProjects", "dir", SCORE_LIMITS.researchExternalProjects);
-  const pat = sumReviewRows("patents", "dir", 40);
+ const pat = sumReviewRows("patents", "dir", 40);
  const awd = sumReviewRows("awards", "dir", 20);
  const conf = sumReviewRows("confs", "dir", 20);
  const prop = sumReviewRows("proposals", "dir", 20);
  const prod = sumReviewRows("products", "dir", 20);
-  const train = sumReviewRows("training", "dir", 20, SCORE_LIMITS.fdpRow);
-  const b8 = clampScore(sumReviewRows("fdps", "dir", 20, SCORE_LIMITS.fdpRow) + train, 20);
-  const partB = clampScore(jour + bk + pat + resProjects + externalResProjects + res + prop + conf + b8 + awd + prod + ictT, reviewerMaxScores.partB);
+ const b8 = sumReviewRows("fdps", "dir", 20, SCORE_LIMITS.fdpRow);
+ const partB = clampScore(jour + bk + pat + resProjects + res + prop + conf + b8 + awd + prod + ictT, reviewerMaxScores.partB);
 
  const uni = sumReviewRows("uniActs", "dir", 50);
  const dept = sumReviewRows("deptActs", "dir", 30);
