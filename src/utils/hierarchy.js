@@ -33,7 +33,7 @@ export const normalizeRoleForWorkflow = (role) => {
   if (value === "vice chancellor" || value === "vice chancelor" || value === "vc") return "vc";
   const nonTeachingRole = normalizeNonTeachingRole(value, "");
   if (nonTeachingRole) return nonTeachingRole;
-  if (value === "center head" || value === "centre head" || value.includes("cisr center head") || value.includes("cisr centre head")) return "center_head";
+  if (value === "center head" || value === "centre head" || value === "center_head" || value === "centre_head" || value === "centerhead" || value === "centrehead" || value.includes("cisr center head") || value.includes("cisr centre head") || value.includes("cisr_center_head") || value.includes("cisrcenterhead") || value.includes("cisrcentrehead")) return "center_head";
   if (value.includes("dean")) return "dean";
   if (value.includes("director")) return "director";
   if (value === "hod" || value.includes("head of department")) return "hod";
