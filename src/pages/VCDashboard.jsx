@@ -743,7 +743,7 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
  columns: [["Title", (r) =>r.title], ["Platform / Type", (r) =>r.type || r.desc], ["Reach / Views", (r) =>r.quad || r.reach]] },
  { title: "B12. Exhibitions - Photography, Design & Applied Arts, Documentaries, Films & Audio-Visual Productions (Max 30)", key: "exhibitions", docPfx: "exh",
  columns: [["Title of Work / Exhibition", (r) =>r.title], ["Type", (r) =>r.type], ["Venue & Level", (r) =>r.venueLevel || r.venue_level || r.level], ["Date", (r) =>r.date]] },
- ].map(({ title, key, docPfx, columns }) =>(
+ ].filter(({ key }) => !(key === "exhibitions" && getSchoolKey(person?.school || person?.schoolName || person?.info?.school || "") === "SoCM")).map(({ title, key, docPfx, columns }) =>(
 <SC key={key} title={title} accent="#7c3aed">
 <div style={{ overflowX: "auto" }}><table style={T}><thead>
 <tr>
@@ -1045,7 +1045,7 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  form: reportForm,
  docs: reportForm.docs,
  partASections: VC_REPORT_PART_A_SECTIONS,
- partBSections: VC_REPORT_PART_B_SECTIONS,
+  partBSections: getSchoolKey(person?.school || person?.schoolName || person?.info?.school || "") === "SoCM" ? VC_REPORT_PART_B_SECTIONS.filter(s => s.key !== "exhibitions") : VC_REPORT_PART_B_SECTIONS,
  partCSections: VC_REPORT_PART_C_SECTIONS,
  partDSections: VC_REPORT_PART_D_SECTIONS,
  totals: {
