@@ -843,7 +843,7 @@ function VCReviewPanel({ person, personMode, onBack, onSubmit, readOnly = false 
           onSubmit(id, scores, remarks, personMode, sectionScores, reviewConfirmed, decision)
         }
         readOnly={readOnly}
-        showReport={true}
+        showReport={readOnly}
       />
     );
   }
@@ -1280,8 +1280,9 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
 <span style={{ color: "#64748b", fontSize: 11, fontStyle: "italic" }}>{draftStatus}</span>
 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", justifyContent: "flex-end", marginLeft: "auto" }}>
 <button onClick={onBack} style={{ padding: "9px 16px", background: "#fff", color: "#475569", border: "1px solid #cbd5e1", borderRadius: 9, cursor: "pointer", fontWeight: 700, fontSize: 12, fontFamily: "inherit" }}>Close</button>
-<button onClick={generateVcReport} disabled={!vcReviewCompleted}
- style={{ minWidth: 170, height: 42, padding: "0 20px", background: vcReviewCompleted ? "linear-gradient(135deg,#7c3aed,#581c87)" : "#cbd5e1", color: "#fff", border: "none", borderRadius: 8, cursor: vcReviewCompleted ? "pointer" : "not-allowed", fontWeight: 900, fontSize: 13, fontFamily: "inherit", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 9, boxShadow: vcReviewCompleted ? "0 10px 20px rgba(88,28,135,0.20)" : "none" }}>
+{vcReviewCompleted && (
+<button onClick={generateVcReport}
+ style={{ minWidth: 170, height: 42, padding: "0 20px", background: "linear-gradient(135deg,#7c3aed,#581c87)", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontWeight: 900, fontSize: 13, fontFamily: "inherit", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 9, boxShadow: "0 10px 20px rgba(88,28,135,0.20)" }}>
  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
   <path d="M7 3h7l4 4v14H7V3Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
   <path d="M14 3v5h4" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
@@ -1289,6 +1290,7 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  </svg>
  <span>Generate Report</span>
 </button>
+)}
  {!reviewLocked && (
 <>
 <button onClick={handleSaveDraft} disabled={savingDraft}

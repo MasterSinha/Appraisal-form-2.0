@@ -1104,6 +1104,7 @@ export default function MediaCommDashboard({ fixedRole }) {
  onBack={() =>setReviewing(null)}
  onSubmit={handleSubmitReview}
  readOnly={isReviewerReviewComplete(reviewing, role)}
+ showReport={false}
 />
   )}
     </DashboardLayout>

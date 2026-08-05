@@ -1113,7 +1113,7 @@ export function NonTeachingAuthorityReviewPanel({ item, reviewerRole, onBack, on
             <span style={{ color: "#64748b", fontSize: 11, fontWeight: 800 }}>{draftStatus}</span>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
             <button type="button" onClick={onBack} style={{ padding: "9px 18px", border: "none", borderRadius: 7, background: "#f1f5f9", color: "#475569", cursor: "pointer", fontWeight: 800, fontFamily: "inherit" }}>{locked ? "Close" : "Cancel"}</button>
-            {role !== "registrar" && (
+            {role === "vc" && locked && (
               <button type="button" onClick={handleReport} style={{ padding: "9px 18px", border: "none", borderRadius: 7, background: "#e2e8f0", color: "#475569", cursor: "pointer", fontWeight: 800, fontFamily: "inherit" }}>Generate Report</button>
             )}
             {!locked && (

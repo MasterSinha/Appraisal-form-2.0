@@ -300,7 +300,7 @@ function ReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
         onBack={onBack}
         onSubmit={(id, scores, remarks, sectionScores, reviewConfirmed, decision) => onSubmit(id, scores, remarks, sectionScores, reviewConfirmed, decision)}
         readOnly={readOnly}
-        showReport={true}
+        showReport={false}
       />
     );
   }
@@ -778,12 +778,6 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
 <span style={{ color: "#64748b", fontSize: 11, fontWeight: 700 }}>{draftStatus}</span>
 <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap", marginLeft: "auto" }}>
 <button onClick={onBack} style={{ padding: "9px 22px", background: "#f1f5f9", color: "#475569", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 700, fontSize: 12, fontFamily: "inherit" }}>{reviewLocked ? "Close" : "Cancel"}</button>
-<button
- onClick={generateDirectorReport}
- style={{ padding: "10px 22px", background: "#4c1d95", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 800, fontSize: 13, fontFamily: "inherit" }}
->
- Generate Report
-</button>
  {!reviewLocked && (
 <>
 <button

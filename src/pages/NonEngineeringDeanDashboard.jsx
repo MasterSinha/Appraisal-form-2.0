@@ -841,7 +841,7 @@ function ApprovalReviewPanel({ approval, approvalType, onBack, onSubmit, readOnl
         onBack={onBack}
         onSubmit={onSubmit}
         readOnly={readOnly}
-        showReport={true}
+        showReport={false}
       />
     );
   }

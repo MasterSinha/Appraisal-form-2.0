@@ -1167,6 +1167,7 @@ export default function DesignArtsDashboard({ fixedRole }) {
  onBack={() =>setReviewing(null)}
  onSubmit={handleSubmitReview}
  readOnly={isReviewerReviewComplete(reviewing, role)}
+ showReport={false}
  />
  )}
     </DashboardLayout>
