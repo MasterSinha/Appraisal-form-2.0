@@ -5,7 +5,7 @@ import { api } from "../services/api";
 import { Avatar, ScoreCard, ScoreBar, StatusBadge, ReviewMetricsStrip, uploadedDocCount } from "../components/dashboard/dashboardPrimitives";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import DashboardSidebar from "../components/dashboard/DashboardSidebar";
-import { ACR_DETAIL_POINTS, SOCIETY_LABELS, MAX_SCORES, APP_INFO, createAcrRows, fetchSavedAppraisal, loadAppraisalDocuments, loadSavedAppraisal, mergeFacultyInfo, saveAppraisalDraftSection, submitAppraisal, fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, INNOVATIVE_METHODS, SCORE_LIMITS, averageSectionScore, clampScore, clampReviewScore, courseFileAverageScore, courseFileRowScore, effectiveMaxScore, feedbackAverage, feedbackRowScore, feedbackSectionScore, innovativeSelectionsFromDetails, innovativeTeachingScore, isAllowedAttachmentFile, isValidDDMMYYYY, maskDateDDMMYYYY, normalizeAutoScores, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewSectionScore, rowHasReviewableData, scoreRemaining, selfEffectivePartAMax, societyRowLocked, societyRowScore, sumSectionScore, toggleInnovativeMethod, validateCompleteRows, generateStandardReport, standardSubmittedScoreSummary, AppraisalHeaderImage, SummaryOtherInfoField, summaryOtherInfoValueFrom, RejectionNotice, DocCell, ViewCell, ViewDocsCell, RowButtons as RowBtns, SectionSaveFooter, SectionCard as SC, T, TH, TH_HOD, TH_DIR, TD, TDC, TDS, TDS_HOD, TDS_DIR, TDV, MyAppraisalSection, CreativeSchoolAuthorityReviewPanel, isCreativeSchool, isDesignArtsSchool, isMediaCommSchool } from "../features/faculty-appraisal";
+import { ACR_DETAIL_POINTS, SOCIETY_LABELS, MAX_SCORES, APP_INFO, createAcrRows, fetchSavedAppraisal, loadAppraisalDocuments, loadSavedAppraisal, mergeFacultyInfo, saveAppraisalDraftSection, submitAppraisal, fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, INNOVATIVE_METHODS, SCORE_LIMITS, averageSectionScore, clampScore, clampReviewScore, courseFileAverageScore, courseFileRowScore, effectiveMaxScore, feedbackAverage, feedbackRowScore, feedbackSectionScore, innovativeSelectionsFromDetails, innovativeTeachingScore, isAllowedAttachmentFile, isValidDDMMYYYY, maskDateDDMMYYYY, normalizeAutoScores, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewSectionScore, rowHasReviewableData, scoreRemaining, selfEffectivePartAMax, societyRowLocked, societyRowScore, sumSectionScore, toggleInnovativeMethod, validateCompleteRows, buildReviewRemarks, standardSubmittedScoreSummary, AppraisalHeaderImage, SummaryOtherInfoField, summaryOtherInfoValueFrom, RejectionNotice, DocCell, ViewCell, ViewDocsCell, RowButtons as RowBtns, SectionSaveFooter, SectionCard as SC, T, TH, TH_HOD, TH_DIR, TD, TDC, TDS, TDS_HOD, TDS_DIR, TDV, MyAppraisalSection, CreativeSchoolAuthorityReviewPanel, isCreativeSchool, isDesignArtsSchool, isMediaCommSchool } from "../features/faculty-appraisal";
 import { getActiveAcademicYear, getSessionItem, normalizeAcademicYearLabel, setActiveAcademicYear } from "../auth/session";
 import { PreviousYearReportViewer } from "../features/previousYearReport";
 import { isLegacyTwoPartAcademicYear } from "../features/faculty-appraisal/forms/standard/legacyPreviousYearReportUtils";
@@ -96,7 +96,7 @@ const buildDirectorSectionScores = (faculty, dirData) =>{
  payload[key] = rows.map((row, index) =>({
  ...row,
  director: key === "acr"
- ? clampDirectorReviewScore(key, row, dirData[key]?.[index]?.dir ?? dirData[key]?.[index]?.director ?? "", REVIEW_SECTION_MAX[key] || 0)
+ ? clampDirectorReviewScore(key, row, dirData[key]?.[index]?.dir ?? dirData[key]?.[index]?.director ?? row.director ?? "", REVIEW_SECTION_MAX[key] || 0)
  : key === "society" && societyRowLocked(row)
  ? "0"
  : clampDirectorReviewScore(key, row, dirData[key]?.[index]?.dir ?? row.director ?? "", REVIEW_SECTION_MAX[key] || 0),
@@ -140,6 +140,135 @@ const STANDARD_ARRAY_SECTIONS = [
  "lectures", "courseFile", "projects", "quals", "feedback", "deptActs", "uniActs",
  "society", "industry", "acr", "journals", "books", "ict", "research", "projects2",
  "externalProjects", "patents", "awards", "confs", "proposals", "products", "fdps", "training",
+];
+const STANDARD_REPORT_PART_A_SECTIONS = [
+ { key: "lectures", title: "A1. Lectures / Tutorials / Practicals", max: 40, doc: "lec", fields: [["sem", "Semester"], ["code", "Course Code / Name"], ["planned", "Classes (as per course structure)"], ["conducted", "Classes Actually Conducted"], ["pctConducted", "% Conducted"]] },
+ { key: "courseFile", title: "A2. Course File", max: 20, doc: "cf", fields: [["course", "Course / Paper"], ["title", "Title"], ["details", "IQAC Index Compliance (Yes/No, with proof)"]] },
+ { key: "innovRows", title: "A3. Innovative Teaching-Learning Methods", max: 10, doc: "innov", showDocuments: false, fields: [["method", "Methods Used"], ["details", "Details"]] },
+ { key: "feedback", title: "A4. Student Feedback", max: 10, doc: "fb", fields: [["code", "Course Code / Name"], ["fb1", "First Feedback(%)"], ["fb2", "Second Feedback(%)"]] },
+ { key: "obeRows", title: "A5. Learning Outcomes Attainment & OBE Practice", max: 20, doc: "obe", fields: [["component", "Component"], ["evidence", "Evidence"]] },
+ { key: "projects", title: "A6. Guided Students Project", max: 20, doc: "proj", fields: [["label", "Project Category"]] },
+ { key: "mentoringRows", title: "A7. Student Mentoring & Counselling", max: 10, doc: "mentor", fields: [["activity", "Activity"], ["evidence", "Evidence"]] },
+ { key: "quals", title: "A8. Professional Development & Qualification Enhancement", max: 10, doc: "qual", fields: [["label", "Qualification / Category"]] },
+];
+const STANDARD_REPORT_PART_B_SECTIONS = [
+ { key: "journals", title: "B1. Journal Publications", max: 100, doc: "jour", fields: [["title", "Title"], ["journal", "Journal"], ["issn", "ISSN"], ["impactFactor", "Impact Factor"], ["authorPosition", "Author Position"]] },
+ { key: "books", title: "B2. Books, Book Chapters & Edited Volumes", max: 30, doc: "book", fields: [["title", "Title"], ["book", "Publisher & ISBN"], ["pub", "Type"], ["level", "Level"], ["coauth", "Co-authors from DYPIU"]] },
+ { key: "patents", title: "B3. Patents, Copyrights & IP and Product Development", max: 40, doc: "pat", fields: [["title", "Title"], ["type", "National / International"], ["status", "Status"], ["fileNo", "Filing / Grant No. & Date"]] },
+ { key: "projects2", title: "B4. Funded Research Projects", max: 40, doc: "project2", fields: [["title", "Title of Project"], ["agency", "Funding Agency"], ["date", "Sanction Date"], ["amount", "Amount"], ["role", "PI / Co-PI"], ["status", "Status"]] },
+ { key: "research", title: "B5. Research Guidance", max: 20, doc: "res", fields: [["degree", "Degree"], ["name", "Name of Student / Scholar"], ["status", "Status"], ["date", "Date"]] },
+ { key: "proposals", title: "B6. Consultancy, Testing & Training", max: 20, doc: "prop", fields: [["agency", "Client / Organisation"], ["duration", "Nature of Engagement"], ["amount", "Revenue Generated"]] },
+ { key: "confs", title: "B7. Conference / FDP / Training / Workshop Contributions Organised", max: 20, doc: "conf", fields: [["title", "Event / Session Title"], ["role", "Role"], ["date", "Date"], ["level", "Level"]] },
+ { key: "fdps", title: "B8. Conference / FDP / Industry Training - Attended", max: 20, doc: "fdp", fields: [["program", "Programme / Event"], ["duration", "Duration"], ["org", "Organised By"]] },
+ { key: "awards", title: "B9. Research Awards, Fellowships, Reviewer of Journal & Citations", max: 20, doc: "awd", fields: [["title", "Title of Award / Fellowship / Metric"], ["agency", "Awarding Agency"], ["level", "Level"], ["date", "Date"]] },
+ { key: "products", title: "B10. Innovation, Start-ups & Technology Transfer", max: 20, doc: "prod", fields: [["details", "Title / Start-up / Product"], ["role", "Role"], ["status", "Status"]] },
+ { key: "ict", title: "B11. ICT Content, MOOCs & E-Learning", max: 20, doc: "ict", fields: [["title", "Title"], ["type", "Platform / Type"], ["quad", "Reach / Views"]] },
+];
+const STANDARD_REPORT_PART_C_SECTIONS = [
+ { key: "uniActs", title: "C1. Administration at University Level", max: 50, doc: "uni", fields: [["activity", "Activity"], ["nature", "Nature"], ["period", "Period"]] },
+ { key: "deptActs", title: "C2. Administration at School Level", max: 30, doc: "dept", fields: [["activity", "Activity"], ["nature", "Nature"], ["period", "Period"]] },
+ { key: "eventRows", title: "C3. Event Organisation & Institutional Visibility", max: 20, doc: "event", fields: [["event", "Event / Contribution"], ["role", "Role"], ["date", "Date"], ["level", "Level"]] },
+ { key: "society", title: "C4. Outreach, Extension & Social Responsibility", max: 20, doc: "soc", fields: [["label", "Activity"], ["details", "Details"], ["date", "Date"]] },
+ { key: "industry", title: "C5. Industry Interaction & Linkages", max: 8, doc: "ind", fields: [["activity", "Activity"], ["partner", "Industry Partner"], ["date", "Date"]] },
+ { key: "alumniRows", title: "C6. Alumni Engagement & Networking", max: 10, doc: "alumni", fields: [["activity", "Activity"], ["details", "Details"], ["date", "Date"]] },
+ { key: "placementRows", title: "C7. Student Placement Mentoring & Career Development", max: 20, doc: "placement", fields: [["activityType", "Activity Type"], ["name", "Student / Company Name"], ["date", "Date"]] },
+];
+const STANDARD_REPORT_PART_D_SECTIONS = [
+ { key: "acr", title: "D1. Annual Confidential Report (ACR)", max: 50, doc: "acr", showDocuments: false, fields: [["label", "Attribute"]] },
+];
+const escapeReportHtml = (value) =>String(value ?? "")
+ .replace(/&/g, "&amp;")
+ .replace(/</g, "&lt;")
+ .replace(/>/g, "&gt;")
+ .replace(/"/g, "&quot;")
+ .replace(/'/g, "&#39;");
+const reportValue = (value) =>{
+ const text = String(value ?? "").trim();
+ return text ? escapeReportHtml(text) : "&nbsp;";
+};
+const directorReportScore = (section, row = {}, role, sectionMax) =>{
+ if (role === "score") return String(row.score ?? "").trim() ? clampScore(row.score, sectionMax).toFixed(1) : "";
+ const raw = role === "hod"
+ ? row.hod
+ : row.director ?? row.dir;
+ if (!String(raw ?? "").trim()) return "";
+ const rowMax = section.key === "acr"
+ ? SCORE_LIMITS.acrRow
+ : section.key === "quals"
+ ? SCORE_LIMITS.qualificationRow
+ : section.key === "feedback"
+ ? 10
+ : section.key === "projects"
+ ? projectGuidanceRowMax(row)
+ : section.key === "research"
+ ? researchGuidanceRowMax(row)
+ : section.key === "courseFile"
+ ? SCORE_LIMITS.courseFileRow
+ : section.key === "fdps" || section.key === "training"
+ ? SCORE_LIMITS.fdpRow
+ : row.max || sectionMax;
+ return clampScore(raw, rowMax).toFixed(1);
+};
+const directorReportSectionTotal = (section, rows, role) =>{
+ if (!rows.length) return "";
+ if (role === "score") {
+ const total = sumSectionScore(rows, section.max, "score", (row) =>
+ section.key === "quals" ? SCORE_LIMITS.qualificationRow : row.max || section.max,
+ );
+ return total ? total.toFixed(1) : "";
+ }
+ const key = role === "hod" ? "hod" : "director";
+ const total = reviewSectionScore(section.key, rows, section.max, key);
+ return total ? total.toFixed(1) : "";
+};
+const directorReportRowsFor = (form, section) =>{
+ if (section.key === "acr") return createAcrRows(form.acr);
+ if (section.key === "innovRows") {
+ return Array.isArray(form.innovRows) && form.innovRows.length
+ ? form.innovRows
+ : [{ method: form.innovDetails || "", details: form.innovDetails || "", score: form.innovScore || "", director: form.innovDirector || "" }];
+ }
+ return Array.isArray(form[section.key]) ? form[section.key] : [];
+};
+const directorReportTable = ({ form, docs, section, scoreRoles, roleLabel }) =>{
+ const rows = directorReportRowsFor(form, section);
+ const showDocs = Boolean(section.doc) && section.showDocuments !== false && section.key !== "acr";
+ const totalColSpan = section.fields.length + 1 + (showDocs ? 1 : 0);
+ return `
+  <h3>${escapeReportHtml(section.title)} <span>(Max ${escapeReportHtml(section.max)})</span></h3>
+  <table>
+    <thead><tr>
+      <th>SN</th>
+      ${section.fields.map(([, label]) =>`<th>${escapeReportHtml(label)}</th>`).join("")}
+      ${showDocs ? "<th>Documents</th>" : ""}
+      ${scoreRoles.map((role) =>`<th>${escapeReportHtml(roleLabel(role))}</th>`).join("")}
+    </tr></thead>
+    <tbody>
+      ${(rows.length ? rows : [{}]).map((row, index) =>`
+        <tr>
+          <td class="c">${index + 1}</td>
+          ${section.fields.map(([key]) =>`<td>${reportValue(key === "label" && section.key === "quals" ? (row.label || row.title || row.qualificationTitle || row.qualification || row.name) : row[key])}</td>`).join("")}
+          ${showDocs ? `<td>${reportValue((docs?.[`${section.doc}-${index}`] || []).map((file) =>file.name || file.url || "Document").join(", "))}</td>` : ""}
+          ${scoreRoles.map((role) =>`<td class="c">${reportValue(directorReportScore(section, row, role, section.max))}</td>`).join("")}
+        </tr>
+      `).join("")}
+      <tr class="tr">
+        <td colspan="${totalColSpan}" class="c b">Total Score (Max ${escapeReportHtml(section.max)})</td>
+        ${scoreRoles.map((role) =>`<td class="c b">${reportValue(directorReportSectionTotal(section, rows, role))}</td>`).join("")}
+      </tr>
+    </tbody>
+  </table>`;
+};
+const directorReportPart = ({ title, sections, form, docs, scoreRoles, roleLabel }) =>`
+  <div class="page-break"></div>
+  <h3 style="background:#d9d9d9;padding:4px;text-align:center;font-size:13px">${escapeReportHtml(title)}</h3>
+  ${sections.map((section) =>directorReportTable({ form, docs, section, scoreRoles, roleLabel })).join("")}
+`;
+const directorSummaryRows = ({ totals, maxScores }) =>[
+ ["Part A", totals.partA, maxScores.partA],
+ ["Part B", totals.partB, maxScores.partB],
+ ["Part C", totals.partC, maxScores.partC],
+ ["Part D", totals.partD, maxScores.partD],
 ];
 
 const asRows = (value) =>{
@@ -408,6 +537,105 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
     }
   };
 
+ const generateDirectorReport = () =>{
+ const sectionScores = buildDirectorSectionScores(faculty, dirData);
+ const reportForm = {
+ ...faculty,
+ ...sectionScores,
+ info: {
+ ...(faculty.info || {}),
+ name: faculty.info?.name || faculty.name,
+ ay: faculty.info?.ay || faculty.academicYear || faculty.academic_year || APP_INFO.DEFAULT_AY,
+ desig: faculty.info?.desig || faculty.designation || directorSubjectRole,
+ school: faculty.info?.school || faculty.schoolName || faculty.school,
+ },
+ docs: faculty.docs || {},
+ innovDirector: sectionScores?.innovativeTeaching?.director ?? faculty.innovDirector ?? "",
+ };
+ const totals = { partA: dirPartA, partB: dirPartB, partC: dirPartC, partD: dirPartD, total: dirTotal };
+ const scoreRoles = showHodSummaryCard ? ["score", "hod", "director"] : ["score", "director"];
+ const roleLabel = (value) =>value === "hod" ? "HOD Score" : value === "director" ? "Director Score" : "Faculty Score";
+ const summaryRows = directorSummaryRows({ totals, maxScores: reviewerMaxScores });
+ const percent = (score, max) =>max >0 ? ((n(score) / n(max)) * 100).toFixed(2) : "0.00";
+ const remarksSections = buildReviewRemarks({
+ source: faculty,
+ currentRole: "director",
+ currentRemarks: dirRemarks,
+ roleLabels: { hod: "HOD" },
+ });
+ const win = window.open("", "_blank", "width=1000,height=800");
+ if (!win) {
+ alert("Please allow popups to generate the report.");
+ return;
+ }
+ const logoSrc = `${window.location.origin}/image.png`;
+ const html = `<!doctype html>
+<html>
+<head>
+  <title>Director Appraisal Report</title>
+  <style>
+    @page{size:A4;margin:12mm}
+    *{box-sizing:border-box}
+    body{font-family:"Times New Roman",Times,serif;font-size:10.8px;line-height:1.34;color:#111;background:#fff;margin:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    h1{text-align:center;font-size:14px;line-height:1.18;letter-spacing:.45px;margin:0 0 4px;text-transform:uppercase;color:#111;font-weight:700}
+    h2{text-align:center;font-size:11px;line-height:1.25;margin:2px 0;color:#111;font-weight:700}
+    h3{font-size:11px;line-height:1.25;margin:10px 0 5px;color:#111;break-after:avoid;font-weight:700}
+    h3 span{color:#444;font-size:10px;font-weight:400}
+    h3[style*="background"]{background:#f1f3f5!important;border:none!important;border-top:1.6px solid #111!important;border-bottom:1.2px solid #111!important;border-radius:0!important;padding:6px 0!important;margin:14px 0 8px!important;color:#111!important;text-align:center!important;text-transform:uppercase;letter-spacing:.25px}
+    table{width:100%;border-collapse:collapse!important;margin-bottom:10px;table-layout:fixed;border:1.15px solid #6b7280!important;background:#fff;page-break-inside:auto}
+    thead{display:table-header-group}
+    tr{page-break-inside:avoid;page-break-after:auto}
+    th,td{border:1px solid #aeb6c2!important;padding:4.8px 6px;vertical-align:top;word-wrap:break-word;overflow-wrap:anywhere}
+    th{background:#eef0f3!important;text-align:center;font-weight:700;color:#111}
+    .c{text-align:center}.b{font-weight:bold}.page-break{page-break-before:always}.page-break:first-of-type{page-break-before:auto}.tr{background:#f6f7f9!important;font-weight:bold}
+    .ht{width:100%;border:none!important;border-bottom:2px solid #111!important;margin-bottom:9px;padding-bottom:5px;background:transparent}.ht td{border:none!important;padding:0 4px;vertical-align:middle}
+    .logo{width:17mm;max-height:22mm;object-fit:contain;height:auto}.st{border:1.35px solid #4b5563!important}.st th{background:#dfe3e8!important}.remarks{white-space:pre-wrap;border:1px solid #6b7280!important;padding:8px;min-height:34px;background:#fff}
+  </style>
+</head>
+<body>
+  <table class="ht"><tr>
+    <td style="width:20%;text-align:left"><img class="logo" src="${logoSrc}" alt="DYPIU"/></td>
+    <td style="text-align:center">
+      <h1>D Y PATIL INTERNATIONAL UNIVERSITY, AKURDI, PUNE</h1>
+      <h2>Director Appraisal Report</h2>
+      <h2>${escapeReportHtml(APP_INFO.UNIVERSITY_NAME)} | Academic Year ${reportValue(reportForm.info.ay)}</h2>
+    </td>
+    <td style="width:20%"></td>
+  </tr></table>
+  <table>
+    <tr><td class="b" style="width:35%">Name of Faculty</td><td>${reportValue(reportForm.info.name || reportForm.name)}</td></tr>
+    <tr><td class="b">Present Designation</td><td>${reportValue(reportForm.info.desig || reportForm.designation)}</td></tr>
+    <tr><td class="b">School / Department</td><td>${reportValue(reportForm.info.school || reportForm.schoolName || reportForm.school)}</td></tr>
+    <tr><td class="b">Academic Year</td><td>${reportValue(reportForm.info.ay)}</td></tr>
+    <tr><td class="b">Generated On</td><td>${escapeReportHtml(new Date().toLocaleString())}</td></tr>
+    <tr><td class="b">Generated By</td><td>${reportValue(sessionStorage.getItem("name") || "Director")}</td></tr>
+  </table>
+  ${directorReportPart({ title: "PART A - Teaching Process & Academic Activities", sections: STANDARD_REPORT_PART_A_SECTIONS, form: reportForm, docs: reportForm.docs, scoreRoles, roleLabel })}
+  ${directorReportPart({ title: "PART B - Research & Academic Contributions", sections: STANDARD_REPORT_PART_B_SECTIONS, form: reportForm, docs: reportForm.docs, scoreRoles, roleLabel })}
+  ${directorReportPart({ title: "PART C - Administrative Role & University Development Contribution", sections: STANDARD_REPORT_PART_C_SECTIONS, form: reportForm, docs: reportForm.docs, scoreRoles, roleLabel })}
+  ${directorReportPart({ title: "PART D - Annual Confidential Report (ACR)", sections: STANDARD_REPORT_PART_D_SECTIONS, form: reportForm, docs: reportForm.docs, scoreRoles, roleLabel })}
+  <div class="page-break"></div>
+  <h3 style="text-align:center;font-size:13px">SUMMARY</h3>
+  <table class="st">
+    <thead><tr><th>Section</th><th>Score</th><th>Maximum</th><th>Marks Obtained (%)</th></tr></thead>
+    <tbody>
+      ${summaryRows.map(([label, score, max]) =>`<tr><td>${escapeReportHtml(label)}</td><td class="c">${n(score).toFixed(1)}</td><td class="c">${escapeReportHtml(max)}</td><td class="c">${percent(score, max)}%</td></tr>`).join("")}
+      <tr class="tr"><td>Grand Total</td><td class="c">${n(totals.total).toFixed(1)}</td><td class="c">${escapeReportHtml(reviewerMaxScores.grand)}</td><td class="c">${percent(totals.total, reviewerMaxScores.grand)}%</td></tr>
+      ${faculty.status ? `<tr><td>Status</td><td colspan="3">${reportValue(faculty.status)}</td></tr>` : ""}
+    </tbody>
+  </table>
+  ${remarksSections.length ? `<h3 style="background:#d9d9d9;padding:4px;text-align:center;font-size:13px">REVIEW REMARKS</h3>${remarksSections.map((section) =>`<h3>${escapeReportHtml(section.label)}</h3><div class="remarks">${escapeReportHtml(section.remarks || "")}</div>`).join("")}` : ""}
+  <script>
+    window.addEventListener('load', function(){
+      setTimeout(function(){ window.focus(); window.print(); }, 120);
+    });
+  </script>
+</body>
+</html>`;
+ win.document.write(html);
+ win.document.close();
+ };
+
  const facultySummary = standardSubmittedScoreSummary(faculty, {
  partA: faculty.lectures?.reduce((a, r) =>a + n(r.score), 0) || 0,
  partB: faculty.journals?.reduce((a, r) =>a + n(r.score), 0) || 0,
@@ -550,6 +778,12 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
 <span style={{ color: "#64748b", fontSize: 11, fontWeight: 700 }}>{draftStatus}</span>
 <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap", marginLeft: "auto" }}>
 <button onClick={onBack} style={{ padding: "9px 22px", background: "#f1f5f9", color: "#475569", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 700, fontSize: 12, fontFamily: "inherit" }}>{reviewLocked ? "Close" : "Cancel"}</button>
+<button
+ onClick={generateDirectorReport}
+ style={{ padding: "10px 22px", background: "#4c1d95", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 800, fontSize: 13, fontFamily: "inherit" }}
+>
+ Generate Report
+</button>
  {!reviewLocked && (
 <>
 <button
