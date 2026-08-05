@@ -4,7 +4,7 @@ import {
   isNonTeachingRole,
   normalizeNonTeachingRole,
 } from "../constants/nonTeachingHierarchy";
-import { profileFromsessionStorage } from "../utils/hierarchy";
+import { profileFromsessionStorage, roleLabel } from "../utils/hierarchy";
 import { clampScore } from "../utils/appraisalFormUtils";
 import {
   WORKFLOW_STATUSES,
@@ -809,9 +809,14 @@ export const loadNonTeachingAppraisal = async ({
       params: { academic_year: ay },
     });
     if (!data) return null;
+    const form = normalizeNonTeachingForm(
+      { ...(data.payload || {}), status: firstNonEmpty(data.status, data.payload?.status) },
+      { ...profile, ...data },
+      role,
+    );
     return {
       ...data,
-      form: normalizeNonTeachingForm(data.payload, { ...profile, ...data }, role),
+      form,
     };
   } catch {
     return null;
@@ -1108,16 +1113,17 @@ export const submitNonTeachingReview = async ({
   const staffEmail = emailKey(item?.email || finalForm.info.email);
   const ay = academicYear(item?.academicYear || finalForm.info.ay);
   const rejected = decision === "rejected";
+  const rejectedStatus = `${roleLabel(role)} Rejected`;
   const requestPayload = {
     academic_year: ay,
     total_score: calculateNonTeachingTotals(finalForm, authority).total,
-    payload: finalForm,
+    payload: rejected ? { ...finalForm, status: rejectedStatus } : finalForm,
     remarks,
     ...(rejected
       ? {
           decision: "rejected",
           action: "reject",
-          status: `${roleLabel(role)} Rejected`,
+          status: rejectedStatus,
           rejection_reason: remarks,
         }
       : {}),
