@@ -328,8 +328,8 @@ const legacyCardTotalsForPerson = (person = {}, personMode = "faculty") =>{
 
 const vcReviewSummaryFrom = standardReviewSummary;
 
-const VC_REVIEW_ARRAY_KEYS = ["lectures", "courseFile", "obeRows", "projects", "mentoringRows", "quals", "feedback", "deptActs", "uniActs", "eventRows", "society", "industry", "alumniRows", "placementRows", "acr", "journals", "books", "ict", "research", "projects2", "patents", "awards", "confs", "proposals", "products", "fdps"];
-const VC_SECTION_MAX = { lectures: 40, courseFile: 20, obeRows: 20, projects: 20, mentoringRows: 10, quals: 10, feedback: 10, deptActs: 30, uniActs: 50, eventRows: 20, society: 20, industry: 8, alumniRows: 10, placementRows: 20, acr: 50, journals: 100, books: 30, ict: 20, research: 20, projects2: 40, patents: 40, awards: 20, confs: 20, proposals: 20, products: 20, fdps: 20 };
+const VC_REVIEW_ARRAY_KEYS = ["lectures", "courseFile", "obeRows", "projects", "mentoringRows", "quals", "feedback", "deptActs", "uniActs", "eventRows", "society", "industry", "alumniRows", "placementRows", "acr", "journals", "books", "ict", "research", "projects2", "patents", "awards", "confs", "proposals", "products", "fdps", "exhibitions"];
+const VC_SECTION_MAX = { lectures: 40, courseFile: 20, obeRows: 20, projects: 20, mentoringRows: 10, quals: 10, feedback: 10, deptActs: 30, uniActs: 50, eventRows: 20, society: 20, industry: 8, alumniRows: 10, placementRows: 20, acr: 50, journals: 100, books: 30, ict: 20, research: 20, projects2: 40, patents: 40, awards: 20, confs: 20, proposals: 20, products: 20, fdps: 20, exhibitions: 30 };
 const REVIEW_SCORE_FIELDS = ["hod", "director", "dean", "vc"];
 const preserveSavedReviewScores = (form = {}, source = {}) =>{
  const merged = { ...form };
@@ -741,6 +741,8 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
  columns: [["Title / Start-up / Product", (r) =>r.details || r.title], ["Role", (r) =>r.role || r.usage], ["Status", (r) =>r.status]] },
  { title: "B11. ICT Content, MOOCs & E-Learning (Max 20)", key: "ict", docPfx: "ict",
  columns: [["Title", (r) =>r.title], ["Platform / Type", (r) =>r.type || r.desc], ["Reach / Views", (r) =>r.quad || r.reach]] },
+ { title: "B12. Exhibitions - Photography, Design & Applied Arts, Documentaries, Films & Audio-Visual Productions (Max 30)", key: "exhibitions", docPfx: "exh",
+ columns: [["Title of Work / Exhibition", (r) =>r.title], ["Type", (r) =>r.type], ["Venue & Level", (r) =>r.venueLevel || r.venue_level || r.level], ["Date", (r) =>r.date]] },
  ].map(({ title, key, docPfx, columns }) =>(
 <SC key={key} title={title} accent="#7c3aed">
 <div style={{ overflowX: "auto" }}><table style={T}><thead>
@@ -809,7 +811,8 @@ function calcVCScore(person, vcData) {
  sum(person.patents, "patents", "vc") + sum(person.projects2, "projects2", "vc") +
  sum(person.research, "research", "vc") + sum(person.proposals, "proposals", "vc") +
  sum(person.confs, "confs", "vc") + sum(person.products, "products", "vc") +
- sum(person.fdps, "fdps", "vc") + sum(person.awards, "awards", "vc") + sum(person.ict, "ict", "vc");
+ sum(person.fdps, "fdps", "vc") + sum(person.awards, "awards", "vc") + sum(person.ict, "ict", "vc") +
+ sum(person.exhibitions, "exhibitions", "vc");
 
  const partC = sum(person.uniActs, "uniActs", "vc") + sum(person.deptActs, "deptActs", "vc") +
  sum(person.eventRows, "eventRows", "vc") + sum(person.society, "society", "vc") +
