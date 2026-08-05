@@ -1,4 +1,5 @@
 import { api } from "./api";
+import { fetchSavedAppraisal } from "./appraisalPersistence";
 import { getActiveAcademicYear } from "../auth/session";
 import { APP_INFO } from "../constants/formConfig";
 import {
@@ -184,6 +185,7 @@ const docsForQueueCard = (item = {}) => {
 
 const enrichQueueItemDocs = async (item = {}) => {
   if (!item.email || !item.academicYear) return item;
+  let enrichedItem = item;
 
   try {
     const rows = await api.get("/appraisal-documents", {
@@ -195,25 +197,50 @@ const enrichQueueItemDocs = async (item = {}) => {
     const fetchedCount = docCountFromValue(rows);
     const currentCount = docCountFromValue(item.docs, item);
     if (fetchedCount > 0 && fetchedCount !== currentCount) {
-      return { ...item, docs: rows, docCount: fetchedCount };
+      enrichedItem = { ...enrichedItem, docs: rows, docCount: fetchedCount };
     }
   } catch {
     // Fall through to the submitted-form endpoint below.
   }
 
   try {
-    const submitted = await api.get(`/dashboard/faculty/${encodeURIComponent(item.email)}`, {
-      params: { academic_year: item.academicYear },
+    const submitted = await fetchSavedAppraisal({
+      facultyEmail: item.email,
+      academicYear: item.academicYear,
     });
     const bestSubmittedDocs = docsForQueueCard(submitted);
     const submittedCount = docCountFromValue(bestSubmittedDocs, submitted);
-    const currentCount = docCountFromValue(item.docs, item);
+    const currentCount = docCountFromValue(enrichedItem.docs, enrichedItem);
+    const submittedSummary = standardSubmittedScoreSummary(submitted, standardSubmittedScoreSummary(enrichedItem));
+    const nextItem = {
+      ...enrichedItem,
+      partATotal: submittedSummary.partA,
+      partBTotal: submittedSummary.partB,
+      partCTotal: submittedSummary.partC,
+      partDTotal: submittedSummary.partD,
+      grandTotal: submittedSummary.total,
+      selfPartA: submittedSummary.partA,
+      selfPartB: submittedSummary.partB,
+      selfPartC: submittedSummary.partC,
+      selfPartD: submittedSummary.partD,
+      selfTotal: submittedSummary.total,
+      effectivePartAMax: submittedSummary.partAMax,
+      effectivePartBMax: submittedSummary.partBMax,
+      effectivePartCMax: submittedSummary.partCMax,
+      effectivePartDMax: submittedSummary.partDMax,
+      effectiveGrandMax: submittedSummary.grandMax,
+      facultyPartAMax: submittedSummary.partAMax,
+      facultyPartBMax: submittedSummary.partBMax,
+      facultyPartCMax: submittedSummary.partCMax,
+      facultyPartDMax: submittedSummary.partDMax,
+      facultyTotalMax: submittedSummary.grandMax,
+    };
     if (submittedCount > 0 && submittedCount !== currentCount) {
-      return { ...item, docs: bestSubmittedDocs, docCount: submittedCount };
+      return { ...nextItem, docs: bestSubmittedDocs, docCount: submittedCount };
     }
-    return item;
+    return nextItem;
   } catch {
-    return item;
+    return enrichedItem;
   }
 };
 
