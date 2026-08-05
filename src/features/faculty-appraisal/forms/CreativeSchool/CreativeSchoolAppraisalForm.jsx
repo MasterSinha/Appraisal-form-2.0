@@ -2131,7 +2131,7 @@ function buildCreativeSchoolSectionScores(person, reviewData, reviewerRole) {
   return payload;
 }
 
-export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBack, onSubmit, readOnly = false, showReport = false }) {
+export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBack, onSubmit, readOnly = false, showReport = true }) {
   const [sectionView, setSectionView] = useState("partA");
   const [reviewData, setReviewData] = useState({});
   const [remarks, setRemarks] = useState(person?.[`${reviewerRole}Remarks`] || "");
@@ -2739,11 +2739,9 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
             <span style={{ color: "#64748b", fontSize: 11, fontWeight: 700 }}>{draftStatus}</span>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap", marginLeft: "auto" }}>
               <button onClick={onBack} style={smallButton("#64748b")}>Close</button>
-              {showReport && (
-                <button onClick={generateReviewReport} disabled={!reviewCompleted} style={smallButton(reviewCompleted ? "#4c1d95" : "#94a3b8")}>
-                  Generate Report
-                </button>
-              )}
+              <button onClick={generateReviewReport} disabled={!showReport || !reviewCompleted} style={smallButton(showReport && reviewCompleted ? "#4c1d95" : "#94a3b8")}>
+                Generate Report
+              </button>
               {!panelReadOnly && (
                 <>
                   <button
