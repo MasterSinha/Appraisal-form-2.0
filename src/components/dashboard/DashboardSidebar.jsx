@@ -198,7 +198,6 @@ export default function DashboardSidebar({
   afterNav,
   profileSubtitle,
   onLogout,
-  showLogoutSpacer = false,
 }) {
   const navigate = useNavigate();
   const [sectionMenuOpen, setSectionMenuOpen] = useState(false);
@@ -382,13 +381,14 @@ export default function DashboardSidebar({
         </div>
       </div>
       <button
+        type="button"
         onClick={onLogout}
-        style={{ width: "100%", minHeight: 44, display: "flex", alignItems: "center", justifyContent: showLogoutSpacer ? "flex-start" : "center", gap: 8, background: "rgba(127,29,29,0.02)", border: "1px solid rgba(248,113,113,0.42)", borderRadius: 14, padding: "10px 13px", cursor: "pointer", fontFamily: "inherit" }}
+        style={{ width: "100%", minHeight: 54, display: "flex", alignItems: "center", justifyContent: "center", gap: 9, background: "#111827", border: "1px solid rgba(248,113,113,0.55)", borderRadius: 14, padding: "13px 16px", cursor: "pointer", fontFamily: "inherit", boxShadow: "none" }}
         onMouseEnter={(event) => { event.currentTarget.style.background = "rgba(127,29,29,0.18)"; }}
-        onMouseLeave={(event) => { event.currentTarget.style.background = "rgba(127,29,29,0.02)"; }}
+        onMouseLeave={(event) => { event.currentTarget.style.background = "#111827"; }}
       >
         <Icon name="logout" size={17} />
-        <span style={{ color: "#f87171", fontWeight: 900, fontSize: 12 }}>Logout</span>
+        <span style={{ color: "#f87171", fontWeight: 900, fontSize: 13 }}>Logout</span>
       </button>
     </aside>
   );

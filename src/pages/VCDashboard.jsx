@@ -2009,16 +2009,16 @@ export default function VCDashboard() {
 <div style={{ color: "#94a3b8", fontWeight: 700, fontSize: 9, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 4 }}>For any queries</div>
 <a href="mailto:appraisal@dypiu.ac.in" style={{ color: "#60a5fa", fontWeight: 600, fontSize: 11, wordBreak: "break-all", textDecoration: "none" }}>appraisal@dypiu.ac.in</a>
 </div>
-<button onClick={() =>setShowLogoutModal(true)}
- style={{ width: "100%", minHeight: 44, display: "flex", alignItems: "center", justifyContent: "flex-start", gap: 8, background: "rgba(127,29,29,0.02)", border: "1px solid rgba(248,113,113,0.42)", borderRadius: 14, padding: "10px 13px", cursor: "pointer", fontFamily: "inherit" }}
+<button type="button" onClick={() =>setShowLogoutModal(true)}
+ style={{ width: "100%", minHeight: 54, display: "flex", alignItems: "center", justifyContent: "center", gap: 9, background: "#111827", border: "1px solid rgba(248,113,113,0.55)", borderRadius: 14, padding: "13px 16px", cursor: "pointer", fontFamily: "inherit" }}
  onMouseEnter={e =>e.currentTarget.style.background = "rgba(127,29,29,0.18)"}
- onMouseLeave={e =>e.currentTarget.style.background = "rgba(127,29,29,0.02)"}>
+ onMouseLeave={e =>e.currentTarget.style.background = "#111827"}>
 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
 <path d="M10 17 15 12 10 7" />
 <path d="M15 12H3" />
 <path d="M21 19V5a2 2 0 0 0-2-2h-6" />
 </svg>
-<span style={{ color: "#f87171", fontWeight: 900, fontSize: 12 }}>Logout</span>
+<span style={{ color: "#f87171", fontWeight: 900, fontSize: 13 }}>Logout</span>
 </button>
 </aside>
 
@@ -2169,7 +2169,7 @@ readOnly={isVcReviewed(reviewing.person)}
  Cancel
 </button>
 <button onClick={() =>{ setShowLogoutModal(false); sessionStorage.clear(); navigate("/", { replace: true }); }}
- style={{ flex: 1, padding: "11px 0", background: "linear-gradient(135deg,#dc2626,#ef4444)", color: "#fff", border: "none", borderRadius: 10, cursor: "pointer", fontWeight: 800, fontSize: 13, fontFamily: "inherit", boxShadow: "0 4px 14px rgba(220,38,38,0.35)" }}>
+ style={{ flex: 1, minHeight: 44, padding: "10px", background: "#111827", color: "#f87171", border: "1px solid rgba(248,113,113,0.55)", borderRadius: 10, cursor: "pointer", fontWeight: 900, fontSize: 13, fontFamily: "inherit" }}>
  Yes, Logout
 </button>
 </div>

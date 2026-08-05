@@ -661,7 +661,10 @@ export function NonTeachingAppraisalForm({ role = sessionStorage.getItem("role")
           <a href="mailto:appraisal@dypiu.ac.in" style={{ color: "#60a5fa", fontWeight: 600, fontSize: 11, wordBreak: "break-all", textDecoration: "none" }}>appraisal@dypiu.ac.in</a>
         </div>
         <div style={S.sideActions}>
-          <button type="button" onClick={() => setShowLogoutModal(true)} style={{ ...S.sideButton, color: "#f87171" }}>Logout</button>
+          <button type="button" onClick={() => setShowLogoutModal(true)} style={S.sideButton}>
+            <LogoutButtonIcon />
+            <span>Logout</span>
+          </button>
         </div>
       </aside>
       {content}
@@ -1248,7 +1251,10 @@ export function NonTeachingReviewDashboard({ reviewerRole, title, subtitle, acce
           <a href="mailto:appraisal@dypiu.ac.in" style={{ color: "#60a5fa", fontWeight: 600, fontSize: 11, wordBreak: "break-all", textDecoration: "none" }}>appraisal@dypiu.ac.in</a>
         </div>
         <div style={S.sideActions}>
-          <button type="button" onClick={() => setShowLogoutModal(true)} style={{ ...S.sideButton, color: "#f87171" }}>Logout</button>
+          <button type="button" onClick={() => setShowLogoutModal(true)} style={S.sideButton}>
+            <LogoutButtonIcon />
+            <span>Logout</span>
+          </button>
         </div>
       </aside>
 
@@ -1284,6 +1290,19 @@ export function NonTeachingReviewDashboard({ reviewerRole, title, subtitle, acce
 }
 
 function LogoutModal({ onCancel, onConfirm }) {
+  const logoutConfirmButtonStyle = {
+    flex: 1,
+    minHeight: 44,
+    border: "1px solid rgba(248,113,113,0.55)",
+    borderRadius: 10,
+    background: "#111827",
+    color: "#f87171",
+    padding: "10px",
+    fontWeight: 900,
+    cursor: "pointer",
+    fontFamily: "inherit",
+  };
+
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)", zIndex: 1000, display: "grid", placeItems: "center" }} onClick={onCancel}>
       <div style={{ width: "min(380px, 92vw)", background: "#fff", borderRadius: 12, padding: "26px 28px", boxShadow: "0 20px 60px rgba(0,0,0,0.25)" }} onClick={(event) => event.stopPropagation()}>
@@ -1291,10 +1310,20 @@ function LogoutModal({ onCancel, onConfirm }) {
         <div style={{ color: "#64748b", fontSize: 12, lineHeight: 1.6, marginBottom: 18 }}>You are about to leave {APP_INFO.PORTAL_NAME}. Any unsaved edits will be lost.</div>
         <div style={{ display: "flex", gap: 10 }}>
           <button type="button" onClick={onCancel} style={{ flex: 1, border: "none", borderRadius: 8, background: "#f1f5f9", color: "#475569", padding: "10px", fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
-          <button type="button" onClick={onConfirm} style={{ flex: 1, border: "none", borderRadius: 8, background: "#dc2626", color: "#fff", padding: "10px", fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}>Logout</button>
+          <button type="button" onClick={onConfirm} style={logoutConfirmButtonStyle}>Logout</button>
         </div>
       </div>
     </div>
+  );
+}
+
+function LogoutButtonIcon() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
+      <path d="M10 17 15 12 10 7" />
+      <path d="M15 12H3" />
+      <path d="M21 19V5a2 2 0 0 0-2-2h-6" />
+    </svg>
   );
 }
 
@@ -1312,14 +1341,19 @@ const S = {
   },
   sideButton: {
     width: "100%",
-    border: "1px solid #334155",
-    borderRadius: 8,
-    background: "#1e293b",
-    color: "#e2e8f0",
-    padding: "9px 11px",
+    minHeight: 54,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 9,
+    border: "1px solid rgba(248,113,113,0.55)",
+    borderRadius: 14,
+    background: "#111827",
+    color: "#f87171",
+    padding: "13px 16px",
     cursor: "pointer",
-    fontWeight: 800,
-    fontSize: 12,
+    fontWeight: 900,
+    fontSize: 13,
     fontFamily: "inherit",
   },
   sideActions: {

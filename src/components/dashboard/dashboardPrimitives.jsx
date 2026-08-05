@@ -372,6 +372,19 @@ export function StatusBadge({ status = "Pending Review" }) {
 }
 
 export function LogoutConfirmModal({ onCancel, onConfirm, portalName = "the portal", confirmLabel = "Yes, Logout" }) {
+  const logoutConfirmButtonStyle = {
+    flex: 1,
+    minHeight: 44,
+    border: "1px solid rgba(248,113,113,0.55)",
+    borderRadius: 10,
+    background: "#111827",
+    color: "#f87171",
+    padding: "10px",
+    fontWeight: 900,
+    cursor: "pointer",
+    fontFamily: "inherit",
+  };
+
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)", zIndex: 1000, display: "grid", placeItems: "center" }} onClick={onCancel}>
       <div style={{ width: "min(380px, 92vw)", background: "#fff", borderRadius: 12, padding: "26px 28px", boxShadow: "0 20px 60px rgba(0,0,0,0.25)", fontFamily: "inherit" }} onClick={(event) => event.stopPropagation()}>
@@ -379,7 +392,7 @@ export function LogoutConfirmModal({ onCancel, onConfirm, portalName = "the port
         <div style={{ color: "#64748b", fontSize: 12, lineHeight: 1.6, marginBottom: 18 }}>You are about to leave {portalName}. Any unsaved edits will be lost.</div>
         <div style={{ display: "flex", gap: 10 }}>
           <button type="button" onClick={onCancel} style={{ flex: 1, border: "none", borderRadius: 8, background: "#f1f5f9", color: "#475569", padding: "10px", fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
-          <button type="button" onClick={onConfirm} style={{ flex: 1, border: "none", borderRadius: 8, background: "#dc2626", color: "#fff", padding: "10px", fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}>{confirmLabel}</button>
+          <button type="button" onClick={onConfirm} style={logoutConfirmButtonStyle}>{confirmLabel}</button>
         </div>
       </div>
     </div>
