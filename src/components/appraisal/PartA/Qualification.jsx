@@ -42,7 +42,7 @@ export default function Qualification({ ctx }) {
 <td style={TDC}>{i + 1}</td>
 <td style={TD}><RO val={qualificationRowDescription(r)} /></td>
 <td style={TDV}><ViewDocsCell docKey={`qual-${i}`} docs={docs} /></td>
-<td style={TDS}><RO val={r.score} center /></td>
+<td style={TDS}><RO val={String(r.score ?? "").trim() ? clampScore(r.score, SCORE_LIMITS.qualificationRow) : ""} center /></td>
 <td style={TDS_HOD}><HodInput val={get("quals", i, "hod")} onChange={v =>set("quals", i, "hod", v)} max={SCORE_LIMITS.qualificationRow} disabled={!rowHasReviewableData("quals", r, docs, `qual-${i}`)} /></td>
 </tr>
  ))}

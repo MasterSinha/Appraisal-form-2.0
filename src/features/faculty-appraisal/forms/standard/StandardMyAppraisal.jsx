@@ -576,7 +576,7 @@ export default function StandardMyAppraisal({
   const [quals, setQuals] = useState([
     { label: "", score: "", hod: "", director: "" },
   ]);
-  const setQual = (i, k, v) => setQuals((p) => p.map((r, j) => j === i ? { ...r, [k]: v } : r));
+  const setQual = (i, k, v) => setQuals((p) => p.map((r, j) => j === i ? { ...r, [k]: k === "score" ? String(clampScore(v, A8_QUALIFICATION_MAX) || "") : v } : r));
 
   const [feedback, setFeedback] = useState([
     { code: "", fb1: "", fb2: "", score: "", hod: "", director: "" },
@@ -1364,7 +1364,7 @@ export default function StandardMyAppraisal({
     <h3>A8. Professional Development &amp; Qualification Enhancement &nbsp;(Max 10)</h3>
     <table>
       <tr><th>SN</th><th>Qualification / Category</th><th>Self Score</th></tr>
-      ${quals.map((q, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(q.label)}</td><td class="c">${reportTextValue(q.score)}</td></tr>`).join('')}
+      ${quals.map((q, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(q.label)}</td><td class="c">${reportTextValue(String(q.score ?? "").trim() ? clampScore(q.score, A8_QUALIFICATION_MAX) : "")}</td></tr>`).join('')}
       <tr class="tr"><td colspan="2" class="c b">Total Score (Max 10)</td><td class="c">${qualTotal > 0 ? qualTotal.toFixed(1) : "&nbsp;"}</td></tr>
     </table>
 
@@ -2229,7 +2229,7 @@ export default function StandardMyAppraisal({
                               <td style={TDC}><TI val={r.date} onChange={(v) => setQual(i, "date", maskDateDDMMYYYY(v))} placeholder="DD/MM/YYYY" /></td>
                               <td style={TD}><DocCell id={`qual-${i}`} docs={docs} setDocs={setDocs} /></td>
                               <td style={TD}><ViewCell id={`qual-${i}`} docs={docs} /></td>
-                              <td style={TDS}><TI val={r.score} onChange={(v) => setQual(i, "score", v)} center numeric max={SCORE_LIMITS.qualificationRow} /></td>
+                              <td style={TDS}><TI val={String(r.score ?? "").trim() ? clampScore(r.score, A8_QUALIFICATION_MAX) : ""} onChange={(v) => setQual(i, "score", v)} center numeric max={A8_QUALIFICATION_MAX} /></td>
                             </tr>
                           ))}
                           <tr style={{ background: "#eff6ff" }}>

@@ -4,6 +4,7 @@ import {
   reviewSectionScore,
   rowMaxForSection,
   societyRowScore,
+  sumSectionScore,
   SCORE_LIMITS,
   projectGuidanceRowMax,
 } from "./appraisalFormUtils";
@@ -245,6 +246,75 @@ const renderSummaryOtherInfo = (value) =>
   isFilledValue(value)
     ? `<h3>Any other information not covered above</h3><div class="remarks">${safeHtml(value)}</div>`
     : "";
+
+const summaryScoreText = (value) =>
+  isFilledValue(value) && n(value) > 0 ? n(value).toFixed(1) : "&nbsp;";
+
+const summaryMaxText = (value) =>
+  isFilledValue(value) || value === 0 ? safeHtml(String(value)) : "&nbsp;";
+
+const summaryPercentText = (score, max) =>
+  isFilledValue(score) && n(score) > 0 && n(max) > 0
+    ? `${percentOf(score, max)}%`
+    : "&nbsp;";
+
+export const renderReportSummary = ({
+  academicYear = "",
+  rows = null,
+  totals = {},
+  maxScores = {},
+  scoreLabel = "Score",
+  status = "",
+} = {}) => {
+  const baseRows = Array.isArray(rows) && rows.length
+    ? rows
+    : [
+        { id: "A", label: "Part A", max: maxScores.partA, score: totals.partA, isTotal: true },
+        { id: "B", label: "Part B", max: maxScores.partB, score: totals.partB, isTotal: true },
+        { id: "C", label: "Part C", max: maxScores.partC, score: totals.partC, isTotal: true },
+        { id: "D", label: "Part D", max: maxScores.partD, score: totals.partD, isTotal: true },
+        { id: "GT", label: "Grand Total", max: maxScores.grand, score: totals.total, isGrandTotal: true },
+      ];
+
+  const hasGrandTotal = baseRows.some((row) => row?.isGrandTotal || /^grand total/i.test(String(row?.label || "")));
+  const displayRows = hasGrandTotal
+    ? baseRows
+    : [
+        ...baseRows,
+        { id: "GT", label: "Grand Total", max: maxScores.grand, score: totals.total, isGrandTotal: true },
+      ];
+
+  return `
+  <h3 style="text-align:center;font-size:13px">SUMMARY${academicYear ? ` - AY ${safeHtml(academicYear)}` : ""}</h3>
+  <table class="st">
+    <thead>
+      <tr>
+        <th style="width:12%">Sr.No.</th>
+        <th>Section</th>
+        <th style="width:17%">Maximum</th>
+        <th style="width:17%">${safeHtml(scoreLabel)}</th>
+        <th style="width:20%">Marks Obtained (%)</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${displayRows.map((row, index) => {
+        if (row?.isHeader) {
+          return `<tr><td colspan="5" class="b" style="background:#d9d9d9;text-align:center">${safeHtml(row.label)}</td></tr>`;
+        }
+        const isGrand = row?.isGrandTotal || /^grand total/i.test(String(row?.label || ""));
+        const rowClass = row?.isTotal || isGrand ? ` class="tr"` : "";
+        return `<tr${rowClass}>
+          <td class="c">${safeHtml(row.id || String(index + 1))}</td>
+          <td>${safeHtml(row.label || "")}</td>
+          <td class="c">${summaryMaxText(row.max)}</td>
+          <td class="c">${summaryScoreText(row.score)}</td>
+          <td class="c">${summaryPercentText(row.score, row.max)}</td>
+        </tr>`;
+      }).join("")}
+      ${status ? `<tr><td class="c">Status</td><td colspan="4">${safeHtml(status)}</td></tr>` : ""}
+    </tbody>
+  </table>`;
+};
 
 const docsFor = (docs, key) => {
   const files = docs?.[key] || [];
@@ -1025,8 +1095,8 @@ ${PRINT_REPORT_CSS}
   }
   <h3>(v) Qualification Enhancement (Max 10)</h3>
   <table><tr><th>SN</th><th>Qualification / Category</th><th>Self Score</th></tr>
-  ${quals.map((q, i) => `<tr><td class="c">${i + 1}</td><td>${displayValue(q.label)}</td><td class="c">${displayValue(q.score)}</td></tr>`).join("")}
-  <tr class="tr"><td colspan="2" class="c b">Total Score (Max 10)</td><td class="c">${quals.reduce((a, q) => a + n(q.score), 0) > 0 ? quals.reduce((a, q) => a + n(q.score), 0).toFixed(1) : "&nbsp;"}</td></tr></table>
+  ${quals.map((q, i) => `<tr><td class="c">${i + 1}</td><td>${displayValue(q.label)}</td><td class="c">${displayValue(String(q.score ?? "").trim() ? clampScore(q.score, SCORE_LIMITS.qualificationRow) : "")}</td></tr>`).join("")}
+  <tr class="tr"><td colspan="2" class="c b">Total Score (Max 10)</td><td class="c">${sumSectionScore(quals, 10, "score", SCORE_LIMITS.qualificationRow) > 0 ? sumSectionScore(quals, 10, "score", SCORE_LIMITS.qualificationRow).toFixed(1) : "&nbsp;"}</td></tr></table>
   <h3>B. Students' Feedback (Max 10)</h3>
   <table><tr><th>SN</th><th>Course Code/Name</th><th>First Feedback(%)</th><th>Second Feedback(%)</th><th>Average</th><th>Self Score</th></tr>
   ${feedback.map((f, i) => `<tr><td class="c">${i + 1}</td><td>${displayValue(f.code)}</td><td class="c">${displayValue(f.fb1)}</td><td class="c">${displayValue(f.fb2)}</td><td class="c">${isFilledValue(f.fb1) || isFilledValue(f.fb2) ? ((n(f.fb1) + n(f.fb2)) / ((isFilledValue(f.fb1) ? 1 : 0) + (isFilledValue(f.fb2) ? 1 : 0) || 1)).toFixed(2) : "&nbsp;"}</td><td class="c">${displayValue(f.score)}</td></tr>`).join("")}

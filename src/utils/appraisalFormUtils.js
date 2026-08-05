@@ -23,7 +23,7 @@ export const stripMaxMarksFromTitle = (title) =>
 export const SCORE_LIMITS = {
  courseFileRow: 20,
  innovativeRow: 2,
- qualificationRow: 5,
+ qualificationRow: 10,
  acrRow: 10,
  feedbackAverage: 100,
  societyRow: 5,

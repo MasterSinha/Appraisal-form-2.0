@@ -51,7 +51,7 @@ export default function DirectorQualification({ ctx }) {
 <td style={TD}><RO val={qBody(r)} /></td>
 <td style={TDC}><RO val={qDate(r)} center /></td>
 <td style={TDV}><ViewDocsCell docKey={`qual-${i}`} docs={docs} /></td>
-<td style={TDS}><RO val={r.score} center /></td>
+<td style={TDS}><RO val={String(r.score ?? "").trim() ? clampScore(r.score, SCORE_LIMITS.qualificationRow) : ""} center /></td>
 <td style={TDS_DIR}><DirInput val={getDir("quals", i, "dir")} onChange={v =>setDir("quals", i, "dir", v)} max={SCORE_LIMITS.qualificationRow} disabled={!rowHasReviewableData("quals", r, docs, `qual-${i}`)} /></td>
 </tr>
  ))}
