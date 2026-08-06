@@ -114,7 +114,7 @@ function ReviewPanel({ faculty, onBack, onSubmit, readOnly = false, reviewerLabe
         onBack={onBack}
         onSubmit={onSubmit}
         readOnly={readOnly}
-        showReport={true}
+        showReport={false}
       />
     );
   }

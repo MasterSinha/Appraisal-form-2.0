@@ -328,8 +328,8 @@ const legacyCardTotalsForPerson = (person = {}, personMode = "faculty") =>{
 
 const vcReviewSummaryFrom = standardReviewSummary;
 
-const VC_REVIEW_ARRAY_KEYS = ["lectures", "courseFile", "obeRows", "projects", "mentoringRows", "quals", "feedback", "deptActs", "uniActs", "eventRows", "society", "industry", "alumniRows", "placementRows", "acr", "journals", "books", "ict", "research", "projects2", "patents", "awards", "confs", "proposals", "products", "fdps"];
-const VC_SECTION_MAX = { lectures: 40, courseFile: 20, obeRows: 20, projects: 20, mentoringRows: 10, quals: 10, feedback: 10, deptActs: 30, uniActs: 50, eventRows: 20, society: 20, industry: 8, alumniRows: 10, placementRows: 20, acr: 50, journals: 100, books: 30, ict: 20, research: 20, projects2: 40, patents: 40, awards: 20, confs: 20, proposals: 20, products: 20, fdps: 20 };
+const VC_REVIEW_ARRAY_KEYS = ["lectures", "courseFile", "obeRows", "projects", "mentoringRows", "quals", "feedback", "deptActs", "uniActs", "eventRows", "society", "industry", "alumniRows", "placementRows", "acr", "journals", "books", "ict", "research", "projects2", "patents", "awards", "confs", "proposals", "products", "fdps", "exhibitions"];
+const VC_SECTION_MAX = { lectures: 40, courseFile: 20, obeRows: 20, projects: 20, mentoringRows: 10, quals: 10, feedback: 10, deptActs: 30, uniActs: 50, eventRows: 20, society: 20, industry: 8, alumniRows: 10, placementRows: 20, acr: 50, journals: 100, books: 30, ict: 20, research: 20, projects2: 40, patents: 40, awards: 20, confs: 20, proposals: 20, products: 20, fdps: 20, exhibitions: 30 };
 const REVIEW_SCORE_FIELDS = ["hod", "director", "dean", "vc"];
 const preserveSavedReviewScores = (form = {}, source = {}) =>{
  const merged = { ...form };
@@ -741,7 +741,9 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
  columns: [["Title / Start-up / Product", (r) =>r.details || r.title], ["Role", (r) =>r.role || r.usage], ["Status", (r) =>r.status]] },
  { title: "B11. ICT Content, MOOCs & E-Learning (Max 20)", key: "ict", docPfx: "ict",
  columns: [["Title", (r) =>r.title], ["Platform / Type", (r) =>r.type || r.desc], ["Reach / Views", (r) =>r.quad || r.reach]] },
- ].map(({ title, key, docPfx, columns }) =>(
+ { title: "B12. Exhibitions - Photography, Design & Applied Arts, Documentaries, Films & Audio-Visual Productions (Max 30)", key: "exhibitions", docPfx: "exh",
+ columns: [["Title of Work / Exhibition", (r) =>r.title], ["Type", (r) =>r.type], ["Venue & Level", (r) =>r.venueLevel || r.venue_level || r.level], ["Date", (r) =>r.date]] },
+ ].filter(({ key }) => !(key === "exhibitions" && getSchoolKey(person?.school || person?.schoolName || person?.info?.school || "") === "SoCM")).map(({ title, key, docPfx, columns }) =>(
 <SC key={key} title={title} accent="#7c3aed">
 <div style={{ overflowX: "auto" }}><table style={T}><thead>
 <tr>
@@ -809,7 +811,8 @@ function calcVCScore(person, vcData) {
  sum(person.patents, "patents", "vc") + sum(person.projects2, "projects2", "vc") +
  sum(person.research, "research", "vc") + sum(person.proposals, "proposals", "vc") +
  sum(person.confs, "confs", "vc") + sum(person.products, "products", "vc") +
- sum(person.fdps, "fdps", "vc") + sum(person.awards, "awards", "vc") + sum(person.ict, "ict", "vc");
+ sum(person.fdps, "fdps", "vc") + sum(person.awards, "awards", "vc") + sum(person.ict, "ict", "vc") +
+ sum(person.exhibitions, "exhibitions", "vc");
 
  const partC = sum(person.uniActs, "uniActs", "vc") + sum(person.deptActs, "deptActs", "vc") +
  sum(person.eventRows, "eventRows", "vc") + sum(person.society, "society", "vc") +
@@ -840,7 +843,7 @@ function VCReviewPanel({ person, personMode, onBack, onSubmit, readOnly = false 
           onSubmit(id, scores, remarks, personMode, sectionScores, reviewConfirmed, decision)
         }
         readOnly={readOnly}
-        showReport={true}
+        showReport={readOnly}
       />
     );
   }
@@ -1042,7 +1045,7 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  form: reportForm,
  docs: reportForm.docs,
  partASections: VC_REPORT_PART_A_SECTIONS,
- partBSections: VC_REPORT_PART_B_SECTIONS,
+  partBSections: getSchoolKey(person?.school || person?.schoolName || person?.info?.school || "") === "SoCM" ? VC_REPORT_PART_B_SECTIONS.filter(s => s.key !== "exhibitions") : VC_REPORT_PART_B_SECTIONS,
  partCSections: VC_REPORT_PART_C_SECTIONS,
  partDSections: VC_REPORT_PART_D_SECTIONS,
  totals: {
@@ -1277,8 +1280,9 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
 <span style={{ color: "#64748b", fontSize: 11, fontStyle: "italic" }}>{draftStatus}</span>
 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", justifyContent: "flex-end", marginLeft: "auto" }}>
 <button onClick={onBack} style={{ padding: "9px 16px", background: "#fff", color: "#475569", border: "1px solid #cbd5e1", borderRadius: 9, cursor: "pointer", fontWeight: 700, fontSize: 12, fontFamily: "inherit" }}>Close</button>
-<button onClick={generateVcReport} disabled={!vcReviewCompleted}
- style={{ minWidth: 170, height: 42, padding: "0 20px", background: vcReviewCompleted ? "linear-gradient(135deg,#7c3aed,#581c87)" : "#cbd5e1", color: "#fff", border: "none", borderRadius: 8, cursor: vcReviewCompleted ? "pointer" : "not-allowed", fontWeight: 900, fontSize: 13, fontFamily: "inherit", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 9, boxShadow: vcReviewCompleted ? "0 10px 20px rgba(88,28,135,0.20)" : "none" }}>
+{vcReviewCompleted && (
+<button onClick={generateVcReport}
+ style={{ minWidth: 170, height: 42, padding: "0 20px", background: "linear-gradient(135deg,#7c3aed,#581c87)", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontWeight: 900, fontSize: 13, fontFamily: "inherit", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 9, boxShadow: "0 10px 20px rgba(88,28,135,0.20)" }}>
  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
   <path d="M7 3h7l4 4v14H7V3Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
   <path d="M14 3v5h4" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
@@ -1286,6 +1290,7 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  </svg>
  <span>Generate Report</span>
 </button>
+)}
  {!reviewLocked && (
 <>
 <button onClick={handleSaveDraft} disabled={savingDraft}

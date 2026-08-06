@@ -707,6 +707,7 @@ function DeanReviewScoreForm({ approval, deanData, setDeanData, sectionView = "p
  ]}
  />
 
+{getSchoolKey(approval?.school || approval?.schoolName || approval?.info?.school || "") !== "SoCM" && (
 <ReviewTable
  title="B12. Exhibitions — Photography, Design & Applied Arts, Documentaries, Films & Audio-Visual Productions"
  accent="#ec4899"
@@ -719,6 +720,7 @@ function DeanReviewScoreForm({ approval, deanData, setDeanData, sectionView = "p
  { label: "Date", render: (r) =>r.date, center: true },
  ]}
  />
+)}
 </>)}
  {sectionView === "partC" && (<>
 <div style={{ fontWeight: 800, fontSize: 13, color: "#1e293b", background: "#dcfce7", padding: "8px 14px", borderRadius: 6, marginBottom: 10, letterSpacing: 0.3 }}>
@@ -839,7 +841,7 @@ function ApprovalReviewPanel({ approval, approvalType, onBack, onSubmit, readOnl
         onBack={onBack}
         onSubmit={onSubmit}
         readOnly={readOnly}
-        showReport={true}
+        showReport={false}
       />
     );
   }

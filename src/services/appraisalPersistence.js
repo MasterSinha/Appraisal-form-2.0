@@ -608,7 +608,7 @@ const FORM_SECTION_KEYS = [
  "lectures", "courseFile", "obeRows", "projects", "mentoringRows", "quals", "feedback", "deptActs", "uniActs",
  "eventRows", "events", "society", "industry", "alumniRows", "alumni", "placementRows", "placements", "acr", "journals", "books", "ict", "research", "projects2",
  "internalProjects", "externalProjects", "ipr", "patents", "awards", "confs",
- "proposals", "products", "innovation", "consultancy", "fdps", "training", "popularWritings",
+ "proposals", "products", "innovation", "consultancy", "fdps", "training", "popularWritings", "exhibitions",
 ];
 
 const REVIEW_FIELD_BY_ROLE = {
@@ -915,6 +915,9 @@ const REVIEW_SECTION_KEY_ALIASES = {
  selfDevelopment: "fdps",
  industrial_training: "training",
  industrialTraining: "training",
+ exhibitions: "exhibitions",
+ exhibition_records: "exhibitions",
+ exhibitionRecords: "exhibitions",
 };
 
 const normalizeReviewSectionScores = (scores = {}) =>{
