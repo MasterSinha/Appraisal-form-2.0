@@ -398,6 +398,17 @@ const VC_REPORT_PART_B_SECTIONS = [
  { key: "exhibitions", title: "B12. Exhibitions — Photography, Design & Applied Arts, Documentaries, Films & Audio-Visual Productions", max: 30, doc: "exh", fields: [["title", "Title of Work / Exhibition"], ["type", "Type (Solo/Group/Curated)"], ["venueLevel", "Venue & Level (Institutional/National/Intl.)"], ["date", "Date"]] },
 ];
 
+const getVcSectionMax = (key, person) => {
+  const baseMax = VC_SECTION_MAX[key] || 0;
+  if (key === "proposals" || key === "awards" || key === "products") {
+    const school = person?.info?.school || person?.school || "";
+    const schoolKey = getSchoolKey(school);
+    const isApplicable = ["SoCSEA", "SoBB", "SoCE", "SoEMR", "SoCM"].includes(schoolKey);
+    return isApplicable ? 20 : 10;
+  }
+  return baseMax;
+};
+
 const buildVcSectionScores = (person, vcData) =>{
  const payload = {};
  VC_REVIEW_ARRAY_KEYS.forEach((key) =>{
@@ -406,7 +417,7 @@ const buildVcSectionScores = (person, vcData) =>{
  ...row,
  vc: key === "society" && societyRowLocked(row)
  ? "0"
- : clampReviewScore(key, row, vcData[key]?.[index]?.vc ?? row.vc ?? "", VC_SECTION_MAX[key] || 0),
+ : clampReviewScore(key, row, vcData[key]?.[index]?.vc ?? row.vc ?? "", getVcSectionMax(key, person)),
  }));
  });
  const innovRows = Array.isArray(person.innovRows) ? person.innovRows : [];
@@ -442,7 +453,7 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
  }
  const sourceRow = section === "acr" && idx !== null ? createAcrRows(person.acr)[idx] : person[section]?.[idx] || {};
  const nextVal = field === "vc" && idx !== null
- ? clampReviewScore(section, sourceRow, val, VC_SECTION_MAX[section] || 0)
+ ? clampReviewScore(section, sourceRow, val, getVcSectionMax(section, person))
  : val;
  if (idx === null) {
  updated[section] = Array.isArray(updated[section])
@@ -467,7 +478,7 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
  };
  const { docs } = person;
  const rows = (arr) =>arr && arr.length >0 ? arr : [{}];
- const vcRowMax = (section, row = {}) =>reviewRowMaxForSection(section, row, VC_SECTION_MAX[section] || 0);
+ const vcRowMax = (section, row = {}) =>reviewRowMaxForSection(section, row, getVcSectionMax(section, person));
  const innovativeRows = Array.isArray(person.innovRows) && person.innovRows.length
  ? person.innovRows
  : [{ method: person.innovDetails || "Innovative / participatory teaching methods used", details: person.innovDetails || "", score: person.innovScore || "" }];
@@ -779,8 +790,13 @@ function calcVCScore(person, vcData) {
  const source = person[section];
  return idx === null ? n(Array.isArray(source) ? source[0]?.[field] : source?.[field]) : n(source?.[idx]?.[field]);
  };
- const sectionMax = VC_SECTION_MAX;
- const rowMax = { courseFile: () =>SCORE_LIMITS.courseFileRow, obeRows: (row) =>row.max || 20, projects: projectGuidanceRowMax, mentoringRows: (row) =>row.max || 10, quals: () =>SCORE_LIMITS.qualificationRow, feedback: () =>10, society: () =>SCORE_LIMITS.societyRow, acr: () =>SCORE_LIMITS.acrRow, research: researchGuidanceRowMax, fdps: () =>SCORE_LIMITS.fdpRow };
+  const sectionMax = {
+    ...VC_SECTION_MAX,
+    proposals: getVcSectionMax("proposals", person),
+    products: getVcSectionMax("products", person),
+    awards: getVcSectionMax("awards", person),
+  };
+  const rowMax = { courseFile: () =>SCORE_LIMITS.courseFileRow, obeRows: (row) =>row.max || 20, projects: projectGuidanceRowMax, mentoringRows: (row) =>row.max || 10, quals: () =>SCORE_LIMITS.qualificationRow, feedback: () =>10, society: () =>SCORE_LIMITS.societyRow, acr: () =>SCORE_LIMITS.acrRow, research: researchGuidanceRowMax, fdps: () =>SCORE_LIMITS.fdpRow };
  const sum = (arr, s, f) =>{
  if (s === "lectures" || s === "courseFile" || s === "feedback") {
  const averageRows = (arr || []).map((row, i) =>({
