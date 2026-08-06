@@ -3,7 +3,7 @@
 import { useNavigate } from "react-router-dom";
 import { Avatar, LogoutConfirmModal, ScoreCard, ReviewMetricsStrip } from "../components/dashboard/dashboardPrimitives";
 import { fetchNonTeachingQueueForRole, isNonTeachingReviewComplete } from "../services/nonTeachingWorkflow";
-import { fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, fetchSavedAppraisal, mergeFacultyInfo, ACR_DETAIL_POINTS, MAX_SCORES, APP_INFO, createAcrRows, buildReviewRemarks, openFullFormReport, SummaryOtherInfoField, summaryOtherInfoValueFrom, SCORE_LIMITS, clampScore, clampReviewScore, effectiveMaxScore, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewRowMaxForSection, reviewSectionScore, rowHasReviewableData, selfEffectivePartAMax, societyRowLocked, societyRowScore, standardReviewSummary, standardSubmittedScoreSummary, qualificationRowDescription, AppraisalHeaderImage, ViewDocsCell, SectionCard as SC, CreativeSchoolAuthorityReviewPanel, isCreativeSchool, isDesignArtsSchool, isMediaCommSchool } from "../features/faculty-appraisal";
+import { fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, fetchSavedAppraisal, mergeFacultyInfo, ACR_DETAIL_POINTS, MAX_SCORES, APP_INFO, createAcrRows, buildReviewRemarks, openFullFormReport, SummaryOtherInfoField, summaryOtherInfoValueFrom, SCORE_LIMITS, clampScore, clampReviewScore, effectiveMaxScore, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewRowMaxForSection, reviewSectionScore, rowHasReviewableData, isSectionEmpty, selfEffectivePartAMax, societyRowLocked, societyRowScore, standardReviewSummary, standardSubmittedScoreSummary, qualificationRowDescription, AppraisalHeaderImage, ViewDocsCell, SectionCard as SC, CreativeSchoolAuthorityReviewPanel, isCreativeSchool, isDesignArtsSchool, isMediaCommSchool } from "../features/faculty-appraisal";
 import { getActiveAcademicYear, getSessionItem, normalizeAcademicYearLabel, setActiveAcademicYear } from "../auth/session";
 import { PreviousYearReportViewer } from "../features/previousYearReport";
 import { isLegacyTwoPartAcademicYear } from "../features/faculty-appraisal/forms/standard/legacyPreviousYearReportUtils";
@@ -417,7 +417,9 @@ const buildVcSectionScores = (person, vcData) =>{
  ...row,
  vc: key === "society" && societyRowLocked(row)
  ? "0"
- : clampReviewScore(key, row, vcData[key]?.[index]?.vc ?? row.vc ?? "", getVcSectionMax(key, person)),
+ : isSectionEmpty(key, person[key], person.docs)
+    ? ""
+    : clampReviewScore(key, row, vcData[key]?.[index]?.vc ?? row.vc ?? "", getVcSectionMax(key, person)),
  }));
  });
  const innovRows = Array.isArray(person.innovRows) ? person.innovRows : [];
@@ -453,7 +455,7 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
  }
  const sourceRow = section === "acr" && idx !== null ? createAcrRows(person.acr)[idx] : person[section]?.[idx] || {};
  const nextVal = field === "vc" && idx !== null
- ? clampReviewScore(section, sourceRow, val, getVcSectionMax(section, person))
+ ? (isSectionEmpty(section, person[section], person.docs) ? "" : clampReviewScore(section, sourceRow, val, getVcSectionMax(section, person)))
  : val;
  if (idx === null) {
  updated[section] = Array.isArray(updated[section])
@@ -478,7 +480,7 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
  };
  const { docs } = person;
  const rows = (arr) =>arr && arr.length >0 ? arr : [{}];
- const vcRowMax = (section, row = {}) =>reviewRowMaxForSection(section, row, getVcSectionMax(section, person));
+ const vcRowMax = (section, row = {}) => isSectionEmpty(section, person[section], person.docs) ? 0 : reviewRowMaxForSection(section, row, getVcSectionMax(section, person));
  const innovativeRows = Array.isArray(person.innovRows) && person.innovRows.length
  ? person.innovRows
  : [{ method: person.innovDetails || "Innovative / participatory teaching methods used", details: person.innovDetails || "", score: person.innovScore || "" }];
@@ -509,7 +511,7 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
  const maxForRow = vcRowMax(section, r);
  const societyLocked = section === "society" && societyRowLocked(r);
  const rowReviewable = rowHasReviewableData(section, r, docs);
- const locked = section === "acr" ? false : (societyLocked || !rowReviewable);
+ const locked = section === "acr" ? false : (societyLocked || !rowReviewable || isSectionEmpty(section, person[section], docs));
  const displayScore = (value) => maxForRow ? (String(value ?? "").trim() ? clampScore(value, maxForRow) : "") : "";
  const facultyScore = section === "research"
  ? (r.degree || r.name || r.thesis || r.score ? researchGuidanceScore(r).toFixed(1) : "")
@@ -754,7 +756,7 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
  columns: [["Title", (r) =>r.title], ["Platform / Type", (r) =>r.type || r.desc], ["Reach / Views", (r) =>r.quad || r.reach]] },
  { title: "B12. Exhibitions - Photography, Design & Applied Arts, Documentaries, Films & Audio-Visual Productions (Max 30)", key: "exhibitions", docPfx: "exh",
  columns: [["Title of Work / Exhibition", (r) =>r.title], ["Type", (r) =>r.type], ["Venue & Level", (r) =>r.venueLevel || r.venue_level || r.level], ["Date", (r) =>r.date]] },
- ].filter(({ key }) => !(key === "exhibitions" && getSchoolKey(person?.school || person?.schoolName || person?.info?.school || "") === "SoCM")).map(({ title, key, docPfx, columns }) =>(
+ ].filter(({ key }) => !(key === "exhibitions" && ["SoCSEA", "SoBB", "SoCE", "SoEMR", "SoCM"].includes(getSchoolKey(person?.school || person?.schoolName || person?.info?.school || "")))).map(({ title, key, docPfx, columns }) =>(
 <SC key={key} title={title} accent="#7c3aed">
 <div style={{ overflowX: "auto" }}><table style={T}><thead>
 <tr>
@@ -798,6 +800,7 @@ function calcVCScore(person, vcData) {
   };
   const rowMax = { courseFile: () =>SCORE_LIMITS.courseFileRow, obeRows: (row) =>row.max || 20, projects: projectGuidanceRowMax, mentoringRows: (row) =>row.max || 10, quals: () =>SCORE_LIMITS.qualificationRow, feedback: () =>10, society: () =>SCORE_LIMITS.societyRow, acr: () =>SCORE_LIMITS.acrRow, research: researchGuidanceRowMax, fdps: () =>SCORE_LIMITS.fdpRow };
  const sum = (arr, s, f) =>{
+ if (s !== "acr" && isSectionEmpty(s, arr, person.docs)) return 0;
  if (s === "lectures" || s === "courseFile" || s === "feedback") {
  const averageRows = (arr || []).map((row, i) =>({
  ...row,
@@ -1061,7 +1064,7 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  form: reportForm,
  docs: reportForm.docs,
  partASections: VC_REPORT_PART_A_SECTIONS,
-  partBSections: getSchoolKey(person?.school || person?.schoolName || person?.info?.school || "") === "SoCM" ? VC_REPORT_PART_B_SECTIONS.filter(s => s.key !== "exhibitions") : VC_REPORT_PART_B_SECTIONS,
+  partBSections: ["SoCSEA", "SoBB", "SoCE", "SoEMR", "SoCM"].includes(getSchoolKey(person?.school || person?.schoolName || person?.info?.school || "")) ? VC_REPORT_PART_B_SECTIONS.filter(s => s.key !== "exhibitions") : VC_REPORT_PART_B_SECTIONS,
  partCSections: VC_REPORT_PART_C_SECTIONS,
  partDSections: VC_REPORT_PART_D_SECTIONS,
  totals: {

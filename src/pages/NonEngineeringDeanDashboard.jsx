@@ -5,7 +5,7 @@ import { api } from "../services/api";
 import { Avatar, ScoreCard, ScoreBar, StatusBadge, ReviewMetricsStrip, uploadedDocCount } from "../components/dashboard/dashboardPrimitives";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import DashboardSidebar from "../components/dashboard/DashboardSidebar";
-import { ACR_DETAIL_POINTS, SOCIETY_LABELS, MAX_SCORES, APP_INFO, createAcrRows, fetchSavedAppraisal, loadAppraisalDocuments, loadSavedAppraisal, mergeFacultyInfo, saveAppraisalDraftSection, submitAppraisal, fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, INNOVATIVE_METHODS, SCORE_LIMITS, averageSectionScore, clampScore, clampReviewScore, courseFileAverageScore, courseFileRowScore, effectiveMaxScore, feedbackAverage, feedbackRowScore, feedbackSectionScore, innovativeSelectionsFromDetails, innovativeTeachingScore, isAllowedAttachmentFile, isValidDDMMYYYY, maskDateDDMMYYYY, normalizeAutoScores, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewSectionScore, rowHasReviewableData, scoreRemaining, selfEffectivePartAMax, societyRowLocked, societyRowScore, sumSectionScore, toggleInnovativeMethod, validateCompleteRows, generateStandardReport, standardSubmittedScoreSummary, qualificationRowDescription, AppraisalHeaderImage, SummaryOtherInfoField, summaryOtherInfoValueFrom, RejectionNotice, DocCell, ViewCell, ViewDocsCell, RowButtons as RowBtns, SectionSaveFooter, SectionCard as SC, T, TH, TH_HOD, TH_DIR, TH_DEAN, TD, TDC, TDS, TDS_HOD, TDS_DIR, TDS_DEAN, TDV, MyAppraisalSection, CreativeSchoolAuthorityReviewPanel, isCreativeSchool } from "../features/faculty-appraisal";
+import { ACR_DETAIL_POINTS, SOCIETY_LABELS, MAX_SCORES, APP_INFO, createAcrRows, fetchSavedAppraisal, loadAppraisalDocuments, loadSavedAppraisal, mergeFacultyInfo, saveAppraisalDraftSection, submitAppraisal, fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, INNOVATIVE_METHODS, SCORE_LIMITS, averageSectionScore, clampScore, clampReviewScore, courseFileAverageScore, courseFileRowScore, effectiveMaxScore, feedbackAverage, feedbackRowScore, feedbackSectionScore, innovativeSelectionsFromDetails, innovativeTeachingScore, isAllowedAttachmentFile, isValidDDMMYYYY, maskDateDDMMYYYY, normalizeAutoScores, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewSectionScore, rowHasReviewableData, isSectionEmpty, scoreRemaining, selfEffectivePartAMax, societyRowLocked, societyRowScore, sumSectionScore, toggleInnovativeMethod, validateCompleteRows, generateStandardReport, standardSubmittedScoreSummary, qualificationRowDescription, AppraisalHeaderImage, SummaryOtherInfoField, summaryOtherInfoValueFrom, RejectionNotice, DocCell, ViewCell, ViewDocsCell, RowButtons as RowBtns, SectionSaveFooter, SectionCard as SC, T, TH, TH_HOD, TH_DIR, TH_DEAN, TD, TDC, TDS, TDS_HOD, TDS_DIR, TDS_DEAN, TDV, MyAppraisalSection, CreativeSchoolAuthorityReviewPanel, isCreativeSchool } from "../features/faculty-appraisal";
 import { DEAN_TRACKS, getSchoolKey, getSchoolsByDeanTrack } from "../constants/universityHierarchy";
 import { canReviewerRejectProfile, rejectedStatusFor, reviewedStatusFor, profileFromsessionStorage, workflowValidationError, roleLabel, isAppraisalFinalisedByVc, isRejectedStatus, isPendingReviewStatusFor, hasActiveRejection, reviewListFrom, getDeanTrack } from "../utils/hierarchy";
 import { n, pct, grade, RO, TI } from "../features/faculty-appraisal/shared";
@@ -273,7 +273,9 @@ const deanScorePayload = (approval, deanData) =>{
   ...row,
   dean: key === "society" && societyRowLocked(row)
   ? "0"
-  : clampReviewScore(key, row, deanData[key]?.[index]?.dean ?? row.dean ?? "", getSectionMaxForApproval(key, approval)),
+  : isSectionEmpty(key, approval[key], approval.docs)
+    ? ""
+    : clampReviewScore(key, row, deanData[key]?.[index]?.dean ?? row.dean ?? "", getSectionMaxForApproval(key, approval)),
   }));
   });
 
@@ -295,6 +297,7 @@ const deanScorePayload = (approval, deanData) =>{
 const sumDeanRows = (payload, keys, approval) =>
   keys.reduce((total, key) =>{
   const sectionMax = getSectionMaxForApproval(key, approval);
+  if (key !== "acr" && isSectionEmpty(key, approval[key], approval.docs)) return total;
   if (key === "lectures" || key === "courseFile" || key === "feedback") return total + reviewSectionScore(key, payload[key] || [], sectionMax, "dean");
   return total + clampScore((payload[key] || []).reduce((sum, row) =>{
   if (key === "society" && societyRowLocked(row)) return sum;
@@ -324,7 +327,7 @@ function DeanScoreCell({ sectionKey, index, row, deanData, setDeanData }) {
  const sectionMax = getSectionMaxForApproval(sectionKey, approval);
  const maxForRow = DEAN_ROW_MAX[sectionKey]?.(row) || sectionMax;
  const societyLocked = sectionKey === "society" && societyRowLocked(row);
- const locked = sectionKey === "acr" ? false : (societyLocked || !rowHasReviewableData(sectionKey, row));
+ const locked = sectionKey === "acr" ? false : (societyLocked || !rowHasReviewableData(sectionKey, row) || isSectionEmpty(sectionKey, approval[sectionKey], ctx?.docs));
  const displayValue = societyLocked ? "0" : String(value ?? "").trim() ? clampScore(value, maxForRow) : "";
 
  const update = (nextValue) =>{
@@ -341,8 +344,9 @@ function DeanScoreCell({ sectionKey, index, row, deanData, setDeanData }) {
 }
 
 function DeanInnovativeScoreCell({ row, index, rows, deanData, setDeanData }) {
+ const ctx = useContext(DeanReviewTableContext);
  const value = deanData.innovRows?.[index]?.dean ?? row.dean ?? "";
- const locked = !rowHasReviewableData("innovRows", row);
+ const locked = !rowHasReviewableData("innovRows", row) || isSectionEmpty("innovRows", rows, ctx?.docs);
  const update = (nextValue) =>{
  const clampedValue = clampReviewScore("innovRows", row, nextValue, 10);
  preserveScrollAfterStateUpdate(() =>setDeanData((prev) =>{
