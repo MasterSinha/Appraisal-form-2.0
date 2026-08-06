@@ -368,8 +368,52 @@ export const REVIEW_ROW_VALUE_KEYS = {
 
 const IGNORED_METADATA_KEYS = new Set([
   "_id", "id", "hod", "director", "dir", "dean", "vc", "ro", "reg", "status", "workflowStatus", "workflow_status",
-  "label", "code", "isStatic", "defaultLabel"
+  "label", "code", "isStatic", "defaultLabel", "max"
 ]);
+
+export const rowHasFacultyData = (sectionKey, row = {}) => {
+  if (!row || typeof row !== "object") return false;
+  if (sectionKey === "acr") return true;
+
+  if (
+    isFilled(row.score) ||
+    isFilled(row.marks) ||
+    isFilled(row.claimedScore) ||
+    isFilled(row.selfScore) ||
+    isFilled(row.facultyScore)
+  ) {
+    return true;
+  }
+
+  if (
+    isFilled(row.evidence) ||
+    isFilled(row.doc) ||
+    isFilled(row.document) ||
+    isFilled(row.attachment) ||
+    isFilled(row.file) ||
+    isFilled(row.proof) ||
+    isFilled(row.proofAttached) ||
+    isFilled(row.filePath) ||
+    isFilled(row.evidenceUrl)
+  ) {
+    return true;
+  }
+
+  if (sectionKey === "lectures") {
+    return isFilled(row.planned) || isFilled(row.conducted);
+  }
+  if (sectionKey === "obeRows") {
+    return isFilled(row.evidence) || isFilled(row.attainment);
+  }
+  if (sectionKey === "mentoringRows") {
+    return isFilled(row.studentsCount) || isFilled(row.evidence);
+  }
+  if (sectionKey === "projects") {
+    return isFilled(row.details) || isFilled(row.studentsCount);
+  }
+
+  return Object.entries(row).some(([key, value]) => !IGNORED_METADATA_KEYS.has(key) && isFilled(value));
+};
 
 export const rowHasReviewableData = (sectionKey, row = {}, docs = null, docKey = null) => {
   if (!row || typeof row !== "object") return false;
@@ -385,35 +429,17 @@ export const rowHasReviewableData = (sectionKey, row = {}, docs = null, docKey =
     if (hasDoc) return true;
   }
 
-  if (
-    isFilled(row.score) ||
-    isFilled(row.marks) ||
-    isFilled(row.claimedScore) ||
-    isFilled(row.selfScore) ||
-    isFilled(row.points) ||
-    isFilled(row.facultyScore) ||
-    isFilled(row.evidence) ||
-    isFilled(row.doc) ||
-    isFilled(row.document) ||
-    isFilled(row.attachment) ||
-    isFilled(row.file) ||
-    isFilled(row.viewDocs) ||
-    isFilled(row.evidenceUrl) ||
-    isFilled(row.docUrl) ||
-    isFilled(row.proofAttached) ||
-    isFilled(row.proof) ||
-    isFilled(row.filePath)
-  ) {
-    return true;
-  }
-
-  const valueKeys = REVIEW_ROW_VALUE_KEYS[sectionKey] || [];
-  if (valueKeys.length && rowHasAnyValue(row, valueKeys)) {
-    return true;
-  }
-
-  return Object.entries(row).some(([key, value]) => !IGNORED_METADATA_KEYS.has(key) && isFilled(value));
+  return rowHasFacultyData(sectionKey, row);
 };
+
+export const isSectionEmpty = (sectionKey, rows, docs = null) => {
+  if (sectionKey === "acr") return false; // ACR is evaluator-only, never considered empty
+  const arr = Array.isArray(rows) ? rows : [];
+  if (arr.length === 0) return true;
+  return !arr.some(row => rowHasReviewableData(sectionKey, row, docs));
+};
+
+
 
 export const reviewRowMaxForSection = (sectionKey, row = {}, sectionMax = 0) =>
  sectionKey === "innovRows"
@@ -537,29 +563,59 @@ export const docsForRow = (docs = {}, docPrefix = "", index = 0, docKey) =>{
 };
 
 const docPrefixForSectionLabel = (label = "") =>{
- const text = normalizedText(label);
- if (text.includes("lectures")) return "lec";
- if (text.includes("innovative")) return "innov";
- if (text.includes("project") && text.includes("external")) return "externalProject";
- if (text.includes("project") && (text.includes("internal") || text.includes("b4(b)"))) return "project2";
- if (text.includes("a(iv)") || text.includes("project guidance") || text === "projects") return "proj";
- if (text.includes("qualification")) return "qual";
- if (text.includes("department")) return "dept";
- if (text.includes("university")) return "uni";
- if (text.includes("society")) return "soc";
- if (text.includes("industry connect")) return "ind";
- if (text.includes("journal")) return "jour";
- if (text.includes("book")) return "book";
- if (text.includes("ict")) return "ict";
- if (text.includes("research guidance")) return "res";
- if (text.includes("patent") || text.includes("ipr")) return "pat";
- if (text.includes("award")) return "awd";
- if (text.includes("conference")) return "conf";
- if (text.includes("proposal")) return "prop";
- if (text.includes("product")) return "prod";
- if (text.includes("fdp") || text.includes("workshop")) return "fdp";
- if (text.includes("industrial training")) return "train";
- return "";
+  const text = normalizedText(label);
+  
+  // Direct section code matches
+  if (text.includes("a(i)") || text.includes("a1")) return "lec";
+  if (text.includes("a(ii)") || text.includes("a2") || text.includes("course file") || text.includes("coursefile")) return "courseFile";
+  if (text.includes("a(iii)") || text.includes("a3") || text.includes("innovative")) return "innov";
+  if (text.includes("a5") || text.includes("learning outcome") || text.includes("obe")) return "obe";
+  if (text.includes("a6") || text.includes("project guidance") || text.includes("student project")) return "proj";
+  if (text.includes("a7") || text.includes("mentoring")) return "mentor";
+  if (text.includes("a8") || text.includes("qualification") || text.includes("professional development")) return "qual";
+  if (text.includes("c1") || text.includes("administration at university") || text.includes("university level")) return "uni";
+  if (text.includes("c2") || text.includes("administration at school") || text.includes("school level")) return "dept";
+  if (text.includes("c3") || text.includes("event organisation") || text.includes("event organization")) return "event";
+  if (text.includes("c4") || text.includes("society") || text.includes("outreach")) return "soc";
+  if (text.includes("c5") || text.includes("industry interaction") || text.includes("industry connect")) return "ind";
+  if (text.includes("c6") || text.includes("alumni")) return "alumni";
+  if (text.includes("c7") || text.includes("placement")) return "placement";
+  if (text.includes("b1") || text.includes("journal")) return "jour";
+  if (text.includes("b2") || text.includes("book")) return "book";
+  if (text.includes("b3") || text.includes("patent") || text.includes("ipr")) return "pat";
+  if (text.includes("b4") || text.includes("funded research project")) return "project2";
+  if (text.includes("b5") || text.includes("research guidance")) return "res";
+  if (text.includes("b6") || text.includes("consultancy")) return "prop";
+  if (text.includes("b7") || (text.includes("conference") && text.includes("organised"))) return "conf";
+  if (text.includes("b8") && text.includes("industrial training")) return "train";
+  if (text.includes("b8") || (text.includes("conference") && text.includes("attended"))) return "fdp";
+  if (text.includes("b9") || text.includes("award")) return "awd";
+  if (text.includes("b10") || text.includes("product")) return "prod";
+  if (text.includes("b11") || text.includes("ict")) return "ict";
+
+  // Fallbacks
+  if (text.includes("lectures")) return "lec";
+  if (text.includes("innovative")) return "innov";
+  if (text.includes("project") && text.includes("external")) return "externalProject";
+  if (text.includes("project") && (text.includes("internal") || text.includes("b4(b)"))) return "project2";
+  if (text.includes("a(iv)") || text === "projects") return "proj";
+  if (text.includes("qualification")) return "qual";
+  if (text.includes("department")) return "dept";
+  if (text.includes("university")) return "uni";
+  if (text.includes("society")) return "soc";
+  if (text.includes("industry connect")) return "ind";
+  if (text.includes("journal")) return "jour";
+  if (text.includes("book")) return "book";
+  if (text.includes("ict")) return "ict";
+  if (text.includes("research guidance")) return "res";
+  if (text.includes("patent") || text.includes("ipr")) return "pat";
+  if (text.includes("award")) return "awd";
+  if (text.includes("conference")) return "conf";
+  if (text.includes("proposal")) return "prop";
+  if (text.includes("product")) return "prod";
+  if (text.includes("fdp") || text.includes("workshop")) return "fdp";
+  if (text.includes("industrial training")) return "train";
+  return "";
 };
 
 const isAverageScoredSectionLabel = () => false;

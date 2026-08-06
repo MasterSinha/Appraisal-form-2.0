@@ -5,7 +5,7 @@ import { api } from "../services/api";
 import { Avatar, ScoreCard, ScoreBar, StatusBadge, ReviewMetricsStrip, uploadedDocCount } from "../components/dashboard/dashboardPrimitives";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import DashboardSidebar from "../components/dashboard/DashboardSidebar";
-import { ACR_DETAIL_POINTS, SOCIETY_LABELS, MAX_SCORES, APP_INFO, createAcrRows, fetchSavedAppraisal, loadAppraisalDocuments, loadSavedAppraisal, mergeFacultyInfo, saveAppraisalDraftSection, submitAppraisal, fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, INNOVATIVE_METHODS, SCORE_LIMITS, averageSectionScore, clampScore, clampReviewScore, courseFileAverageScore, courseFileRowScore, effectiveMaxScore, feedbackAverage, feedbackRowScore, feedbackSectionScore, innovativeSelectionsFromDetails, innovativeTeachingScore, isAllowedAttachmentFile, isValidDDMMYYYY, maskDateDDMMYYYY, normalizeAutoScores, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewSectionScore, rowHasReviewableData, scoreRemaining, selfEffectivePartAMax, societyRowLocked, societyRowScore, sumSectionScore, toggleInnovativeMethod, validateCompleteRows, generateStandardReport, standardSubmittedScoreSummary, qualificationRowDescription, AppraisalHeaderImage, SummaryOtherInfoField, summaryOtherInfoValueFrom, RejectionNotice, DocCell, ViewCell, ViewDocsCell, RowButtons as RowBtns, SectionSaveFooter, SectionCard as SC, T, TH, TH_HOD, TH_DIR, TH_DEAN, TD, TDC, TDS, TDS_HOD, TDS_DIR, TDS_DEAN, TDV, MyAppraisalSection, CreativeSchoolAuthorityReviewPanel, isCreativeSchool, isDesignArtsSchool, isMediaCommSchool } from "../features/faculty-appraisal";
+import { ACR_DETAIL_POINTS, SOCIETY_LABELS, MAX_SCORES, APP_INFO, createAcrRows, fetchSavedAppraisal, loadAppraisalDocuments, loadSavedAppraisal, mergeFacultyInfo, saveAppraisalDraftSection, submitAppraisal, fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, INNOVATIVE_METHODS, SCORE_LIMITS, averageSectionScore, clampScore, clampReviewScore, courseFileAverageScore, courseFileRowScore, effectiveMaxScore, feedbackAverage, feedbackRowScore, feedbackSectionScore, innovativeSelectionsFromDetails, innovativeTeachingScore, isAllowedAttachmentFile, isValidDDMMYYYY, maskDateDDMMYYYY, normalizeAutoScores, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewSectionScore, rowHasReviewableData, isSectionEmpty, scoreRemaining, selfEffectivePartAMax, societyRowLocked, societyRowScore, sumSectionScore, toggleInnovativeMethod, validateCompleteRows, generateStandardReport, standardSubmittedScoreSummary, qualificationRowDescription, AppraisalHeaderImage, SummaryOtherInfoField, summaryOtherInfoValueFrom, RejectionNotice, DocCell, ViewCell, ViewDocsCell, RowButtons as RowBtns, SectionSaveFooter, SectionCard as SC, T, TH, TH_HOD, TH_DIR, TH_DEAN, TD, TDC, TDS, TDS_HOD, TDS_DIR, TDS_DEAN, TDV, MyAppraisalSection, CreativeSchoolAuthorityReviewPanel, isCreativeSchool, isDesignArtsSchool, isMediaCommSchool } from "../features/faculty-appraisal";
 import { getActiveAcademicYear, getSessionItem, normalizeAcademicYearLabel, setActiveAcademicYear } from "../auth/session";
 import { PreviousYearReportViewer } from "../features/previousYearReport";
 import { isLegacyTwoPartAcademicYear } from "../features/faculty-appraisal/forms/standard/legacyPreviousYearReportUtils";
@@ -284,14 +284,16 @@ const deanScorePayload = (approval, deanData) =>{
  const payload = {};
 
  DEAN_REVIEW_ARRAY_KEYS.forEach((key) =>{
- const rows = key === "acr" ? createAcrRows(approval[key]) : (Array.isArray(approval[key]) ? approval[key] : []);
- payload[key] = rows.map((row, index) =>({
- ...row,
- dean: key === "society" && societyRowLocked(row)
- ? "0"
- : clampReviewScore(key, row, deanData[key]?.[index]?.dean ?? row.dean ?? "", DEAN_SECTION_MAX[key] || 0),
- }));
- });
+  const rows = key === "acr" ? createAcrRows(approval[key]) : (Array.isArray(approval[key]) ? approval[key] : []);
+  payload[key] = rows.map((row, index) =>({
+  ...row,
+  dean: key === "society" && societyRowLocked(row)
+  ? "0"
+  : isSectionEmpty(key, approval[key], approval.docs)
+    ? ""
+    : clampReviewScore(key, row, deanData[key]?.[index]?.dean ?? row.dean ?? "", DEAN_SECTION_MAX[key] || 0),
+  }));
+  });
 
  const innovRows = Array.isArray(approval.innovRows) ? approval.innovRows : [];
  const reviewInnovRows = Array.isArray(deanData.innovRows) ? deanData.innovRows : [];
@@ -308,43 +310,46 @@ const deanScorePayload = (approval, deanData) =>{
  return payload;
 };
 
-const sumDeanRows = (payload, keys) =>
- keys.reduce((total, key) =>{
- if (key === "lectures" || key === "courseFile" || key === "feedback") return total + reviewSectionScore(key, payload[key] || [], DEAN_SECTION_MAX[key] || 0, "dean");
- return total + clampScore((payload[key] || []).reduce((sum, row) =>{
- if (key === "society" && societyRowLocked(row)) return sum;
- if (!rowHasReviewableData(key, row)) return sum;
- const rowMax = DEAN_ROW_MAX[key]?.(row);
- return sum + (rowMax ? clampScore(row.dean, rowMax) : n(row.dean));
- }, 0), DEAN_SECTION_MAX[key] || 0);
- }, 0);
+const sumDeanRows = (payload, keys, approval) =>
+  keys.reduce((total, key) =>{
+  if (key !== "acr" && isSectionEmpty(key, approval[key], approval.docs)) return total;
+  if (key === "lectures" || key === "courseFile" || key === "feedback") return total + reviewSectionScore(key, payload[key] || [], DEAN_SECTION_MAX[key] || 0, "dean");
+  return total + clampScore((payload[key] || []).reduce((sum, row) =>{
+  if (key === "society" && societyRowLocked(row)) return sum;
+  if (!rowHasReviewableData(key, row)) return sum;
+  const rowMax = DEAN_ROW_MAX[key]?.(row);
+  return sum + (rowMax ? clampScore(row.dean, rowMax) : n(row.dean));
+  }, 0), DEAN_SECTION_MAX[key] || 0);
+  }, 0);
 
-const deanScoreTotals = (payload) =>{
- const reviewerMaxScores = {
- partA: effectiveMaxScore(150),
- partB: effectiveMaxScore(350),
- partC: 150,
- partD: 50,
- grand: 0,
- };
-reviewerMaxScores.grand = reviewerMaxScores.partA + reviewerMaxScores.partB + reviewerMaxScores.partC + reviewerMaxScores.partD;
- const innovativeScore = Array.isArray(payload.innovRows) && payload.innovRows.length
- ? reviewSectionScore("innovRows", payload.innovRows, 10, "dean")
- : clampScore(payload.innovativeTeaching?.dean, 10);
- const partA = clampScore(sumDeanRows(payload, DEAN_REVIEW_PART_A_KEYS) + innovativeScore, reviewerMaxScores.partA);
- const b8 = sumDeanRows(payload, ["fdps"]);
- const partBWithoutB8 = sumDeanRows(payload, DEAN_REVIEW_PART_B_KEYS.filter(k =>k !== "fdps"));
- const cappedPartB = clampScore(partBWithoutB8 + b8, reviewerMaxScores.partB);
- const partC = clampScore(sumDeanRows(payload, DEAN_REVIEW_PART_C_KEYS), reviewerMaxScores.partC);
- const partD = clampScore(sumDeanRows(payload, DEAN_REVIEW_PART_D_KEYS), reviewerMaxScores.partD);
- return { partA, partB: cappedPartB, partC, partD, total: clampScore(partA + cappedPartB + partC + partD, reviewerMaxScores.grand) };
+const deanScoreTotals = (payload, approval) =>{
+  const reviewerMaxScores = {
+  partA: effectiveMaxScore(150),
+  partB: effectiveMaxScore(350),
+  partC: 150,
+  partD: 50,
+  grand: 0,
+  };
+  reviewerMaxScores.grand = reviewerMaxScores.partA + reviewerMaxScores.partB + reviewerMaxScores.partC + reviewerMaxScores.partD;
+  const innovativeScore = Array.isArray(payload.innovRows) && payload.innovRows.length
+  ? reviewSectionScore("innovRows", payload.innovRows, 10, "dean")
+  : clampScore(payload.innovativeTeaching?.dean, 10);
+  const partA = clampScore(sumDeanRows(payload, DEAN_REVIEW_PART_A_KEYS, approval) + innovativeScore, reviewerMaxScores.partA);
+  const b8 = clampScore(sumDeanRows(payload, ["fdps"], approval), 10);
+  const partBWithoutB8 = sumDeanRows(payload, DEAN_REVIEW_PART_B_KEYS.filter(k =>k !== "fdps"), approval);
+  const cappedPartB = clampScore(partBWithoutB8 + b8, reviewerMaxScores.partB);
+  const partC = clampScore(sumDeanRows(payload, DEAN_REVIEW_PART_C_KEYS, approval), reviewerMaxScores.partC);
+  const partD = clampScore(sumDeanRows(payload, DEAN_REVIEW_PART_D_KEYS, approval), reviewerMaxScores.partD);
+  return { partA, partB: cappedPartB, partC, partD, total: clampScore(partA + cappedPartB + partC + partD, reviewerMaxScores.grand) };
 };
 
 function DeanScoreCell({ sectionKey, index, row, deanData, setDeanData }) {
+ const ctx = useContext(DeanReviewTableContext);
+ const approval = ctx?.approval || {};
  const value = deanData[sectionKey]?.[index]?.dean ?? row.dean ?? "";
  const maxForRow = DEAN_ROW_MAX[sectionKey]?.(row) || DEAN_SECTION_MAX[sectionKey];
  const societyLocked = sectionKey === "society" && societyRowLocked(row);
- const locked = sectionKey === "acr" ? false : (societyLocked || !rowHasReviewableData(sectionKey, row));
+ const locked = sectionKey === "acr" ? false : (societyLocked || !rowHasReviewableData(sectionKey, row) || isSectionEmpty(sectionKey, approval[sectionKey], ctx?.docs));
  const displayValue = societyLocked ? "0" : String(value ?? "").trim() ? clampScore(value, maxForRow) : "";
 
  const update = (nextValue) =>{
@@ -361,8 +366,9 @@ function DeanScoreCell({ sectionKey, index, row, deanData, setDeanData }) {
 }
 
 function DeanInnovativeScoreCell({ row, index, rows, deanData, setDeanData }) {
+ const ctx = useContext(DeanReviewTableContext);
  const value = deanData.innovRows?.[index]?.dean ?? row.dean ?? "";
- const locked = !rowHasReviewableData("innovRows", row);
+ const locked = !rowHasReviewableData("innovRows", row) || isSectionEmpty("innovRows", rows, ctx?.docs);
  const update = (nextValue) =>{
  const clampedValue = clampReviewScore("innovRows", row, nextValue, 10);
  preserveScrollAfterStateUpdate(() =>setDeanData((prev) =>{
@@ -899,7 +905,7 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
  grand: 0,
  };
  reviewerMaxScores.grand = reviewerMaxScores.partA + reviewerMaxScores.partB + reviewerMaxScores.partC + reviewerMaxScores.partD;
- const deanScores = deanScoreTotals(sectionScores);
+ const deanScores = deanScoreTotals(sectionScores, approval);
  const hasSavedDeanScores = ["deanPartA", "deanPartB", "deanPartC", "deanPartD", "deanTotal"].some((key) =>String(approval?.[key] ?? "").trim() !== "");
  const rawDisplayedDeanScores = reviewLocked && hasSavedDeanScores ? {
  partA: String(approval?.deanPartA ?? "").trim() !== "" ? n(approval?.deanPartA) : deanScores.partA,
