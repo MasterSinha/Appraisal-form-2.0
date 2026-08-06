@@ -14,6 +14,8 @@ import PartB from "./PartB/PartB";
 import DirectorPartB from "./PartB/DirectorPartB";
 import PartC from "./PartC/PartC";
 import PartD from "./PartD/PartD";
+import { getSchoolKey } from "../../constants/universityHierarchy";
+
 
 const REVIEW_SECTION_MAX = {
   lectures: 40,
@@ -55,19 +57,35 @@ const DIRECTOR_REVIEW_SECTION_MAX = {
  books: 30,
  research: 20,
  projects2: 40,
- awards: 20,
+ awards: 10,
  confs: 20,
- proposals: 20,
- products: 20,
+ proposals: 10,
+ products: 10,
  fdps: 20,
 };
 const STANDARD_INNOVATIVE_ROW_MAX = 4;
 const STANDARD_INNOVATIVE_SECTION_MAX = 20;
-const clampDirectorReviewScore = (section, row, value, maxScore) => {
- if (String(value ?? "").trim() === "") return "";
- if (section !== "acr" && clampReviewScore(section, row, value, maxScore) === "") return "";
- return String(clampScore(value, maxScore));
+
+const isApplicableSchool = (faculty) => {
+  const school = faculty?.info?.school || faculty?.school || "";
+  const schoolKey = getSchoolKey(school);
+  return ["SoCSEA", "SoBB", "SoCE", "SoEMR", "SoCM"].includes(schoolKey);
 };
+
+const getReviewSectionMax = (section, faculty, isDirector = false) => {
+  const baseMax = isDirector ? DIRECTOR_REVIEW_SECTION_MAX[section] : REVIEW_SECTION_MAX[section];
+  if (section === "proposals" || section === "awards" || section === "products") {
+    return isApplicableSchool(faculty) ? 20 : 10;
+  }
+  return baseMax || 0;
+};
+
+const clampDirectorReviewScore = (section, row, value, maxScore) => {
+  if (String(value ?? "").trim() === "") return "";
+  if (section !== "acr" && clampReviewScore(section, row, value, maxScore) === "") return "";
+  return String(clampScore(value, maxScore));
+};
+
 
 // - Faculty Form in HOD Review Mode -
 export default function MyAppraisalForm({ faculty, hodData, setHodData, reviewerLabel = "HOD", sectionView = "partA" }) {
@@ -82,7 +100,7 @@ export default function MyAppraisalForm({ faculty, hodData, setHodData, reviewer
     updated[section] = JSON.parse(JSON.stringify(sourceRows));
   }
   const nextVal = field === "hod" && idx !== null
-  ? clampReviewScore(section, sourceRows[idx] || {}, val, REVIEW_SECTION_MAX[section] || 0)
+  ? clampReviewScore(section, sourceRows[idx] || {}, val, getReviewSectionMax(section, faculty, false))
   : val;
   if (idx === null) {
   updated[section] = Array.isArray(updated[section])
@@ -180,9 +198,9 @@ export function DirectorFacultyReviewForm({ faculty, hodData, setHodData, dirDat
  } else if (!Array.isArray(updated[section])) {
  updated[section] = JSON.parse(JSON.stringify(sourceRows));
  }
- const nextVal = field === "dir" && idx !== null
- ? clampDirectorReviewScore(section, sourceRows[idx] || {}, val, DIRECTOR_REVIEW_SECTION_MAX[section] || 0)
- : val;
+  const nextVal = field === "dir" && idx !== null
+  ? clampDirectorReviewScore(section, sourceRows[idx] || {}, val, getReviewSectionMax(section, faculty, true))
+  : val;
  if (idx === null) {
  updated[section] = Array.isArray(updated[section])
  ? (updated[section].length ? updated[section].map((r, i) =>i === 0 ? { ...r, [field]: nextVal } : r) : [{ [field]: nextVal }])

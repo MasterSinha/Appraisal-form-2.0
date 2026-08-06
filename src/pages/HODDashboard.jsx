@@ -10,7 +10,7 @@ import { getActiveAcademicYear, getSessionItem, normalizeAcademicYearLabel, setA
 import { PreviousYearReportViewer } from "../features/previousYearReport";
 import { isLegacyTwoPartAcademicYear } from "../features/faculty-appraisal/forms/standard/legacyPreviousYearReportUtils";
 import { legacyDashboardMetrics } from "../utils/legacyDashboardMetrics";
-import { canReviewerRejectProfile, rejectedStatusFor, reviewedStatusFor, profileFromsessionStorage, workflowValidationError, roleLabel, isAppraisalFinalisedByVc, isRejectedStatus, isPendingReviewStatusFor, hasActiveRejection, reviewListFrom } from "../utils/hierarchy";
+import { canReviewerRejectProfile, rejectedStatusFor, reviewedStatusFor, profileFromsessionStorage, workflowValidationError, roleLabel, isAppraisalFinalisedByVc, isRejectedStatus, isPendingReviewStatusFor, hasActiveRejection, reviewListFrom, getSchoolKey } from "../utils/hierarchy";
 import { n, pct, grade, reportValue, reportTextValue, reportQualification, reportExperience, RO, TI } from "../features/faculty-appraisal/shared";
 
 // - Helpers - (n, pct, grade, reportValue, reportTextValue, reportQualification, reportExperience, RO, TI → imported from shared)
@@ -79,17 +79,28 @@ const preserveSavedReviewScores = (form = {}, source = {}) =>{
  }
  return merged;
 };
+const getHodSectionMax = (key, faculty) => {
+  const baseMax = REVIEW_SECTION_MAX[key] || 0;
+  if (key === "proposals" || key === "awards" || key === "products") {
+    const school = faculty?.info?.school || faculty?.school || "";
+    const schoolKey = getSchoolKey(school);
+    const isApplicable = ["SoCSEA", "SoBB", "SoCE", "SoEMR", "SoCM"].includes(schoolKey);
+    return isApplicable ? 20 : 10;
+  }
+  return baseMax;
+};
+
 const buildHodSectionScores = (faculty, hodData) =>{
- const payload = {};
- REVIEW_ARRAY_KEYS.forEach((key) =>{
- const rows = key === "acr" ? createAcrRows(faculty[key]) : (Array.isArray(faculty[key]) ? faculty[key] : []);
- payload[key] = rows.map((row, index) =>({
- ...row,
- hod: key === "society" && societyRowLocked(row)
- ? "0"
- : clampReviewScore(key, row, hodData[key]?.[index]?.hod ?? row.hod ?? "", REVIEW_SECTION_MAX[key] || 0),
- }));
- });
+  const payload = {};
+  REVIEW_ARRAY_KEYS.forEach((key) =>{
+  const rows = key === "acr" ? createAcrRows(faculty[key]) : (Array.isArray(faculty[key]) ? faculty[key] : []);
+  payload[key] = rows.map((row, index) =>({
+  ...row,
+  hod: key === "society" && societyRowLocked(row)
+  ? "0"
+  : clampReviewScore(key, row, hodData[key]?.[index]?.hod ?? row.hod ?? "", getHodSectionMax(key, faculty)),
+  }));
+  });
  const innovRows = Array.isArray(faculty.innovRows) ? faculty.innovRows : [];
  const reviewInnovRows = Array.isArray(hodData.innovRows) ? hodData.innovRows : [];
  const mergedInnovRows = innovRows.map((row, index) =>({
@@ -205,10 +216,10 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false, revi
  const res = sumReviewRows("research", "hod", 20, researchGuidanceRowMax);
  const resProjects = sumReviewRows("projects2", "hod", 40);
  const pat = sumReviewRows("patents", "hod", 40);
- const awd = sumReviewRows("awards", "hod", 20);
- const conf = sumReviewRows("confs", "hod", 20);
- const prop = sumReviewRows("proposals", "hod", 20);
- const prod = sumReviewRows("products", "hod", 20);
+  const awd = sumReviewRows("awards", "hod", getHodSectionMax("awards", faculty));
+  const conf = sumReviewRows("confs", "hod", 20);
+  const prop = sumReviewRows("proposals", "hod", getHodSectionMax("proposals", faculty));
+  const prod = sumReviewRows("products", "hod", getHodSectionMax("products", faculty));
  const b8 = sumReviewRows("fdps", "hod", 20, SCORE_LIMITS.fdpRow);
  const partB = clampScore(jour + bk + pat + resProjects + res + prop + conf + b8 + awd + prod + ictT, reviewerMaxScores.partB);
 

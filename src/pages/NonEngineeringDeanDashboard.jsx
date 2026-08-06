@@ -248,23 +248,34 @@ const preserveSavedReviewScores = (form = {}, source = {}) =>{
  return next;
  });
  }
- return merged;
+return merged;
 };
 const DEAN_SECTION_MAX = { lectures: 40, courseFile: 20, projects: 20, obeRows: 20, mentoringRows: 10, quals: 10, feedback: 10, deptActs: 30, uniActs: 50, eventRows: 20, society: 20, industry: 8, alumniRows: 10, placementRows: 20, acr: 50, journals: 120, books: 50, ict: 20, research: 30, projects2: 40, externalProjects: SCORE_LIMITS.researchExternalProjects, patents: 40, awards: 10, confs: 30, proposals: 10, products: 10, fdps: 10, training: 10 };
 const DEAN_ROW_MAX = { courseFile: () =>SCORE_LIMITS.courseFileRow, projects: projectGuidanceRowMax, projects2: (row) =>row.max || 40, obeRows: (row) =>row.max || 20, mentoringRows: (row) =>row.max || 10, quals: () =>SCORE_LIMITS.qualificationRow, feedback: () =>10, uniActs: () =>50, deptActs: () =>30, eventRows: () =>20, society: () =>20, industry: () =>8, alumniRows: () =>10, placementRows: () =>20, acr: () =>SCORE_LIMITS.acrRow, research: researchGuidanceRowMax, fdps: () =>SCORE_LIMITS.fdpRow, training: () =>SCORE_LIMITS.fdpRow };
 
-const deanScorePayload = (approval, deanData) =>{
- const payload = {};
+const getSectionMaxForApproval = (key, approval) => {
+  const baseMax = DEAN_SECTION_MAX[key] || 0;
+  if (key === "proposals" || key === "awards" || key === "products") {
+    const school = approval?.info?.school || approval?.school || "";
+    const schoolKey = getSchoolKey(school);
+    const isApplicable = ["SoCSEA", "SoBB", "SoCE", "SoEMR", "SoCM"].includes(schoolKey);
+    return isApplicable ? 20 : 10;
+  }
+  return baseMax;
+};
 
- DEAN_REVIEW_ARRAY_KEYS.forEach((key) =>{
- const rows = key === "acr" ? createAcrRows(approval[key]) : (Array.isArray(approval[key]) ? approval[key] : []);
- payload[key] = rows.map((row, index) =>({
- ...row,
- dean: key === "society" && societyRowLocked(row)
- ? "0"
- : clampReviewScore(key, row, deanData[key]?.[index]?.dean ?? row.dean ?? "", DEAN_SECTION_MAX[key] || 0),
- }));
- });
+const deanScorePayload = (approval, deanData) =>{
+  const payload = {};
+
+  DEAN_REVIEW_ARRAY_KEYS.forEach((key) =>{
+  const rows = key === "acr" ? createAcrRows(approval[key]) : (Array.isArray(approval[key]) ? approval[key] : []);
+  payload[key] = rows.map((row, index) =>({
+  ...row,
+  dean: key === "society" && societyRowLocked(row)
+  ? "0"
+  : clampReviewScore(key, row, deanData[key]?.[index]?.dean ?? row.dean ?? "", getSectionMaxForApproval(key, approval)),
+  }));
+  });
 
  const innovRows = Array.isArray(approval.innovRows) ? approval.innovRows : [];
  const reviewInnovRows = Array.isArray(deanData.innovRows) ? deanData.innovRows : [];
@@ -281,39 +292,43 @@ const deanScorePayload = (approval, deanData) =>{
  return payload;
 };
 
-const sumDeanRows = (payload, keys) =>
- keys.reduce((total, key) =>{
- if (key === "lectures" || key === "courseFile" || key === "feedback") return total + reviewSectionScore(key, payload[key] || [], DEAN_SECTION_MAX[key] || 0, "dean");
- return total + clampScore((payload[key] || []).reduce((sum, row) =>{
- if (key === "society" && societyRowLocked(row)) return sum;
- if (!rowHasReviewableData(key, row)) return sum;
- const rowMax = DEAN_ROW_MAX[key]?.(row);
- return sum + (rowMax ? clampScore(row.dean, rowMax) : n(row.dean));
- }, 0), DEAN_SECTION_MAX[key] || 0);
- }, 0);
+const sumDeanRows = (payload, keys, approval) =>
+  keys.reduce((total, key) =>{
+  const sectionMax = getSectionMaxForApproval(key, approval);
+  if (key === "lectures" || key === "courseFile" || key === "feedback") return total + reviewSectionScore(key, payload[key] || [], sectionMax, "dean");
+  return total + clampScore((payload[key] || []).reduce((sum, row) =>{
+  if (key === "society" && societyRowLocked(row)) return sum;
+  if (!rowHasReviewableData(key, row)) return sum;
+  const rowMax = DEAN_ROW_MAX[key]?.(row) || sectionMax;
+  return sum + (rowMax ? clampScore(row.dean, rowMax) : n(row.dean));
+  }, 0), sectionMax);
+  }, 0);
 
-const deanScoreTotals = (payload) =>{
- const innovativeScore = Array.isArray(payload.innovRows) && payload.innovRows.length
- ? reviewSectionScore("innovRows", payload.innovRows, 10, "dean")
- : clampScore(payload.innovativeTeaching?.dean, 10);
- const partA = clampScore(sumDeanRows(payload, DEAN_REVIEW_PART_A_KEYS) + innovativeScore, 150);
- const b8 = clampScore(sumDeanRows(payload, ["fdps"]) + sumDeanRows(payload, ["training"]), 10);
- const partBWithoutB8 = sumDeanRows(payload, DEAN_REVIEW_PART_B_KEYS.filter(k =>k !== "fdps" && k !== "training"));
- const cappedPartB = clampScore(partBWithoutB8 + b8, 350);
- const partC = clampScore(sumDeanRows(payload, DEAN_REVIEW_PART_C_KEYS), 150);
- const partD = clampScore(sumDeanRows(payload, DEAN_REVIEW_PART_D_KEYS), 50);
- return { partA, partB: cappedPartB, partC, partD, total: clampScore(partA + cappedPartB + partC + partD, 700) };
+const deanScoreTotals = (payload, approval) =>{
+  const innovativeScore = Array.isArray(payload.innovRows) && payload.innovRows.length
+  ? reviewSectionScore("innovRows", payload.innovRows, 10, "dean")
+  : clampScore(payload.innovativeTeaching?.dean, 10);
+  const partA = clampScore(sumDeanRows(payload, DEAN_REVIEW_PART_A_KEYS, approval) + innovativeScore, 150);
+  const b8 = clampScore(sumDeanRows(payload, ["fdps"], approval) + sumDeanRows(payload, ["training"], approval), 10);
+  const partBWithoutB8 = sumDeanRows(payload, DEAN_REVIEW_PART_B_KEYS.filter(k =>k !== "fdps" && k !== "training"), approval);
+  const cappedPartB = clampScore(partBWithoutB8 + b8, 350);
+  const partC = clampScore(sumDeanRows(payload, DEAN_REVIEW_PART_C_KEYS, approval), 150);
+  const partD = clampScore(sumDeanRows(payload, DEAN_REVIEW_PART_D_KEYS, approval), 50);
+  return { partA, partB: cappedPartB, partC, partD, total: clampScore(partA + cappedPartB + partC + partD, 700) };
 };
 
 function DeanScoreCell({ sectionKey, index, row, deanData, setDeanData }) {
+ const ctx = useContext(DeanReviewTableContext);
+ const approval = ctx?.approval || {};
  const value = deanData[sectionKey]?.[index]?.dean ?? row.dean ?? "";
- const maxForRow = DEAN_ROW_MAX[sectionKey]?.(row) || DEAN_SECTION_MAX[sectionKey];
+ const sectionMax = getSectionMaxForApproval(sectionKey, approval);
+ const maxForRow = DEAN_ROW_MAX[sectionKey]?.(row) || sectionMax;
  const societyLocked = sectionKey === "society" && societyRowLocked(row);
  const locked = sectionKey === "acr" ? false : (societyLocked || !rowHasReviewableData(sectionKey, row));
  const displayValue = societyLocked ? "0" : String(value ?? "").trim() ? clampScore(value, maxForRow) : "";
 
  const update = (nextValue) =>{
- const clampedValue = clampReviewScore(sectionKey, row, nextValue, DEAN_SECTION_MAX[sectionKey] || 0);
+ const clampedValue = clampReviewScore(sectionKey, row, nextValue, sectionMax);
  preserveScrollAfterStateUpdate(() =>setDeanData((prev) =>{
  const baseRows = Array.isArray(prev[sectionKey]) ? prev[sectionKey] : [];
  const updatedRows = [...baseRows];
@@ -365,7 +380,7 @@ function ReviewTable({ title, accent = "#4338ca", sectionKey, columns, docPrefix
  const previousScoreLabel = sectionKey === "acr" ? "Previous ACR Score" : "Faculty Score";
  const previousScoreFor = (row) => {
  if (sectionKey === "research") return row.degree || row.name || row.thesis || row.score ? researchGuidanceScore(row).toFixed(1) : "";
- if (sectionKey === "society") return String(row.score ?? "").trim() ? clampScore(row.score, DEAN_ROW_MAX[sectionKey]?.(row) || DEAN_SECTION_MAX[sectionKey]) : "";
+ if (sectionKey === "society") return String(row.score ?? "").trim() ? clampScore(row.score, DEAN_ROW_MAX[sectionKey]?.(row) || getSectionMaxForApproval(sectionKey, ctx.approval)) : "";
  if (sectionKey === "acr") return row.director ?? row.dir ?? row.director_score ?? row.dir_score ?? "";
  return row.score;
  };
@@ -870,7 +885,7 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
  const subjectEmail = approval?.email || approval?.faculty_email || approval?.facultyEmail;
  const academicYear = approval?.academicYear || approval?.academic_year || approval?.info?.ay || APP_INFO.DEFAULT_AY || "2026-2027";
  const sectionScores = deanScorePayload(approval, deanData);
- const deanScores = deanScoreTotals(sectionScores);
+ const deanScores = deanScoreTotals(sectionScores, approval);
  const selfSummary = standardSubmittedScoreSummary(approval);
  const reviewerMaxScores = reviewerMaxScoresFromSubmitted(selfSummary);
  const subjectRole = (approval.appraisalRole || approval.appraisal_role || approval.role || "faculty").toLowerCase();
