@@ -199,7 +199,7 @@ export const SECTION_GUIDELINES = {
     ]
   },
   B3: {
-    title: "B3. Patents, Copyrights, IP & Creative Product Development (Max: 40) [For School of Design and School of Applied Arts]",
+    title: "B3. Patents, Copyrights, IP & Creative Product Development (Max: 40)",
     rules: [
       "Patent Granted — National: 30, International: 20.",
       "Patent Published — National: 8, International: 5.",
