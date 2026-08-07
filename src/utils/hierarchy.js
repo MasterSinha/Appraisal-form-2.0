@@ -199,22 +199,10 @@ export const canReviewerRejectProfile = (reviewerRole, subjectProfile = {}) => {
   const role = normalizeRoleForWorkflow(reviewerRole);
   if (!role || role === "faculty") return false;
 
-  const subjectRole = normalizeRoleForWorkflow(subjectProfile.appraisal_role || subjectProfile.appraisalRole || subjectProfile.role);
-  
-  if (subjectRole === "faculty") {
-    const chain = getReviewChain(subjectProfile);
-    if (chain.length > 0) {
-      return role === chain[0];
-    }
-    return false;
-  }
-
   const chain = getReviewChain(subjectProfile);
-  if (chain.includes(role)) return true;
-
-  if (subjectRole === "hod") return ["director", "dean", "vc"].includes(role);
-  if (subjectRole === "director") return ["dean", "vc"].includes(role);
-  if (subjectRole === "dean") return role === "vc";
+  if (chain.length > 0) {
+    return role === chain[0];
+  }
   return false;
 };
 
