@@ -932,6 +932,7 @@ export default function StandardMyAppraisal({
     ["Part A", partATotal, effectivePartAMax],
     ["Part B", partBTotal, effectivePartBMax],
     ["Part C", partCTotal, PART_C_MAX],
+    ["Part D", partDTotal, PART_D_MAX],
   ];
   const [submitting, setSubmitting] = useState(false);
   const [declarationConfirmed, setDeclarationConfirmed] = useState(false);

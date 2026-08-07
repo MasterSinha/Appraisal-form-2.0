@@ -33,12 +33,24 @@ const iconStroke = {
   "aria-hidden": "true",
 };
 
+// Per-icon accent so each nav destination reads as visually distinct at a glance,
+// while staying inside the sidebar's existing dark palette.
+const ICON_ACCENTS = {
+  self: "#818cf8",
+  school: "#2dd4bf",
+  faculty: "#38bdf8",
+  hod: "#fbbf24",
+  director: "#fb7185",
+  review: "#a78bfa",
+  guidelines: "#94a3b8",
+};
+
 function Icon({ name, active = false, size = 18 }) {
   const common = {
     ...iconStroke,
     width: size,
     height: size,
-    style: { color: active ? "#f8fafc" : "#cbd5e1" },
+    style: { color: active ? "#f8fafc" : ICON_ACCENTS[name] || "#cbd5e1" },
   };
 
   if (name === "self") {
@@ -48,6 +60,18 @@ function Icon({ name, active = false, size = 18 }) {
         <path d="M14 4v4h4" />
         <path d="M9.5 13.5h5" />
         <path d="M9.5 17h3.5" />
+        <circle cx="17.5" cy="17.5" r="3.1" />
+        <path d="m19.6 19.6 1.4 1.4" />
+      </svg>
+    );
+  }
+
+  if (name === "school") {
+    return (
+      <svg {...common}>
+        <path d="m12 3 9 5-9 5-9-5 9-5Z" />
+        <path d="M5 10.5V16c0 1.5 3.13 3 7 3s7-1.5 7-3v-5.5" />
+        <path d="M21 9v6.5" />
       </svg>
     );
   }
@@ -66,10 +90,21 @@ function Icon({ name, active = false, size = 18 }) {
   if (name === "hod") {
     return (
       <svg {...common}>
-        <path d="M4 21V9l8-5 8 5v12" />
-        <path d="M9 21v-6h6v6" />
-        <path d="M9 10h.01" />
-        <path d="M15 10h.01" />
+        <path d="M12 3.2 19 6v5.2c0 4.4-2.9 7.6-7 8.6-4.1-1-7-4.2-7-8.6V6l7-2.8Z" />
+        <path d="m9.3 12 1.8 1.8 3.6-3.8" />
+      </svg>
+    );
+  }
+
+  if (name === "director") {
+    return (
+      <svg {...common}>
+        <circle cx="12" cy="12" r="8.5" />
+        <circle cx="12" cy="12" r="3" />
+        <path d="M12 3.5V6" />
+        <path d="M12 18v2.5" />
+        <path d="M20.5 12H18" />
+        <path d="M6 12H3.5" />
       </svg>
     );
   }
@@ -155,6 +190,8 @@ function getNavIconName(tab) {
 
   if (id.includes("guideline")) return "guidelines";
   if (id.includes("my") || label.includes("my appraisal")) return "self";
+  if (id.includes("school") || label.includes("school appraisal")) return "school";
+  if (id.includes("director") || label.includes("director")) return "director";
   if (id.includes("hod") || label.includes("hod")) return "hod";
   if (id.includes("faculty") || label.includes("faculty")) return "faculty";
   if (id.includes("approval") || id.includes("review") || label.includes("appraisal")) return "review";
@@ -233,7 +270,7 @@ export default function DashboardSidebar({
   return (
     <aside className="appraisal-sidebar" style={sidebarShellStyle}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 1px 3px" }}>
-        <div style={{ width: 42, height: 42, borderRadius: 13, background: "linear-gradient(135deg,#475569 0%,#334155 100%)", border: "1px solid rgba(226,232,240,0.12)", display: "flex", alignItems: "center", justifyContent: "center", color: "#f8fafc", fontWeight: 950, fontSize: 13, boxShadow: "0 10px 20px rgba(15,23,42,0.22)", letterSpacing: 0 }}>FA</div>
+        <div style={{ width: 42, height: 42, borderRadius: 13, background: "linear-gradient(135deg,#6366f1 0%,#4338ca 100%)", border: "1px solid rgba(199,210,254,0.35)", display: "flex", alignItems: "center", justifyContent: "center", color: "#f8fafc", fontWeight: 950, fontSize: 13, boxShadow: "0 10px 22px rgba(79,70,229,0.38), 0 0 0 3px rgba(99,102,241,0.10)", letterSpacing: 0 }}>FA</div>
         <div style={{ minWidth: 0 }}>
           <div style={{ color: "#f8fafc", fontWeight: 900, fontSize: 13, lineHeight: 1.15, letterSpacing: 0 }}>{appInfo.PORTAL_NAME}</div>
           <div style={{ color: "#94a3b8", fontSize: 10, lineHeight: 1.3, marginTop: 3 }}>{appInfo.UNIVERSITY_NAME}</div>
@@ -245,17 +282,24 @@ export default function DashboardSidebar({
       <nav style={{ display: "grid", gap: 7 }} aria-label="Dashboard sections">
         {navItems.filter((tab) => tab.id !== "guidelines").map((tab) => {
         const isActive = activeTab === tab.id;
+        const accent = ICON_ACCENTS[getNavIconName(tab)] || ICON_ACCENTS.review;
         const button = (
           <button
             key={tab.id}
             onClick={() => {
               onTabSelect?.(tab.id);
             }}
+            onMouseEnter={(event) => {
+              if (!isActive) event.currentTarget.style.transform = "translateY(-1px)";
+            }}
+            onMouseLeave={(event) => {
+              event.currentTarget.style.transform = "translateY(0)";
+            }}
             className={isActive ? "is-active" : ""}
             style={{
               position: "relative",
-              background: isActive ? "rgba(99,102,241,0.18)" : "rgba(15,23,42,0.10)",
-              border: isActive ? "1px solid rgba(165,180,252,0.24)" : "1px solid transparent",
+              background: isActive ? `linear-gradient(135deg, ${accent}26 0%, rgba(99,102,241,0.16) 100%)` : "rgba(15,23,42,0.10)",
+              border: isActive ? `1px solid ${accent}55` : "1px solid transparent",
               borderRadius: 15,
               padding: "10px 11px",
               cursor: "pointer",
@@ -265,12 +309,12 @@ export default function DashboardSidebar({
               width: "100%",
               fontFamily: "inherit",
               transition: "background 0.15s ease, border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease",
-              boxShadow: isActive ? "inset 3px 0 0 #818cf8" : "none",
+              boxShadow: isActive ? `inset 3px 0 0 ${accent}` : "none",
               overflow: "hidden",
             }}
           >
             {isActive && <span style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg,rgba(99,102,241,0.12),transparent 55%)", pointerEvents: "none" }} />}
-            <span style={{ position: "relative", width: 31, height: 31, borderRadius: 10, background: isActive ? "rgba(99,102,241,0.16)" : "rgba(148,163,184,0.10)", border: isActive ? "1px solid rgba(165,180,252,0.24)" : "1px solid rgba(148,163,184,0.10)", color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <span style={{ position: "relative", width: 31, height: 31, borderRadius: 10, background: isActive ? `${accent}2E` : `${accent}17`, border: isActive ? `1px solid ${accent}66` : `1px solid ${accent}2A`, color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: isActive ? `0 4px 12px ${accent}33` : "none", transition: "background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease" }}>
               <SidebarIcon id={tab.id} label={tab.label} active={isActive} />
             </span>
             <div style={{ position: "relative", flex: 1, minWidth: 0, textAlign: "left" }}>
@@ -278,7 +322,7 @@ export default function DashboardSidebar({
               <div style={{ color: isActive ? "#c7d2fe" : "#94a3b8", fontSize: 10.5, marginTop: 3, lineHeight: 1.3 }}>{tab.sub}</div>
             </div>
             {tab.badge > 0 && (
-              <div style={{ position: "relative", background: isActive ? "rgba(226,232,240,0.16)" : "rgba(148,163,184,0.10)", color: isActive ? "#e2e8f0" : "#cbd5e1", border: "1px solid rgba(148,163,184,0.20)", fontWeight: 900, fontSize: 10, minWidth: 20, height: 20, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 5px", flexShrink: 0 }}>{tab.badge}</div>
+              <div style={{ position: "relative", background: isActive ? `linear-gradient(135deg, ${accent} 0%, ${accent}cc 100%)` : "rgba(148,163,184,0.10)", color: isActive ? "#0f172a" : "#cbd5e1", border: isActive ? "none" : "1px solid rgba(148,163,184,0.20)", fontWeight: 900, fontSize: 10, minWidth: 20, height: 20, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 5px", flexShrink: 0, boxShadow: isActive ? `0 3px 8px ${accent}4D` : "none" }}>{tab.badge}</div>
             )}
           </button>
         );
@@ -355,12 +399,14 @@ export default function DashboardSidebar({
         type="button"
         onClick={() => navigate("/edit-profile")}
         title="Edit profile"
-        style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(255,255,255,0.055)", border: "1px solid rgba(148,163,184,0.16)", borderRadius: 16, padding: 10, width: "100%", cursor: "pointer", fontFamily: "inherit", textAlign: "left", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)" }}
+        style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(255,255,255,0.055)", border: "1px solid rgba(148,163,184,0.16)", borderRadius: 16, padding: 10, width: "100%", cursor: "pointer", fontFamily: "inherit", textAlign: "left", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)", transition: "background 0.15s ease, border-color 0.15s ease" }}
+        onMouseEnter={(event) => { event.currentTarget.style.background = "rgba(255,255,255,0.09)"; event.currentTarget.style.borderColor = "rgba(165,180,252,0.30)"; }}
+        onMouseLeave={(event) => { event.currentTarget.style.background = "rgba(255,255,255,0.055)"; event.currentTarget.style.borderColor = "rgba(148,163,184,0.16)"; }}
       >
         <Avatar
           initials={(sessionStorage.getItem("name") || "U").split(" ").map((name) => name[0]).join("").toUpperCase()}
           src={sessionStorage.getItem("profilePictureUrl") || sessionStorage.getItem("profile_picture_url") || sessionStorage.getItem("avatarUrl") || ""}
-          color="#475569"
+          color="#4f46e5"
           size={42}
         />
         <div style={{ flex: 1 }}>
