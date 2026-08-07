@@ -264,6 +264,14 @@ export const standardSubmittedScoreSummary = (subject = {}, fallback = {}) => {
   const inferredPartDMax = n(fallback.partDMax ?? fallback.effectivePartDMax) ||
     effectiveMaxFromApplicability(CURRENT_FORM_MAX.partD);
 
+  const getSessionRole = () => {
+    if (typeof sessionStorage !== "undefined" && sessionStorage) {
+      return sessionStorage.getItem("role");
+    }
+    return null;
+  };
+  const isFacultyUser = getSessionRole() === "faculty";
+
   const storedPartAMax = numericFrom(sources, [
     "partAMax", "part_a_max", "effectivePartAMax", "effective_part_a_max", "maxPartA", "faculty_part_a_max",
   ], inferredPartAMax);
@@ -279,11 +287,13 @@ export const standardSubmittedScoreSummary = (subject = {}, fallback = {}) => {
   const partDMax = numericFrom(sources, [
     "partDMax", "part_d_max", "effectivePartDMax", "effective_part_d_max", "maxPartD", "faculty_part_d_max",
   ], inferredPartDMax);
-  const cappedPartDMax = Math.min(partDMax || inferredPartDMax, CURRENT_FORM_MAX.partD);
+  const cappedPartDMax = isFacultyUser ? 0 : Math.min(partDMax || inferredPartDMax, CURRENT_FORM_MAX.partD);
   const grandMax = numericFrom(sources, [
     "grandMax", "grand_max", "effectiveGrandMax", "effective_grand_max", "maxGrand", "totalMax", "faculty_total_max",
   ], partAMax + cappedPartBMax + cappedPartCMax + cappedPartDMax);
-  const cappedGrandMax = Math.min(grandMax || CURRENT_FORM_MAX.grand, CURRENT_FORM_MAX.grand);
+  const cappedGrandMax = isFacultyUser
+    ? (partAMax + cappedPartBMax + cappedPartCMax)
+    : Math.min(grandMax || CURRENT_FORM_MAX.grand, CURRENT_FORM_MAX.grand);
 
   const rawPartA = numericFrom(sources, [
     "partATotal", "partA", "part_a_total", "part_a_score", "selfPartA", "self_part_a",
@@ -305,7 +315,7 @@ export const standardSubmittedScoreSummary = (subject = {}, fallback = {}) => {
     "partDTotal", "partD", "part_d_total", "part_d_score", "selfPartD", "self_part_d",
     "facultyPartD", "faculty_part_d", "facultyPartDScore", "faculty_part_d_score",
   ], fallback.partD);
-  const partD = Math.min(rawPartD, cappedPartDMax);
+  const partD = isFacultyUser ? 0 : Math.min(rawPartD, cappedPartDMax);
   const computedTotal = partA + partB + partC + partD;
   const rawTotal = numericFrom(sources, [
     "grandTotal", "grand_total", "totalScore", "total_score", "total", "selfTotal",

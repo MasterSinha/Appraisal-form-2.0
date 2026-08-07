@@ -901,7 +901,7 @@ export default function StandardMyAppraisal({
   const effectivePartBMax = PART_B_MAX;
   const partCTotal = clampScore(uniScore + deptScore + eventScore + societyScore + industryScore + alumniScore + placementScore, PART_C_MAX);
   const partDTotal = 0;
-  const effectiveGrandMax = effectivePartAMax + effectivePartBMax + PART_C_MAX + PART_D_MAX;
+  const effectiveGrandMax = effectivePartAMax + effectivePartBMax + PART_C_MAX;
   const partBTotal = clampScore(journalScore + bookScore + ictScore + researchScore + projectBScore + patentScore + awardScore + confScore + proposalScore + productScore + b8Score, effectivePartBMax);
   const grandTotal = clampScore(partATotal + partBTotal + partCTotal + partDTotal, effectiveGrandMax);
 
@@ -923,7 +923,6 @@ export default function StandardMyAppraisal({
     ["Part A", partATotal, effectivePartAMax],
     ["Part B", partBTotal, effectivePartBMax],
     ["Part C", partCTotal, PART_C_MAX],
-    ["Part D", partDTotal, PART_D_MAX],
   ];
   const [submitting, setSubmitting] = useState(false);
   const [declarationConfirmed, setDeclarationConfirmed] = useState(false);
@@ -3141,7 +3140,6 @@ export default function StandardMyAppraisal({
                         <SummaryRow label="Part A - Teaching & Learning" score={partATotal} max={effectivePartAMax} color="#4f46e5" tone="#eef2ff" iconTone="#eef2ff" icon="book" />
                         <SummaryRow label="Part B - Research & Innovation" score={partBTotal} max={effectivePartBMax} color="#7c3aed" tone="#f3e8ff" iconTone="#f5f3ff" icon="flask" />
                         <SummaryRow label="Part C - Administrative Contribution" score={partCTotal} max={PART_C_MAX} color="#0f766e" tone="#ccfbf1" iconTone="#ccfbf1" icon="building" />
-                        <SummaryRow label="Part D - Annual Confidential Report" score={partDTotal} max={PART_D_MAX} color="#c2410c" tone="#ffedd5" iconTone="#ffedd5" icon="document" />
                         <SummaryRow label="Grand Total" score={grandTotal} max={effectiveGrandMax} color={g.color} tone="#ffe4e6" iconTone="#f1f5f9" icon="sigma" />
                       </tbody>
                     </table>

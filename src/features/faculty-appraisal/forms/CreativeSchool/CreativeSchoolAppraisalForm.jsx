@@ -404,6 +404,16 @@ export const calculateDesignArtsTotals = calculateCreativeSchoolTotals;
 export const calculateMediaTotals = calculateCreativeSchoolTotals;
 
 export const getCreativeSchoolEffectiveMaxScores = (form = {}, { self = false } = {}) => {
+  const getSessionRole = () => {
+    if (typeof sessionStorage !== "undefined" && sessionStorage) {
+      return sessionStorage.getItem("role");
+    }
+    return null;
+  };
+  const isFacultyUser = self || getSessionRole() === "faculty";
+  if (isFacultyUser) {
+    return { partA: PART_A_MAX, partB: PART_B_MAX, partC: PART_C_MAX, partD: 0, grand: 650 };
+  }
   return { partA: PART_A_MAX, partB: PART_B_MAX, partC: PART_C_MAX, partD: PART_D_MAX, grand: GRAND_MAX };
 };
 
@@ -1872,9 +1882,9 @@ export function SummaryBox({ totals, roleScoreLabel = "Score", maxScores = { par
     ["Part A", totals.partA, maxScores.partA, "#4f46e5"],
     ["Part B", totals.partB, maxScores.partB, "#4338ca"],
     ["Part C", totals.partC, maxScores.partC, "#6366f1"],
-    ["Part D", totals.partD, maxScores.partD, "#3730a3"],
+    maxScores.partD > 0 && ["Part D", totals.partD, maxScores.partD, "#3730a3"],
     ["Grand Total", totals.total, maxScores.grand, "#4338ca"],
-  ];
+  ].filter(Boolean);
   return (
     <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: 16, display: "grid", gap: 12 }}>
       {rows.map(([label, value, max, color]) => (
@@ -1895,9 +1905,9 @@ export function CompactAuthoritySummaryCard({ title, subtitle, totals, maxScores
     ["Part A", totals.partA, maxScores.partA, "#4f46e5"],
     ["Part B", totals.partB, maxScores.partB, "#4338ca"],
     ["Part C", totals.partC, maxScores.partC, "#6366f1"],
-    ["Part D", totals.partD, maxScores.partD, "#3730a3"],
+    maxScores.partD > 0 && ["Part D", totals.partD, maxScores.partD, "#3730a3"],
     ["Total", totals.total, maxScores.grand, "#4338ca"],
-  ];
+  ].filter(Boolean);
   const hasRemarks = Boolean(remarksContent);
   return (
     <div style={{ background: "#fff", border: "1px solid #dbe3ef", borderRadius: 8, padding: 12, display: "grid", gridTemplateColumns: hasRemarks ? "minmax(300px, 0.95fr) minmax(280px, 1.05fr)" : "1fr", gap: 12, alignItems: "stretch", boxShadow: "0 1px 2px rgba(15,23,42,0.04)" }}>
