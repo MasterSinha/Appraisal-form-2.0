@@ -635,7 +635,7 @@ export default function DesignArtsDashboard({ fixedRole }) {
 
  const generateSelfReport = () =>{
  const applicability = {};
- const rowSum = (key, max) =>scoreSectionRows(key, form[key] || [], max, "score");
+ const rowSum = (key, max) =>scoreSectionRows(key, form[key] || [], max, "score", key === "research" ? { autoFillResearchScore: false } : undefined);
  const lecScore = scoreSectionRows("lectures", form.lectures || [], 40, "score");
  const cfScore = scoreSectionRows("courseFile", form.courseFile || [], 20, "score");
  const innovScore = clampScore(Array.isArray(form.innovRows) ? form.innovRows.reduce((t, r) =>t + clampScore(r.score, r.max || 4), 0) : innovativeTeachingScore(form.innovDetails, form.innovScore, 10), 10);

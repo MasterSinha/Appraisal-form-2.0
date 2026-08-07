@@ -59,17 +59,26 @@ const snapshotFormFromPayload = (payload) =>{
  return null;
 };
 
+// Resolve a form field's React setter name. SNAPSHOT_SETTERS is consulted first so any
+// deliberate override keeps working unchanged; otherwise the setter name is derived from
+// the field name itself (set + Capitalized-first-letter), the same convention every form
+// engine already uses for its own state. This means a section whose field name isn't in
+// SNAPSHOT_SETTERS (e.g. an engine that names it differently than the table's original
+// author expected) still resolves correctly instead of being silently skipped, and any
+// future section works without needing a new table entry.
+const resolveSnapshotSetterKey = (formKey) =>
+ SNAPSHOT_SETTERS[formKey] || `set${formKey.charAt(0).toUpperCase()}${formKey.slice(1)}`;
+
 const applySnapshotToSetters = (snapshotPayload, setters) =>{
  const snapshotForm = normalizeFetchedForm(snapshotFormFromPayload(snapshotPayload));
  if (!snapshotForm || !setters) return;
 
- Object.entries(SNAPSHOT_SETTERS).forEach(([formKey, setterKey]) =>{
- if (Object.prototype.hasOwnProperty.call(snapshotForm, formKey)) {
+ Object.keys(snapshotForm).forEach((formKey) =>{
+ const setterKey = resolveSnapshotSetterKey(formKey);
  if (formKey === "info") {
  setters[setterKey]?.((current = {}) =>normalizeInfo(snapshotForm[formKey], current, snapshotForm, snapshotPayload));
  } else {
  setters[setterKey]?.(snapshotForm[formKey]);
- }
  }
  });
 
@@ -161,13 +170,12 @@ const applySubmittedAppraisalToSetters = (submittedAppraisal, setters, scope = {
  const submittedForm = normalizeFetchedForm(submittedFormFromResponse(submittedAppraisal));
  if (!submittedForm) return false;
 
- Object.entries(SNAPSHOT_SETTERS).forEach(([formKey, setterKey]) =>{
- if (Object.prototype.hasOwnProperty.call(submittedForm, formKey)) {
+ Object.keys(submittedForm).forEach((formKey) =>{
+ const setterKey = resolveSnapshotSetterKey(formKey);
  if (formKey === "info") {
  setters[setterKey]?.((current = {}) =>normalizeInfo(submittedForm[formKey], current, submittedForm, submittedAppraisal));
  } else {
  setters[setterKey]?.(submittedForm[formKey]);
- }
  }
  });
 
@@ -978,13 +986,21 @@ const applyReviewToForm = (form = {}, review = {}) =>{
 const mergeReviewScoresIntoForm = (form = {}, reviews = []) =>
  (reviews || []).reduce((current, review) =>applyReviewToForm(current, review), form);
 
+// Each mapping entry declares two (or more) field names that hold the same logical value
+// across form engines (e.g. Standard's row.label vs Creative School's row.activity). Sync
+// is bidirectional: whichever of "from"/"targets" already has the row's real data backfills
+// every other empty name in the group, so the value shows up regardless of which field name
+// it happened to be stored/returned under. Purely additive versus a one-way copy - never
+// overwrites a field that already has data.
 const aliasKeys = (rows, mapping) =>
  (rows || []).map((row) =>{
  const out = { ...row };
  Object.entries(mapping).forEach(([from, to]) =>{
- const targets = Array.isArray(to) ? to : [to];
- targets.forEach((target) =>{
- if (out[target] == null && out[from] != null) out[target] = out[from];
+ const group = [from, ...(Array.isArray(to) ? to : [to])];
+ const sourceKey = group.find((key) =>out[key] != null);
+ if (sourceKey === undefined) return;
+ group.forEach((key) =>{
+ if (out[key] == null) out[key] = out[sourceKey];
  });
  });
  return out;

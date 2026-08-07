@@ -39,7 +39,6 @@ import {
   normalizeAutoScores,
   projectGuidanceRowMax,
   researchGuidanceRowMax,
-  researchGuidanceScore,
   clampReviewScore,
   reviewRowMaxForSection,
   reviewSectionScore,
@@ -366,7 +365,7 @@ const scoreKeyForInnov = (role) => ({
 
 export const calculateCreativeSchoolTotals = (form, scoreKey = "score") => {
   const maxScores = getCreativeSchoolEffectiveMaxScores(form, { self: scoreKey === "score" });
-  const rowSum = (key, max) => scoreSectionRows(key, form[key] || [], max, scoreKey);
+  const rowSum = (key, max) => scoreSectionRows(key, form[key] || [], max, scoreKey, key === "research" ? { autoFillResearchScore: false } : undefined);
   const lecturesScore = scoreSectionRows("lectures", form.lectures || [], 40, scoreKey);
   const courseFileScore = scoreSectionRows("courseFile", form.courseFile || [], 20, scoreKey);
   const innovativeScore = scoreKey === "score" && Array.isArray(form.innovRows)
@@ -636,9 +635,13 @@ export const validateCreativeSchoolBeforeSubmit = (form, docs = {}, sectionView 
       ...section.fields.filter(([, , readOnly]) => !readOnly).map(([key]) => key),
       ...(section.selfReadOnlyScore || section.autoScore || section.key === "feedback" ? [] : ["score"]),
     ],
-    rowMax: section.rowMax,
+    // Explicit 0 (not undefined) when a section defines no per-row cap, so the shared
+    // validator's title-text fallback (e.g. matching "FDP" inside B7's title) never
+    // invents a row cap the UI never enforced in the first place.
+    rowMax: section.rowMax || 0,
     maxScore: section.key === "feedback" ? undefined : section.max,
     docPrefix: section.key !== "acr" ? section.doc : "",
+    capSectionTotal: true,
   }));
   const errors = validateCompleteRows(rowSections, docs);
 
@@ -661,6 +664,7 @@ export const validateCreativeSchoolBeforeSubmit = (form, docs = {}, sectionView 
       docPrefix: "innov",
       rowMax: CREATIVE_INNOVATIVE_ROW_MAX,
       maxScore: CREATIVE_INNOVATIVE_SECTION_MAX,
+      capSectionTotal: true,
     }], docs));
   }
 
@@ -828,13 +832,12 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
   const showingReviewColumns = mode === "review" && currentRole;
   const reviewColumnCount = showingReviewColumns ? previousRoles.length + 1 : 0;
   const selfLocked = mode === "self" && section.key === "acr";
-  const earned = scoreSectionRows(section.key, rows, section.max);
+  const earned = scoreSectionRows(section.key, rows, section.max, "score", section.key === "research" ? { autoFillResearchScore: false } : undefined);
   const docPrefix = section.doc || section.key;
   const docKeysForRow = (index) => [
     `${docPrefix}-${index}`,
     ...(DOC_KEY_ALIASES[section.key] || []).map((prefix) => `${prefix}-${index}`),
   ];
-  const hideIndividualB8Summary = section.key === "fdps" || section.key === "training";
   const totalLabel = section.key === "feedback"
     ? `Faculty Score (Max ${section.max})`
     : `Total Score (Max ${section.max})`;
@@ -937,7 +940,7 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
   const rowSelfScore = (row) => {
     if (section.key === "feedback") return clampScore(row.score, section.max);
     if (section.key === "courseFile") return courseFileRowScore(row);
-    if (section.key === "research") return String(row.score ?? "").trim() !== "" ? clampScore(row.score, researchGuidanceRowMax(row)) : researchGuidanceScore(row);
+    if (section.key === "research") return clampScore(row.score, researchGuidanceRowMax(row));
     if (section.key === "society") return societyRowScore(row);
     return clampScore(row.score, section.rowMax ? (typeof section.rowMax === "function" ? section.rowMax(row) : section.rowMax) : section.max);
   };
@@ -960,7 +963,6 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
             nextRow.pctConducted = "";
           }
         }
-        if (section.key === "research" && ["degree", "name", "thesis"].includes(key)) return { ...nextRow, score: researchGuidanceScore(nextRow) ? String(researchGuidanceScore(nextRow)) : "" };
         return nextRow;
       }),
     }));
@@ -1146,22 +1148,20 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
                   </tr>
                 );
               })}
-              {!hideIndividualB8Summary && (
-                <tr className="appraisal-total-row" style={{ background: "#f0f3ff", borderTop: "1px solid #c7d2fe", height: "auto" }}>
-                  <td style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center", background: "#f0f3ff" }} colSpan={totalLabelColSpan}>{totalLabel}</td>
-                  <td style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center", background: "#f0f3ff" }}>{earned.toFixed(1)}</td>
-                  {mode === "review" && previousRoles.map((role) => (
-                    <td key={role} style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center", background: "#f0f3ff" }}>
-                      {sectionTotalScore(rows, role).toFixed(1)}
-                    </td>
-                  ))}
-                  {mode === "review" && (
-                    <td style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center", background: "#f0f3ff" }}>
-                      {sectionTotalScore(reviewRows.length ? reviewRows : rows, currentRole).toFixed(1)}
-                    </td>
-                  )}
-                </tr>
-              )}
+              <tr className="appraisal-total-row" style={{ background: "#f0f3ff", borderTop: "1px solid #c7d2fe", height: "auto" }}>
+                <td style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center", background: "#f0f3ff" }} colSpan={totalLabelColSpan}>{totalLabel}</td>
+                <td style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center", background: "#f0f3ff" }}>{earned.toFixed(1)}</td>
+                {mode === "review" && previousRoles.map((role) => (
+                  <td key={role} style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center", background: "#f0f3ff" }}>
+                    {sectionTotalScore(rows, role).toFixed(1)}
+                  </td>
+                ))}
+                {mode === "review" && (
+                  <td style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center", background: "#f0f3ff" }}>
+                    {sectionTotalScore(reviewRows.length ? reviewRows : rows, currentRole).toFixed(1)}
+                  </td>
+                )}
+              </tr>
             </tbody>
           </table>
         </div>
@@ -2545,7 +2545,7 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
   const generateReviewReport = () => {
     if (!reviewCompleted) return;
     const applicability = {};
-    const rowSum = (key, max) => scoreSectionRows(key, reviewerForm[key] || [], max, "score");
+    const rowSum = (key, max) => scoreSectionRows(key, reviewerForm[key] || [], max, "score", key === "research" ? { autoFillResearchScore: false } : undefined);
     const lecScore = scoreSectionRows("lectures", reviewerForm.lectures || [], 40, "score");
     const cfScore = scoreSectionRows("courseFile", reviewerForm.courseFile || [], 20, "score");
     const innovScore = clampScore(

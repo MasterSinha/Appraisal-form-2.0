@@ -812,7 +812,12 @@ export default function StandardMyAppraisal({
           facultyEmail: userEmail,
           academicYear: requestedAcademicYear,
           setters: scopedAppraisalSetters,
-          preferSubmitted: Boolean(declaration) && hasActiveRejection(declaration, loadedReviews),
+          // A legacy (previous-year) academic year is always a past, already-submitted
+          // cycle, never the one being actively drafted - so it must be read from the
+          // definitive submitted record for that exact email + academic year, not the
+          // generic draft snapshot (which reflects whatever is currently being typed for
+          // the active cycle and isn't reliably scoped by year).
+          preferSubmitted: isLegacyTwoPartAcademicYear(requestedAcademicYear) || (Boolean(declaration) && hasActiveRejection(declaration, loadedReviews)),
         });
         if (!isCurrentLoad()) return;
         setLegacyReportTotals(isLegacyTwoPartAcademicYear(requestedAcademicYear)

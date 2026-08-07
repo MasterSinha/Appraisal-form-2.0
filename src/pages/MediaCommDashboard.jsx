@@ -640,7 +640,7 @@ export default function MediaCommDashboard({ fixedRole }) {
 
  const generateSelfReport = async () =>{
   const applicability = {};
-  const rowSum = (key, max) =>scoreSectionRows(key, form[key] || [], max, "score");
+  const rowSum = (key, max) =>scoreSectionRows(key, form[key] || [], max, "score", key === "research" ? { autoFillResearchScore: false } : undefined);
   const lecScore = scoreSectionRows("lectures", form.lectures || [], 50, "score");
   const cfScore = scoreSectionRows("courseFile", form.courseFile || [], 20, "score");
  const innovScore = clampScore(
