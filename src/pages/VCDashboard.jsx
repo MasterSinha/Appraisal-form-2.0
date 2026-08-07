@@ -329,7 +329,7 @@ const legacyCardTotalsForPerson = (person = {}, personMode = "faculty") =>{
 const vcReviewSummaryFrom = standardReviewSummary;
 
 const VC_REVIEW_ARRAY_KEYS = ["lectures", "courseFile", "obeRows", "projects", "mentoringRows", "quals", "feedback", "deptActs", "uniActs", "eventRows", "society", "industry", "alumniRows", "placementRows", "acr", "journals", "books", "ict", "research", "projects2", "patents", "awards", "confs", "proposals", "products", "fdps", "exhibitions"];
-const VC_SECTION_MAX = { lectures: 40, courseFile: 20, obeRows: 20, projects: 20, mentoringRows: 10, quals: 10, feedback: 10, deptActs: 30, uniActs: 50, eventRows: 20, society: 20, industry: 8, alumniRows: 10, placementRows: 20, acr: 50, journals: 100, books: 30, ict: 20, research: 20, projects2: 40, patents: 40, awards: 20, confs: 20, proposals: 20, products: 20, fdps: 20, exhibitions: 30 };
+const VC_SECTION_MAX = { lectures: 40, courseFile: 20, obeRows: 20, projects: 20, mentoringRows: 10, quals: 10, feedback: 10, deptActs: 30, uniActs: 50, eventRows: 20, society: 20, industry: 10, alumniRows: 10, placementRows: 20, acr: 50, journals: 100, books: 30, ict: 20, research: 20, projects2: 40, patents: 40, awards: 20, confs: 20, proposals: 20, products: 20, fdps: 20, exhibitions: 30 };
 const REVIEW_SCORE_FIELDS = ["hod", "director", "dean", "vc"];
 const preserveSavedReviewScores = (form = {}, source = {}) =>{
  const merged = { ...form };
@@ -376,7 +376,7 @@ const VC_REPORT_PART_C_SECTIONS = [
  { key: "deptActs", title: "C2. Administration at School Level", max: 30, doc: "dept", fields: [["activity", "Activity"], ["nature", "Nature"], ["period", "Period"]] },
  { key: "eventRows", title: "C3. Event Organisation & Institutional Visibility", max: 20, doc: "event", fields: [["event", "Event / Contribution"], ["role", "Role"], ["date", "Date"], ["level", "Level"]] },
  { key: "society", title: "C4. Outreach, Extension & Social Responsibility", max: 20, doc: "soc", fields: [["label", "Activity"], ["details", "Details"], ["date", "Date"]] },
- { key: "industry", title: "C5. Industry Interaction & Linkages", max: 8, doc: "ind", fields: [["activity", "Activity"], ["partner", "Industry Partner"], ["date", "Date"]] },
+ { key: "industry", title: "C5. Industry Interaction & Linkages", max: 10, doc: "ind", fields: [["activity", "Activity"], ["partner", "Industry Partner"], ["date", "Date"]] },
  { key: "alumniRows", title: "C6. Alumni Engagement & Networking", max: 10, doc: "alumni", fields: [["activity", "Activity"], ["details", "Details"], ["date", "Date"]] },
  { key: "placementRows", title: "C7. Student Placement Mentoring & Career Development", max: 20, doc: "placement", fields: [["activityType", "Activity Type"], ["name", "Student / Company Name"], ["date", "Date"]] },
 ];
@@ -667,7 +667,7 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
  { title: "C2. Administration at School Level (Max 30)", key: "deptActs", docPfx: "dept", fields: [["activity", "Activity / Responsibility"], ["nature", "Duration Category"], ["period", "Period"]] },
  { title: "C3. Event Organisation & Institutional Visibility (Max 20)", key: "eventRows", docPfx: "event", fields: [["event", "Event / Contribution"], ["role", "Role"], ["date", "Date"], ["level", "Level"]] },
  { title: "C4. Outreach, Extension & Social Responsibility (Max 20)", key: "society", docPfx: "soc", fields: [["label", "Activity"], ["details", "Details"], ["date", "Date"]] },
- { title: "C5. Industry Interaction & Linkages (Max 8)", key: "industry", docPfx: "ind", fields: [["activity", "Activity"], ["partner", "Industry Partner"], ["date", "Date"]] },
+ { title: "C5. Industry Interaction & Linkages (Max 10)", key: "industry", docPfx: "ind", fields: [["activity", "Activity"], ["partner", "Industry Partner"], ["date", "Date"]] },
  { title: "C6. Alumni Engagement & Networking (Max 10)", key: "alumniRows", docPfx: "alumni", fields: [["activity", "Activity"], ["details", "Details"], ["date", "Date"]] },
  { title: "C7. Student Placement Mentoring & Career Development (Max 20)", key: "placementRows", docPfx: "placement", fields: [["activityType", "Activity Type"], ["name", "Student / Company Name"], ["date", "Date"]] },
  ].map(({ title, key, docPfx, fields }) =>(

@@ -24,6 +24,9 @@ import {
 } from "../../../features/faculty-appraisal";
 import { n, RO } from "../../../features/faculty-appraisal/shared";
 import { DirectorInput as DirInput } from "../common/ReviewerInput";
+
+const B4_FUNDED_PROJECT_MAX = 40;
+
 export default function InternalProjects({ ctx }) {
  const { faculty, docs, lectures, courseFile, projects, quals, feedback, deptActs, uniActs, society, industry, acr, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, rows, get, set, reviewerLabel, reviewerScoreLabel, innovativeRows, getInnovHod, setInnovHod } = ctx;
  return (
@@ -48,7 +51,7 @@ export default function InternalProjects({ ctx }) {
 <td style={TD}><RO val={r.status} /></td>
 <td style={TDV}><ViewDocsCell docKey={`project2-${i}`} docs={docs} /></td>
 <td style={TDS}><RO val={r.score} center /></td>
-<td style={TDS_HOD}><HodInput val={get("projects2", i, "hod")} max={SCORE_LIMITS.researchInternalProjects} disabled={!rowHasReviewableData("projects2", r, docs, `project2-${i}`)} onChange={v =>set("projects2", i, "hod", v)} /></td>
+<td style={TDS_HOD}><HodInput val={get("projects2", i, "hod")} max={r.max || B4_FUNDED_PROJECT_MAX} disabled={!rowHasReviewableData("projects2", r, docs, `project2-${i}`)} onChange={v =>set("projects2", i, "hod", v)} /></td>
 </tr>
  ))}
 </tbody>

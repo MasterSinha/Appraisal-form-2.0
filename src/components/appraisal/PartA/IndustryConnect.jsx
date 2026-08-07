@@ -29,7 +29,7 @@ export default function IndustryConnect({ ctx }) {
  return (
 <>
 {/* C5: Industry interaction */}
-<SC title="C5. Industry Interaction & Linkages (Max 8)" accent="#0f766e">
+<SC title="C5. Industry Interaction & Linkages (Max 10)" accent="#0f766e">
 <table style={T}>
 <thead><tr>
 <th style={TH}>SN</th><th style={TH}>Activity</th><th style={TH}>Industry Partner</th><th style={TH}>Date</th>
@@ -44,7 +44,7 @@ export default function IndustryConnect({ ctx }) {
 <td style={TD}><RO val={r.date} /></td>
 <td style={TDV}><ViewDocsCell docKey={`ind-${i}`} docs={docs} /></td>
 <td style={TDS}><RO val={r.score} center /></td>
-<td style={TDS_HOD}><HodInput val={get("industry", i, "hod")} max={8} disabled={!rowHasReviewableData("industry", r, docs, `ind-${i}`)} onChange={v =>set("industry", i, "hod", v)} /></td>
+<td style={TDS_HOD}><HodInput val={get("industry", i, "hod")} max={10} disabled={!rowHasReviewableData("industry", r, docs, `ind-${i}`)} onChange={v =>set("industry", i, "hod", v)} /></td>
 </tr>
  ))}
 </tbody>
