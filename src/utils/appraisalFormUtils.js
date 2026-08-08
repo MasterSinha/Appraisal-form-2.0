@@ -194,7 +194,7 @@ export const rowMaxForSection = (sectionKey, row = {}, sectionMax = 0) =>{
  return sectionMax;
 };
 
-export const scoreSectionRows = (sectionKey, rows = [], maxScore, scoreKey = "score") =>{
+export const scoreSectionRows = (sectionKey, rows = [], maxScore, scoreKey = "score", options = {}) =>{
  if (sectionKey === "feedback") {
  return scoreKey === "score"
  ? feedbackSectionScore(rows, maxScore)
@@ -203,10 +203,14 @@ export const scoreSectionRows = (sectionKey, rows = [], maxScore, scoreKey = "sc
  if (sectionKey === "lectures" || sectionKey === "courseFile") {
  return reviewSectionScore(sectionKey, rows, maxScore, scoreKey);
  }
- if (sectionKey === "research" && scoreKey === "score") return sumCalculatedSectionScore(rows, maxScore, (row) =>{
+ if (sectionKey === "research" && scoreKey === "score") {
+ const autoFill = options.autoFillResearchScore !== false;
+ return sumCalculatedSectionScore(rows, maxScore, (row) =>{
  const stored = String(row?.score ?? "").trim();
- return stored !== "" ? clampScore(stored, researchGuidanceRowMax(row)) : researchGuidanceScore(row);
+ if (stored !== "") return clampScore(stored, researchGuidanceRowMax(row));
+ return autoFill ? researchGuidanceScore(row) : 0;
  });
+ }
  if (sectionKey === "society") {
  return sumCalculatedSectionScore(rows, maxScore, (row) =>
  societyRowLocked(row) ? 0 : clampScore(row?.[scoreKey], row.max || SCORE_LIMITS.societyRow),
@@ -623,7 +627,7 @@ const isAverageScoredSectionLabel = () => false;
 export const validateCompleteRows = (sections = [], defaultDocs) =>{
  const errors = [];
 
- sections.forEach(({ label, rows = [], fields = [], skip = false, rowMax, maxScore, scoreField = "score", docs = defaultDocs, docPrefix, docKey, requireAttachment, isRowActive, fieldsForRow }) =>{
+ sections.forEach(({ label, rows = [], fields = [], skip = false, rowMax, maxScore, scoreField = "score", docs = defaultDocs, docPrefix, docKey, requireAttachment, isRowActive, fieldsForRow, capSectionTotal = false }) =>{
  if (skip) return;
  const labelText = normalizedText(label);
  const isB8Section = /^b8(?:\(|\.)/.test(labelText);
@@ -661,7 +665,7 @@ export const validateCompleteRows = (sections = [], defaultDocs) =>{
  }
  });
 
- if (maxScore && rows.length && !isB8Section) {
+ if (maxScore && rows.length && !isB8Section && !capSectionTotal) {
  const total = isAverageScoredSectionLabel(labelText)
  ? averageSectionScore(rows, maxScore, scoreField)
  : rows.reduce((sum, row, index) =>{

@@ -5,7 +5,10 @@ import { api } from "../services/api";
 import { Avatar, ScoreCard, ScoreBar, StatusBadge, ReviewMetricsStrip, uploadedDocCount } from "../components/dashboard/dashboardPrimitives";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import DashboardSidebar from "../components/dashboard/DashboardSidebar";
-import { ACR_DETAIL_POINTS, SOCIETY_LABELS, MAX_SCORES, APP_INFO, createAcrRows, fetchSavedAppraisal, loadAppraisalDocuments, loadSavedAppraisal, mergeFacultyInfo, saveAppraisalDraftSection, submitAppraisal, fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, INNOVATIVE_METHODS, SCORE_LIMITS, averageSectionScore, clampScore, clampReviewScore, courseFileAverageScore, courseFileRowScore, effectiveMaxScore, feedbackAverage, feedbackRowScore, feedbackSectionScore, innovativeSelectionsFromDetails, innovativeTeachingScore, isAllowedAttachmentFile, isValidDDMMYYYY, maskDateDDMMYYYY, normalizeAutoScores, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewSectionScore, rowHasReviewableData, isSectionEmpty, scoreRemaining, selfEffectivePartAMax, societyRowLocked, societyRowScore, sumSectionScore, toggleInnovativeMethod, validateCompleteRows, generateStandardReport, standardSubmittedScoreSummary, qualificationRowDescription, AppraisalHeaderImage, SummaryOtherInfoField, summaryOtherInfoValueFrom, RejectionNotice, DocCell, ViewCell, ViewDocsCell, RowButtons as RowBtns, SectionSaveFooter, SectionCard as SC, T, TH, TH_HOD, TH_DIR, TH_DEAN, TD, TDC, TDS, TDS_HOD, TDS_DIR, TDS_DEAN, TDV, MyAppraisalSection, CreativeSchoolAuthorityReviewPanel, isCreativeSchool } from "../features/faculty-appraisal";
+import { ACR_DETAIL_POINTS, SOCIETY_LABELS, MAX_SCORES, APP_INFO, createAcrRows, fetchSavedAppraisal, loadAppraisalDocuments, loadSavedAppraisal, mergeFacultyInfo, saveAppraisalDraftSection, submitAppraisal, fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, INNOVATIVE_METHODS, SCORE_LIMITS, averageSectionScore, clampScore, clampReviewScore, courseFileAverageScore, courseFileRowScore, effectiveMaxScore, feedbackAverage, feedbackRowScore, feedbackSectionScore, innovativeSelectionsFromDetails, innovativeTeachingScore, isAllowedAttachmentFile, isValidDDMMYYYY, maskDateDDMMYYYY, normalizeAutoScores, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewSectionScore, rowHasReviewableData, isSectionEmpty, scoreRemaining, selfEffectivePartAMax, societyRowLocked, societyRowScore, sumSectionScore, toggleInnovativeMethod, validateCompleteRows, generateStandardReport, standardSubmittedScoreSummary, qualificationRowDescription, AppraisalHeaderImage, SummaryOtherInfoField, summaryOtherInfoValueFrom, RejectionNotice, DocCell, ViewCell, ViewDocsCell, RowButtons as RowBtns, SectionSaveFooter, SectionCard as SC, T, TH, TH_HOD, TH_DIR, TH_DEAN, TD, TDC, TDS, TDS_HOD, TDS_DIR, TDS_DEAN, TDV, MyAppraisalSection, CreativeSchoolAuthorityReviewPanel, isCreativeSchool, isDesignArtsSchool, isMediaCommSchool } from "../features/faculty-appraisal";
+import { getActiveAcademicYear, getSessionItem, normalizeAcademicYearLabel, setActiveAcademicYear } from "../auth/session";
+import { PreviousYearReportViewer } from "../features/previousYearReport";
+import { isLegacyTwoPartAcademicYear } from "../features/faculty-appraisal/forms/standard/legacyPreviousYearReportUtils";
 import { DEAN_TRACKS, getSchoolKey, getSchoolsByDeanTrack } from "../constants/universityHierarchy";
 import { canReviewerRejectProfile, rejectedStatusFor, reviewedStatusFor, profileFromsessionStorage, workflowValidationError, roleLabel, isAppraisalFinalisedByVc, isRejectedStatus, isPendingReviewStatusFor, hasActiveRejection, reviewListFrom, getDeanTrack } from "../utils/hierarchy";
 import { n, pct, grade, RO, TI } from "../features/faculty-appraisal/shared";
@@ -26,6 +29,32 @@ const SCHOOL_VISUALS = {
  CioD: { icon: "DS", color: "#ec4899", bg: "#fdf2f8" },
  SoAA: { icon: "AA", color: "#7c3aed", bg: "#f3e8ff" },
 };
+const storedAcademicYearCycles = () => {
+  try {
+    if (getSessionItem("availableCyclesSource") !== "backend") return [];
+    return JSON.parse(getSessionItem("availableCycles") || "[]")
+      .map((cycle) => {
+        const academicYear = normalizeAcademicYearLabel(cycle?.academic_year || cycle?.academicYear || cycle?.year || cycle?.year_label || cycle);
+        return academicYear ? { academic_year: academicYear, is_open: cycle?.is_open ?? cycle?.isOpen ?? cycle?.active ?? cycle?.open ?? academicYear === APP_INFO.DEFAULT_AY } : null;
+      })
+      .filter(Boolean);
+  } catch {
+    return [];
+  }
+};
+const previousYearFormTypeFor = (profile = {}) => {
+  if (isMediaCommSchool(profile, profile.info?.school, profile.school)) return "mediaCommunication";
+  if (isDesignArtsSchool(profile, profile.info?.school, profile.school)) return "designArts";
+  return "engineering";
+};
+function PreviousYearAuthorityResult({ item, onBack }) {
+  return (
+    <div style={{ display: "grid", gap: 12 }}>
+      <button type="button" onClick={onBack} style={{ justifySelf: "start", border: "1px solid #cbd5e1", background: "#fff", color: "#334155", borderRadius: 8, padding: "8px 14px", fontWeight: 800, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>Back</button>
+      <PreviousYearReportViewer showTables visibleLevels={["faculty", "dean"]} formType={previousYearFormTypeFor(item)} form={item} docs={item.docs || {}} response={item.previousYearResponse || item} academicYear={item.academicYear || item.academic_year || item.info?.ay} profile={item} reviews={reviewListFrom(item.reviews || item.previousYearResponse?.reviews || item.previousYearResponse?.payload?.reviews)} />
+    </div>
+  );
+}
 
 // --- Helpers ------------------------------------------------------------------
 const reviewerMaxScoresFromSubmitted = (summary) =>({
@@ -1190,12 +1219,30 @@ export default function NonEngineeringDeanDashboard() {
 
   const [facultyList, setFacultyList] = useState([]);
   const [directorList, setDirectorList] = useState([]);
+  const [selectedAcademicYear, setSelectedAcademicYear] = useState(() => getActiveAcademicYear());
+  const [availableCycles, setAvailableCycles] = useState(() => storedAcademicYearCycles());
 
   const userProfile = profileFromsessionStorage();
   const activeDeanTrack = getDeanTrack(userProfile);
   const activeSchools = getSchoolsByDeanTrack(activeDeanTrack);
   const activeSchoolCodes = activeSchools.map((s) => s.code);
   const activeSchoolCodesKey = activeSchoolCodes.join(",");
+  const academicYearOptions = availableCycles.length ? availableCycles : [{ academic_year: selectedAcademicYear || APP_INFO.DEFAULT_AY, is_open: true }];
+
+  const handleReviewAcademicYearChange = (academicYear) => {
+    const nextAcademicYear = setActiveAcademicYear(academicYear);
+    setSelectedAcademicYear(nextAcademicYear);
+    window.dispatchEvent(new CustomEvent("academicYearChanged", { detail: { academicYear: nextAcademicYear } }));
+  };
+
+  useEffect(() => {
+    const syncAcademicYear = (event) => {
+      setSelectedAcademicYear(event?.detail?.academicYear || getActiveAcademicYear());
+      setAvailableCycles(storedAcademicYearCycles());
+    };
+    window.addEventListener("academicYearChanged", syncAcademicYear);
+    return () => window.removeEventListener("academicYearChanged", syncAcademicYear);
+  }, []);
 
   useEffect(() => {
     const loadReviewQueue = async () => {
@@ -1205,6 +1252,7 @@ export default function NonEngineeringDeanDashboard() {
         const items = await fetchReviewQueueForRole({
           reviewerRole: "dean",
           reviewerProfile,
+          academicYear: selectedAcademicYear,
           schoolValues,
         });
         const schoolOf = (item) => getSchoolKey(item.school || item.school_name || item.schoolName || "");
@@ -1223,7 +1271,7 @@ export default function NonEngineeringDeanDashboard() {
     };
 
     loadReviewQueue();
-  }, [activeSchoolCodesKey]);
+  }, [activeSchoolCodesKey, selectedAcademicYear]);
 
   const [filterStatus, setFilterStatus] = useState("All");
   const [selectedSchoolCode, setSelectedSchoolCode] = useState(activeSchools[0]?.code || "SoCM");
@@ -1500,7 +1548,19 @@ export default function NonEngineeringDeanDashboard() {
             </div>
 
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b" }}>Filter:</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b" }}>AY:</span>
+              <select
+                value={selectedAcademicYear}
+                onChange={(event) => handleReviewAcademicYearChange(event.target.value)}
+                style={{ height: 28, border: "1px solid #cbd5e1", borderRadius: 7, background: "#fff", color: "#0f172a", fontSize: 11, fontWeight: 800, padding: "3px 28px 3px 9px", fontFamily: "inherit", outline: "none" }}
+              >
+                {academicYearOptions.map((cycle) => (
+                  <option key={cycle.academic_year} value={cycle.academic_year}>
+                    {cycle.academic_year} {cycle.is_open ? "(Active)" : "(Closed)"}
+                  </option>
+                ))}
+              </select>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b", marginLeft: 8 }}>Filter:</span>
               {[
                 ["All", "All"],
                 ["Pending Review", "Pending Review"],
@@ -1532,7 +1592,7 @@ export default function NonEngineeringDeanDashboard() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 14 }}>
               {filtered.map((faculty) => {
                 const facultySummary = standardSubmittedScoreSummary(faculty);
-                const facultyAcademicYear = faculty.academic_year || faculty.academicYear || APP_INFO.DEFAULT_AY;
+                const facultyAcademicYear = faculty.academic_year || faculty.academicYear || selectedAcademicYear || APP_INFO.DEFAULT_AY;
                 const facultyMetrics = legacyDashboardMetrics({
                   academicYear: facultyAcademicYear,
                   partA: facultySummary.partA,
@@ -1577,16 +1637,17 @@ export default function NonEngineeringDeanDashboard() {
                         onClick={async () => {
                           setReviewLoading(faculty.id);
                           try {
+                            const academicYear = faculty.academic_year || faculty.academicYear || selectedAcademicYear || APP_INFO.DEFAULT_AY || "2026-2027";
                             const data = await fetchSavedAppraisal({
                               facultyEmail: faculty.email,
-                              academicYear: faculty.academic_year || faculty.academicYear || APP_INFO.DEFAULT_AY || "2026-2027",
+                              academicYear,
                               reviewerRole: "dean",
                             });
                             const form = data?.payload?.form || data?.form || {};
                             const docs = data?.payload?.docs || data?.docs || {};
                             const mergedForm = preserveSavedReviewScores(form, faculty);
                             const declaration = data?.declaration || faculty.declaration || null;
-                            setReviewingApproval({ ...faculty, ...mergedForm, docs, declaration, status: declaration?.status || data?.status || faculty.status, workflowStatus: declaration?.status || data?.workflowStatus || faculty.workflowStatus });
+                            setReviewingApproval({ ...faculty, ...mergedForm, docs, declaration, academicYear, academic_year: academicYear, previousYearResponse: data, previousYearResultOnly: isLegacyTwoPartAcademicYear(academicYear), status: declaration?.status || data?.status || faculty.status, workflowStatus: declaration?.status || data?.workflowStatus || faculty.workflowStatus });
                           } catch (err) {
                             alert(`Unable to open submitted form.\n\n${err.message}`);
                           } finally {
@@ -1620,6 +1681,9 @@ export default function NonEngineeringDeanDashboard() {
 
       {/* REVIEW PANEL */}
       {(activeMainTab === "schoolAppraisal" || activeMainTab === "directorApprovals" || activeMainTab === "facultyApprovals") && reviewingApproval && (
+        reviewingApproval.previousYearResultOnly ? (
+        <PreviousYearAuthorityResult item={reviewingApproval} onBack={() => setReviewingApproval(null)} />
+        ) : (
         <ApprovalReviewPanel
           approval={reviewingApproval}
           approvalType={activeRoleTab}
@@ -1627,6 +1691,7 @@ export default function NonEngineeringDeanDashboard() {
           onSubmit={handleSubmitReview}
           readOnly={isDeanReviewed(reviewingApproval)}
         />
+        )
       )}
     </DashboardLayout>
   );

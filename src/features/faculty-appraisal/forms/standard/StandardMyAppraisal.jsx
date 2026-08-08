@@ -34,6 +34,7 @@ import {
   maskDateDDMMYYYY,
   normalizeAutoScores,
   projectGuidanceRowMax,
+  researchGuidanceRowMax,
   researchGuidanceScore,
   selfEffectivePartAMax,
   societyRowLocked,
@@ -115,6 +116,15 @@ const sanitizeInnovativeRows = (rows) => {
   const normalizedRows = cleaned.map((row) => ({ ...row, max: row.max || A3_INNOVATIVE_ROW_MAX }));
   return normalizedRows.length ? normalizedRows : [blankInnovativeRow()];
 };
+
+// Row-wise scores may legitimately sum above a section's max (e.g. multiple qualifying
+// entries) - the actual stored/displayed total is already capped at the section max
+// elsewhere via clampScore-based aggregation, so validation must not also block submission
+// for that. `rowMax: section.rowMax || 0` additionally stops validateCompleteRows' own
+// title-text fallback (matching "FDP"/"industrial training" in a label) from inventing a
+// row cap for sections that never defined one.
+const withRelaxedSectionCap = (sections) =>
+  sections.map((section) => ({ ...section, rowMax: section.rowMax || 0, capSectionTotal: true }));
 
 const textEncoder = new TextEncoder();
 const crcTable = (() => {
@@ -293,12 +303,12 @@ const C1_UNIVERSITY_ADMIN_MAX = 50;
 const C2_SCHOOL_ADMIN_MAX = 30;
 const C3_EVENT_MAX = 20;
 const C4_OUTREACH_MAX = 20;
-const C5_INDUSTRY_MAX = 8;
+const C5_INDUSTRY_MAX = 10;
 const C6_ALUMNI_MAX = 10;
 const C7_PLACEMENT_MAX = 20;
 const B1_JOURNAL_MAX = 100;
 const B2_BOOK_MAX = 30;
-const B3_ICT_MAX = 15;
+const B3_ICT_MAX = 20;
 const B4_PROJECT_MAX = 40;
 const B5_RESEARCH_GUIDANCE_MAX = 20;
 const B6_CONSULTANCY_MAX = 20;
@@ -645,13 +655,7 @@ export default function StandardMyAppraisal({
   const [research, setResearch] = useState([
     { degree: "", name: "", thesis: "", score: "", hod: "", director: "" },
   ]);
-  const setRes = (i, k, v) => setResearch((p) => p.map((r, j) => {
-    if (j !== i) return r;
-    const next = { ...r, [k]: v };
-    return ["degree", "name", "thesis"].includes(k)
-      ? { ...next, score: next.name || next.thesis ? String(researchGuidanceScore(next)) : "" }
-      : next;
-  }));
+  const setRes = (i, k, v) => setResearch((p) => p.map((r, j) => (j === i ? { ...r, [k]: v } : r)));
 
   const [projects2, setProjects2] = useState([
     { title: "", agency: "", date: "", amount: "", role: "", status: "", score: "", hod: "", max: B4_PROJECT_MAX },
@@ -812,7 +816,12 @@ export default function StandardMyAppraisal({
           facultyEmail: userEmail,
           academicYear: requestedAcademicYear,
           setters: scopedAppraisalSetters,
-          preferSubmitted: Boolean(declaration) && hasActiveRejection(declaration, loadedReviews),
+          // A legacy (previous-year) academic year is always a past, already-submitted
+          // cycle, never the one being actively drafted - so it must be read from the
+          // definitive submitted record for that exact email + academic year, not the
+          // generic draft snapshot (which reflects whatever is currently being typed for
+          // the active cycle and isn't reliably scoped by year).
+          preferSubmitted: isLegacyTwoPartAcademicYear(requestedAcademicYear) || (Boolean(declaration) && hasActiveRejection(declaration, loadedReviews)),
         });
         if (!isCurrentLoad()) return;
         setLegacyReportTotals(isLegacyTwoPartAcademicYear(requestedAcademicYear)
@@ -923,6 +932,7 @@ export default function StandardMyAppraisal({
     ["Part A", partATotal, effectivePartAMax],
     ["Part B", partBTotal, effectivePartBMax],
     ["Part C", partCTotal, PART_C_MAX],
+    ["Part D", partDTotal, PART_D_MAX],
   ];
   const [submitting, setSubmitting] = useState(false);
   const [declarationConfirmed, setDeclarationConfirmed] = useState(false);
@@ -950,7 +960,7 @@ export default function StandardMyAppraisal({
       { label: "B2. Books / Chapters", rows: books, fields: ["title", "book", "pub", "score"] },
       { label: "B3. Patents, Copyrights & IP and Product Development", rows: patents, fields: ["title", "type", "status", "fileNo", "score"] },
       { label: "B4. Funded Research Projects", rows: projects2, fields: ["title", "agency", "date", "amount", "role", "status", "score"] },
-      { label: "B5. Research Guidance", rows: research, fields: ["degree", "name", "status", "date", "score"] },
+      { label: "B5. Research Guidance", rows: research, fields: ["degree", "name", "status", "date", "score"], rowMax: researchGuidanceRowMax },
       { label: "B6. Consultancy, Testing & Training", rows: proposals, fields: ["agency", "duration", "amount", "score"] },
       { label: "B7. Conference / FDP Contributions - Organised", rows: confs, fields: ["title", "role", "date", "level", "score"] },
       { label: "B8. Conference / FDP / Industry Training Attended", rows: fdps, fields: ["program", "duration", "org", "score"], rowMax: B8_ATTENDED_MAX, maxScore: B8_ATTENDED_MAX },
@@ -959,7 +969,7 @@ export default function StandardMyAppraisal({
       { label: "B10. Innovation, Start-ups & Technology Transfer", rows: products, fields: ["details", "role", "status", "score"] },
       { label: "B11. ICT Content, MOOCs & E-Learning", rows: ict, fields: ["title", "type", "quad", "score"] },
     ];
-    const errors = validateCompleteRows(sections, docs);
+    const errors = validateCompleteRows(withRelaxedSectionCap(sections), docs);
     [...projects2, ...externalProjects].forEach((row, index) => {
       if (row.date && !isValidDDMMYYYY(row.date)) errors.push(`B4 project row ${index + 1}: date must be DD/MM/YYYY.`);
     });
@@ -992,7 +1002,7 @@ export default function StandardMyAppraisal({
       { label: "B2. Books / Chapters", rows: books, fields: ["title", "book", "issn", "pub", "coauth", "first", "score"] },
       { label: "B3. Patents, Copyrights & IP and Product Development", rows: patents, fields: ["title", "type", "status", "fileNo", "score"] },
       { label: "B4. Funded Research Projects", rows: projects2, fields: ["title", "agency", "date", "amount", "role", "status", "score"] },
-      { label: "B5. Research Guidance", rows: research, fields: ["degree", "name", "status", "date", "score"] },
+      { label: "B5. Research Guidance", rows: research, fields: ["degree", "name", "status", "date", "score"], rowMax: researchGuidanceRowMax },
       { label: "B6. Consultancy, Testing & Training", rows: proposals, fields: ["agency", "duration", "amount", "score"] },
       { label: "B7. Conference / FDP Contributions - Organised", rows: confs, fields: ["title", "role", "date", "level", "score"] },
       { label: "B8. Conference / FDP / Industry Training Attended", rows: fdps, fields: ["program", "duration", "org", "score"], rowMax: B8_ATTENDED_MAX, maxScore: B8_ATTENDED_MAX },
@@ -1002,7 +1012,7 @@ export default function StandardMyAppraisal({
       { label: "B11. ICT Content, MOOCs & E-Learning", rows: ict, fields: ["title", "type", "quad", "score"] },
     ];
     const sectionMap = { partA: partASections, partB: partBSections, partC: partCSections, partD: [] };
-    const errors = validateCompleteRows(sectionMap[section] || partASections, docs);
+    const errors = validateCompleteRows(withRelaxedSectionCap(sectionMap[section] || partASections), docs);
     if (section === "partB") {
       [...projects2, ...externalProjects].forEach((row, index) => {
         if (row.date && !isValidDDMMYYYY(row.date)) errors.push(`B4 project row ${index + 1}: date must be DD/MM/YYYY.`);
@@ -1455,7 +1465,7 @@ export default function StandardMyAppraisal({
       <tr class="tr"><td colspan="3" class="c b">Total (Max 20)</td><td class="c">${productScore > 0 ? productScore.toFixed(1) : "&nbsp;"}</td></tr>
     </table>
 
-    <h3>B11. ICT Content, MOOCs &amp; E-Learning &nbsp;(Max 15)</h3>
+    <h3>B11. ICT Content, MOOCs &amp; E-Learning &nbsp;(Max 20)</h3>
     <table>
       <tr><th>SN</th><th>Title</th><th>Short Description</th><th>Type / Link</th><th>Quadrants</th><th>Self Score</th></tr>
       ${ict.map((r, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(r.title)}</td><td>${reportTextValue(r.desc)}</td><td>${reportTextValue(r.type)}</td><td class="c">${reportTextValue(r.quad)}</td><td class="c">${reportTextValue(r.score)}</td></tr>`).join('')}
@@ -1493,11 +1503,11 @@ export default function StandardMyAppraisal({
       <tr class="tr"><td colspan="4" class="c b">Total (Max 20)</td><td class="c">${societyScore > 0 ? societyScore.toFixed(1) : "&nbsp;"}</td></tr>
     </table>`}
 
-    <h3>C5. Industry Interaction &amp; Linkages &nbsp;(Max 8)</h3>
+    <h3>C5. Industry Interaction &amp; Linkages &nbsp;(Max 10)</h3>
     <table>
       <tr><th>SN</th><th>Activity</th><th>Industry Partner</th><th>Date</th><th>Self Score</th></tr>
       ${industry.map((ind, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(ind.activity || ind.name)}</td><td>${reportTextValue(ind.partner || ind.details)}</td><td class="c">${reportTextValue(ind.date)}</td><td class="c">${reportTextValue(ind.score)}</td></tr>`).join('')}
-      <tr class="tr"><td colspan="4" class="c b">Total (Max 8)</td><td class="c">${industryScore > 0 ? industryScore.toFixed(1) : "&nbsp;"}</td></tr>
+      <tr class="tr"><td colspan="4" class="c b">Total (Max 10)</td><td class="c">${industryScore > 0 ? industryScore.toFixed(1) : "&nbsp;"}</td></tr>
     </table>
 
     <h3>C6. Alumni Engagement &amp; Networking &nbsp;(Max 10)</h3>
@@ -2400,7 +2410,7 @@ export default function StandardMyAppraisal({
                     </div>
 
                     <div style={{ marginBottom: 16 }}>
-                      <SubsectionTitle icon="industry">C5. Industry Interaction & Linkages - Max 8 marks</SubsectionTitle>
+                      <SubsectionTitle icon="industry">C5. Industry Interaction & Linkages - Max 10 marks</SubsectionTitle>
                       <table style={T}>
                         <thead><tr>
                           <th style={{ ...TH, width: 30 }}>Sr. No.</th>
@@ -2424,7 +2434,7 @@ export default function StandardMyAppraisal({
                             </tr>
                           ))}
                           <tr style={{ background: "#ccfbf1" }}>
-                            <td style={{ ...TDC, fontWeight: "bold" }} colSpan={6}>Total (Max 8)</td>
+                            <td style={{ ...TDC, fontWeight: "bold" }} colSpan={6}>Total (Max 10)</td>
                             <td style={{ ...TDS, fontWeight: "bold" }}>{industryScore.toFixed(1)}</td>
                           </tr>
                         </tbody>
@@ -2567,7 +2577,7 @@ export default function StandardMyAppraisal({
                               <td style={TD}><TI val={r.authorPosition || r.position} onChange={(v) => setJour(i, "authorPosition", v)} placeholder="1st / Corresponding / Co-Author" /></td>
                               <td style={TD}><DocCell id={`jour-${i}`} docs={docs} setDocs={setDocs} /></td>
                               <td style={TD}><ViewCell id={`jour-${i}`} docs={docs} /></td>
-                              <td style={TDS}><TI val={r.score} onChange={(v) => setJour(i, "score", v)} center numeric /></td>
+                              <td style={TDS}><TI val={r.score} onChange={(v) => setJour(i, "score", v)} center numeric max={B1_JOURNAL_MAX} /></td>
                             </tr>
                           ))}
                           <tr style={{ background: "#f3e8ff" }}>
@@ -2629,7 +2639,7 @@ export default function StandardMyAppraisal({
                               <td style={TD}><TI val={r.coauth} onChange={(v) => setBook(i, "coauth", v)} placeholder="Co-authors from DYPIU" /></td>
                               <td style={TD}><DocCell id={`book-${i}`} docs={docs} setDocs={setDocs} /></td>
                               <td style={TD}><ViewCell id={`book-${i}`} docs={docs} /></td>
-                              <td style={TDS}><TI val={r.score} onChange={(v) => setBook(i, "score", v)} center numeric /></td>
+                              <td style={TDS}><TI val={r.score} onChange={(v) => setBook(i, "score", v)} center numeric max={B2_BOOK_MAX} /></td>
                             </tr>
                           ))}
                           <tr style={{ background: "#f3e8ff" }}>
@@ -2665,7 +2675,7 @@ export default function StandardMyAppraisal({
                               <td style={TD}><TI val={r.quad || r.reach} onChange={(v) => setIctRow(i, "quad", v)} placeholder="Reach / Views" /></td>
                               <td style={TD}><DocCell id={`ict-${i}`} docs={docs} setDocs={setDocs} /></td>
                               <td style={TD}><ViewCell id={`ict-${i}`} docs={docs} /></td>
-                              <td style={TDS}><TI val={r.score} onChange={(v) => setIctRow(i, "score", v)} center numeric /></td>
+                              <td style={TDS}><TI val={r.score} onChange={(v) => setIctRow(i, "score", v)} center numeric max={B3_ICT_MAX} /></td>
                             </tr>
                           ))}
                           <tr style={{ background: "#f3e8ff" }}>
@@ -2724,7 +2734,7 @@ export default function StandardMyAppraisal({
                                 <td style={TD}><TI val={r.date} onChange={(v) => setRes(i, "date", maskDateDDMMYYYY(v))} placeholder="DD/MM/YYYY" /></td>
                                 <td style={TD}><DocCell id={`res-${i}`} docs={docs} setDocs={setDocs} /></td>
                                 <td style={TD}><ViewCell id={`res-${i}`} docs={docs} /></td>
-                                <td style={TDS}><TI val={r.score} onChange={(v) => setRes(i, "score", v)} center numeric /></td>
+                                <td style={TDS}><TI val={r.score} onChange={(v) => setRes(i, "score", v)} center numeric max={researchGuidanceRowMax(r)} /></td>
                               </tr>
                             ))}
                             <tr style={{ background: "#f3e8ff" }}>
@@ -2891,7 +2901,7 @@ export default function StandardMyAppraisal({
                               <td style={TD}><TI val={r.fileNo || r.date} onChange={(v) => setPat(i, "fileNo", v)} placeholder="Filing / grant no. and date" /></td>
                               <td style={TD}><DocCell id={`pat-${i}`} docs={docs} setDocs={setDocs} /></td>
                               <td style={TD}><ViewCell id={`pat-${i}`} docs={docs} /></td>
-                              <td style={TDS}><TI val={r.score} onChange={(v) => setPat(i, "score", v)} center numeric /></td>
+                              <td style={TDS}><TI val={r.score} onChange={(v) => setPat(i, "score", v)} center numeric max={40} /></td>
                             </tr>
                           ))}
                           <tr style={{ background: "#f3e8ff" }}>
@@ -2929,7 +2939,7 @@ export default function StandardMyAppraisal({
                               <td style={TD}><TI val={r.date} onChange={(v) => setAwd(i, "date", maskDateDDMMYYYY(v))} placeholder="DD/MM/YYYY" /></td>
                               <td style={TD}><DocCell id={`awd-${i}`} docs={docs} setDocs={setDocs} /></td>
                               <td style={TD}><ViewCell id={`awd-${i}`} docs={docs} /></td>
-                              <td style={TDS}><TI val={r.score} onChange={(v) => setAwd(i, "score", v)} center numeric /></td>
+                              <td style={TDS}><TI val={r.score} onChange={(v) => setAwd(i, "score", v)} center numeric max={B9_AWARDS_MAX} /></td>
                             </tr>
                           ))}
                           <tr style={{ background: "#f3e8ff" }}>
@@ -2967,7 +2977,7 @@ export default function StandardMyAppraisal({
                               <td style={TD}><TI val={r.level || r.org} onChange={(v) => setConf(i, "level", v)} placeholder="Intl. / National" /></td>
                               <td style={TD}><DocCell id={`conf-${i}`} docs={docs} setDocs={setDocs} /></td>
                               <td style={TD}><ViewCell id={`conf-${i}`} docs={docs} /></td>
-                              <td style={TDS}><TI val={r.score} onChange={(v) => setConf(i, "score", v)} center numeric /></td>
+                              <td style={TDS}><TI val={r.score} onChange={(v) => setConf(i, "score", v)} center numeric max={B7_CONFERENCE_MAX} /></td>
                             </tr>
                           ))}
                           <tr style={{ background: "#f3e8ff" }}>
@@ -3003,7 +3013,7 @@ export default function StandardMyAppraisal({
                               <td style={TD}><TI val={r.amount || r.revenue} onChange={(v) => setProp(i, "amount", v)} numeric placeholder="Revenue (₹)" /></td>
                               <td style={TD}><DocCell id={`prop-${i}`} docs={docs} setDocs={setDocs} /></td>
                               <td style={TD}><ViewCell id={`prop-${i}`} docs={docs} /></td>
-                              <td style={TDS}><TI val={r.score} onChange={(v) => setProp(i, "score", v)} center numeric /></td>
+                              <td style={TDS}><TI val={r.score} onChange={(v) => setProp(i, "score", v)} center numeric max={B6_CONSULTANCY_MAX} /></td>
                             </tr>
                           ))}
                           <tr style={{ background: "#f3e8ff" }}>
@@ -3039,7 +3049,7 @@ export default function StandardMyAppraisal({
                               <td style={TD}><TI val={r.status} onChange={(v) => setProd(i, "status", v)} placeholder="Prototype / registered / commercialized" /></td>
                               <td style={TD}><DocCell id={`prod-${i}`} docs={docs} setDocs={setDocs} /></td>
                               <td style={TD}><ViewCell id={`prod-${i}`} docs={docs} /></td>
-                              <td style={TDS}><TI val={r.score} onChange={(v) => setProd(i, "score", v)} center numeric /></td>
+                              <td style={TDS}><TI val={r.score} onChange={(v) => setProd(i, "score", v)} center numeric max={B10_STARTUP_MAX} /></td>
                             </tr>
                           ))}
                           <tr style={{ background: "#f3e8ff" }}>
