@@ -12,6 +12,7 @@ import { isLegacyTwoPartAcademicYear } from "../features/faculty-appraisal/forms
 import { DEAN_TRACKS, getSchoolKey, getSchoolsByDeanTrack } from "../constants/universityHierarchy";
 import { canReviewerRejectProfile, rejectedStatusFor, reviewedStatusFor, profileFromsessionStorage, workflowValidationError, roleLabel, isAppraisalFinalisedByVc, isRejectedStatus, isPendingReviewStatusFor, hasActiveRejection, reviewListFrom, getDeanTrack } from "../utils/hierarchy";
 import { n, pct, grade, RO, TI } from "../features/faculty-appraisal/shared";
+import { FacultyRecordHeader, ScoreTable, VCFinalRemarks, FinalSubmitButton, FACULTY_RECORD_THEME } from "../components/dashboard/FacultyAppraisalRecord";
 import { legacyDashboardMetrics } from "../utils/legacyDashboardMetrics";
 
 const NON_ENGINEERING_SCHOOLS = getSchoolsByDeanTrack(DEAN_TRACKS.NON_ENGINEERING);
@@ -987,6 +988,14 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
  directorApprovals: "Director's Appraisal Review",
  facultyApprovals: "Faculty's Appraisal Review",
  };
+ const recordSchoolTrack = getDeanTrack({ school: approval.school || approval.info?.school, department: approval.department, designation: approval.designation });
+ const recordSchoolGroupLabel = { engineering: "Engineering", non_engineering: "Non-Engineering", direct_vc: "CISR" }[recordSchoolTrack] || approval.school || approval.info?.school || APP_INFO.UNIVERSITY_NAME;
+ const recordScoreRows = [
+ { key: "self", label: "Self", icon: "user", values: { partA: selfSummary.partA, partB: selfSummary.partB, partC: selfSummary.partC, partD: selfSummary.partD, total: selfSummary.total }, note: summaryOtherInfoValueFrom(approval) },
+ ...(isSoemrFaculty ? [{ key: "hod", label: "HOD", icon: "briefcase", values: roleTotalsFor("hod"), note: approval.hodRemarks }] : []),
+ ...(["faculty", "hod"].includes(subjectRole) ? [{ key: "director", label: "Director", icon: "briefcase", values: roleTotalsFor("director"), note: approval.directorRemarks }] : []),
+ { key: "dean", label: "Dean", icon: "briefcase", values: displayedDeanScores, accent: true },
+ ];
  const deanRemarksSideContent = (
 <div style={{ background: "#eff6ff", border: "2px solid #93c5fd", borderRadius: 10, padding: "14px 15px", display: "flex", flexDirection: "column", minWidth: 0, boxShadow: "0 0 0 4px rgba(147,197,253,0.16), 0 14px 28px rgba(37,99,235,0.08)" }}>
 <div style={{ fontSize: 11, fontWeight: 900, color: "#1d4ed8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 5 }}>Dean Remarks</div>
@@ -1105,103 +1114,65 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
  )}
 
  {sectionView === "summary" && (
-<>
-<div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 14, display: "grid", gap: 14, boxShadow: "0 1px 6px rgba(0,0,0,.06)", marginBottom: 14 }}>
-{useFacultyDeanSummaryRows ? (
-<>
-<div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 14, width: "100%", alignItems: "stretch" }}>
-{deanSummaryCards.map((card) =>(
-<ScoreCard key={card.key} {...card} cardStyle={{ ...(card.cardStyle || {}), width: "100%", minWidth: 0 }} />
-))}
-</div>
-<ScoreCard
- title="Dean Score"
- subtitle="Dean score for the non-engineering appraisal form."
- totals={displayedDeanScores}
- maxScores={reviewerMaxScores}
- isFinal
- accent="#7c3aed"
- sideContent={deanRemarksSideContent}
+<div className="far-wrap" style={{ width: "100%" }}>
+<div className="far-card" style={{ width: "100%", boxSizing: "border-box", background: FACULTY_RECORD_THEME.card, border: `1px solid ${FACULTY_RECORD_THEME.borderStrong}`, borderRadius: 16, padding: "22px 24px", display: "grid", gap: 18, boxShadow: "0 10px 30px rgba(15,23,42,0.08)" }}>
+<FacultyRecordHeader
+ title="Faculty appraisal record"
+ subtitle={`${APP_INFO.UNIVERSITY_NAME} · ${recordSchoolGroupLabel} · AY ${academicYear}`}
+ referenceNumber={approval.employeeId}
 />
-</>
-) : useDirectorDeanSummaryRow ? (
-<div style={{ display: "grid", gridTemplateColumns: "minmax(280px, 0.72fr) minmax(640px, 1.28fr)", gap: 14, width: "100%", alignItems: "stretch" }}>
-{deanSummaryCards.map((card) =>(
-<ScoreCard key={card.key} {...card} cardStyle={{ ...(card.cardStyle || {}), width: "100%", minWidth: 0 }} />
-))}
-<ScoreCard
- title="Dean Score"
- subtitle="Dean score for the non-engineering appraisal form."
- totals={displayedDeanScores}
- maxScores={reviewerMaxScores}
- isFinal
- accent="#7c3aed"
- sideContent={deanRemarksSideContent}
- cardStyle={{ width: "100%", minWidth: 0 }}
+<ScoreTable
+ columns={[
+ { key: "partA", label: "Part A", max: MAX_SCORES.PART_A },
+ { key: "partB", label: "Part B", max: MAX_SCORES.PART_B },
+ { key: "partC", label: "Part C", max: MAX_SCORES.PART_C },
+ { key: "partD", label: "Part D", max: MAX_SCORES.PART_D },
+ { key: "total", label: "Total", max: MAX_SCORES.GRAND_TOTAL },
+ ]}
+ rows={recordScoreRows}
 />
-</div>
-) : (
-<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 14, width: "100%" }}>
-{deanSummaryCards.map((card) =>(
-<ScoreCard key={card.key} {...card} />
-))}
-<ScoreCard
- title="Dean Score"
- subtitle="Dean score for the non-engineering appraisal form."
- totals={displayedDeanScores}
- maxScores={reviewerMaxScores}
- isFinal
- accent="#7c3aed"
- sideContent={deanRemarksSideContent}
+<VCFinalRemarks
+ title="Dean final remarks"
+ icon="briefcase"
+ value={remarks}
+ onChange={setRemarks}
+ readOnly={reviewLocked}
+ description="This statement is entered against the official appraisal record before final submission."
 />
-</div>
-)}
-</div>
-</>
- )}
-
- {sectionView === "summary" && !reviewLocked && (
-<label className="appraisal-confirmation-card" style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 14px", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 8, marginBottom: 14, color: "#334155", fontSize: 12, lineHeight: 1.5, cursor: "pointer" }}>
-<input
- type="checkbox"
- checked={reviewConfirmed}
- onChange={(e) =>setReviewConfirmed(e.target.checked)}
- style={{ marginTop: 3, accentColor: "#16a34a" }}
- />
+{!reviewLocked && (
+<label style={{ display: "flex", alignItems: "flex-start", gap: 9, color: FACULTY_RECORD_THEME.textMuted, fontSize: 11, lineHeight: 1.5, cursor: "pointer" }}>
+<input type="checkbox" checked={reviewConfirmed} onChange={(e) =>setReviewConfirmed(e.target.checked)} style={{ marginTop: 2, accentColor: FACULTY_RECORD_THEME.accent, flexShrink: 0 }} />
 <span>I have verified all the details and confirm that the information provided is correct. I am responsible for the accuracy of this data.</span>
 </label>
- )}
-
- {sectionView === "summary" && (
-<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-<span style={{ color: "#64748b", fontSize: 11, fontWeight: 700 }}>{draftStatus}</span>
-<div style={{ display: "flex", gap: 12, justifyContent: "flex-end", flexWrap: "wrap", marginLeft: "auto" }}>
-<button onClick={onBack} style={{ padding: "12px 22px", borderRadius: 10, border: "1px solid #cbd5e1", background: "#f8fafc", color: "#475569", fontWeight: 700, cursor: "pointer" }}>{reviewLocked ? "Close" : "Cancel"}</button>
- {!reviewLocked && (
-<>
-<button
- onClick={handleSaveDraft}
- disabled={savingDraft}
- style={{ padding: "12px 22px", borderRadius: 10, border: "none", background: savingDraft ? "#94a3b8" : "#2563eb", color: "#f8fafc", fontWeight: 700, cursor: savingDraft ? "not-allowed" : "pointer" }}
+)}
+{!reviewLocked && (
+<FinalSubmitButton
+ disabled={!reviewConfirmed || !remarks.trim()}
+ onClick={() =>onSubmit(approval.id, displayedDeanScores, remarks, sectionScores, reviewConfirmed)}
 >
+ Confirm and submit final score
+</FinalSubmitButton>
+)}
+<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap", borderTop: `1px solid ${FACULTY_RECORD_THEME.border}`, paddingTop: 14 }}>
+<span style={{ color: FACULTY_RECORD_THEME.textFaint, fontSize: 10.5, fontStyle: "italic" }}>{draftStatus}</span>
+<div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginLeft: "auto" }}>
+<button onClick={onBack} style={{ padding: "8px 14px", background: "transparent", color: FACULTY_RECORD_THEME.textMuted, border: `1px solid ${FACULTY_RECORD_THEME.border}`, borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: 11.5, fontFamily: "inherit" }}>{reviewLocked ? "Close" : "Cancel"}</button>
+{!reviewLocked && (
+<>
+<button onClick={handleSaveDraft} disabled={savingDraft} style={{ padding: "8px 14px", background: "transparent", color: savingDraft ? FACULTY_RECORD_THEME.textFaint : "#2563eb", border: `1px solid ${savingDraft ? FACULTY_RECORD_THEME.border : "#bfdbfe"}`, borderRadius: 8, cursor: savingDraft ? "not-allowed" : "pointer", fontWeight: 700, fontSize: 11.5, fontFamily: "inherit" }}>
  {savingDraft ? "Saving..." : "Save Draft"}
 </button>
- {canReject && (
-<button
- onClick={() =>{
- if (window.confirm("Reject this appraisal and send it back to the user for editing?")) {
- onSubmit(approval.id, displayedDeanScores, remarks, sectionScores, reviewConfirmed, "rejected");
- }
- }}
+{canReject && (
+<button onClick={() =>{ if (window.confirm("Reject this appraisal and send it back to the user for editing?")) { onSubmit(approval.id, displayedDeanScores, remarks, sectionScores, reviewConfirmed, "rejected"); } }}
  disabled={!reviewConfirmed || !remarks.trim()}
- style={{ padding: "12px 22px", borderRadius: 10, border: "none", background: (reviewConfirmed && remarks.trim()) ? "#dc2626" : "#94a3b8", color: "#f8fafc", fontWeight: 700, cursor: (reviewConfirmed && remarks.trim()) ? "pointer" : "not-allowed" }}
->
+ style={{ padding: "8px 14px", background: "transparent", color: (reviewConfirmed && remarks.trim()) ? "#dc2626" : FACULTY_RECORD_THEME.textFaint, border: `1px solid ${(reviewConfirmed && remarks.trim()) ? "#fecaca" : FACULTY_RECORD_THEME.border}`, borderRadius: 8, cursor: (reviewConfirmed && remarks.trim()) ? "pointer" : "not-allowed", fontWeight: 700, fontSize: 11.5, fontFamily: "inherit" }}>
  Reject Form
 </button>
- )}
-<button onClick={() =>onSubmit(approval.id, displayedDeanScores, remarks, sectionScores, reviewConfirmed)} disabled={!reviewConfirmed || !remarks.trim()} style={{ padding: "12px 22px", borderRadius: 10, border: "none", background: (reviewConfirmed && remarks.trim()) ? "#0f172a" : "#64748b", color: "#f8fafc", fontWeight: 700, cursor: (reviewConfirmed && remarks.trim()) ? "pointer" : "not-allowed" }}>Approve & Forward</button>
+)}
 </>
- )}
+)}
+</div>
+</div>
 </div>
 </div>
  )}
@@ -1334,6 +1305,15 @@ export default function NonEngineeringDeanDashboard() {
     ? activeApprovalList.length
     : activeApprovalList.filter((item) => getSchoolKey(item.school) === selectedSchoolCode || item.school === selectedSchoolCode).length;
 
+  const pendingSchoolCards = schoolCards.filter((school) => school.pendingCount > 0);
+  const firstPendingRoleTabForSchool = (schoolCode) => {
+    const facPending = facultyList.filter((item) => getSchoolKey(item.school) === schoolCode || item.school === schoolCode).filter(isDeanPending).length;
+    if (facPending > 0) return "facultyApprovals";
+    const dirPending = directorList.filter((item) => getSchoolKey(item.school) === schoolCode || item.school === schoolCode).filter(isDeanPending).length;
+    if (dirPending > 0) return "directorApprovals";
+    return activeRoleTab;
+  };
+
   const roleTabsForSchool = [
     {
       id: "facultyApprovals",
@@ -1445,6 +1425,61 @@ export default function NonEngineeringDeanDashboard() {
       {(activeMainTab === "schoolAppraisal" || activeMainTab === "directorApprovals" || activeMainTab === "facultyApprovals") && !reviewingApproval && (
         <>
           {/* Horizontal School Selector Bar */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+            <div style={{ minWidth: 0 }}>
+              <h1 style={{ margin: 0, fontSize: 26, fontWeight: 900, color: "#0f172a", lineHeight: 1.15, letterSpacing: -0.5 }}>Non-Engineering School Appraisal Reviews</h1>
+              <p style={{ margin: "5px 0 0", color: "#64748b", fontSize: 12, display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ background: "#e0e7ff", color: "#3730a3", borderRadius: 6, padding: "2px 8px", fontSize: 10, fontWeight: 700 }}>{APP_INFO.SHORT_NAME}</span>
+                <span>AY</span>
+                <select
+                  value={selectedAcademicYear}
+                  onChange={(event) => handleReviewAcademicYearChange(event.target.value)}
+                  style={{ height: 28, border: "1px solid #cbd5e1", borderRadius: 7, background: "#fff", color: "#0f172a", fontSize: 11, fontWeight: 800, padding: "3px 28px 3px 9px", fontFamily: "inherit", outline: "none" }}
+                >
+                  {academicYearOptions.map((cycle) => (
+                    <option key={cycle.academic_year} value={cycle.academic_year}>
+                      {cycle.academic_year} {cycle.is_open ? "(Active)" : "(Closed)"}
+                    </option>
+                  ))}
+                </select>
+              </p>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", justifyContent: "flex-end" }}>
+              <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 14, padding: "10px 16px", boxShadow: "0 2px 8px rgba(15,23,42,0.08)", minWidth: 250 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: pendingSchoolCards.length ? 8 : 0 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: 999, background: totalSchoolPendingCount ? "#f59e0b" : "#10b981", boxShadow: totalSchoolPendingCount ? "0 0 0 4px #fef3c7" : "0 0 0 4px #dcfce7" }} />
+                  <span style={{ color: "#334155", fontSize: 12, fontWeight: 800 }}>
+                    {totalSchoolPendingCount ? `${totalSchoolPendingCount} pending reviews` : "No pending reviews"}
+                  </span>
+                </div>
+                {pendingSchoolCards.length > 0 && (
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    {pendingSchoolCards.map((school) => {
+                      const visual = SCHOOL_VISUALS[school.code] || {};
+                      return (
+                        <button
+                          key={school.code}
+                          type="button"
+                          onClick={() => {
+                            setSelectedSchoolCode(school.code);
+                            setActiveRoleTab(firstPendingRoleTabForSchool(school.code));
+                            setFilterStatus("Pending Review");
+                          }}
+                          title={`${school.name}: ${school.pendingCount} pending`}
+                          style={{ display: "inline-flex", alignItems: "center", gap: 6, border: `1px solid ${(visual.color || "#f59e0b")}40`, background: visual.bg || "#fffbeb", color: visual.color || "#92400e", borderRadius: 999, padding: "4px 9px", fontSize: 10, fontWeight: 900, cursor: "pointer", fontFamily: "inherit" }}
+                        >
+                          <span>{school.code}</span>
+                          <span style={{ background: visual.color || "#f59e0b", color: "#fff", minWidth: 17, height: 17, borderRadius: 999, display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "0 5px", fontSize: 9 }}>{school.pendingCount}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+              <AppraisalHeaderImage />
+            </div>
+          </div>
+
           <div style={{ background: "#ffffff", borderRadius: 14, border: "1px solid #e2e8f0", boxShadow: "0 1px 4px rgba(0,0,0,0.04)", overflow: "hidden", display: "grid", gridTemplateColumns: `repeat(${schoolCards.length}, 1fr)` }}>
             {schoolCards.map((school) => {
               const active = selectedSchoolCode === school.code;
@@ -1548,19 +1583,7 @@ export default function NonEngineeringDeanDashboard() {
             </div>
 
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b" }}>AY:</span>
-              <select
-                value={selectedAcademicYear}
-                onChange={(event) => handleReviewAcademicYearChange(event.target.value)}
-                style={{ height: 28, border: "1px solid #cbd5e1", borderRadius: 7, background: "#fff", color: "#0f172a", fontSize: 11, fontWeight: 800, padding: "3px 28px 3px 9px", fontFamily: "inherit", outline: "none" }}
-              >
-                {academicYearOptions.map((cycle) => (
-                  <option key={cycle.academic_year} value={cycle.academic_year}>
-                    {cycle.academic_year} {cycle.is_open ? "(Active)" : "(Closed)"}
-                  </option>
-                ))}
-              </select>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b", marginLeft: 8 }}>Filter:</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b" }}>Filter:</span>
               {[
                 ["All", "All"],
                 ["Pending Review", "Pending Review"],

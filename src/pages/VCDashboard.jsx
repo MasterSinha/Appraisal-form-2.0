@@ -9,10 +9,11 @@ import { PreviousYearReportViewer } from "../features/previousYearReport";
 import { isLegacyTwoPartAcademicYear } from "../features/faculty-appraisal/forms/standard/legacyPreviousYearReportUtils";
 
 import { DEAN_TRACKS, UNIVERSITY_SCHOOLS, normalizeHierarchyText } from "../constants/universityHierarchy";
-import { canReviewerRejectProfile, getSchoolKey, profileFromsessionStorage, rejectedStatusFor, visiblePreviousReviewRoles, isAppraisalFinalisedByVc, isPendingReviewStatusFor, reviewListFrom } from "../utils/hierarchy";
+import { canReviewerRejectProfile, getDeanTrack, getSchoolKey, profileFromsessionStorage, rejectedStatusFor, visiblePreviousReviewRoles, isAppraisalFinalisedByVc, isPendingReviewStatusFor, reviewListFrom } from "../utils/hierarchy";
 import { NonTeachingAuthorityReviewPanel } from "./NonTeachingStaffDashboard";
 import { n, pct, grade, RO } from "../features/faculty-appraisal/shared";
 import FacultyInfoSection from "../components/appraisal/common/FacultyInfoSection";
+import { FacultyRecordHeader, ScoreTable, VCFinalRemarks, FinalSubmitButton, FACULTY_RECORD_THEME } from "../components/dashboard/FacultyAppraisalRecord";
 
 // --- Helpers ------------------------------------------------------------------
 const oneDecimal = (value) =>(Math.trunc(n(value) * 10) / 10).toFixed(1);
@@ -1043,12 +1044,9 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  remarks: person[meta.remarksKey],
  };
  });
- const averageSourceTotals = [
- facultyTotals,
- ...previousSummaryCards
+ const averageSourceTotals = previousSummaryCards
  .filter((item) =>item.role !== personMode && item.totals.hasTotal)
- .map((item) =>item.totals),
- ];
+ .map((item) =>item.totals);
  const averageSummaryTotals = averageSourceTotals.length
  ? {
  partA: averageSourceTotals.reduce((sum, item) =>sum + n(item.partA), 0) / averageSourceTotals.length,
@@ -1252,6 +1250,15 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  ];
  const splitDirectorSummaryRows = personMode === "director";
  const splitDeanSummaryRows = personMode === "dean";
+ const useFacultyRecordCard = ["faculty", "hod", "dean", "director"].includes(personMode);
+ const recordSchoolTrack = useFacultyRecordCard ? getDeanTrack({ school: person.school || person.info?.school, department: person.department, designation: person.designation }) : "";
+ const recordSchoolGroupLabel = { engineering: "Engineering", non_engineering: "Non-Engineering", direct_vc: "CISR" }[recordSchoolTrack] || person.school || person.info?.school || APP_INFO.UNIVERSITY_NAME;
+ const recordScoreRows = useFacultyRecordCard ? [
+ { key: "self", label: "Self", icon: "user", values: facultyTotals, note: summaryOtherInfoValueFrom(person) },
+ ...previousSummaryCards.map((card) => ({ key: card.role, label: card.meta.shortLabel, icon: "briefcase", values: card.totals, note: card.remarks })),
+ ...(showAverageColumn ? [{ key: "average", label: "Average", icon: "chart", values: averageSummaryTotals }] : []),
+ { key: "vc", label: "Vice Chancellor", icon: "crown", values: reviewerSummaryTotals, accent: true },
+ ] : [];
  const splitReferenceCards = splitDirectorSummaryRows
  ? vcSummaryCards.filter((card) =>["self", "dean"].includes(card.key))
  : splitDeanSummaryRows
@@ -1345,10 +1352,74 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  {sectionView === "summary" && (
 <div style={{ display: "grid", gap: 14 }}>
 
-
-{(splitDirectorSummaryRows || splitDeanSummaryRows) ? (
+{useFacultyRecordCard ? (
+<div className="far-wrap" style={{ width: "100%" }}>
+<div className="far-card" style={{ width: "100%", boxSizing: "border-box", background: FACULTY_RECORD_THEME.card, border: `1px solid ${FACULTY_RECORD_THEME.borderStrong}`, borderRadius: 16, padding: "22px 24px", display: "grid", gap: 18, boxShadow: "0 10px 30px rgba(15,23,42,0.08)" }}>
+<FacultyRecordHeader
+ title="Faculty appraisal record"
+ subtitle={`${APP_INFO.UNIVERSITY_NAME} · ${recordSchoolGroupLabel} · AY ${academicYear}`}
+ referenceNumber={person.employeeId}
+/>
+<ScoreTable
+ columns={[
+ { key: "partA", label: "Part A", max: MAX_SCORES.PART_A },
+ { key: "partB", label: "Part B", max: MAX_SCORES.PART_B },
+ { key: "partC", label: "Part C", max: MAX_SCORES.PART_C },
+ { key: "partD", label: "Part D", max: MAX_SCORES.PART_D },
+ { key: "total", label: "Total", max: MAX_SCORES.GRAND_TOTAL },
+ ]}
+ rows={recordScoreRows}
+/>
+<VCFinalRemarks
+ value={remarks}
+ onChange={setRemarks}
+ readOnly={reviewLocked}
+ description="This statement is entered against the official appraisal record before final submission."
+/>
+{!reviewLocked && (
+<label style={{ display: "flex", alignItems: "flex-start", gap: 9, color: FACULTY_RECORD_THEME.textMuted, fontSize: 11, lineHeight: 1.5, cursor: "pointer" }}>
+<input type="checkbox" checked={reviewConfirmed} onChange={e =>setReviewConfirmed(e.target.checked)} style={{ marginTop: 2, accentColor: FACULTY_RECORD_THEME.accent, flexShrink: 0 }} />
+<span>I have verified all the details and confirm that the information provided is correct. I am responsible for the accuracy of this data.</span>
+</label>
+)}
+{!reviewLocked && (
+<FinalSubmitButton
+ disabled={!reviewConfirmed || !remarks.trim()}
+ onClick={() =>onSubmit(person.id, { partA, partB, partC, partD, total }, remarks, personMode, buildVcSectionScores(person, vcData), reviewConfirmed)}
+>
+ {finalisedByVc ? "Edit & Resubmit" : "Confirm and submit final score"}
+</FinalSubmitButton>
+)}
+<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap", borderTop: `1px solid ${FACULTY_RECORD_THEME.border}`, paddingTop: 14 }}>
+<span style={{ color: FACULTY_RECORD_THEME.textFaint, fontSize: 10.5, fontStyle: "italic" }}>{draftStatus}</span>
+<div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginLeft: "auto" }}>
+<button onClick={onBack} style={{ padding: "8px 14px", background: "transparent", color: FACULTY_RECORD_THEME.textMuted, border: `1px solid ${FACULTY_RECORD_THEME.border}`, borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: 11.5, fontFamily: "inherit" }}>Close</button>
+{vcReviewCompleted && (
+<button onClick={generateVcReport} style={{ padding: "8px 14px", background: "transparent", color: FACULTY_RECORD_THEME.accentSoft, border: "1px solid rgba(124,58,237,0.35)", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: 11.5, fontFamily: "inherit" }}>Generate Report</button>
+)}
+{!reviewLocked && (
 <>
-<div style={{ display: "grid", gridTemplateColumns: splitDeanSummaryRows ? "minmax(280px, 0.68fr) minmax(640px, 1.32fr)" : "repeat(2, minmax(0, 1fr))", gap: 16, width: "100%" }}>
+<button onClick={handleSaveDraft} disabled={savingDraft} style={{ padding: "8px 14px", background: "transparent", color: savingDraft ? FACULTY_RECORD_THEME.textFaint : "#2563eb", border: `1px solid ${savingDraft ? FACULTY_RECORD_THEME.border : "#bfdbfe"}`, borderRadius: 8, cursor: savingDraft ? "not-allowed" : "pointer", fontWeight: 700, fontSize: 11.5, fontFamily: "inherit" }}>
+ {savingDraft ? "Saving..." : "Save Draft"}
+</button>
+{canReject && (
+<button onClick={() =>{ if (window.confirm("Reject this appraisal and send it back to the user for editing?")) { onSubmit(person.id, { partA, partB, partC, partD, total }, remarks, personMode, buildVcSectionScores(person, vcData), reviewConfirmed, "rejected"); } }}
+ disabled={!reviewConfirmed || !remarks.trim()}
+ style={{ padding: "8px 14px", background: "transparent", color: (reviewConfirmed && remarks.trim()) ? "#dc2626" : FACULTY_RECORD_THEME.textFaint, border: `1px solid ${(reviewConfirmed && remarks.trim()) ? "#fecaca" : FACULTY_RECORD_THEME.border}`, borderRadius: 8, cursor: (reviewConfirmed && remarks.trim()) ? "pointer" : "not-allowed", fontWeight: 700, fontSize: 11.5, fontFamily: "inherit" }}>
+ Reject Form
+</button>
+)}
+</>
+)}
+</div>
+</div>
+</div>
+</div>
+) : (
+<>
+{splitDeanSummaryRows ? (
+<>
+<div style={{ display: "grid", gridTemplateColumns: "minmax(280px, 0.68fr) minmax(640px, 1.32fr)", gap: 16, width: "100%" }}>
 {splitReferenceCards.map((card) =>(
 <ScoreCard key={card.key} {...card} cardStyle={{ ...(card.cardStyle || {}), width: "100%", minWidth: 0 }} />
 ))}
@@ -1416,6 +1487,8 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
 </div>
 </div>
 </div>
+</>
+)}
 
 </div>
  )}

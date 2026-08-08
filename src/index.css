@@ -1233,3 +1233,10 @@ a[aria-label^="View "]:hover {
     width: 116px !important;
   }
 }
+
+@media (max-width: 640px) {
+  .far-card {
+    padding: 16px !important;
+    border-radius: 12px !important;
+  }
+}

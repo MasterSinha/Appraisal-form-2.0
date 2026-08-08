@@ -62,12 +62,13 @@ import {
   RowButtons as RowBtns,
   SectionCard as SC,
 } from "../../index";
-import { canReviewerRejectProfile, getReviewChain, pendingStatusFor, profileFromsessionStorage, reviewedStatusFor, roleLabel, visiblePreviousReviewRoles, workflowValidationError, isAppraisalFinalisedByVc, isRejectedStatus, isPendingReviewStatusFor, hasActiveRejection, reviewListFrom } from "../../../../utils/hierarchy";
+import { canReviewerRejectProfile, getDeanTrack, getReviewChain, pendingStatusFor, profileFromsessionStorage, reviewedStatusFor, roleLabel, visiblePreviousReviewRoles, workflowValidationError, isAppraisalFinalisedByVc, isRejectedStatus, isPendingReviewStatusFor, hasActiveRejection, reviewListFrom } from "../../../../utils/hierarchy";
 import { n, pct, RO, TI } from "../../shared";
 import SectionShell from "./common/SectionShell";
 import { tableStyle, thStyle, tdStyle, tdCenter } from "./common/TableStyles";
 import FacultyInfoSection from "../../../../components/appraisal/common/FacultyInfoSection";
 import { ALL_ARRAY_KEYS } from "./arrayKeys";
+import { FacultyRecordHeader, ScoreTable, VCFinalRemarks, FinalSubmitButton, FACULTY_RECORD_THEME } from "../../../../components/dashboard/FacultyAppraisalRecord";
 
 export const ACCENT = "#4f46e5";
 export const ACCENT2 = "#4338ca";
@@ -2263,12 +2264,9 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
       remarks: person?.[`${prefix}Remarks`],
     };
   });
-  const averageSourceTotals = [
-    facultyTotals,
-    ...previousSummaryCards
-      .filter((item) => item.role !== subjectRole && item.totals.hasTotal)
-      .map((item) => item.totals),
-  ];
+  const averageSourceTotals = previousSummaryCards
+    .filter((item) => item.role !== subjectRole && item.totals.hasTotal)
+    .map((item) => item.totals);
   const averageSummaryTotals = averageSourceTotals.length ? {
     partA: averageSourceTotals.reduce((sum, item) => sum + n(item.partA), 0) / averageSourceTotals.length,
     partB: averageSourceTotals.reduce((sum, item) => sum + n(item.partB), 0) / averageSourceTotals.length,
@@ -2430,6 +2428,14 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
   const authorityDirectorReviewCards = splitAuthorityDeanDirectorRows
     ? authoritySummaryCards.filter((card) => card.key === reviewerRole)
     : [];
+  const useAuthorityRecordCard = reviewerRole === "dean" || reviewerRole === "director";
+  const authorityRecordSchoolTrack = useAuthorityRecordCard ? getDeanTrack({ school: person?.school || form.info?.school, department: person?.department, designation: person?.designation }) : "";
+  const authorityRecordSchoolGroupLabel = { engineering: "Engineering", non_engineering: "Non-Engineering", direct_vc: "CISR" }[authorityRecordSchoolTrack] || person?.school || form.info?.school || APP_INFO.UNIVERSITY_NAME;
+  const authorityRecordScoreRows = useAuthorityRecordCard ? [
+    { key: "self", label: "Self", icon: "user", values: facultyTotals, note: summaryOtherInfoValueFrom(person) },
+    ...authorityPreviousSummaryCards.map((card) => ({ key: card.role, label: card.label, icon: "briefcase", values: card.totals, note: card.remarks })),
+    { key: reviewerRole, label: roleLabel(reviewerRole), icon: "briefcase", values: reviewerSummaryTotals, accent: true },
+  ] : [];
   useEffect(() => {
     let active = true;
     if (panelReadOnly || !subjectEmail) return undefined;
@@ -2681,7 +2687,81 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
           </button>
         </div>
       )}
-      {sectionView === "summary" && (
+      {sectionView === "summary" && useAuthorityRecordCard && (
+        <div className="far-wrap" style={{ width: "100%" }}>
+          <div className="far-card" style={{ width: "100%", boxSizing: "border-box", background: FACULTY_RECORD_THEME.card, border: `1px solid ${FACULTY_RECORD_THEME.borderStrong}`, borderRadius: 16, padding: "22px 24px", display: "grid", gap: 18, boxShadow: "0 10px 30px rgba(15,23,42,0.08)" }}>
+            <FacultyRecordHeader
+              title="Faculty appraisal record"
+              subtitle={`${APP_INFO.UNIVERSITY_NAME} · ${authorityRecordSchoolGroupLabel} · AY ${academicYear}`}
+              referenceNumber={person?.employeeId}
+            />
+            <ScoreTable
+              columns={[
+                { key: "partA", label: "Part A", max: PART_A_MAX },
+                { key: "partB", label: "Part B", max: PART_B_MAX },
+                { key: "partC", label: "Part C", max: PART_C_MAX },
+                { key: "partD", label: "Part D", max: PART_D_MAX },
+                { key: "total", label: "Total", max: GRAND_MAX },
+              ]}
+              rows={authorityRecordScoreRows}
+            />
+            <VCFinalRemarks
+              title={`${roleLabel(reviewerRole)} final remarks`}
+              icon="briefcase"
+              value={remarks}
+              onChange={setRemarks}
+              readOnly={panelReadOnly}
+              description="This statement is entered against the official appraisal record before final submission."
+            />
+            {!panelReadOnly && (
+              <label style={{ display: "flex", alignItems: "flex-start", gap: 9, color: FACULTY_RECORD_THEME.textMuted, fontSize: 11, lineHeight: 1.5, cursor: "pointer" }}>
+                <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} style={{ marginTop: 2, accentColor: FACULTY_RECORD_THEME.accent, flexShrink: 0 }} />
+                <span>{VERIFY_TEXT}</span>
+              </label>
+            )}
+            {!panelReadOnly && (
+              <FinalSubmitButton
+                disabled={!confirmed || !remarks.trim()}
+                onClick={() => onSubmit(person.id, { partA: totals.partA, partB: totals.partB, partC: totals.partC, partD: totals.partD, total: totals.total }, remarks, buildCreativeSchoolSectionScores(form, reviewData, reviewerRole), confirmed)}
+              >
+                Confirm and submit final score
+              </FinalSubmitButton>
+            )}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap", borderTop: `1px solid ${FACULTY_RECORD_THEME.border}`, paddingTop: 14 }}>
+              <span style={{ color: FACULTY_RECORD_THEME.textFaint, fontSize: 10.5, fontStyle: "italic" }}>{draftStatus}</span>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginLeft: "auto" }}>
+                <button onClick={onBack} style={{ padding: "8px 14px", background: "transparent", color: FACULTY_RECORD_THEME.textMuted, border: `1px solid ${FACULTY_RECORD_THEME.border}`, borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: 11.5, fontFamily: "inherit" }}>Close</button>
+                {showReport && (
+                  <button onClick={generateReviewReport} disabled={!reviewCompleted} style={{ padding: "8px 14px", background: "transparent", color: reviewCompleted ? FACULTY_RECORD_THEME.accentSoft : FACULTY_RECORD_THEME.textFaint, border: `1px solid ${reviewCompleted ? "rgba(124,58,237,0.35)" : FACULTY_RECORD_THEME.border}`, borderRadius: 8, cursor: reviewCompleted ? "pointer" : "not-allowed", fontWeight: 700, fontSize: 11.5, fontFamily: "inherit" }}>
+                    Generate Report
+                  </button>
+                )}
+                {!panelReadOnly && (
+                  <>
+                    <button onClick={handleSaveDraft} disabled={savingDraft} style={{ padding: "8px 14px", background: "transparent", color: savingDraft ? FACULTY_RECORD_THEME.textFaint : "#2563eb", border: `1px solid ${savingDraft ? FACULTY_RECORD_THEME.border : "#bfdbfe"}`, borderRadius: 8, cursor: savingDraft ? "not-allowed" : "pointer", fontWeight: 700, fontSize: 11.5, fontFamily: "inherit" }}>
+                      {savingDraft ? "Saving..." : "Save Draft"}
+                    </button>
+                    {canReject && (
+                      <button
+                        onClick={() => {
+                          if (window.confirm("Reject this appraisal and send it back to the user for editing?")) {
+                            onSubmit(person.id, { partA: totals.partA, partB: totals.partB, partC: totals.partC, partD: totals.partD, total: totals.total }, remarks, buildCreativeSchoolSectionScores(form, reviewData, reviewerRole), confirmed, "rejected");
+                          }
+                        }}
+                        disabled={!confirmed || !remarks.trim()}
+                        style={{ padding: "8px 14px", background: "transparent", color: (confirmed && remarks.trim()) ? "#dc2626" : FACULTY_RECORD_THEME.textFaint, border: `1px solid ${(confirmed && remarks.trim()) ? "#fecaca" : FACULTY_RECORD_THEME.border}`, borderRadius: 8, cursor: (confirmed && remarks.trim()) ? "pointer" : "not-allowed", fontWeight: 700, fontSize: 11.5, fontFamily: "inherit" }}
+                      >
+                        Reject Form
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {sectionView === "summary" && !useAuthorityRecordCard && (
         <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 14, display: "grid", gap: 10 }}>
           {reviewerRole === "vc" ? (
             <>

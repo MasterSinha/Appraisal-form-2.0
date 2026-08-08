@@ -186,6 +186,7 @@ export default function MediaCommDashboard({ fixedRole }) {
  const [form, setForm] = useState(emptyMediaForm);
  const [docs, setDocs] = useState({});
  const [queue, setQueue] = useState([]);
+ const [filterStatus, setFilterStatus] = useState("All");
  const [reviewing, setReviewing] = useState(null);
  const [reviewLoading, setReviewLoading] = useState(null);
  const [loadingQueue, setLoadingQueue] = useState(false);
@@ -737,7 +738,24 @@ export default function MediaCommDashboard({ fixedRole }) {
  });
  };
 
-  const pendingCount = queue.filter((item) => !isReviewerReviewComplete(item, role)).length;
+  const hasReviewerScoreForRole = (item) =>
+    n(item?.[`${role}PartA`]) > 0 ||
+    n(item?.[`${role}PartB`]) > 0 ||
+    n(item?.[`${role}PartC`]) > 0 ||
+    n(item?.[`${role}PartD`]) > 0 ||
+    n(item?.[`${role}Total`]) > 0 ||
+    String(item?.[`${role}Remarks`] || "").trim() !== "";
+  const isApprovalReviewed = (item) => {
+    const pendingForRole = isPendingReviewStatusFor([item.status, item.workflowStatus, item.workflow_status], role);
+    return !pendingForRole && (isReviewerReviewComplete(item, role) || hasReviewerScoreForRole(item));
+  };
+  const pendingCount = queue.filter((item) => !isApprovalReviewed(item)).length;
+  const reviewedCount = queue.filter(isApprovalReviewed).length;
+  const filteredQueue = filterStatus === "All"
+    ? queue
+    : filterStatus === "Pending Review"
+      ? queue.filter((item) => !isApprovalReviewed(item))
+      : queue.filter(isApprovalReviewed);
 
   const navItems = [
     ...(canSelfSubmit ? [{ id: "myAppraisal", label: "My Appraisal", sub: "View your self-appraisal form" }] : []),
@@ -984,20 +1002,44 @@ export default function MediaCommDashboard({ fixedRole }) {
 
  {activeTab === "approvals" && !reviewing && role !== "faculty" && (
 <div>
- {/* - Queue header & live stats - */}
- {!loadingQueue && queue.length >0 && (
-<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18, flexWrap: "wrap", gap: 10 }}>
+<div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
 <div>
-<div style={{ fontSize: 16, fontWeight: 800, color: "#0f172a" }}>Faculty Approvals Queue</div>
-<div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>Review and grade submitted appraisals</div>
+<h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "#0f172a", letterSpacing: -0.5 }}>Faculty's Appraisal</h1>
+<div style={{ marginTop: 5, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", color: "#64748b", fontSize: 11 }}>
+<span>AY</span>
+<select
+ value={academicYear}
+ onChange={(event) =>handleAcademicYearChange(event.target.value)}
+ style={{ height: 28, border: "1px solid #cbd5e1", borderRadius: 7, background: "#fff", color: "#0f172a", fontSize: 11, fontWeight: 800, padding: "3px 28px 3px 9px", fontFamily: "inherit", outline: "none" }}
+>
+ {academicYearOptions.map((cycle) =>(
+ <option key={cycle.academic_year} value={cycle.academic_year}>
+ {cycle.academic_year} {cycle.is_open ? "(Active)" : "(Closed)"}
+ </option>
+ ))}
+</select>
 </div>
-<div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-<span style={{ background: "#f1f5f9", color: "#475569", padding: "4px 12px", borderRadius: 20, fontSize: 11, fontWeight: 700 }}>Total: {queue.length}</span>
-<span style={{ background: "#fef9c3", color: "#854d0e", padding: "4px 12px", borderRadius: 20, fontSize: 11, fontWeight: 700 }}>Pending: {queue.filter(i =>!isReviewerReviewComplete(i, role)).length}</span>
-<span style={{ background: "#dcfce7", color: "#166534", padding: "4px 12px", borderRadius: 20, fontSize: 11, fontWeight: 700 }}>Reviewed: {queue.filter(i =>isReviewerReviewComplete(i, role)).length}</span>
+</div>
+<div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+<div style={{ fontSize: 11, fontWeight: 700, padding: "5px 12px", borderRadius: 20, background: "#fef3c7", color: "#92400e" }}>
+ {pendingCount} Pending
+</div>
+<div style={{ fontSize: 11, fontWeight: 700, padding: "5px 12px", borderRadius: 20, background: "#d1fae5", color: "#065f46" }}>
+ {reviewedCount} Reviewed
+</div>
+<AppraisalHeaderImage />
 </div>
 </div>
- )}
+
+<div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 16px", background: "#fff", borderRadius: 9, boxShadow: "0 1px 4px rgba(0,0,0,.05)", margin: "16px 0" }}>
+<span style={{ fontSize: 11, fontWeight: 700, color: "#64748b" }}>Filter:</span>
+ {["All", "Pending Review", "Reviewed"].map((filter) =>(
+<button key={filter} onClick={() =>setFilterStatus(filter)}
+ style={{ fontSize: 11, padding: "4px 12px", border: "1px solid #e2e8f0", borderRadius: 20, cursor: "pointer", fontFamily: "inherit", background: filterStatus === filter ? "#0f172a" : "none", color: filterStatus === filter ? "#f1f5f9" : "#475569" }}>
+ {filter}
+</button>
+ ))}
+</div>
 
  {/* - Loading indicator - */}
  {loadingQueue && (
@@ -1017,15 +1059,28 @@ export default function MediaCommDashboard({ fixedRole }) {
  )}
 
  {/* - Faculty cards - */}
-<div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
- {queue.map((item) =>{
+<div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 14 }}>
+ {filteredQueue.map((item) =>{
  const initials = (item.name || "?").trim().split(/\s+/).map(w =>w[0]).join("").substring(0, 2).toUpperCase();
  const mergedItem = mergeForm(emptyMediaForm(), item);
  const facultyTotals = calculateMediaTotals(mergedItem, "score");
  const reviewerTotals = calculateMediaTotals(mergedItem, role);
- const hasReviewerScores = reviewerTotals.partA >0 || reviewerTotals.partB >0 || reviewerTotals.partC >0 || reviewerTotals.partD >0 || reviewerTotals.total >0;
- const pendingForRole = isPendingReviewStatusFor([item.status, item.workflowStatus, item.workflow_status], role);
- const reviewComplete = !pendingForRole && (isReviewerReviewComplete(item, role) || hasReviewerScores);
+ const reviewComplete = isApprovalReviewed(item);
+ const savedReviewerTotals = {
+ partA: n(item?.[`${role}PartA`]),
+ partB: n(item?.[`${role}PartB`]),
+ partC: n(item?.[`${role}PartC`]),
+ partD: n(item?.[`${role}PartD`]),
+ total: n(item?.[`${role}Total`]),
+ };
+ const reviewerDisplayTotals = {
+ ...reviewerTotals,
+ partA: reviewerTotals.partA || savedReviewerTotals.partA,
+ partB: reviewerTotals.partB || savedReviewerTotals.partB,
+ partC: reviewerTotals.partC || savedReviewerTotals.partC,
+ partD: reviewerTotals.partD || savedReviewerTotals.partD,
+ total: reviewerTotals.total || savedReviewerTotals.total,
+ };
  const maxScores = {
  partA: n(item.effectivePartAMax) || facultyTotals.maxScores.partA,
  partB: n(item.effectivePartBMax) || facultyTotals.maxScores.partB,
@@ -1035,65 +1090,67 @@ export default function MediaCommDashboard({ fixedRole }) {
  };
  const submittedScore = (stored, legacy, calculated) =>
  String(stored ?? legacy ?? "").trim() !== "" ? n(stored ?? legacy) : calculated;
- const itemTotals = {
+ const submittedTotals = {
  partA: submittedScore(item.selfPartA, item.partATotal, facultyTotals.partA),
  partB: submittedScore(item.selfPartB, item.partBTotal, facultyTotals.partB),
  partC: submittedScore(item.selfPartC, item.partCTotal, facultyTotals.partC),
  partD: submittedScore(item.selfPartD, item.partDTotal, facultyTotals.partD),
  total: submittedScore(item.selfTotal, item.grandTotal, facultyTotals.total),
  };
- const scoreLabel = `Submitted on ${item.submittedOn || "record"}`;
+ const displayTotals = reviewComplete ? reviewerDisplayTotals : submittedTotals;
+ const scoreLabel = `Submitted: ${item.submittedOn || ""}`;
  const itemAcademicYear = item.academic_year || item.academicYear || item.info?.ay || academicYear || APP_INFO.DEFAULT_AY;
+ const metricLabelPrefix = reviewComplete ? (role === "director" ? "Dir" : roleLabel(role)) : "";
  const reviewMetrics = legacyDashboardMetrics({
  academicYear: itemAcademicYear,
- partA: itemTotals.partA,
- partB: itemTotals.partB,
- total: itemTotals.total,
+ labelPrefix: metricLabelPrefix,
+ partA: displayTotals.partA,
+ partB: displayTotals.partB,
+ total: displayTotals.total,
  }) || [
- { label: "Part A", val: itemTotals.partA, max: maxScores.partA, color: ACCENT },
- { label: "Part B", val: itemTotals.partB, max: maxScores.partB, color: ACCENT2 },
- { label: "Part C", val: itemTotals.partC, max: maxScores.partC, color: "#ef6f61" },
- { label: "Part D", val: itemTotals.partD, max: maxScores.partD, color: "#f59e0b" },
- { label: "Total", val: itemTotals.total, max: maxScores.grand, color: "#059669" },
+ { label: metricLabelPrefix ? `${metricLabelPrefix} Part A` : "Part A", val: displayTotals.partA, max: maxScores.partA, color: ACCENT },
+ { label: metricLabelPrefix ? `${metricLabelPrefix} Part B` : "Part B", val: displayTotals.partB, max: maxScores.partB, color: ACCENT2 },
+ { label: metricLabelPrefix ? `${metricLabelPrefix} Part C` : "Part C", val: displayTotals.partC, max: maxScores.partC, color: "#ef6f61" },
+ { label: metricLabelPrefix ? `${metricLabelPrefix} Part D` : "Part D", val: displayTotals.partD, max: maxScores.partD, color: "#f59e0b" },
+ { label: metricLabelPrefix ? `${metricLabelPrefix} Total` : "Total", val: displayTotals.total, max: maxScores.grand, color: "#059669" },
  ];
  return (
-<div key={item.id} style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", borderLeft: `4px solid ${reviewComplete ? "#22c55e" : ACCENT}`, overflow: "hidden" }}>
- {/* - Name / role / action row - */}
-<div style={{ padding: "14px 18px", display: "flex", alignItems: "center", gap: 14 }}>
-<div style={{ width: 56, height: 56, borderRadius: "50%", background: `linear-gradient(135deg,${ACCENT},${ACCENT2})`, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 17, flexShrink: 0, letterSpacing: 0.5, overflow: "hidden" }}>
-{item.avatarUrl ? (
-<img src={item.avatarUrl} alt="Profile" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-) : initials}
-</div>
+<div key={item.id} style={{ background: "#fff", borderRadius: 12, padding: "18px 20px", boxShadow: "0 1px 6px rgba(0,0,0,.07)", display: "flex", flexDirection: "column", gap: 14 }}>
+<div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+<Avatar initials={initials} src={item.avatarUrl} color={item.avatarColor} size={58} />
 <div style={{ flex: 1, minWidth: 0 }}>
-<div style={{ fontWeight: 800, fontSize: 14, color: "#0f172a", marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</div>
-<div style={{ fontSize: 12, color: "#64748b" }}>{titleCase(item.appraisalRole)} - {item.school}</div>
+<div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</div>
 </div>
-<div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8, flexShrink: 0 }}>
 <StatusBadge status={item.status} />
+</div>
+
+<ReviewMetricsStrip
+ metrics={reviewMetrics}
+ docs={item.docs}
+ item={item}
+/>
+
+<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #f1f5f9", paddingTop: 12 }}>
+<div style={{ fontSize: 10, color: "#94a3b8" }}>{scoreLabel}</div>
 <button
  disabled={reviewLoading === item.id}
  onClick={() =>openSubmittedReview(item)}
- style={{ ...smallButton(reviewComplete ? "#1e293b" : ACCENT2), padding: "6px 14px", fontSize: 11, cursor: reviewLoading === item.id ? "wait" : "pointer", opacity: reviewLoading === item.id ? 0.7 : 1 }}
+ style={{ fontSize: 11, padding: "7px 18px", background: reviewComplete ? "#1e293b" : "#312e81", color: "#f1f5f9", border: "none", borderRadius: 6, cursor: reviewLoading === item.id ? "wait" : "pointer", fontWeight: 700, fontFamily: "inherit", opacity: reviewLoading === item.id ? 0.7 : 1 }}
  >
  {reviewLoading === item.id ? "Loading..." : reviewComplete ? "View Review" : "Review Form"}
 </button>
 </div>
 </div>
- {/* - Score metrics grid - */}
-<div style={{ padding: "12px 18px 14px", background: "#fafbff", borderTop: "1px solid #f1f5f9" }}>
-<ReviewMetricsStrip
- metrics={reviewMetrics}
- docs={item.docs}
- background="#f8fafc"
- compact
-/>
-<div style={{ fontSize: 10, color: "#94a3b8", textAlign: "right" }}>{scoreLabel}</div>
-</div>
-</div>
  );
  })}
 </div>
+
+ {!loadingQueue && queue.length >0 && filteredQueue.length === 0 && (
+<div style={{ textAlign: "center", padding: "60px 0", color: "#94a3b8" }}>
+<div style={{ fontWeight: 700, color: "#0f172a" }}>All caught up!</div>
+<div style={{ color: "#64748b", fontSize: 12, marginTop: 6 }}>No forms match the selected filter.</div>
+</div>
+ )}
 </div>
  )}
 
