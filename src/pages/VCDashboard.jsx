@@ -64,6 +64,32 @@ function VcIcon({ name, size = 18, color = "currentColor" }) {
  </svg>
  );
  }
+ if (name === "layers") {
+ return (
+ <svg {...common}>
+ <path d="m12 3 9 5-9 5-9-5 9-5Z" />
+ <path d="m3 12 9 5 9-5" />
+ <path d="m3 16 9 5 9-5" />
+ </svg>
+ );
+ }
+ if (name === "flask") {
+ return (
+ <svg {...common}>
+ <path d="M9 3h6" />
+ <path d="M10 3v6l-5.2 8.6A1.5 1.5 0 0 0 6 20h12a1.5 1.5 0 0 0 1.2-2.4L14 9V3" />
+ <path d="M7.5 15h9" />
+ </svg>
+ );
+ }
+ if (name === "badge") {
+ return (
+ <svg {...common}>
+ <circle cx="12" cy="9" r="5" />
+ <path d="m8.5 13.5-1.8 7.2 5.3-2.4 5.3 2.4-1.8-7.2" />
+ </svg>
+ );
+ }
  if (name === "mail") {
  return (
  <svg {...common}>
@@ -2158,22 +2184,28 @@ University Overview
 </select>
 </p>
 </div>
-<div className="vc-hero-right" style={{ display: "flex", alignItems: "center", gap: 12 }}>
-<div className="vc-total-pill" style={{ fontSize: 12, color: "#374151", background: "#fff", padding: "10px 18px", borderRadius: 8, boxShadow: "0 2px 8px rgba(15,23,42,0.08)", fontWeight: 700 }}>
-<span style={{ color: "#6d28d9", fontWeight: 900, fontSize: 16 }}>{deanList.length + dirList.length + hodList.length + centerHeadList.length + facList.length + nonTeachingList.length + nonTeachingReviewedList.length}</span>{" "}total submissions
+<div className="vc-hero-right" style={{ display: "flex", alignItems: "center", gap: 14 }}>
+<div className="vc-total-pill" style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12, color: "#374151", background: "#fff", padding: "10px 18px", borderRadius: 12, border: "1px solid #ede9fe", boxShadow: "0 8px 20px rgba(109,40,217,0.10)", fontWeight: 700 }}>
+<span style={{ width: 32, height: 32, borderRadius: 9, background: "linear-gradient(135deg,#ede9fe,#ddd6fe)", color: "#6d28d9", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M7 3h7l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" /><path d="M14 3v4h4" /><path d="M9 13h6M9 17h4" /></svg>
+</span>
+<span>
+<span style={{ display: "block", color: "#6d28d9", fontWeight: 950, fontSize: 17, lineHeight: 1.1 }}>{deanList.length + dirList.length + hodList.length + centerHeadList.length + facList.length + nonTeachingList.length + nonTeachingReviewedList.length}</span>
+<span style={{ display: "block", fontSize: 10.5, color: "#6b7280", fontWeight: 700, marginTop: 1 }}>total submissions</span>
+</span>
 </div>
-<AppraisalHeaderImage />
+<AppraisalHeaderImage height={68} style={{ alignSelf: "center" }} />
 </div>
 </div>
 
  {/* Division Switcher */}
 <div className="vc-segmented-tabs fa-fade-up" style={{ display: "inline-flex", width: "auto", maxWidth: "max-content", gap: 2 }}>
  {[
- { key: "engg", label: "Engineering Schools", color: "#1e40af", bg: "linear-gradient(135deg,#dbeafe,#bfdbfe)" },
- { key: "non-engg", label: "Non-Engineering Schools", color: "#6b21a8", bg: "linear-gradient(135deg,#f3e8ff,#e9d5ff)" },
- { key: "cisr", label: "CISR", color: "#0f766e", bg: "linear-gradient(135deg,#ccfbf1,#99f6e4)" },
- { key: "non-teaching", label: "Non-Teaching Staff", color: "#1d4ed8", bg: "linear-gradient(135deg,#dbeafe,#bfdbfe)" },
- ].map(({ key, label, color, bg }) =>{
+ { key: "engg", label: "Engineering Schools", color: "#1e40af", bg: "linear-gradient(135deg,#dbeafe,#bfdbfe)", icon: "school" },
+ { key: "non-engg", label: "Non-Engineering Schools", color: "#6b21a8", bg: "linear-gradient(135deg,#f3e8ff,#e9d5ff)", icon: "layers" },
+ { key: "cisr", label: "CISR", color: "#0f766e", bg: "linear-gradient(135deg,#ccfbf1,#99f6e4)", icon: "flask" },
+ { key: "non-teaching", label: "Non-Teaching Staff", color: "#1d4ed8", bg: "linear-gradient(135deg,#dbeafe,#bfdbfe)", icon: "badge" },
+ ].map(({ key, label, color, bg, icon }) =>{
  const schoolPending = key === "non-teaching"
  ? nonTeachingList.length
  : (HIERARCHY_SCHOOLS[key] || []).reduce((a, s) =>a + getSchoolPending(s), 0);
@@ -2181,6 +2213,7 @@ University Overview
  return (
 <button className={`vc-segmented-tab${isActive ? " is-active" : ""}`} key={key} onClick={() =>switchDeanType(key)}
  style={{ padding: "9px 20px", border: isActive ? `1.5px solid ${color}44` : "1.5px solid transparent", borderRadius: 7, cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 700, background: isActive ? bg : "none", color: isActive ? color : "#64748b", display: "flex", alignItems: "center", gap: 7, boxShadow: isActive ? `0 2px 10px ${color}1f` : "none" }}>
+ <VcIcon name={icon} size={14} color={isActive ? color : "#94a3b8"} />
  {label}
  {schoolPending >0 && (
 <span style={{ background: isActive ? color : "#94a3b8", color: "#fff", borderRadius: 10, padding: "2px 8px", fontSize: 9, fontWeight: 900 }}>{schoolPending}</span>
@@ -2192,7 +2225,7 @@ University Overview
 
  {/* School Tabs */}
  {activeSchool && (
-<div className="vc-school-tabs fa-fade-up" style={{ display: "flex", background: "#fff" }}>
+<div className="vc-school-tabs fa-fade-up" style={{ display: "flex", background: "#fff", borderRadius: 14, border: "1px solid #eef2f7", boxShadow: "0 10px 26px rgba(15,23,42,0.05)", overflow: "hidden" }}>
  {currentSchools.map((school, idx) =>{
  const pending = getSchoolPending(school);
  const isActive = school.id === activeSchoolId;
@@ -2200,12 +2233,14 @@ University Overview
  return (
 <button className={`vc-school-tab${isActive ? " is-active" : ""}`} key={school.id} onClick={() =>switchSchool(school.id)}
  title={school.name}
- style={{ flex: 1, padding: "11px 6px 10px", border: "none", cursor: "pointer", fontFamily: "inherit", background: isActive ? `${school.color}12` : "none", borderBottom: isActive ? `3px solid ${school.color}` : "3px solid transparent", borderRight: idx < currentSchools.length - 1 ? "1px solid #f1f5f9" : "none", display: "flex", flexDirection: "column", alignItems: "center", gap: 4, position: "relative" }}>
-<div style={{ width: 30, height: 30, borderRadius: 8, background: isActive ? `${school.color}20` : "#f1f5f9", color: isActive ? school.color : "#94a3b8", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: 12, border: isActive ? `1.5px solid ${school.color}35` : "1.5px solid transparent" }}>{school.icon}</div>
+ onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = "#f8fafc"; }}
+ onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = "none"; }}
+ style={{ flex: 1, padding: "13px 6px 11px", border: "none", cursor: "pointer", fontFamily: "inherit", background: isActive ? `${school.color}12` : "none", borderBottom: isActive ? `3px solid ${school.color}` : "3px solid transparent", borderRight: idx < currentSchools.length - 1 ? "1px solid #f1f5f9" : "none", display: "flex", flexDirection: "column", alignItems: "center", gap: 5, position: "relative", transition: "background 0.15s ease" }}>
+<div style={{ width: 32, height: 32, borderRadius: 9, background: isActive ? `linear-gradient(135deg, ${school.color}2E, ${school.color}14)` : "#f1f5f9", color: isActive ? school.color : "#94a3b8", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: 12, border: isActive ? `1.5px solid ${school.color}40` : "1.5px solid transparent", boxShadow: isActive ? `0 4px 10px ${school.color}26` : "none" }}>{school.icon}</div>
 <div style={{ fontSize: 11, fontWeight: 800, color: isActive ? school.color : "#374151" }}>{school.code}</div>
 <div style={{ fontSize: 10, color: isActive ? school.color : "#1e293b", fontWeight: 700, lineHeight: 1.3, textAlign: "center", wordBreak: "break-word", maxWidth: "100%" }}>{shortName}</div>
  {pending >0 && (
-<div style={{ background: "#f59e0b", color: "#fff", borderRadius: 8, padding: "1px 7px", fontSize: 9, fontWeight: 900 }}>{pending}</div>
+<div style={{ background: "linear-gradient(135deg,#fbbf24,#f59e0b)", color: "#fff", borderRadius: 8, padding: "1px 7px", fontSize: 9, fontWeight: 900, boxShadow: "0 2px 6px rgba(245,158,11,0.35)" }}>{pending}</div>
  )}
 </button>
  );
