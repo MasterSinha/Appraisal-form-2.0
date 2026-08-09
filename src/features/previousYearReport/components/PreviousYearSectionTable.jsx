@@ -47,7 +47,7 @@ export default function PreviousYearSectionTable({ section, levels = ["faculty"]
                     <RO val={previousYearCellValue(row, aliases)} />
                   </td>
                 ))}
-                <td style={TD}><ViewDocsButton attachments={attachmentsForRow(section.attachments, index)} /></td>
+                <td style={TD}><ViewDocsButton attachments={attachmentsForRow(section.attachments, row)} /></td>
                 {scoreLevels.map((level) => <td key={level} style={TDS}><RO val={previousYearScore(row, level)} center /></td>)}
                 {showRemarks && <td style={TD}><RO val={previousYearRemarks(row)} /></td>}
               </tr>
@@ -63,8 +63,9 @@ export default function PreviousYearSectionTable({ section, levels = ["faculty"]
   );
 }
 
-function attachmentsForRow(attachments = [], index) {
-  const rowNo = index + 1;
+function attachmentsForRow(attachments = [], row) {
+  const rowNo = row?.__rowNo;
+  if (rowNo == null) return attachments.filter((file) => !file.rowNo);
   const exact = attachments.filter((file) => Number(file.rowNo) === rowNo);
   return exact.length ? exact : attachments.filter((file) => !file.rowNo);
 }

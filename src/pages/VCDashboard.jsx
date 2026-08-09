@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Avatar, LogoutConfirmModal, ScoreCard, ReviewMetricsStrip } from "../components/dashboard/dashboardPrimitives";
 import { fetchNonTeachingQueueForRole, isNonTeachingReviewComplete } from "../services/nonTeachingWorkflow";
 import { fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, fetchSavedAppraisal, mergeFacultyInfo, ACR_DETAIL_POINTS, MAX_SCORES, APP_INFO, createAcrRows, buildReviewRemarks, openFullFormReport, SummaryOtherInfoField, summaryOtherInfoValueFrom, SCORE_LIMITS, clampScore, clampReviewScore, effectiveMaxScore, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewRowMaxForSection, reviewSectionScore, rowHasReviewableData, isSectionEmpty, selfEffectivePartAMax, societyRowLocked, societyRowScore, standardReviewSummary, standardSubmittedScoreSummary, qualificationRowDescription, AppraisalHeaderImage, ViewDocsCell, SectionCard as SC, CreativeSchoolAuthorityReviewPanel, isCreativeSchool, isDesignArtsSchool, isMediaCommSchool } from "../features/faculty-appraisal";
-import { getActiveAcademicYear, getSessionItem, normalizeAcademicYearLabel, setActiveAcademicYear } from "../auth/session";
+import { clearUserSession, getActiveAcademicYear, getSessionItem, normalizeAcademicYearLabel, setActiveAcademicYear } from "../auth/session";
 import { PreviousYearReportViewer } from "../features/previousYearReport";
 import { isLegacyTwoPartAcademicYear } from "../features/faculty-appraisal/forms/standard/legacyPreviousYearReportUtils";
 
@@ -2390,7 +2390,7 @@ readOnly={isVcReviewed(reviewing.person)}
  style={{ flex: 1, padding: "11px 0", background: "#f8fafc", color: "#475569", border: "1.5px solid #e2e8f0", borderRadius: 10, cursor: "pointer", fontWeight: 700, fontSize: 13, fontFamily: "inherit" }}>
  Cancel
 </button>
-<button onClick={() =>{ setShowLogoutModal(false); sessionStorage.clear(); navigate("/", { replace: true }); }}
+<button onClick={() =>{ setShowLogoutModal(false); clearUserSession(); navigate("/", { replace: true }); }}
  style={{ flex: 1, minHeight: 44, padding: "10px", background: "#111827", color: "#f87171", border: "1px solid rgba(248,113,113,0.55)", borderRadius: 10, cursor: "pointer", fontWeight: 900, fontSize: 13, fontFamily: "inherit" }}>
  Yes, Logout
 </button>
