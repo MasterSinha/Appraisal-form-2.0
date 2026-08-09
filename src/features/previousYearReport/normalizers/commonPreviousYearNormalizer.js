@@ -176,6 +176,17 @@ const normalizeDocFile = (file) => {
   };
 };
 
+// 2025-2026 (and its equivalent spellings) used a two-part appraisal structure (Part A + Part
+// B only, no Part C/D) that no longer exists in the live app. For those years the section/max
+// configuration below is a best-effort reconstruction, so the reviewing authority's own
+// submitted total is the authoritative record of what was actually approved that year -
+// prefer it over a row-by-row recomputation, matching how reviewer totals (hod/director/dean/
+// vc) are already preferred from stored values in reviewerTotals() below.
+const isLegacyTwoPartAcademicYear = (academicYear = "") =>
+  String(academicYear).replace(/\s+/g, "") === "2025-2026" ||
+  String(academicYear).replace(/\s+/g, "") === "2025-26" ||
+  String(academicYear).replace(/\s+/g, "") === "25-26";
+
 const escapeRegExp = (value = "") => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const docKeyMatchesPrefix = (key = "", prefix = "") => {
@@ -249,11 +260,20 @@ export const normalizePreviousYearReport = ({
   // Prefer the total freshly computed from this report's own rows over a stored total whenever
   // there's actual row data to compute from — a stored generic total may have been calculated
   // against a different (e.g. current-year) section/max configuration and can be stale or wrong.
-  const displayPartA = partAHasFacultyScores ? partAFaculty : (storedPartA ?? partAFaculty);
-  const displayPartB = partBHasFacultyScores ? partBFaculty : (storedPartB ?? partBFaculty);
-  const displayGrand = (partAHasFacultyScores || partBHasFacultyScores)
-    ? clampScore(displayPartA + displayPartB, storedGrandMax || grandMax)
-    : (storedGrand ?? clampScore(displayPartA + displayPartB, grandMax));
+  // Exception: confirmed legacy two-part years (see isLegacyTwoPartAcademicYear above) — there
+  // the stored total is the authoritative one, so it takes priority instead.
+  const isLegacyYear = isLegacyTwoPartAcademicYear(resolvedAcademicYear);
+  const displayPartA = isLegacyYear
+    ? (storedPartA ?? partAFaculty)
+    : (partAHasFacultyScores ? partAFaculty : (storedPartA ?? partAFaculty));
+  const displayPartB = isLegacyYear
+    ? (storedPartB ?? partBFaculty)
+    : (partBHasFacultyScores ? partBFaculty : (storedPartB ?? partBFaculty));
+  const displayGrand = isLegacyYear
+    ? (storedGrand ?? clampScore(displayPartA + displayPartB, storedGrandMax || grandMax))
+    : ((partAHasFacultyScores || partBHasFacultyScores)
+      ? clampScore(displayPartA + displayPartB, storedGrandMax || grandMax)
+      : (storedGrand ?? clampScore(displayPartA + displayPartB, grandMax)));
   const reviewerTotals = (role, prefix) => {
     const partA = readTotal(totals, [`${prefix}PartA`, `${prefix}_part_a`, `${prefix}_part_a_total`]) ?? groupedTotal(normalizedPartA, role, partAMax);
     const partB = readTotal(totals, [`${prefix}PartB`, `${prefix}_part_b`, `${prefix}_part_b_total`]) ?? groupedTotal(normalizedPartB, role, partBMax);

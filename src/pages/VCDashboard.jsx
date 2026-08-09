@@ -353,12 +353,9 @@ const rawVcTotalForRole = (person = {}, role) =>{
 const hasScoreValue = (value) =>
  value !== undefined && value !== null && String(value).trim() !== "" && Number.isFinite(Number(value));
 const vcAverageBeforeVc = (person = {}, personMode = "faculty", previousRoles = vcPreviousRolesFor(person, personMode)) =>{
- const scores = [
- rawVcSelfTotalForPerson(person),
- ...previousRoles
+ const scores = previousRoles
  .filter((role) =>role !== personMode)
- .map((role) =>rawVcTotalForRole(person, role)),
- ]
+ .map((role) =>rawVcTotalForRole(person, role))
  .filter(hasScoreValue)
  .map(Number);
  if (!scores.length) return 0;
