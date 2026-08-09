@@ -191,7 +191,7 @@ const STANDARD_REPORT_PART_C_SECTIONS = [
  { key: "deptActs", title: "C2. Administration at School Level", max: 30, doc: "dept", fields: [["activity", "Activity"], ["nature", "Nature"], ["period", "Period"]] },
  { key: "eventRows", title: "C3. Event Organisation & Institutional Visibility", max: 20, doc: "event", fields: [["event", "Event / Contribution"], ["role", "Role"], ["date", "Date"], ["level", "Level"]] },
  { key: "society", title: "C4. Outreach, Extension & Social Responsibility", max: 20, doc: "soc", fields: [["label", "Activity"], ["details", "Details"], ["date", "Date"]] },
- { key: "industry", title: "C5. Industry Interaction & Linkages", max: 8, doc: "ind", fields: [["activity", "Activity"], ["partner", "Industry Partner"], ["date", "Date"]] },
+ { key: "industry", title: "C5. Industry Interaction & Linkages", max: 10, doc: "ind", fields: [["activity", "Activity"], ["partner", "Industry Partner"], ["date", "Date"]] },
  { key: "alumniRows", title: "C6. Alumni Engagement & Networking", max: 10, doc: "alumni", fields: [["activity", "Activity"], ["details", "Details"], ["date", "Date"]] },
  { key: "placementRows", title: "C7. Student Placement Mentoring & Career Development", max: 20, doc: "placement", fields: [["activityType", "Activity Type"], ["name", "Student / Company Name"], ["date", "Date"]] },
 ];
@@ -406,7 +406,7 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
  const dept = sumReviewRows("deptActs", "hod", 30);
  const events = sumReviewRows("eventRows", "hod", 20);
  const soc = sumReviewRows("society", "hod", 20, (row) =>row.max || 20);
- const ind = sumReviewRows("industry", "hod", 8);
+ const ind = sumReviewRows("industry", "hod", 10);
  const alumni = sumReviewRows("alumniRows", "hod", 10);
  const placement = sumReviewRows("placementRows", "hod", 20);
  const partC = clampScore(uni + dept + events + soc + ind + alumni + placement, reviewerMaxScores.partC);
@@ -483,7 +483,7 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
  const dept = sumReviewRows("deptActs", "dir", 30);
  const events = sumReviewRows("eventRows", "dir", 20);
  const soc = sumReviewRows("society", "dir", 20, SCORE_LIMITS.societyRow);
- const ind = sumReviewRows("industry", "dir", 8);
+ const ind = sumReviewRows("industry", "dir", 10);
  const alumni = sumReviewRows("alumniRows", "dir", 10);
  const placement = sumReviewRows("placementRows", "dir", 20);
  const partC = clampScore(uni + dept + events + soc + ind + alumni + placement, reviewerMaxScores.partC);

@@ -561,6 +561,7 @@ export const filesForDocValue = (value) =>{
 };
 
 export const docsForRow = (docs = {}, docPrefix = "", index = 0, docKey) =>{
+ if (Array.isArray(docKey)) return filesForDocValue(docKey.flatMap((key) =>filesForDocValue(docs?.[key])));
  if (docKey) return filesForDocValue(docs?.[docKey]);
  if (!docPrefix) return [];
  return filesForDocValue(docs?.[`${docPrefix}-${index}`]);

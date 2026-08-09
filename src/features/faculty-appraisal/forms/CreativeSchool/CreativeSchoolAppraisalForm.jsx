@@ -476,6 +476,158 @@ const DOC_KEY_ALIASES = {
   innovation: ["prod"],
 };
 
+const docKeysForSectionRow = (section, index) => {
+  if (!section?.doc || section.key === "acr") return [];
+  return [
+    `${section.doc}-${index}`,
+    ...(DOC_KEY_ALIASES[section.key] || []).map((prefix) => `${prefix}-${index}`),
+  ];
+};
+
+const dummyPdfFor = (key) => [{
+  name: `${key}-dummy.pdf`,
+  type: "application/pdf",
+  size: 1024,
+  url: "data:application/pdf;base64,JVBERi0xLjQKJcTl8uXrp/Og0MTGCjEgMCBvYmoKPDwvVHlwZSAvQ2F0YWxvZy9QYWdlcyAyIDAgUj4+CmVuZG9iago=",
+}];
+
+const dummyValueForCreativeField = (sectionKey, fieldKey, rowIndex = 0) => {
+  const date = `${String(rowIndex + 1).padStart(2, "0")}/08/2026`;
+  const values = {
+    sem: rowIndex % 2 === 0 ? "Sem-I" : "Sem-II",
+    code: `CR-${rowIndex + 101}`,
+    planned: String(36 + rowIndex * 2),
+    conducted: String(34 + rowIndex * 2),
+    pctConducted: `${(((34 + rowIndex * 2) / (36 + rowIndex * 2)) * 100).toFixed(1)}%`,
+    course: `Creative Studies ${rowIndex + 1}`,
+    details: "Documented with verified evidence",
+    title: `${sectionKey} dummy title ${rowIndex + 1}`,
+    fb1: "86",
+    fb2: "90",
+    label: "UG Design / Media Capstone",
+    body: "DYPIU",
+    date,
+    journal: "Journal of Creative Practice",
+    doi: "10.0000/dypiu.test",
+    index: "Q2",
+    impact: "2.5",
+    coAuthors: "One co-author",
+    firstAuthor: "Yes",
+    publisher: "DYPIU Press, ISBN 9780000000000",
+    type: rowIndex % 2 === 0 ? "National" : "International",
+    level: rowIndex % 2 === 0 ? "National" : "International",
+    scope: "National",
+    status: "Completed",
+    fileNo: `DYPIU-IP-${rowIndex + 1}`,
+    agency: "DYPIU Innovation Cell",
+    amount: String(50000 + rowIndex * 25000),
+    role: rowIndex % 2 === 0 ? "PI" : "Co-PI",
+    degree: rowIndex % 2 === 0 ? "PhD" : "PG",
+    name: `Student ${rowIndex + 1}`,
+    client: "Creative Industry Partner",
+    nature: "Consultancy",
+    org: "DYPIU",
+    program: "Faculty Development Programme",
+    platform: "SWAYAM",
+    reach: "1200 views",
+    event: "Creative outreach event",
+    activity: "Institutional contribution activity",
+    duration: rowIndex % 2 === 0 ? "5 days" : "2 weeks",
+    durationCat: rowIndex % 2 === 0 ? "More than 6 months" : "3 to 6 months",
+    period: rowIndex % 2 === 0 ? "Aug 2026 - Dec 2026" : "Jan 2027 - Apr 2027",
+    partner: "Industry Partner",
+    venueLevel: "National",
+  };
+  if (sectionKey === "courseFile" && fieldKey === "details") return "1.Available";
+  if (sectionKey === "feedback" && fieldKey === "code") return `FB-${rowIndex + 101}`;
+  if (sectionKey === "feedback" && fieldKey === "fb1") return rowIndex % 2 === 0 ? "86" : "88";
+  if (sectionKey === "feedback" && fieldKey === "fb2") return rowIndex % 2 === 0 ? "90" : "92";
+  if (sectionKey === "placements" && fieldKey === "type") return "Portfolio Review";
+  return values[fieldKey] ?? `Dummy ${fieldKey} ${rowIndex + 1}`;
+};
+
+const dummyRowCountForSection = (sectionKey) => {
+  if (sectionKey === "lectures") return 4;
+  if (sectionKey === "courseFile" || sectionKey === "feedback") return 2;
+  return 2;
+};
+
+const dummyScoreForSection = (section = {}, row = {}, rowIndex = 0, rowCount = 1) => {
+  if (section.key === "courseFile") return "4";
+  if (section.key === "feedback") return String(Math.max(1, Math.floor((section.max || 10) / rowCount)));
+  const max = section.rowMax
+    ? (typeof section.rowMax === "function" ? section.rowMax(row) : section.rowMax)
+    : section.max;
+  const rowCap = n(max) || 2;
+  const sectionSafeScore = Math.max(1, Math.floor((section.max || rowCap) / rowCount));
+  return String(Math.min(rowCap, sectionSafeScore, section.key === "lectures" ? 10 : 5));
+};
+
+const buildDummyRowsForSection = (section, count = dummyRowCountForSection(section?.key)) =>
+  Array.from({ length: count }, (_, rowIndex) => {
+    const row = Object.fromEntries(section.fields.map(([fieldKey]) => [
+      fieldKey,
+      dummyValueForCreativeField(section.key, fieldKey, rowIndex),
+    ]));
+    return {
+      ...row,
+      score: dummyScoreForSection(section, row, rowIndex, count),
+      _id: uid(),
+    };
+  });
+
+const buildDummyCreativeDocs = (currentForm = {}) => {
+  const docs = {};
+  const addDocKeys = (section, count = 1) => {
+    Array.from({ length: count }, (_, index) => {
+      docKeysForSectionRow(section, index).forEach((key) => {
+        docs[key] = dummyPdfFor(key);
+      });
+      return null;
+    });
+  };
+  [...PART_A_SECTIONS, ...getPartBSectionsForSchool(currentForm?.info?.school || currentForm), ...PART_C_SECTIONS].forEach((section) => addDocKeys(section, dummyRowCountForSection(section.key)));
+  ["innov", "obe", "mentor"].forEach((prefix) => {
+    const count = prefix === "innov" ? 4 : 3;
+    Array.from({ length: count }, (_, index) => {
+      const key = `${prefix}-${index}`;
+      docs[key] = dummyPdfFor(key);
+      return null;
+    });
+  });
+  return docs;
+};
+
+const buildDummyCreativeForm = (currentForm = {}) => {
+  const applicablePartBSections = getPartBSectionsForSchool(currentForm?.info?.school || currentForm);
+  const applicablePartBKeys = new Set(applicablePartBSections.map((section) => section.key));
+  return {
+    ...currentForm,
+    lectures: buildDummyRowsForSection(PART_A_SECTIONS.find((section) => section.key === "lectures")),
+    courseFile: buildDummyRowsForSection(PART_A_SECTIONS.find((section) => section.key === "courseFile")),
+    innovDetails: "Flipped classroom, studio critique, peer learning",
+    innovScore: "8",
+    innovRows: [
+      { method: "Flipped Classroom", details: "Recorded material and in-class problem solving used.", score: "2", max: CREATIVE_INNOVATIVE_ROW_MAX, sectionMax: CREATIVE_INNOVATIVE_SECTION_MAX, _id: uid() },
+      { method: "Peer Learning", details: "Peer critique and reflective documentation completed.", score: "2", max: CREATIVE_INNOVATIVE_ROW_MAX, sectionMax: CREATIVE_INNOVATIVE_SECTION_MAX, _id: uid() },
+      { method: "Studio Critique", details: "Rubric-based critique and improvement cycle completed.", score: "2", max: CREATIVE_INNOVATIVE_ROW_MAX, sectionMax: CREATIVE_INNOVATIVE_SECTION_MAX, _id: uid() },
+      { method: "Field-based Learning", details: "Industry/studio observation converted into class activity.", score: "2", max: CREATIVE_INNOVATIVE_ROW_MAX, sectionMax: CREATIVE_INNOVATIVE_SECTION_MAX, _id: uid() },
+    ],
+    obeRows: defaultObeRows().map((row) => ({ ...row, evidence: "Outcome report attached", score: String(Math.min(row.max || 1, 4)), _id: uid() })),
+    mentoringRows: defaultMentoringRows().map((row) => ({ ...row, evidence: "Mentoring record attached", score: String(Math.min(row.max || 1, 3)), _id: uid() })),
+    projects: buildDummyRowsForSection(PART_A_SECTIONS.find((section) => section.key === "projects")),
+    quals: buildDummyRowsForSection(PART_A_SECTIONS.find((section) => section.key === "quals")),
+    feedback: buildDummyRowsForSection(PART_A_SECTIONS.find((section) => section.key === "feedback")),
+    ...Object.fromEntries(PART_B_SECTIONS.map((section) => [
+      section.key,
+      applicablePartBKeys.has(section.key) ? buildDummyRowsForSection(section) : [],
+    ])),
+    ...Object.fromEntries(PART_C_SECTIONS.map((section) => [section.key, buildDummyRowsForSection(section)])),
+    acr: createAcrRows(currentForm.acr),
+    summaryOtherInfo: "Dummy data generated for validation, report, upload, save, and review flow testing.",
+  };
+};
+
 const normalizeCreativeRow = (key, row = {}, index = 0) => {
   let next = { ...row };
 
@@ -642,6 +794,9 @@ export const validateCreativeSchoolBeforeSubmit = (form, docs = {}, sectionView 
     rowMax: section.rowMax || 0,
     maxScore: section.key === "feedback" ? undefined : section.max,
     docPrefix: section.key !== "acr" ? section.doc : "",
+    docKey: section.key !== "acr" && DOC_KEY_ALIASES[section.key]?.length
+      ? (_row, index) => docKeysForSectionRow(section, index)
+      : undefined,
     capSectionTotal: true,
   }));
   const errors = validateCompleteRows(rowSections, docs);
@@ -835,10 +990,7 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
   const selfLocked = mode === "self" && section.key === "acr";
   const earned = scoreSectionRows(section.key, rows, section.max, "score", section.key === "research" ? { autoFillResearchScore: false } : undefined);
   const docPrefix = section.doc || section.key;
-  const docKeysForRow = (index) => [
-    `${docPrefix}-${index}`,
-    ...(DOC_KEY_ALIASES[section.key] || []).map((prefix) => `${prefix}-${index}`),
-  ];
+  const docKeysForRow = (index) => docKeysForSectionRow({ ...section, doc: docPrefix }, index);
   const totalLabel = section.key === "feedback"
     ? `Faculty Score (Max ${section.max})`
     : `Total Score (Max ${section.max})`;
@@ -1848,8 +2000,29 @@ export function PartDRubricInfoCard() {
 export function CreativeSchoolForm({ form, setForm, docs, setDocs, mode = "self", locked = false, reviewerRole = "", reviewData = {}, setReviewData = () => {}, previousRoles = [], sectionView = "partA" }) {
   const sectionTableProps = { form, setForm, docs, setDocs, mode, locked, reviewerRole, reviewData, setReviewData, previousRoles };
   const partBSections = getPartBSectionsForSchool(form?.info?.school || form);
+  const canFillDummyData = mode === "self" && !locked;
+  const fillDummyData = () => {
+    if (!canFillDummyData) return;
+    const nextForm = buildDummyCreativeForm(form);
+    setForm(nextForm);
+    setDocs((prevDocs) => ({
+      ...prevDocs,
+      ...buildDummyCreativeDocs(nextForm),
+    }));
+  };
   return (
     <>
+      {canFillDummyData && (
+        <div style={{ display: "flex", justifyContent: "flex-end", margin: "0 0 12px" }}>
+          <button
+            type="button"
+            onClick={fillDummyData}
+            style={{ padding: "8px 14px", background: "#0f766e", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 800, fontSize: 12, fontFamily: "inherit", boxShadow: "0 8px 18px rgba(15,118,110,0.18)" }}
+          >
+            Fill Dummy Test Data
+          </button>
+        </div>
+      )}
       {(sectionView === "partA" || sectionView === "all") && (
         <PartA sections={PART_A_SECTIONS} SectionTable={SectionTable} InnovativeSection={InnovativeSection} ObeSection={ObeSection} MentoringSection={MentoringSection} sectionTableProps={sectionTableProps} />
       )}
