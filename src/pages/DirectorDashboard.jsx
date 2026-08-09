@@ -23,6 +23,8 @@ const scoreText = (value) =>{
 
 const REVIEW_ARRAY_KEYS = ["lectures", "courseFile", "obeRows", "projects", "mentoringRows", "quals", "feedback", "deptActs", "uniActs", "eventRows", "society", "industry", "alumniRows", "placementRows", "acr", "journals", "books", "ict", "research", "projects2", "patents", "awards", "confs", "proposals", "products", "fdps"];
 const REVIEW_SECTION_MAX = { lectures: 10, courseFile: 20, obeRows: 20, projects: 20, mentoringRows: 10, quals: 10, feedback: 10, deptActs: 30, uniActs: 50, eventRows: 20, society: 10, industry: 10, alumniRows: 10, placementRows: 20, acr: 50, journals: 100, books: 30, ict: 20, research: 20, projects2: 40, patents: 40, awards: 20, confs: 20, proposals: 20, products: 20, fdps: 20 };
+const STANDARD_INNOVATIVE_SECTION_MAX = 20;
+const STANDARD_INNOVATIVE_ROW_MAX = 4;
 const REVIEW_SCORE_FIELDS = ["hod", "director", "dean", "vc"];
 const storedAcademicYearCycles = () => {
  try {
@@ -94,24 +96,33 @@ const buildDirectorSectionScores = (faculty, dirData) =>{
  const payload = {};
  REVIEW_ARRAY_KEYS.forEach((key) =>{
  const rows = key === "acr" ? createAcrRows(faculty.acr) : (Array.isArray(faculty[key]) ? faculty[key] : []);
- payload[key] = rows.map((row, index) =>({
- ...row,
- director: key === "acr"
- ? clampDirectorReviewScore(key, row, dirData[key]?.[index]?.dir ?? dirData[key]?.[index]?.director ?? row.director ?? "", REVIEW_SECTION_MAX[key] || 0)
- : key === "society" && societyRowLocked(row)
+ payload[key] = rows.map((row, index) =>{
+ const reviewRow = dirData[key]?.[index] || {};
+ const score = key === "society" && societyRowLocked(row)
  ? "0"
- : clampDirectorReviewScore(key, row, dirData[key]?.[index]?.dir ?? row.director ?? "", REVIEW_SECTION_MAX[key] || 0),
- }));
+ : clampDirectorReviewScore(key, row, reviewRow.dir ?? reviewRow.director ?? row.dir ?? row.director ?? "", REVIEW_SECTION_MAX[key] || 0);
+ return {
+ ...row,
+ dir: score,
+ director: score,
+ };
+ });
  });
  const innovRows = Array.isArray(faculty.innovRows) ? faculty.innovRows : [];
  const reviewInnovRows = Array.isArray(dirData.innovRows) ? dirData.innovRows : [];
- const mergedInnovRows = innovRows.map((row, index) =>({
- ...row,
- director: isSectionEmpty("innovRows", faculty.innovRows, faculty.docs)
+ const mergedInnovRows = innovRows.map((row, index) =>{
+ const score = isSectionEmpty("innovRows", faculty.innovRows, faculty.docs)
    ? ""
-   : clampDirectorReviewScore("innovRows", row, reviewInnovRows[index]?.director ?? reviewInnovRows[index]?.dir ?? row.director ?? "", 10),
- }));
- const innovTotal = reviewSectionScore("innovRows", mergedInnovRows, 10, "director");
+   : clampDirectorReviewScore("innovRows", { ...row, max: row.max || STANDARD_INNOVATIVE_ROW_MAX }, reviewInnovRows[index]?.dir ?? reviewInnovRows[index]?.director ?? row.dir ?? row.director ?? "", STANDARD_INNOVATIVE_SECTION_MAX);
+ return {
+ ...row,
+ max: row.max || STANDARD_INNOVATIVE_ROW_MAX,
+ sectionMax: row.sectionMax || STANDARD_INNOVATIVE_SECTION_MAX,
+ dir: score,
+ director: score,
+ };
+ });
+ const innovTotal = reviewSectionScore("innovRows", mergedInnovRows, STANDARD_INNOVATIVE_SECTION_MAX, "director");
  payload.innovRows = mergedInnovRows;
  payload.innovativeTeaching = {
  director: innovTotal ? String(innovTotal) : dirData.innovDir ?? faculty.innovDirector ?? "",
@@ -122,16 +133,24 @@ const normalizeDirectorDraftData = (sectionScores = {}) =>{
  const next = { ...(sectionScores || {}) };
  REVIEW_ARRAY_KEYS.forEach((key) =>{
  if (!Array.isArray(next[key])) return;
- next[key] = next[key].map((row = {}) =>({
+ next[key] = next[key].map((row = {}) =>{
+ const score = row.dir ?? row.director ?? "";
+ return {
  ...row,
- dir: row.dir ?? row.director ?? "",
- }));
+ dir: score,
+ director: score,
+ };
+ });
  });
  if (Array.isArray(next.innovRows)) {
- next.innovRows = next.innovRows.map((row = {}) =>({
+ next.innovRows = next.innovRows.map((row = {}) =>{
+ const score = row.dir ?? row.director ?? "";
+ return {
  ...row,
- dir: row.dir ?? row.director ?? "",
- }));
+ dir: score,
+ director: score,
+ };
+ });
  }
  if (next.innovativeTeaching?.director && !next.innovDir) {
  next.innovDir = next.innovativeTeaching.director;
@@ -327,7 +346,7 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
  const [savingDraft, setSavingDraft] = useState(false);
  const finalisedByVc = isAppraisalFinalisedByVc(faculty);
  const pendingThisReviewer = isPendingReviewStatusFor([faculty.status, faculty.workflowStatus, faculty.workflow_status], "director");
- const reviewLocked = finalisedByVc || readOnly || (!pendingThisReviewer && (faculty.status === "Reviewed" || /Director\s*(Reviewed|Rejected)/i.test(faculty.status || "") || n(faculty.directorTotal) >0 || String(faculty.directorRemarks || "").trim() !== ""));
+ const reviewLocked = finalisedByVc || readOnly || (!pendingThisReviewer && (faculty.status === "Reviewed" || /Director\s*(Reviewed|Rejected)/i.test(faculty.status || "")));
  const canReject = canReviewerRejectProfile("director", faculty);
  const subjectEmail = faculty.email || faculty.faculty_email || faculty.facultyEmail;
  const academicYear = faculty.academicYear || faculty.academic_year || faculty.info?.ay || APP_INFO.DEFAULT_AY || "2026-2027";
@@ -439,7 +458,7 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
  ...row,
  dir: dirData.feedback?.[index]?.dir ?? dirData.feedback?.[index]?.director ?? row.dir ?? row.director ?? "",
  }));
- const innov = innovReviewRows.length ? reviewSectionScore("innovRows", innovReviewRows, 10, "director") : clampScore(getDirS("innovDir"), 10);
+ const innov = innovReviewRows.length ? reviewSectionScore("innovRows", innovReviewRows, STANDARD_INNOVATIVE_SECTION_MAX, "director") : clampScore(getDirS("innovDir"), STANDARD_INNOVATIVE_SECTION_MAX);
  const obe = sumReviewRows("obeRows", "dir", 20, (row) =>row.max || 20);
  const proj = sumReviewRows("projects", "dir", 20, projectGuidanceRowMax);
  const mentoring = sumReviewRows("mentoringRows", "dir", 10, (row) =>row.max || 10);
@@ -492,6 +511,12 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
  };
  const { partA: dirPartA, partB: dirPartB, partC: dirPartC, partD: dirPartD, total: dirTotal } = displayedDirScores;
  const g = grade(dirTotal, reviewerMaxScores.grand);
+ const directorSectionScores = buildDirectorSectionScores(faculty, dirData);
+ const directorReviewForm = {
+ ...faculty,
+ ...directorSectionScores,
+ innovDirector: directorSectionScores?.innovativeTeaching?.director ?? faculty.innovDirector ?? "",
+ };
  useEffect(() =>{
  let active = true;
  if (reviewLocked || !subjectEmail) return undefined;
@@ -523,7 +548,7 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
  partDScore: dirPartD,
  totalScore: dirTotal,
  remarks: dirRemarks,
- sectionScores: buildDirectorSectionScores(faculty, dirData),
+ sectionScores: directorSectionScores,
  });
  setDraftStatus(`Draft saved: ${new Date().toLocaleString()}`);
  } catch (err) {
@@ -547,10 +572,9 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
   };
 
  const generateDirectorReport = () =>{
- const sectionScores = buildDirectorSectionScores(faculty, dirData);
  const reportForm = {
  ...faculty,
- ...sectionScores,
+ ...directorSectionScores,
  info: {
  ...(faculty.info || {}),
  name: faculty.info?.name || faculty.name,
@@ -559,7 +583,7 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
  school: faculty.info?.school || faculty.schoolName || faculty.school,
  },
  docs: faculty.docs || {},
- innovDirector: sectionScores?.innovativeTeaching?.director ?? faculty.innovDirector ?? "",
+ innovDirector: directorSectionScores?.innovativeTeaching?.director ?? faculty.innovDirector ?? "",
  };
  const totals = { partA: dirPartA, partB: dirPartB, partC: dirPartC, partD: dirPartD, total: dirTotal };
  const scoreRoles = showHodSummaryCard ? ["score", "hod", "director"] : ["score", "director"];
@@ -709,7 +733,7 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
 
  {["partA", "partB", "partC", "partD"].includes(sectionView) && (
 <fieldset disabled={reviewLocked} style={{ border: "none", padding: 0, margin: 0 }}>
-<DirectorFacultyReviewForm faculty={faculty} hodData={hodData} setHodData={setHodData} dirData={dirData} setDirData={setDirData} sectionView={sectionView} reviewLocked={reviewLocked} />
+<DirectorFacultyReviewForm faculty={directorReviewForm} hodData={hodData} setHodData={setHodData} dirData={dirData} setDirData={setDirData} sectionView={sectionView} reviewLocked={reviewLocked} />
 </fieldset>
  )}
 
@@ -770,7 +794,7 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
 {!reviewLocked && (
 <FinalSubmitButton
  disabled={!reviewConfirmed || !dirRemarks.trim()}
- onClick={() =>onSubmit(faculty.id, { partA: dirPartA, partB: dirPartB, partC: dirPartC, partD: dirPartD, total: dirTotal }, dirRemarks, buildDirectorSectionScores(faculty, dirData), reviewConfirmed)}
+ onClick={() =>onSubmit(faculty.id, { partA: dirPartA, partB: dirPartB, partC: dirPartC, partD: dirPartD, total: dirTotal }, dirRemarks, directorSectionScores, reviewConfirmed)}
 >
  Confirm and submit final score
 </FinalSubmitButton>
@@ -785,7 +809,7 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
  {savingDraft ? "Saving..." : "Save Draft"}
 </button>
 {canReject && (
-<button onClick={() =>{ if (window.confirm("Reject this appraisal and send it back to the user for editing?")) { onSubmit(faculty.id, { partA: dirPartA, partB: dirPartB, partC: dirPartC, partD: dirPartD, total: dirTotal }, dirRemarks, buildDirectorSectionScores(faculty, dirData), reviewConfirmed, "rejected"); } }}
+<button onClick={() =>{ if (window.confirm("Reject this appraisal and send it back to the user for editing?")) { onSubmit(faculty.id, { partA: dirPartA, partB: dirPartB, partC: dirPartC, partD: dirPartD, total: dirTotal }, dirRemarks, directorSectionScores, reviewConfirmed, "rejected"); } }}
  disabled={!reviewConfirmed || !dirRemarks.trim()}
  style={{ padding: "8px 14px", background: "transparent", color: (reviewConfirmed && dirRemarks.trim()) ? "#dc2626" : FACULTY_RECORD_THEME.textFaint, border: `1px solid ${(reviewConfirmed && dirRemarks.trim()) ? "#fecaca" : FACULTY_RECORD_THEME.border}`, borderRadius: 8, cursor: (reviewConfirmed && dirRemarks.trim()) ? "pointer" : "not-allowed", fontWeight: 700, fontSize: 11.5, fontFamily: "inherit" }}>
  Reject Form
@@ -868,7 +892,7 @@ export default function DirectorDashboard() {
  const isDirectorReviewed = (item) =>{
  const s = item.status || "";
  if (isPendingReviewStatusFor([s, item.workflowStatus, item.workflow_status], "director")) return false;
- return n(item.directorTotal) >0 || String(item.directorRemarks || "").trim() !== "" || s === "Reviewed" || s === "pending_dean" || s === "director_reviewed" || /Director\s*Reviewed/i.test(s);
+ return s === "Reviewed" || s === "pending_dean" || s === "director_reviewed" || /Director\s*Reviewed/i.test(s);
  };
 
  const facultyPendingCount = facultyList.filter(isDirectorPending).length;

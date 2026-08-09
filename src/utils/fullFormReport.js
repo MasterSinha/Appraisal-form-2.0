@@ -333,8 +333,12 @@ const docsFor = (docs, key) => {
 const roleColumnLabel = (role, roleLabel = (value) => value) =>
   role === "score" ? "Faculty Score" : `${safeHtml(roleLabel(role))} Score`;
 
+const rowScoreFieldForRole = (role) =>
+  role === "center_head" ? "hod" : role;
+
 const displaySectionScore = (section, row, role) => {
-  const val = row?.[role];
+  const field = rowScoreFieldForRole(role);
+  const val = row?.[field];
   if (!isFilledValue(val)) return "";
   if (section.key === "research" && role === "score") {
     const rgs = researchGuidanceScore(row);
@@ -349,7 +353,8 @@ const displaySectionScore = (section, row, role) => {
 
 const sectionTotalScore = (section, rows, role) => {
   if (!rows || !rows.length) return "";
-  const hasAnyScore = rows.some((row) => isFilledValue(row?.[role]));
+  const field = rowScoreFieldForRole(role);
+  const hasAnyScore = rows.some((row) => isFilledValue(row?.[field]));
   if (!hasAnyScore) return "";
   if (
     section.key === "lectures" ||
@@ -794,6 +799,9 @@ export const generateMediaCommReport = async ({
   reviewChain = [],
   remarksSections = [],
   hideAcr = false,
+  scoreRoles = ["score"],
+  partDScoreRoles = null,
+  roleLabel,
 }) => {
   const win = window.open("", "_blank", "width=1000,height=800");
   if (!win) {
@@ -814,7 +822,9 @@ export const generateMediaCommReport = async ({
   }
 
   const info = form.info || {};
-  const scoreRoles = ["score"];
+  const resolvedPartDScoreRoles = Array.isArray(partDScoreRoles)
+    ? partDScoreRoles.filter((role) => role !== "score")
+    : scoreRoles.filter((role) => role !== "score");
   const displayPartA = n(totals.partA);
   const displayPartAMax = n(maxScores.partA || 0);
   const displayPartB = n(totals.partB);
@@ -865,14 +875,14 @@ ${PRINT_REPORT_CSS}
     .filter((s) => isSectionReportable(form, s))
     .map((s) => {
       if (s.key === "innovative" || s.key === "innovRows" || s.key === "innovativeTeaching") {
-        return renderInnovativeSection({ form, docs, scoreRoles, roleLabel: undefined, showTotal: true });
+        return renderInnovativeSection({ form, docs, scoreRoles, roleLabel, showTotal: true });
       }
       return renderSection({
         section: s,
         rows: form[s.key],
         docs,
         scoreRoles,
-        roleLabel: undefined,
+        roleLabel,
         showTotal: true,
       });
     })
@@ -888,7 +898,7 @@ ${PRINT_REPORT_CSS}
         rows: form[s.key],
         docs,
         scoreRoles,
-        roleLabel: undefined,
+        roleLabel,
         showTotal: true,
       }),
     )
@@ -912,7 +922,7 @@ ${PRINT_REPORT_CSS}
         rows: form[s.key],
         docs,
         scoreRoles,
-        roleLabel: undefined,
+        roleLabel,
         showTotal: true,
       }),
     )
@@ -928,8 +938,8 @@ ${PRINT_REPORT_CSS}
         section: s,
         rows: form[s.key] || form.acr,
         docs,
-        scoreRoles: scoreRoles.filter((role) => role !== "score"),
-        roleLabel: undefined,
+        scoreRoles: resolvedPartDScoreRoles,
+        roleLabel,
         showTotal: true,
       }),
     )
