@@ -12,6 +12,30 @@ import { departmentHasHod, getDeanTrack } from "../utils/hierarchy";
 
 export const VALID_ROLES = ["faculty", "hod", "center_head", "director", "dean", "vc", ...NON_TEACHING_ROLES];
 
+export const AUTH_SESSION_KEYS = [
+  "accessToken",
+  "token",
+  "role",
+  "username",
+  "email",
+  "userEmail",
+  "name",
+  "department",
+  "school",
+  "employeeId",
+  "designation",
+  "qualification",
+  "experience",
+  "phone",
+  "profilePictureUrl",
+  "profile_picture_url",
+  "avatarUrl",
+  "reports_to_registrar",
+  "reportsToRegistrar",
+  "hasHod",
+  "hasHOD",
+];
+
 const ROLE_ALIASES = {
   faculty: "faculty",
   hod: "hod",
@@ -167,7 +191,6 @@ export const storeUserSession = ({ token, profile = {}, fallbackEmail = "" }) =>
 
   if (token) {
     sessionStorage.setItem("accessToken", token);
-    localStorage.setItem("accessToken", token);
   }
 
   const items = {
@@ -192,25 +215,18 @@ export const storeUserSession = ({ token, profile = {}, fallbackEmail = "" }) =>
 
   Object.entries(items).forEach(([k, v]) => {
     sessionStorage.setItem(k, v);
-    localStorage.setItem(k, v);
   });
 
   const hasHod = departmentHasHod(school, normalizedDepartment);
   sessionStorage.setItem("hasHod", hasHod ? "true" : "false");
-  localStorage.setItem("hasHod", hasHod ? "true" : "false");
   sessionStorage.setItem("hasHOD", hasHod ? "true" : "false");
-  localStorage.setItem("hasHOD", hasHod ? "true" : "false");
 
   return { email, role, school, department: normalizedDepartment, reports_to_registrar: reportsToRegistrar };
 };
 
 export const getSessionItem = (key) => {
   if (typeof window === "undefined") return null;
-  const val = sessionStorage.getItem(key) || localStorage.getItem(key);
-  if (val && !sessionStorage.getItem(key)) {
-    try { sessionStorage.setItem(key, val); } catch { /* ignore */ }
-  }
-  return val;
+  return sessionStorage.getItem(key);
 };
 
 export const getUserEmail = () => {
@@ -220,7 +236,7 @@ export const getUserEmail = () => {
 export const clearUserSession = () => {
   if (typeof window === "undefined") return;
   sessionStorage.clear();
-  localStorage.clear();
+  AUTH_SESSION_KEYS.forEach((key) => localStorage.removeItem(key));
 };
 
 

@@ -1,5 +1,5 @@
 import { api } from "./api";
-import { storeUserSession } from "../auth/session";
+import { clearUserSession, storeUserSession } from "../auth/session";
 
 export const login = async (email, password) => {
   const data = await api.post("/auth/login", { email, password });
@@ -41,5 +41,5 @@ export const resetPassword = async (token, newPassword) => {
 };
 
 export const logout = () => {
-  sessionStorage.clear();
+  clearUserSession();
 };
