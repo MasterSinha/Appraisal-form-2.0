@@ -8,6 +8,7 @@ import {
   SCORE_LIMITS,
   projectGuidanceRowMax,
 } from "./appraisalFormUtils";
+import { createAcrRows } from "../constants/formConfig";
 
 const n = (value) => parseFloat(value) || 0;
 const percentOf = (score, max) => {
@@ -366,6 +367,16 @@ const sectionTotalScore = (section, rows, role) => {
   return isFilledValue(total) || total === 0 ? total.toFixed(1) : "";
 };
 
+const fieldValue = (section, row, key) => {
+  if (key === "pctConducted") {
+    if (isFilledValue(row?.pctConducted)) return row.pctConducted;
+    const planned = Number(row?.planned);
+    const conducted = Number(row?.conducted);
+    return planned > 0 && conducted >= 0 ? `${((conducted / planned) * 100).toFixed(1)}%` : "";
+  }
+  return row?.[key];
+};
+
 const renderSection = ({
   section,
   rows = [],
@@ -376,6 +387,7 @@ const renderSection = ({
 }) => {
   const showDocuments = Boolean(section.doc) && section.key !== "acr" && section.showDocuments !== false;
   const totalColSpan = section.fields.length + 1 + (showDocuments ? 1 : 0);
+  const displayRows = section.key === "acr" ? createAcrRows(rows) : rows;
 
   return `
   <h3>${safeHtml(section.title)} <span>(Max ${safeHtml(section.max)})</span></h3>
@@ -389,12 +401,12 @@ const renderSection = ({
       </tr>
     </thead>
     <tbody>
-      ${(rows.length ? rows : [{}])
+      ${(displayRows.length ? displayRows : [{}])
         .map(
           (row, index) => `
         <tr>
           <td class="center">${index + 1}</td>
-          ${section.fields.map(([key]) => `<td>${displayValue(row?.[key])}</td>`).join("")}
+          ${section.fields.map(([key]) => `<td>${displayValue(fieldValue(section, row, key))}</td>`).join("")}
           ${showDocuments ? `<td>${docsFor(docs, `${section.doc}-${index}`)}</td>` : ""}
           ${scoreRoles.map((role) => `<td class="center">${displayValue(displaySectionScore(section, row, role))}</td>`).join("")}
         </tr>
@@ -561,6 +573,8 @@ export const openFullFormReport = async ({
   docs = {},
   partASections = [],
   partBSections = [],
+  partCSections = null,
+  partDSections = null,
   totals = {},
   maxScores = {},
   scoreRoles = ["score"],
@@ -694,7 +708,7 @@ ${PRINT_REPORT_CSS}
 
   <div class="page-break"></div>
   <h3 style="background:#d9d9d9;padding:4px;text-align:center;font-size:13px">PART C - Administrative Role &amp; University Development Contribution</h3>
-  ${[
+  ${(partCSections && partCSections.length ? partCSections : [
     { key: "uniActs", title: "C1. Administration at University Level", max: 50, fields: [["activity", "Activity / Responsibility"], ["durationCat", "Duration Category"], ["period", "Period"]] },
     { key: "deptActs", title: "C2. Administration at School Level", max: 30, fields: [["activity", "Activity / Responsibility"], ["durationCat", "Duration Category"], ["period", "Period"]] },
     { key: "events", title: "C3. Event Organisation & Institutional Visibility", max: 20, fields: [["event", "Event / Contribution"], ["role", "Role"], ["date", "Date"], ["level", "Level"]] },
@@ -702,7 +716,7 @@ ${PRINT_REPORT_CSS}
     { key: "industry", title: "C5. Industry Connect", max: 10, fields: [["name", "Company / Industry Partner"], ["details", "Details of Engagement"]] },
     { key: "alumni", title: "C6. Alumni Engagement", max: 10, fields: [["activity", "Alumni Activity / Initiative"], ["details", "Details & Outcomes"]] },
     { key: "placements", title: "C7. Placement Mentoring & Internship Support", max: 20, fields: [["activity", "Activity / Student Mentoring"], ["details", "Outcomes / Placements Achieved"]] }
-  ]
+  ])
     .filter((section) => isSectionReportable(form, section))
     .map((section) =>
       renderSection({
@@ -719,14 +733,14 @@ ${PRINT_REPORT_CSS}
   ${!hideAcr ? `
   <div class="page-break"></div>
   <h3 style="background:#d9d9d9;padding:4px;text-align:center;font-size:13px">PART D - Annual Confidential Report (ACR)</h3>
-  ${[{ key: "acr", title: "Part D - Annual Confidential Report (ACR)", max: 50, fields: [["label", "Attribute"]] }]
+  ${(partDSections && partDSections.length ? partDSections : [{ key: "acr", title: "Part D - Annual Confidential Report (ACR)", max: 50, fields: [["label", "Attribute"]] }])
     .filter((section) => isSectionReportable(form, section))
     .map((section) =>
       renderSection({
         section,
         rows: form[section.key] || form.acr,
         docs,
-        scoreRoles,
+        scoreRoles: scoreRoles.filter((role) => role !== "score"),
         roleLabel,
         showTotal,
       }),
@@ -812,7 +826,7 @@ export const generateMediaCommReport = async ({
   const rowsToRender = collapsePartBSummaryRows(
     hideAcr && Array.isArray(detailedSummaryRows)
       ? detailedSummaryRows.filter(
-          (r) => !/annual confidential report|acr/i.test(r.label || ""),
+          (r) => !/annual confidential report|acr|^part d\b/i.test(r.label || ""),
         )
       : detailedSummaryRows,
   );
@@ -914,7 +928,7 @@ ${PRINT_REPORT_CSS}
         section: s,
         rows: form[s.key] || form.acr,
         docs,
-        scoreRoles,
+        scoreRoles: scoreRoles.filter((role) => role !== "score"),
         roleLabel: undefined,
         showTotal: true,
       }),

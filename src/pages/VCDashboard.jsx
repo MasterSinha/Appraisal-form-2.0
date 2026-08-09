@@ -19,6 +19,17 @@ import { FacultyRecordHeader, ScoreTable, VCFinalRemarks, FinalSubmitButton, FAC
 const oneDecimal = (value) =>(Math.trunc(n(value) * 10) / 10).toFixed(1);
 const isVcReviewed = (person = {}) =>!isPendingReviewStatusFor([person.status, person.workflowStatus, person.workflow_status], "vc") && (person.status === "Reviewed" || person.status === "VC Reviewed" || person.status === "Rejected" || person.status === "VC Rejected" || n(person.vcTotal) >0);
 
+// Grade bands per the university's official percentage-to-grade table.
+const GRADE_BANDS = [
+ { min: 70, label: "A+", color: "#059669" },
+ { min: 65, label: "A", color: "#16a34a" },
+ { min: 60, label: "B++", color: "#0ea5e9" },
+ { min: 55, label: "B+", color: "#f59e0b" },
+ { min: 50, label: "B", color: "#f97316" },
+ { min: 0, label: "C", color: "#dc2626" },
+];
+const gradeForPercent = (percent) => GRADE_BANDS.find((band) => percent >= band.min) || GRADE_BANDS[GRADE_BANDS.length - 1];
+
 // Small stroke-icon set for the VC sidebar, matching the icon style used in
 // DashboardSidebar.jsx so both sidebars feel like one visual system.
 function VcIcon({ name, size = 18, color = "currentColor" }) {
@@ -448,7 +459,7 @@ const preserveSavedReviewScores = (form = {}, source = {}) =>{
 };
 const VC_REPORT_PART_A_SECTIONS = [
  { key: "lectures", title: "A1. Lectures / Tutorials / Practicals", max: 40, doc: "lec", fields: [["sem", "Semester"], ["code", "Course Code / Name"], ["planned", "Classes (as per course structure)"], ["conducted", "Classes Actually Conducted"], ["pctConducted", "% Conducted"]] },
- { key: "courseFile", title: "A2. Course File", max: 20, doc: "cf", fields: [["course", "Course / Paper"], ["title", "Title"], ["details", "IQAC Index Compliance (Yes/No, with proof)"]] },
+ { key: "courseFile", title: "A2. Course File", max: 20, doc: "courseFile", fields: [["course", "Course / Paper"], ["title", "Title"], ["details", "IQAC Index Compliance (Yes/No, with proof)"]] },
  { key: "obeRows", title: "A5. Learning Outcomes Attainment & OBE Practice", max: 20, doc: "obe", fields: [["component", "Component"], ["evidence", "Evidence"]] },
  { key: "projects", title: "A6. Guided Students Project", max: 20, doc: "proj", fields: [["label", "Project Category"]] },
  { key: "mentoringRows", title: "A7. Student Mentoring & Counselling", max: 10, doc: "mentor", fields: [["activity", "Activity"], ["evidence", "Evidence"]] },
@@ -1177,7 +1188,7 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  }),
  ...(personMode === "dean" ? [] : [{ label: "Average Score", val: vcAverageBeforeVc(person, personMode, previousRoles), color: "#f59e0b" }]),
  ];
- const showAverageColumn = personMode !== "dean";
+ const showAverageColumn = personMode !== "dean" && personMode !== "center_head";
  const vcComparisonColumns = [
  { key: "self", label: "Self", totals: facultyTotals, maxScores: facultyTotals.maxScores },
  ...previousSummaryCards.map(({ role, meta, totals }) =>({ key: role, label: meta.shortLabel, totals, maxScores: totals.maxScores })),
@@ -1250,7 +1261,7 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  ];
  const splitDirectorSummaryRows = personMode === "director";
  const splitDeanSummaryRows = personMode === "dean";
- const useFacultyRecordCard = ["faculty", "hod", "dean", "director"].includes(personMode);
+ const useFacultyRecordCard = ["faculty", "hod", "dean", "director", "center_head"].includes(personMode);
  const recordSchoolTrack = useFacultyRecordCard ? getDeanTrack({ school: person.school || person.info?.school, department: person.department, designation: person.designation }) : "";
  const recordSchoolGroupLabel = { engineering: "Engineering", non_engineering: "Non-Engineering", direct_vc: "CISR" }[recordSchoolTrack] || person.school || person.info?.school || APP_INFO.UNIVERSITY_NAME;
  const recordScoreRows = useFacultyRecordCard ? [
@@ -1505,22 +1516,6 @@ function PersonCard({ person, role, onReview, schoolColor, loading = false }) {
  const academicYear = person.academicYear || person.academic_year || person.info?.ay;
  const legacyTwoPartCard = isLegacyTwoPartAcademicYear(academicYear);
  const scoreGrandMax = legacyTwoPartCard ? 575 : MAX_SCORES.GRAND_TOTAL;
- const sectionSummary = standardSubmittedScoreSummary(person);
- const legacySummary = legacyCardTotalsForPerson(person, personMode);
- const roleMetricPrefix = personMode === "director" ? "Dir" : personMode === "dean" ? "Dean" : (personMode === "hod" || personMode === "center_head") ? "HOD" : "Faculty";
- const sectionMetrics = legacyTwoPartCard
- ? [
- { label: `${roleMetricPrefix} Part A`, val: legacySummary.partA, max: 200, color: "#6366f1" },
- { label: `${roleMetricPrefix} Part B`, val: legacySummary.partB, max: 375, color: "#0ea5e9" },
- { label: `${roleMetricPrefix} Total`, val: legacySummary.total, max: 575, color: "#4338ca" },
- ]
- : [
- { label: "Part A", val: sectionSummary.partA, max: sectionSummary.partAMax, color: "#6366f1" },
- { label: "Part B", val: sectionSummary.partB, max: sectionSummary.partBMax, color: "#0ea5e9" },
- { label: "Part C", val: sectionSummary.partC, max: sectionSummary.partCMax, color: "#10b981" },
- { label: "Part D", val: sectionSummary.partD, max: sectionSummary.partDMax, color: "#f59e0b" },
- { label: "Total", val: sectionSummary.total, max: sectionSummary.grandMax, color: "#4338ca" },
- ];
  const scoreTiles = [
  {
  label: personMode === "faculty" ? "Faculty Score" : "Self Score",
@@ -1540,6 +1535,12 @@ function PersonCard({ person, role, onReview, schoolColor, loading = false }) {
  return { label: meta.shortLabel, value: person[meta.remarksKey], color: meta.remarksColor, bg: meta.remarksBg, border: meta.color };
  })
  .filter((item) =>item.value);
+
+ const averageTile = scoreTiles.find((tile) =>tile.label === "Average Score");
+ const gradeBasisLabel = averageTile ? "Average" : (personMode === "faculty" ? "Faculty" : "Self");
+ const gradeBasisValue = averageTile ? n(averageTile.value) : n(vcSelfTotalForPerson(person));
+ const gradeBasisPercent = scoreGrandMax >0 ? (gradeBasisValue / scoreGrandMax) * 100 : 0;
+ const gradeInfo = gradeForPercent(gradeBasisPercent);
 
  const ROLE_PALETTE = {
  Dean:          { color: "#059669", light: "#d1fae5", label: "Dean"        },
@@ -1567,15 +1568,17 @@ function PersonCard({ person, role, onReview, schoolColor, loading = false }) {
 <div style={{ fontSize: 10, color: "#64748b" }}>{person.designation}</div>
 <div style={{ fontSize: 9, color: "#94a3b8", fontFamily: "monospace", marginTop: 1 }}>{person.employeeId}</div>
 </div>
+<div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, flexShrink: 0 }}>
 <StatusBadge status={person.status} />
+<div title={`${gradeBasisLabel} score: ${gradeBasisPercent.toFixed(2)}%`} style={{ display: "inline-flex", alignItems: "center", gap: 8, background: `${gradeInfo.color}12`, border: `1px solid ${gradeInfo.color}45`, borderRadius: 999, padding: "4px 12px 4px 4px", whiteSpace: "nowrap" }}>
+<span style={{ width: 26, height: 26, borderRadius: "50%", background: gradeInfo.color, color: "#fff", fontSize: 12, fontWeight: 900, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{gradeInfo.label}</span>
+<div style={{ display: "flex", flexDirection: "column", lineHeight: 1.2 }}>
+<span style={{ fontSize: 8.5, fontWeight: 800, color: gradeInfo.color, textTransform: "uppercase", letterSpacing: 0.4 }}>Grade</span>
+<span style={{ fontSize: 12, fontWeight: 900, color: "#1e293b" }}>{gradeBasisPercent.toFixed(2)}% {gradeBasisLabel}</span>
 </div>
-
- {/* Submitted section scores */}
-<ReviewMetricsStrip
- metrics={sectionMetrics}
- docs={person.docs}
- compact
-/>
+</div>
+</div>
+</div>
 
  {/* Review chain totals */}
 <div className="vc-score-strip" style={{ display: "grid", gridTemplateColumns: `repeat(${Math.max(scoreTiles.length, 1)}, minmax(0, 1fr))`, gap: 6, background: "#f8fafc", borderRadius: 8, padding: "10px 12px" }}>

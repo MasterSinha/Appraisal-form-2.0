@@ -2428,13 +2428,17 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
   const authorityDirectorReviewCards = splitAuthorityDeanDirectorRows
     ? authoritySummaryCards.filter((card) => card.key === reviewerRole)
     : [];
-  const useAuthorityRecordCard = reviewerRole === "dean" || reviewerRole === "director";
+  const useAuthorityRecordCard = reviewerRole === "dean" || reviewerRole === "director" || reviewerRole === "vc";
   const authorityRecordSchoolTrack = useAuthorityRecordCard ? getDeanTrack({ school: person?.school || form.info?.school, department: person?.department, designation: person?.designation }) : "";
   const authorityRecordSchoolGroupLabel = { engineering: "Engineering", non_engineering: "Non-Engineering", direct_vc: "CISR" }[authorityRecordSchoolTrack] || person?.school || form.info?.school || APP_INFO.UNIVERSITY_NAME;
+  const authorityRecordPreviousCards = reviewerRole === "vc" ? previousSummaryCards : authorityPreviousSummaryCards;
+  const authorityRecordReviewerLabel = reviewerRole === "vc" ? "Vice Chancellor" : roleLabel(reviewerRole);
+  const authorityRecordReviewerIcon = reviewerRole === "vc" ? "crown" : "briefcase";
   const authorityRecordScoreRows = useAuthorityRecordCard ? [
     { key: "self", label: "Self", icon: "user", values: facultyTotals, note: summaryOtherInfoValueFrom(person) },
-    ...authorityPreviousSummaryCards.map((card) => ({ key: card.role, label: card.label, icon: "briefcase", values: card.totals, note: card.remarks })),
-    { key: reviewerRole, label: roleLabel(reviewerRole), icon: "briefcase", values: reviewerSummaryTotals, accent: true },
+    ...authorityRecordPreviousCards.map((card) => ({ key: card.role, label: card.label, icon: "briefcase", values: card.totals, note: card.remarks })),
+    ...(reviewerRole === "vc" && showAverageColumn ? [{ key: "average", label: "Average", icon: "chart", values: averageSummaryTotals }] : []),
+    { key: reviewerRole, label: authorityRecordReviewerLabel, icon: authorityRecordReviewerIcon, values: reviewerSummaryTotals, accent: true },
   ] : [];
   useEffect(() => {
     let active = true;
@@ -2706,8 +2710,8 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
               rows={authorityRecordScoreRows}
             />
             <VCFinalRemarks
-              title={`${roleLabel(reviewerRole)} final remarks`}
-              icon="briefcase"
+              title={`${authorityRecordReviewerLabel} final remarks`}
+              icon={authorityRecordReviewerIcon}
               value={remarks}
               onChange={setRemarks}
               readOnly={panelReadOnly}

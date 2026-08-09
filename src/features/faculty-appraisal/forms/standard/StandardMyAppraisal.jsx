@@ -1525,15 +1525,6 @@ export default function StandardMyAppraisal({
     </table>
 
     <div class="pb"></div>
-    <h3 style="background:#d9d9d9;padding:4px;text-align:center;font-size:13px">PART D - Annual Confidential Report</h3>
-    <h3>Part D. Annual Confidential Report &nbsp;(Max 50, Evaluator only)</h3>
-    <table>
-      <tr><th>SN</th><th>Parameter</th><th>Description / Indicators</th><th>Max Marks</th></tr>
-      ${partDParameters.map((row, i) => `<tr><td class="c">D${i + 1}</td><td>${reportTextValue(row.parameter)}</td><td>${reportTextValue(row.description)}</td><td class="c">${reportTextValue(row.max)}</td></tr>`).join('')}
-      <tr class="tr"><td colspan="3" class="c b">Part D Total (Max: 50)</td><td class="c">${PART_D_MAX}</td></tr>
-    </table>
-
-    <div class="pb"></div>
     <h3 style="text-align:center;font-size:13px">SUMMARY OF SELF SCORES - AY ${reportTextValue(info.ay)}</h3>
     <table class="st">
       <tr><th>Sr.No.</th><th>Criteria</th><th>Max Score</th><th>Faculty Score</th></tr>
@@ -1547,8 +1538,6 @@ export default function StandardMyAppraisal({
       <tr class="tr"><td colspan="2" class="c b">Part B Marks Obtained (%)</td><td colspan="2" class="c b">${partBTotal > 0 ? `${partBMarksPercentage}%` : "&nbsp;"}</td></tr>
       <tr><td colspan="4" class="b" style="background:#d9d9d9;text-align:center">Part C - Administrative Role &amp; University Development Contribution</td></tr>
       <tr><td class="c">C</td><td>Administrative Contribution</td><td class="c">${PART_C_MAX}</td><td class="c">${partCTotal > 0 ? partCTotal.toFixed(1) : "&nbsp;"}</td></tr>
-      <tr><td colspan="4" class="b" style="background:#d9d9d9;text-align:center">Part D - Annual Confidential Report</td></tr>
-      <tr><td class="c">D</td><td>Annual Confidential Report (Evaluator only)</td><td class="c">${PART_D_MAX}</td><td class="c">&nbsp;</td></tr>
       <tr style="background:#bfbfbf;font-weight:bold;font-size:13px"><td colspan="2" class="c">Grand Total (Part A + Part B + Part C + Part D)</td><td class="c">${effectiveGrandMax}</td><td class="c">${grandTotal > 0 ? grandTotal.toFixed(1) : "&nbsp;"}</td></tr>
       <tr style="background:#bfbfbf;font-weight:bold;font-size:13px"><td colspan="2" class="c">Marks Obtained (%)</td><td colspan="2" class="c">${grandTotal > 0 ? `${totalMarksPercentage}%` : "&nbsp;"}</td></tr>
     </table>

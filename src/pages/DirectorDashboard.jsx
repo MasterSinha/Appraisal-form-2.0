@@ -146,8 +146,8 @@ const STANDARD_ARRAY_SECTIONS = [
 ];
 const STANDARD_REPORT_PART_A_SECTIONS = [
  { key: "lectures", title: "A1. Lectures / Tutorials / Practicals", max: 40, doc: "lec", fields: [["sem", "Semester"], ["code", "Course Code / Name"], ["planned", "Classes (as per course structure)"], ["conducted", "Classes Actually Conducted"], ["pctConducted", "% Conducted"]] },
- { key: "courseFile", title: "A2. Course File", max: 20, doc: "cf", fields: [["course", "Course / Paper"], ["title", "Title"], ["details", "IQAC Index Compliance (Yes/No, with proof)"]] },
- { key: "innovRows", title: "A3. Innovative Teaching-Learning Methods", max: 10, doc: "innov", showDocuments: false, fields: [["method", "Methods Used"], ["details", "Details"]] },
+ { key: "courseFile", title: "A2. Course File", max: 20, doc: "courseFile", fields: [["course", "Course / Paper"], ["title", "Title"], ["details", "IQAC Index Compliance (Yes/No, with proof)"]] },
+ { key: "innovRows", title: "A3. Innovative Teaching-Learning Methods", max: 10, doc: "innov", fields: [["method", "Methods Used"], ["details", "Details"]] },
  { key: "feedback", title: "A4. Student Feedback", max: 10, doc: "fb", fields: [["code", "Course Code / Name"], ["fb1", "First Feedback(%)"], ["fb2", "Second Feedback(%)"]] },
  { key: "obeRows", title: "A5. Learning Outcomes Attainment & OBE Practice", max: 20, doc: "obe", fields: [["component", "Component"], ["evidence", "Evidence"]] },
  { key: "projects", title: "A6. Guided Students Project", max: 20, doc: "proj", fields: [["label", "Project Category"]] },
@@ -250,7 +250,13 @@ const directorReportTable = ({ form, docs, section, scoreRoles, roleLabel }) =>{
       ${(rows.length ? rows : [{}]).map((row, index) =>`
         <tr>
           <td class="c">${index + 1}</td>
-          ${section.fields.map(([key]) =>`<td>${reportValue(key === "label" && section.key === "quals" ? (row.label || row.title || row.qualificationTitle || row.qualification || row.name) : row[key])}</td>`).join("")}
+          ${section.fields.map(([key]) =>`<td>${reportValue(
+ key === "pctConducted"
+ ? (row.pctConducted || (Number(row.planned) > 0 && Number(row.conducted) >= 0 ? `${((Number(row.conducted) / Number(row.planned)) * 100).toFixed(1)}%` : ""))
+ : key === "label" && section.key === "quals"
+ ? (row.label || row.title || row.qualificationTitle || row.qualification || row.name)
+ : row[key]
+ )}</td>`).join("")}
           ${showDocs ? `<td>${reportValue((docs?.[`${section.doc}-${index}`] || []).map((file) =>file.name || file.url || "Document").join(", "))}</td>` : ""}
           ${scoreRoles.map((role) =>`<td class="c">${reportValue(directorReportScore(section, row, role, section.max))}</td>`).join("")}
         </tr>
@@ -616,7 +622,7 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
   ${directorReportPart({ title: "PART A - Teaching Process & Academic Activities", sections: STANDARD_REPORT_PART_A_SECTIONS, form: reportForm, docs: reportForm.docs, scoreRoles, roleLabel })}
   ${directorReportPart({ title: "PART B - Research & Academic Contributions", sections: STANDARD_REPORT_PART_B_SECTIONS, form: reportForm, docs: reportForm.docs, scoreRoles, roleLabel })}
   ${directorReportPart({ title: "PART C - Administrative Role & University Development Contribution", sections: STANDARD_REPORT_PART_C_SECTIONS, form: reportForm, docs: reportForm.docs, scoreRoles, roleLabel })}
-  ${directorReportPart({ title: "PART D - Annual Confidential Report (ACR)", sections: STANDARD_REPORT_PART_D_SECTIONS, form: reportForm, docs: reportForm.docs, scoreRoles, roleLabel })}
+  ${directorReportPart({ title: "PART D - Annual Confidential Report (ACR)", sections: STANDARD_REPORT_PART_D_SECTIONS, form: reportForm, docs: reportForm.docs, scoreRoles: scoreRoles.filter((role) => role !== "score"), roleLabel })}
   <div class="page-break"></div>
   <h3 style="text-align:center;font-size:13px">SUMMARY</h3>
   <table class="st">

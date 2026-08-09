@@ -375,10 +375,10 @@ export function LogoutConfirmModal({ onCancel, onConfirm, portalName = "the port
   const logoutConfirmButtonStyle = {
     flex: 1,
     minHeight: 44,
-    border: "1px solid rgba(248,113,113,0.55)",
+    border: "1px solid #b91c1c",
     borderRadius: 10,
-    background: "#111827",
-    color: "#f87171",
+    background: "#dc2626",
+    color: "#ffffff",
     padding: "10px",
     fontWeight: 900,
     cursor: "pointer",

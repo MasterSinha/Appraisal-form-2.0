@@ -279,11 +279,14 @@ export default function DesignArtsDashboard({ fixedRole }) {
       docs,
       partASections: PART_A_SECTIONS,
       partBSections: PART_B_SECTIONS,
+      partCSections: PART_C_SECTIONS,
+      partDSections: PART_D_SECTIONS,
       totals,
       maxScores: totals.maxScores,
       scoreRoles: ["score"],
       roleLabel,
       declaration,
+      hideAcr: true,
     });
   };
 
@@ -672,7 +675,7 @@ export default function DesignArtsDashboard({ fixedRole }) {
   partCSections: PART_C_SECTIONS,
   partDSections: PART_D_SECTIONS,
   totals: { partA: partATotal, partB: partBTotal, partC: partCTotal, partD: partDTotal, total: grandTotal },
-  hideAcr: false,
+  hideAcr: true,
   maxScores,
   generatedBy: sessionStorage.getItem("name") || roleLabel(role),
   declaration,
