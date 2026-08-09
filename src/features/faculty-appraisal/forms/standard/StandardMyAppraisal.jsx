@@ -294,6 +294,7 @@ const A1_COURSE_DELIVERY_MAX = 40;
 const A2_COURSE_FILE_MAX = 20;
 const A3_INNOVATIVE_MAX = 20;
 const A3_INNOVATIVE_ROW_MAX = 4;
+const A3_METHODS_ROW_LIMIT = 5;
 const A4_FEEDBACK_MAX = 10;
 const A5_OBE_MAX = 20;
 const A6_PROJECT_GUIDANCE_MAX = 20;
@@ -302,13 +303,14 @@ const A8_QUALIFICATION_MAX = 10;
 const C1_UNIVERSITY_ADMIN_MAX = 50;
 const C2_SCHOOL_ADMIN_MAX = 30;
 const C3_EVENT_MAX = 20;
-const C4_OUTREACH_MAX = 20;
+const C4_OUTREACH_MAX = 10;
 const C5_INDUSTRY_MAX = 10;
 const C6_ALUMNI_MAX = 10;
 const C7_PLACEMENT_MAX = 20;
 const B1_JOURNAL_MAX = 100;
 const B2_BOOK_MAX = 30;
 const B3_ICT_MAX = 20;
+const B3_PATENT_MAX = 40;
 const B4_PROJECT_MAX = 40;
 const B5_RESEARCH_GUIDANCE_MAX = 20;
 const B6_CONSULTANCY_MAX = 20;
@@ -316,6 +318,7 @@ const B7_CONFERENCE_MAX = 20;
 const B8_ATTENDED_MAX = 20;
 const B9_AWARDS_MAX = 20;
 const B10_STARTUP_MAX = 20;
+const b5RowMax = (row) => researchGuidanceRowMax(row) || B5_RESEARCH_GUIDANCE_MAX;
 
 const defaultObeRows = () => [
   { component: "CO-PO mapping sheet", evidence: "", score: "", max: 5 },
@@ -898,7 +901,7 @@ export default function StandardMyAppraisal({
   const researchScore = clampScore(research.reduce((total, row) => total + researchGuidanceScore(row), 0), B5_RESEARCH_GUIDANCE_MAX);
   const projectBScore = sumSectionScore(projects2, B4_PROJECT_MAX);
   const externalProjectScore = 0;
-  const patentScore = sumSectionScore(patents, 40);
+  const patentScore = sumSectionScore(patents, B3_PATENT_MAX);
   const awardScore = sumSectionScore(awards, B9_AWARDS_MAX);
   const confScore = sumSectionScore(confs, B7_CONFERENCE_MAX);
   const proposalScore = sumSectionScore(proposals, B6_CONSULTANCY_MAX);
@@ -952,22 +955,22 @@ export default function StandardMyAppraisal({
       { label: "C1. Administration at University Level", rows: uniActs, fields: ["activity", "nature", "period", "score"] },
       { label: "C2. Administration at School Level", rows: deptActs, fields: ["activity", "nature", "period", "score"] },
       { label: "C3. Event Organisation & Institutional Visibility", rows: eventRows, fields: ["event", "role", "date", "level", "score"] },
-      { label: "C4. Outreach, Extension & Social Responsibility", rows: society, fields: ["label", "details", "date", "score"] },
-      { label: "C5. Industry Interaction & Linkages", rows: industry, fields: ["activity", "partner", "date", "score"] },
+      { label: "C4. Outreach, Extension & Social Responsibility", rows: society, fields: ["label", "details", "date", "score"], rowMax: C4_OUTREACH_MAX, maxScore: C4_OUTREACH_MAX },
+      { label: "C5. Industry Interaction & Linkages", rows: industry, fields: ["activity", "partner", "date", "score"], rowMax: C5_INDUSTRY_MAX, maxScore: C5_INDUSTRY_MAX },
       { label: "C6. Alumni Engagement & Networking", rows: alumniRows, fields: ["activity", "details", "date", "score"] },
       { label: "C7. Student Placement Mentoring & Career Development", rows: placementRows, fields: ["activityType", "name", "date", "score"] },
-      { label: "B1. Journals", rows: journals, fields: ["title", "journal", "score"] },
-      { label: "B2. Books / Chapters", rows: books, fields: ["title", "book", "pub", "score"] },
-      { label: "B3. Patents, Copyrights & IP and Product Development", rows: patents, fields: ["title", "type", "status", "fileNo", "score"] },
+      { label: "B1. Journals", rows: journals, fields: ["title", "journal", "score"], rowMax: B1_JOURNAL_MAX, maxScore: B1_JOURNAL_MAX },
+      { label: "B2. Books / Chapters", rows: books, fields: ["title", "book", "pub", "score"], rowMax: B2_BOOK_MAX, maxScore: B2_BOOK_MAX },
+      { label: "B3. Patents, Copyrights & IP and Product Development", rows: patents, fields: ["title", "type", "status", "fileNo", "score"], rowMax: B3_PATENT_MAX, maxScore: B3_PATENT_MAX },
       { label: "B4. Funded Research Projects", rows: projects2, fields: ["title", "agency", "date", "amount", "role", "status", "score"] },
-      { label: "B5. Research Guidance", rows: research, fields: ["degree", "name", "status", "date", "score"], rowMax: researchGuidanceRowMax },
-      { label: "B6. Consultancy, Testing & Training", rows: proposals, fields: ["agency", "duration", "amount", "score"] },
-      { label: "B7. Conference / FDP Contributions - Organised", rows: confs, fields: ["title", "role", "date", "level", "score"] },
+      { label: "B5. Research Guidance", rows: research, fields: ["degree", "name", "status", "date", "score"], rowMax: b5RowMax },
+      { label: "B6. Consultancy, Testing & Training", rows: proposals, fields: ["agency", "duration", "amount", "score"], rowMax: B6_CONSULTANCY_MAX, maxScore: B6_CONSULTANCY_MAX },
+      { label: "B7. Conference / FDP Contributions - Organised", rows: confs, fields: ["title", "role", "date", "level", "score"], rowMax: B7_CONFERENCE_MAX, maxScore: B7_CONFERENCE_MAX },
       { label: "B8. Conference / FDP / Industry Training Attended", rows: fdps, fields: ["program", "duration", "org", "score"], rowMax: B8_ATTENDED_MAX, maxScore: B8_ATTENDED_MAX },
       { label: "B8. Industrial Training", rows: training, fields: ["company", "duration", "nature", "score"], rowMax: B8_ATTENDED_MAX, maxScore: B8_ATTENDED_MAX },
-      { label: "B9. Research Awards, Fellowships & Citations", rows: awards, fields: ["title", "date", "agency", "level", "score"] },
-      { label: "B10. Innovation, Start-ups & Technology Transfer", rows: products, fields: ["details", "role", "status", "score"] },
-      { label: "B11. ICT Content, MOOCs & E-Learning", rows: ict, fields: ["title", "type", "quad", "score"] },
+      { label: "B9. Research Awards, Fellowships & Citations", rows: awards, fields: ["title", "date", "agency", "level", "score"], rowMax: B9_AWARDS_MAX, maxScore: B9_AWARDS_MAX },
+      { label: "B10. Innovation, Start-ups & Technology Transfer", rows: products, fields: ["details", "role", "status", "score"], rowMax: B10_STARTUP_MAX, maxScore: B10_STARTUP_MAX },
+      { label: "B11. ICT Content, MOOCs & E-Learning", rows: ict, fields: ["title", "type", "quad", "score"], rowMax: B3_ICT_MAX, maxScore: B3_ICT_MAX },
     ];
     const errors = validateCompleteRows(withRelaxedSectionCap(sections), docs);
     [...projects2, ...externalProjects].forEach((row, index) => {
@@ -992,24 +995,24 @@ export default function StandardMyAppraisal({
       { label: "C1. Administration at University Level", rows: uniActs, fields: ["activity", "nature", "period", "score"] },
       { label: "C2. Administration at School Level", rows: deptActs, fields: ["activity", "nature", "period", "score"] },
       { label: "C3. Event Organisation & Institutional Visibility", rows: eventRows, fields: ["event", "role", "date", "level", "score"] },
-      { label: "C4. Outreach, Extension & Social Responsibility", rows: society, fields: ["label", "details", "date", "score"] },
-      { label: "C5. Industry Interaction & Linkages", rows: industry, fields: ["activity", "partner", "date", "score"] },
+      { label: "C4. Outreach, Extension & Social Responsibility", rows: society, fields: ["label", "details", "date", "score"], rowMax: C4_OUTREACH_MAX, maxScore: C4_OUTREACH_MAX },
+      { label: "C5. Industry Interaction & Linkages", rows: industry, fields: ["activity", "partner", "date", "score"], rowMax: C5_INDUSTRY_MAX, maxScore: C5_INDUSTRY_MAX },
       { label: "C6. Alumni Engagement & Networking", rows: alumniRows, fields: ["activity", "details", "date", "score"] },
       { label: "C7. Student Placement Mentoring & Career Development", rows: placementRows, fields: ["activityType", "name", "date", "score"] },
     ];
     const partBSections = [
-      { label: "B1. Journals", rows: journals, fields: ["title", "journal", "issn", "index", "score"] },
-      { label: "B2. Books / Chapters", rows: books, fields: ["title", "book", "issn", "pub", "coauth", "first", "score"] },
-      { label: "B3. Patents, Copyrights & IP and Product Development", rows: patents, fields: ["title", "type", "status", "fileNo", "score"] },
+      { label: "B1. Journals", rows: journals, fields: ["title", "journal", "issn", "index", "score"], rowMax: B1_JOURNAL_MAX, maxScore: B1_JOURNAL_MAX },
+      { label: "B2. Books / Chapters", rows: books, fields: ["title", "book", "issn", "pub", "coauth", "first", "score"], rowMax: B2_BOOK_MAX, maxScore: B2_BOOK_MAX },
+      { label: "B3. Patents, Copyrights & IP and Product Development", rows: patents, fields: ["title", "type", "status", "fileNo", "score"], rowMax: B3_PATENT_MAX, maxScore: B3_PATENT_MAX },
       { label: "B4. Funded Research Projects", rows: projects2, fields: ["title", "agency", "date", "amount", "role", "status", "score"] },
-      { label: "B5. Research Guidance", rows: research, fields: ["degree", "name", "status", "date", "score"], rowMax: researchGuidanceRowMax },
-      { label: "B6. Consultancy, Testing & Training", rows: proposals, fields: ["agency", "duration", "amount", "score"] },
-      { label: "B7. Conference / FDP Contributions - Organised", rows: confs, fields: ["title", "role", "date", "level", "score"] },
+      { label: "B5. Research Guidance", rows: research, fields: ["degree", "name", "status", "date", "score"], rowMax: b5RowMax },
+      { label: "B6. Consultancy, Testing & Training", rows: proposals, fields: ["agency", "duration", "amount", "score"], rowMax: B6_CONSULTANCY_MAX, maxScore: B6_CONSULTANCY_MAX },
+      { label: "B7. Conference / FDP Contributions - Organised", rows: confs, fields: ["title", "role", "date", "level", "score"], rowMax: B7_CONFERENCE_MAX, maxScore: B7_CONFERENCE_MAX },
       { label: "B8. Conference / FDP / Industry Training Attended", rows: fdps, fields: ["program", "duration", "org", "score"], rowMax: B8_ATTENDED_MAX, maxScore: B8_ATTENDED_MAX },
       { label: "B8. Industrial Training", rows: training, fields: ["company", "duration", "nature", "score"], rowMax: B8_ATTENDED_MAX, maxScore: B8_ATTENDED_MAX },
-      { label: "B9. Research Awards, Fellowships & Citations", rows: awards, fields: ["title", "date", "agency", "level", "score"] },
-      { label: "B10. Innovation, Start-ups & Technology Transfer", rows: products, fields: ["details", "role", "status", "score"] },
-      { label: "B11. ICT Content, MOOCs & E-Learning", rows: ict, fields: ["title", "type", "quad", "score"] },
+      { label: "B9. Research Awards, Fellowships & Citations", rows: awards, fields: ["title", "date", "agency", "level", "score"], rowMax: B9_AWARDS_MAX, maxScore: B9_AWARDS_MAX },
+      { label: "B10. Innovation, Start-ups & Technology Transfer", rows: products, fields: ["details", "role", "status", "score"], rowMax: B10_STARTUP_MAX, maxScore: B10_STARTUP_MAX },
+      { label: "B11. ICT Content, MOOCs & E-Learning", rows: ict, fields: ["title", "type", "quad", "score"], rowMax: B3_ICT_MAX, maxScore: B3_ICT_MAX },
     ];
     const sectionMap = { partA: partASections, partB: partBSections, partC: partCSections, partD: [] };
     const errors = validateCompleteRows(withRelaxedSectionCap(sectionMap[section] || partASections), docs);
@@ -1998,7 +2001,10 @@ export default function StandardMyAppraisal({
                           </tr>
                         </tbody>
                       </table>
-                      <RowBtns onAdd={() => setInnovRows((p) => [...p, blankInnovativeRow()])} onDel={() => setInnovRows((p) => p.length > 1 ? p.slice(0, -1) : p)} canDel={innovRows.length > 1} />
+                      <RowBtns onAdd={() => setInnovRows((p) => p.length < A3_METHODS_ROW_LIMIT ? [...p, blankInnovativeRow()] : p)} onDel={() => setInnovRows((p) => p.length > 1 ? p.slice(0, -1) : p)} canDel={innovRows.length > 1} canAdd={innovRows.length < A3_METHODS_ROW_LIMIT} />
+                      {innovRows.length >= A3_METHODS_ROW_LIMIT && (
+                        <div style={{ fontSize: 11, color: "#ef4444", marginTop: 4 }}>Maximum {A3_METHODS_ROW_LIMIT} methods can be claimed.</div>
+                      )}
                     </div>
 
                     {/* A4. Student Feedback */}
@@ -2116,7 +2122,7 @@ export default function StandardMyAppraisal({
                                     placeholder="Project Title / Batch" 
                                   />
                                 </td>
-                                <td style={TDC}><TI val={r.studentsCount} onChange={(v) => setProj(i, "studentsCount", v)} center placeholder="No." /></td>
+                                <td style={TDC}><TI val={r.studentsCount} onChange={(v) => setProj(i, "studentsCount", v)} center numeric integer placeholder="No." /></td>
                                 <td style={TDC}>
                                   <select value={r.industryCollab || ""} onChange={(e) => setProj(i, "industryCollab", e.target.value)} style={{ width: "100%", height: 28, border: "1px solid #cbd5e1", borderRadius: 4, fontSize: 11 }}>
                                     <option value="">Select</option>
@@ -2361,7 +2367,7 @@ export default function StandardMyAppraisal({
                     </div>
 
                     <div style={{ marginBottom: 16 }}>
-                      <SubsectionTitle icon="outreach">C4. Outreach, Extension & Social Responsibility - Max 20 marks</SubsectionTitle>
+                      <SubsectionTitle icon="outreach">C4. Outreach, Extension & Social Responsibility - Max 10 marks</SubsectionTitle>
                       <>
                         <table style={T}>
                           <thead><tr>
@@ -2389,7 +2395,7 @@ export default function StandardMyAppraisal({
                               );
                             })}
                             <tr style={{ background: "#ccfbf1" }}>
-                              <td style={{ ...TDC, fontWeight: "bold" }} colSpan={6}>Total (Max 20)</td>
+                              <td style={{ ...TDC, fontWeight: "bold" }} colSpan={6}>Total (Max 10)</td>
                               <td style={{ ...TDS, fontWeight: "bold" }}>{societyScore.toFixed(1)}</td>
                             </tr>
                           </tbody>
@@ -2723,7 +2729,7 @@ export default function StandardMyAppraisal({
                                 <td style={TD}><TI val={r.date} onChange={(v) => setRes(i, "date", maskDateDDMMYYYY(v))} placeholder="DD/MM/YYYY" /></td>
                                 <td style={TD}><DocCell id={`res-${i}`} docs={docs} setDocs={setDocs} /></td>
                                 <td style={TD}><ViewCell id={`res-${i}`} docs={docs} /></td>
-                                <td style={TDS}><TI val={r.score} onChange={(v) => setRes(i, "score", v)} center numeric max={researchGuidanceRowMax(r)} /></td>
+                                <td style={TDS}><TI val={r.score} onChange={(v) => setRes(i, "score", v)} center numeric max={b5RowMax(r)} /></td>
                               </tr>
                             ))}
                             <tr style={{ background: "#f3e8ff" }}>
@@ -2890,7 +2896,7 @@ export default function StandardMyAppraisal({
                               <td style={TD}><TI val={r.fileNo || r.date} onChange={(v) => setPat(i, "fileNo", v)} placeholder="Filing / grant no. and date" /></td>
                               <td style={TD}><DocCell id={`pat-${i}`} docs={docs} setDocs={setDocs} /></td>
                               <td style={TD}><ViewCell id={`pat-${i}`} docs={docs} /></td>
-                              <td style={TDS}><TI val={r.score} onChange={(v) => setPat(i, "score", v)} center numeric max={40} /></td>
+                              <td style={TDS}><TI val={r.score} onChange={(v) => setPat(i, "score", v)} center numeric max={B3_PATENT_MAX} /></td>
                             </tr>
                           ))}
                           <tr style={{ background: "#f3e8ff" }}>

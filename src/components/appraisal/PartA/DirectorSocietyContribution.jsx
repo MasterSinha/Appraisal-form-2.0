@@ -29,7 +29,7 @@ export default function DirectorSocietyContribution({ ctx }) {
  return (
 <>
 {/* C4: Outreach */}
-<SC title="C4. Outreach, Extension & Social Responsibility (Max 20)" accent="#0f766e">
+<SC title="C4. Outreach, Extension & Social Responsibility (Max 10)" accent="#0f766e">
 <table style={T}>
 <thead><tr>
 <th style={TH}>SN</th><th style={TH}>Activity</th><th style={TH}>Details</th><th style={TH}>Date</th>
@@ -43,8 +43,8 @@ export default function DirectorSocietyContribution({ ctx }) {
 <td style={TD}><RO val={r.details} /></td>
 <td style={TD}><RO val={r.date} /></td>
 <td style={TDV}><ViewDocsCell docKey={`soc-${i}`} docs={docs} /></td>
-<td style={TDS}><RO val={String(r.score ?? "").trim() ? clampScore(r.score, 20) : ""} center /></td>
-<td style={TDS_DIR}><DirInput val={societyRowLocked(r) ? "0" : getDir("society", i, "dir")} max={20} disabled={societyRowLocked(r) || !rowHasReviewableData("society", r, docs, `soc-${i}`)} onChange={v =>setDir("society", i, "dir", v)} /></td>
+<td style={TDS}><RO val={String(r.score ?? "").trim() ? clampScore(r.score, 10) : ""} center /></td>
+<td style={TDS_DIR}><DirInput val={societyRowLocked(r) ? "0" : getDir("society", i, "dir")} max={10} disabled={societyRowLocked(r) || !rowHasReviewableData("society", r, docs, `soc-${i}`)} onChange={v =>setDir("society", i, "dir", v)} /></td>
 </tr>
  ))}
 </tbody>

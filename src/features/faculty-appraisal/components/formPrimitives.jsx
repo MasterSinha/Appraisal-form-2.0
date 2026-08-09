@@ -596,10 +596,10 @@ export function SectionCard({ title, subtitle, accent = "#4f46e5", scoreBadge, c
   );
 }
 
-export function RowButtons({ onAdd, onDel, canDel = true, addLabel = "+ Add Row", deleteLabel = "- Delete Last" }) {
+export function RowButtons({ onAdd, onDel, canDel = true, canAdd = true, addLabel = "+ Add Row", deleteLabel = "- Delete Last" }) {
   return (
     <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
-      <button type="button" className="appraisal-add-row-button" style={{ minHeight: 38, padding: "8px 18px", background: "#fff", color: "#4f46e5", border: "1.5px solid #6366f1", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 6, boxShadow: "none" }} onClick={onAdd}>{addLabel}</button>
+      <button type="button" className="appraisal-add-row-button" disabled={!canAdd} title={canAdd ? undefined : "Maximum rows reached"} style={{ minHeight: 38, padding: "8px 18px", background: canAdd ? "#fff" : "#f1f5f9", color: canAdd ? "#4f46e5" : "#94a3b8", border: canAdd ? "1.5px solid #6366f1" : "1.5px solid #cbd5e1", borderRadius: 8, cursor: canAdd ? "pointer" : "not-allowed", fontSize: 13, fontWeight: 700, fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 6, boxShadow: "none" }} onClick={onAdd}>{addLabel}</button>
       {canDel && <button type="button" className="appraisal-danger-button" style={{ minHeight: 38, padding: "8px 18px", background: "#fff", color: "#ef4444", border: "1.5px solid #fecaca", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 6 }} onClick={onDel}>{deleteLabel}</button>}
     </div>
   );

@@ -205,7 +205,7 @@ export function VCFinalRemarks({ value, onChange, readOnly = false, description,
         value={value ?? ""}
         readOnly={readOnly}
         onChange={(e) => onChange?.(e.target.value)}
-        placeholder="Write the Vice Chancellor's final remarks here..."
+        placeholder="Enter your remarks here..."
         rows={4}
         style={{ width: "100%", boxSizing: "border-box", marginTop: 10, minHeight: 96, resize: "vertical", background: readOnly ? T.surface : "#ffffff", border: "1px solid #c4b5fd", borderRadius: 9, padding: "10px 12px", fontFamily: "inherit", fontSize: 12.5, color: T.text, outline: "none", lineHeight: 1.5 }}
       />

@@ -223,7 +223,7 @@ function ReviewPanel({ faculty, onBack, onSubmit }) {
  isFinal
  remarksContent={(
 <textarea value={remarks} onChange={e =>setRemarks(e.target.value)} rows={7}
- placeholder="Enter your remarks, observations, and recommendations for this faculty member..."
+ placeholder="Enter your remarks here..."
  style={{ width: "100%", height: 235, minHeight: 235, border: "1px solid #e2e8f0", borderRadius: 7, padding: "10px 12px", fontSize: 12, fontFamily: "inherit", resize: "none", boxSizing: "border-box" }} />
  )}
 />
@@ -280,8 +280,8 @@ const preserveSavedReviewScores = (form = {}, source = {}) =>{
  }
 return merged;
 };
-const DEAN_SECTION_MAX = { lectures: 40, courseFile: 20, projects: 20, obeRows: 20, mentoringRows: 10, quals: 10, feedback: 10, deptActs: 30, uniActs: 50, eventRows: 20, society: 20, industry: 8, alumniRows: 10, placementRows: 20, acr: 50, journals: 120, books: 50, ict: 20, research: 30, projects2: 40, externalProjects: SCORE_LIMITS.researchExternalProjects, patents: 40, awards: 10, confs: 30, proposals: 10, products: 10, fdps: 10, training: 10 };
-const DEAN_ROW_MAX = { courseFile: () =>SCORE_LIMITS.courseFileRow, projects: projectGuidanceRowMax, projects2: (row) =>row.max || 40, obeRows: (row) =>row.max || 20, mentoringRows: (row) =>row.max || 10, quals: () =>SCORE_LIMITS.qualificationRow, feedback: () =>10, uniActs: () =>50, deptActs: () =>30, eventRows: () =>20, society: () =>20, industry: () =>8, alumniRows: () =>10, placementRows: () =>20, acr: () =>SCORE_LIMITS.acrRow, research: researchGuidanceRowMax, fdps: () =>SCORE_LIMITS.fdpRow, training: () =>SCORE_LIMITS.fdpRow };
+const DEAN_SECTION_MAX = { lectures: 40, courseFile: 20, projects: 20, obeRows: 20, mentoringRows: 10, quals: 10, feedback: 10, deptActs: 30, uniActs: 50, eventRows: 20, society: 10, industry: 10, alumniRows: 10, placementRows: 20, acr: 50, journals: 120, books: 50, ict: 20, research: 30, projects2: 40, externalProjects: SCORE_LIMITS.researchExternalProjects, patents: 40, awards: 10, confs: 30, proposals: 10, products: 10, fdps: 10, training: 10 };
+const DEAN_ROW_MAX = { lectures: () =>10, courseFile: () =>SCORE_LIMITS.courseFileRow, projects: projectGuidanceRowMax, projects2: (row) =>row.max || 40, obeRows: (row) =>row.max || 20, mentoringRows: (row) =>row.max || 10, quals: () =>SCORE_LIMITS.qualificationRow, feedback: () =>10, uniActs: () =>50, deptActs: () =>30, eventRows: () =>20, society: (row) =>row.max || 10, industry: () =>10, alumniRows: () =>10, placementRows: () =>20, acr: () =>SCORE_LIMITS.acrRow, research: researchGuidanceRowMax, fdps: () =>SCORE_LIMITS.fdpRow, training: () =>SCORE_LIMITS.fdpRow };
 
 const getSectionMaxForApproval = (key, approval) => {
   const baseMax = DEAN_SECTION_MAX[key] || 0;
@@ -305,7 +305,7 @@ const deanScorePayload = (approval, deanData) =>{
   ? "0"
   : isSectionEmpty(key, approval[key], approval.docs)
     ? ""
-    : clampReviewScore(key, row, deanData[key]?.[index]?.dean ?? row.dean ?? "", getSectionMaxForApproval(key, approval)),
+    : clampReviewScore(key, row, deanData[key]?.[index]?.dean ?? row.dean ?? "", key === "lectures" ? 10 : getSectionMaxForApproval(key, approval)),
   }));
   });
 
@@ -361,7 +361,7 @@ function DeanScoreCell({ sectionKey, index, row, deanData, setDeanData }) {
  const displayValue = societyLocked ? "0" : String(value ?? "").trim() ? clampScore(value, maxForRow) : "";
 
  const update = (nextValue) =>{
- const clampedValue = clampReviewScore(sectionKey, row, nextValue, sectionMax);
+ const clampedValue = clampReviewScore(sectionKey, row, nextValue, sectionKey === "lectures" ? 10 : sectionMax);
  preserveScrollAfterStateUpdate(() =>setDeanData((prev) =>{
  const baseRows = Array.isArray(prev[sectionKey]) ? prev[sectionKey] : [];
  const updatedRows = [...baseRows];
@@ -1001,7 +1001,7 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
 <div style={{ fontSize: 11, fontWeight: 900, color: "#1d4ed8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 5 }}>Dean Remarks</div>
 <div style={{ color: "#1e40af", fontSize: 11, fontWeight: 700, marginBottom: 10 }}>Please enter remarks before submitting the review.</div>
 <textarea value={remarks} onChange={(e) =>setRemarks(e.target.value)} rows={7} readOnly={reviewLocked}
- placeholder="Enter dean remarks, observations, and recommendations..."
+ placeholder="Enter your remarks here..."
  style={{ width: "100%", height: 235, minHeight: 235, border: "1px solid #bfdbfe", borderRadius: 8, padding: "10px 11px", fontFamily: "inherit", fontSize: 12, lineHeight: 1.5, color: "#334155", resize: "none", background: "#fff", outline: "none", boxSizing: "border-box" }}
 />
 </div>

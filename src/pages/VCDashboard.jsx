@@ -514,7 +514,7 @@ const buildVcSectionScores = (person, vcData) =>{
  ? "0"
  : isSectionEmpty(key, person[key], person.docs)
     ? ""
-    : clampReviewScore(key, row, vcData[key]?.[index]?.vc ?? row.vc ?? "", getVcSectionMax(key, person)),
+    : clampReviewScore(key, row, vcData[key]?.[index]?.vc ?? row.vc ?? "", key === "lectures" ? 10 : getVcSectionMax(key, person)),
  }));
  });
  const innovRows = Array.isArray(person.innovRows) ? person.innovRows : [];
@@ -550,7 +550,7 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
  }
  const sourceRow = section === "acr" && idx !== null ? createAcrRows(person.acr)[idx] : person[section]?.[idx] || {};
  const nextVal = field === "vc" && idx !== null
- ? (isSectionEmpty(section, person[section], person.docs) ? "" : clampReviewScore(section, sourceRow, val, getVcSectionMax(section, person)))
+ ? (isSectionEmpty(section, person[section], person.docs) ? "" : clampReviewScore(section, sourceRow, val, section === "lectures" ? 10 : getVcSectionMax(section, person)))
  : val;
  if (idx === null) {
  updated[section] = Array.isArray(updated[section])
@@ -575,7 +575,7 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
  };
  const { docs } = person;
  const rows = (arr) =>arr && arr.length >0 ? arr : [{}];
- const vcRowMax = (section, row = {}) => isSectionEmpty(section, person[section], person.docs) ? 0 : reviewRowMaxForSection(section, row, getVcSectionMax(section, person));
+ const vcRowMax = (section, row = {}) => isSectionEmpty(section, person[section], person.docs) ? 0 : reviewRowMaxForSection(section, row, section === "lectures" ? 10 : getVcSectionMax(section, person));
  const innovativeRows = Array.isArray(person.innovRows) && person.innovRows.length
  ? person.innovRows
  : [{ method: person.innovDetails || "Innovative / participatory teaching methods used", details: person.innovDetails || "", score: person.innovScore || "" }];
@@ -1253,7 +1253,7 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  <div style={{ color: "#5b21b6", fontSize: 11, fontWeight: 700, marginTop: 3 }}>Enter your assessment remarks and confirm before submitting</div>
  </div>
  <textarea value={remarks} readOnly={reviewLocked} onChange={e =>setRemarks(e.target.value)} rows={7}
- placeholder="Write your assessment remarks here..."
+ placeholder="Enter your remarks here..."
  style={{ width: "100%", height: 235, minHeight: 235, boxSizing: "border-box", border: "1px solid #c4b5fd", borderRadius: 10, padding: "10px 11px", fontFamily: "inherit", fontSize: 12, resize: "none", background: reviewLocked ? "#f8fafc" : "#fff", color: "#1e293b", outline: "none", lineHeight: 1.5 }} />
  </div>
  ),
