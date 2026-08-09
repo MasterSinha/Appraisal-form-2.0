@@ -50,7 +50,7 @@ export default function DirectorLecturesTable({ ctx }) {
 <td style={TDC}><RO val={r.pctConducted || (Number(r.planned) > 0 && Number(r.conducted) >= 0 ? `${((Number(r.conducted) / Number(r.planned)) * 100).toFixed(1)}%` : "")} center /></td>
 <td style={TDV}><ViewDocsCell docKey={`lec-${i}`} docs={docs} /></td>
 <td style={TDS}><RO val={r.score} center /></td>
-<td style={TDS_DIR}><DirInput val={getDir("lectures", i, "dir")} onChange={v =>setDir("lectures", i, "dir", v)} max={40} disabled={!rowHasReviewableData("lectures", r, docs, `lec-${i}`)} /></td>
+<td style={TDS_DIR}><DirInput val={getDir("lectures", i, "dir")} onChange={v =>setDir("lectures", i, "dir", v)} max={10} disabled={!rowHasReviewableData("lectures", r, docs, `lec-${i}`)} /></td>
 </tr>
  ))}
 </tbody>

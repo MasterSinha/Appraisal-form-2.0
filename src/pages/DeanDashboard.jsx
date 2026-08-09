@@ -221,7 +221,7 @@ function ReviewPanel({ faculty, onBack, onSubmit }) {
  isFinal
  remarksContent={(
 <textarea value={remarks} onChange={e =>setRemarks(e.target.value)} rows={7}
- placeholder="Enter your remarks, observations, and recommendations for this faculty member..."
+ placeholder="Enter your remarks here..."
  style={{ width: "100%", height: 235, minHeight: 235, border: "1px solid #e2e8f0", borderRadius: 7, padding: "10px 12px", fontSize: 12, fontFamily: "inherit", resize: "none", boxSizing: "border-box" }} />
  )}
 />
@@ -278,8 +278,8 @@ const preserveSavedReviewScores = (form = {}, source = {}) =>{
  }
  return merged;
 };
-const DEAN_SECTION_MAX = { lectures: 40, courseFile: 20, obeRows: 20, projects: 20, mentoringRows: 10, quals: 10, feedback: 10, uniActs: 50, deptActs: 30, eventRows: 20, society: 20, industry: 8, alumniRows: 10, placementRows: 20, acr: 50, journals: 100, books: 30, ict: 20, research: 20, projects2: 40, patents: 40, awards: 20, confs: 20, proposals: 20, products: 20, fdps: 20 };
-const DEAN_ROW_MAX = { courseFile: () =>SCORE_LIMITS.courseFileRow, obeRows: (row) =>row.max || 20, projects: projectGuidanceRowMax, projects2: (row) =>row.max || 40, mentoringRows: (row) =>row.max || 10, quals: () =>SCORE_LIMITS.qualificationRow, feedback: () =>10, society: () =>SCORE_LIMITS.societyRow, acr: () =>SCORE_LIMITS.acrRow, research: researchGuidanceRowMax, fdps: () =>SCORE_LIMITS.fdpRow };
+const DEAN_SECTION_MAX = { lectures: 40, courseFile: 20, obeRows: 20, projects: 20, mentoringRows: 10, quals: 10, feedback: 10, uniActs: 50, deptActs: 30, eventRows: 20, society: 10, industry: 10, alumniRows: 10, placementRows: 20, acr: 50, journals: 100, books: 30, ict: 20, research: 20, projects2: 40, patents: 40, awards: 20, confs: 20, proposals: 20, products: 20, fdps: 20 };
+const DEAN_ROW_MAX = { lectures: () =>10, courseFile: () =>SCORE_LIMITS.courseFileRow, obeRows: (row) =>row.max || 20, projects: projectGuidanceRowMax, projects2: (row) =>row.max || 40, mentoringRows: (row) =>row.max || 10, quals: () =>SCORE_LIMITS.qualificationRow, feedback: () =>10, society: (row) =>row.max || 10, acr: () =>SCORE_LIMITS.acrRow, research: researchGuidanceRowMax, fdps: () =>SCORE_LIMITS.fdpRow };
 
 const deanScorePayload = (approval, deanData) =>{
  const payload = {};
@@ -292,7 +292,7 @@ const deanScorePayload = (approval, deanData) =>{
   ? "0"
   : isSectionEmpty(key, approval[key], approval.docs)
     ? ""
-    : clampReviewScore(key, row, deanData[key]?.[index]?.dean ?? row.dean ?? "", DEAN_SECTION_MAX[key] || 0),
+    : clampReviewScore(key, row, deanData[key]?.[index]?.dean ?? row.dean ?? "", key === "lectures" ? 10 : (DEAN_SECTION_MAX[key] || 0)),
   }));
   });
 
@@ -354,7 +354,7 @@ function DeanScoreCell({ sectionKey, index, row, deanData, setDeanData }) {
  const displayValue = societyLocked ? "0" : String(value ?? "").trim() ? clampScore(value, maxForRow) : "";
 
  const update = (nextValue) =>{
- const clampedValue = clampReviewScore(sectionKey, row, nextValue, DEAN_SECTION_MAX[sectionKey] || 0);
+ const clampedValue = clampReviewScore(sectionKey, row, nextValue, sectionKey === "lectures" ? 10 : (DEAN_SECTION_MAX[sectionKey] || 0));
  preserveScrollAfterStateUpdate(() =>setDeanData((prev) =>{
  const baseRows = Array.isArray(prev[sectionKey]) ? prev[sectionKey] : [];
  const updatedRows = [...baseRows];

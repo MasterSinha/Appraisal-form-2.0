@@ -29,7 +29,7 @@ const REVIEW_SECTION_MAX = {
   deptActs: 30,
   uniActs: 50,
   eventRows: 20,
-  society: 20,
+  society: 10,
   industry: 10,
   alumniRows: 10,
   placementRows: 20,
@@ -50,9 +50,10 @@ const REVIEW_SECTION_MAX = {
 };
 const DIRECTOR_REVIEW_SECTION_MAX = {
  ...REVIEW_SECTION_MAX,
+ lectures: 10,
  deptActs: 30,
  uniActs: 50,
- society: 20,
+ society: 10,
  industry: 10,
  journals: 100,
  books: 30,

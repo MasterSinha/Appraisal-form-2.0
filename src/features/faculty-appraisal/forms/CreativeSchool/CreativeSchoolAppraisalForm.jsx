@@ -2338,7 +2338,7 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
             <div style={{ color: "#6d28d9", fontSize: 12, fontWeight: 900, textTransform: "uppercase", letterSpacing: 0.5 }}>Vice Chancellor Remarks</div>
             <div style={{ color: "#5b21b6", fontSize: 11, fontWeight: 700, marginTop: 3 }}>Enter your assessment remarks and confirm before submitting</div>
           </div>
-          <textarea value={remarks} readOnly={panelReadOnly} onChange={(event) => setRemarks(event.target.value)} rows={7} placeholder="Write your assessment remarks here..." style={{ width: "100%", height: 235, minHeight: 235, boxSizing: "border-box", border: "1px solid #c4b5fd", borderRadius: 10, padding: "10px 11px", fontFamily: "inherit", fontSize: 12, color: "#334155", resize: "none", background: panelReadOnly ? "#f8fafc" : "#fff", outline: "none", lineHeight: 1.5 }} />
+          <textarea value={remarks} readOnly={panelReadOnly} onChange={(event) => setRemarks(event.target.value)} rows={7} placeholder="Enter your remarks here..." style={{ width: "100%", height: 235, minHeight: 235, boxSizing: "border-box", border: "1px solid #c4b5fd", borderRadius: 10, padding: "10px 11px", fontFamily: "inherit", fontSize: 12, color: "#334155", resize: "none", background: panelReadOnly ? "#f8fafc" : "#fff", outline: "none", lineHeight: 1.5 }} />
         </div>
       ),
     },
@@ -2360,14 +2360,14 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
     <div style={{ background: "#eff6ff", border: "2px solid #93c5fd", borderRadius: 10, padding: "14px 15px", display: "flex", flexDirection: "column", minWidth: 0, boxShadow: "0 0 0 4px rgba(147,197,253,0.16), 0 14px 28px rgba(37,99,235,0.08)" }}>
       <div style={{ fontSize: 11, fontWeight: 900, color: "#1d4ed8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 5 }}>Dean Remarks Required</div>
       <div style={{ color: "#1e40af", fontSize: 11, fontWeight: 700, marginBottom: 10 }}>Please enter remarks before submitting the review.</div>
-      <textarea value={remarks} readOnly={panelReadOnly} onChange={(event) => setRemarks(event.target.value)} rows={7} placeholder="Enter dean remarks, observations, and recommendations..." style={{ width: "100%", height: 235, minHeight: 235, boxSizing: "border-box", border: "1px solid #bfdbfe", borderRadius: 8, padding: "10px 11px", fontFamily: "inherit", fontSize: 12, color: "#334155", resize: "none", background: "#fff", outline: "none", lineHeight: 1.5 }} />
+      <textarea value={remarks} readOnly={panelReadOnly} onChange={(event) => setRemarks(event.target.value)} rows={7} placeholder="Enter your remarks here..." style={{ width: "100%", height: 235, minHeight: 235, boxSizing: "border-box", border: "1px solid #bfdbfe", borderRadius: 8, padding: "10px 11px", fontFamily: "inherit", fontSize: 12, color: "#334155", resize: "none", background: "#fff", outline: "none", lineHeight: 1.5 }} />
     </div>
   );
   const directorRemarksSideContent = (
     <div style={{ background: "#eff6ff", border: "2px solid #93c5fd", borderRadius: 10, padding: "14px 15px", display: "flex", flexDirection: "column", minWidth: 0, boxShadow: "0 0 0 4px rgba(147,197,253,0.16), 0 14px 28px rgba(37,99,235,0.08)" }}>
       <div style={{ fontSize: 11, fontWeight: 900, color: "#1d4ed8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 5 }}>Director Remarks Required</div>
       <div style={{ color: "#1e40af", fontSize: 11, fontWeight: 700, marginBottom: 10 }}>Please enter remarks before submitting the review.</div>
-      <textarea value={remarks} readOnly={panelReadOnly} onChange={(event) => setRemarks(event.target.value)} rows={7} placeholder="Enter director remarks, observations, and recommendations..." style={{ width: "100%", height: 235, minHeight: 235, boxSizing: "border-box", border: "1px solid #bfdbfe", borderRadius: 8, padding: "10px 11px", fontFamily: "inherit", fontSize: 12, color: "#334155", resize: "none", background: "#fff", outline: "none", lineHeight: 1.5 }} />
+      <textarea value={remarks} readOnly={panelReadOnly} onChange={(event) => setRemarks(event.target.value)} rows={7} placeholder="Enter your remarks here..." style={{ width: "100%", height: 235, minHeight: 235, boxSizing: "border-box", border: "1px solid #bfdbfe", borderRadius: 8, padding: "10px 11px", fontFamily: "inherit", fontSize: 12, color: "#334155", resize: "none", background: "#fff", outline: "none", lineHeight: 1.5 }} />
     </div>
   );
   const authoritySummaryCards = [
