@@ -17,7 +17,7 @@ import { FacultyRecordHeader, ScoreTable, VCFinalRemarks, FinalSubmitButton, FAC
 // - Helpers - (n, pct, grade, reportValue, reportTextValue, reportQualification, reportExperience, RO, TI → imported from shared)
 
 const REVIEW_ARRAY_KEYS = ["lectures", "courseFile", "obeRows", "projects", "mentoringRows", "quals", "feedback", "deptActs", "uniActs", "eventRows", "society", "industry", "alumniRows", "placementRows", "acr", "journals", "books", "ict", "research", "projects2", "patents", "awards", "confs", "proposals", "products", "fdps"];
-const REVIEW_SECTION_MAX = { lectures: 40, courseFile: 20, obeRows: 20, projects: 20, mentoringRows: 10, quals: 10, feedback: 10, deptActs: 30, uniActs: 50, eventRows: 20, society: 20, industry: 8, alumniRows: 10, placementRows: 20, acr: 50, journals: 100, books: 30, ict: 20, research: 20, projects2: 40, patents: 40, awards: 20, confs: 20, proposals: 20, products: 20, fdps: 20 };
+const REVIEW_SECTION_MAX = { lectures: 40, courseFile: 20, obeRows: 20, projects: 20, mentoringRows: 10, quals: 10, feedback: 10, deptActs: 30, uniActs: 50, eventRows: 20, society: 20, industry: 10, alumniRows: 10, placementRows: 20, acr: 50, journals: 100, books: 30, ict: 20, research: 20, projects2: 40, patents: 40, awards: 20, confs: 20, proposals: 20, products: 20, fdps: 20 };
 const REVIEW_SCORE_FIELDS = ["hod", "director", "dean", "vc"];
 const storedAcademicYearCycles = () => {
  try {
@@ -232,7 +232,7 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false, revi
  const dept = sumReviewRows("deptActs", "hod", 30);
  const events = sumReviewRows("eventRows", "hod", 20);
  const soc = sumReviewRows("society", "hod", 20, SCORE_LIMITS.societyRow);
- const ind = sumReviewRows("industry", "hod", 8);
+ const ind = sumReviewRows("industry", "hod", 10);
  const alumni = sumReviewRows("alumniRows", "hod", 10);
  const placement = sumReviewRows("placementRows", "hod", 20);
  const partC = clampScore(uni + dept + events + soc + ind + alumni + placement, reviewerMaxScores.partC);

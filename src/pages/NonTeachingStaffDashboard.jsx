@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { storeUserSession } from "../auth/session";
+import { clearUserSession, storeUserSession } from "../auth/session";
 import { APP_INFO } from "../constants/formConfig";
 import { normalizeNonTeachingRole } from "../constants/nonTeachingHierarchy";
 import { api } from "../services/api";
@@ -668,7 +668,7 @@ export function NonTeachingAppraisalForm({ role = sessionStorage.getItem("role")
         </div>
       </aside>
       {content}
-      {showLogoutModal && <LogoutModal onCancel={() => setShowLogoutModal(false)} onConfirm={() => { sessionStorage.clear(); navigate("/login", { replace: true }); }} />}
+      {showLogoutModal && <LogoutModal onCancel={() => setShowLogoutModal(false)} onConfirm={() => { clearUserSession(); navigate("/login", { replace: true }); }} />}
     </div>
   );
 }
@@ -1284,7 +1284,7 @@ export function NonTeachingReviewDashboard({ reviewerRole, title, subtitle, acce
         )}
       </main>
 
-      {showLogoutModal && <LogoutModal onCancel={() => setShowLogoutModal(false)} onConfirm={() => { sessionStorage.clear(); navigate("/login", { replace: true }); }} />}
+      {showLogoutModal && <LogoutModal onCancel={() => setShowLogoutModal(false)} onConfirm={() => { clearUserSession(); navigate("/login", { replace: true }); }} />}
     </div>
   );
 }

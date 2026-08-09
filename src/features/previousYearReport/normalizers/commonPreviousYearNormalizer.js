@@ -122,7 +122,10 @@ const rowHasData = (row = {}, section = {}) => {
 };
 
 const normalizeSection = (form, section) => {
-  const rows = sectionRows(form, section).filter((row) => rowHasData(row, section));
+  const rows = sectionRows(form, section)
+    .map((row, originalIndex) => ({ row, originalIndex }))
+    .filter(({ row }) => rowHasData(row, section))
+    .map(({ row, originalIndex }) => ({ ...row, __rowNo: originalIndex + 1 }));
   const scoreTotal = rows.reduce((total, row) => total + previousYearNumber(previousYearScore(row, "faculty")), 0);
   return {
     ...section,
@@ -233,10 +236,24 @@ export const normalizePreviousYearReport = ({
   const normalizedPartB = attachSectionDocs(partBSections.map((section) => normalizeSection(form, section)), docs, resolvedAcademicYear, "B", formType);
   const partAFaculty = groupedTotal(normalizedPartA, "faculty", partAMax);
   const partBFaculty = groupedTotal(normalizedPartB, "faculty", partBMax);
+  const partAHasFacultyScores = normalizedPartA.some((section) =>
+    section.rows.some((row) => String(previousYearScore(row, "faculty")).trim() !== "")
+  );
+  const partBHasFacultyScores = normalizedPartB.some((section) =>
+    section.rows.some((row) => String(previousYearScore(row, "faculty")).trim() !== "")
+  );
   const storedGrand = readTotal(totals, ["grandTotal", "grand_total", "totalScore", "total_score", "total"]);
   const storedGrandMax = readTotal(totals, ["effectiveGrandMax", "effective_grand_max", "grandMax", "grand_max", "max"]);
-  const displayPartA = readTotal(totals, ["partATotal", "part_a_total", "partA", "part_a_score"]) ?? partAFaculty;
-  const displayPartB = readTotal(totals, ["partBTotal", "part_b_total", "partB", "part_b_score"]) ?? partBFaculty;
+  const storedPartA = readTotal(totals, ["partATotal", "part_a_total", "partA", "part_a_score"]);
+  const storedPartB = readTotal(totals, ["partBTotal", "part_b_total", "partB", "part_b_score"]);
+  // Prefer the total freshly computed from this report's own rows over a stored total whenever
+  // there's actual row data to compute from — a stored generic total may have been calculated
+  // against a different (e.g. current-year) section/max configuration and can be stale or wrong.
+  const displayPartA = partAHasFacultyScores ? partAFaculty : (storedPartA ?? partAFaculty);
+  const displayPartB = partBHasFacultyScores ? partBFaculty : (storedPartB ?? partBFaculty);
+  const displayGrand = (partAHasFacultyScores || partBHasFacultyScores)
+    ? clampScore(displayPartA + displayPartB, storedGrandMax || grandMax)
+    : (storedGrand ?? clampScore(displayPartA + displayPartB, grandMax));
   const reviewerTotals = (role, prefix) => {
     const partA = readTotal(totals, [`${prefix}PartA`, `${prefix}_part_a`, `${prefix}_part_a_total`]) ?? groupedTotal(normalizedPartA, role, partAMax);
     const partB = readTotal(totals, [`${prefix}PartB`, `${prefix}_part_b`, `${prefix}_part_b_total`]) ?? groupedTotal(normalizedPartB, role, partBMax);
@@ -254,7 +271,7 @@ export const normalizePreviousYearReport = ({
       faculty: {
         partA: displayPartA,
         partB: displayPartB,
-        grand: storedGrand ?? clampScore(displayPartA + displayPartB, grandMax),
+        grand: displayGrand,
         max: storedGrandMax || grandMax,
       },
       hod: reviewerTotals("hod", "hod"),

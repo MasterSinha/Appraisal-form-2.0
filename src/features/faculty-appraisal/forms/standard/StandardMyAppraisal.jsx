@@ -332,6 +332,30 @@ const defaultMentoringRows = () => [
   { activity: "Documented academic/career counselling outcomes", evidence: "", score: "", max: 3 },
 ];
 
+const standardDummyPdfFor = (key) => [{
+  name: `${key}-dummy.pdf`,
+  type: "application/pdf",
+  size: 1024,
+  url: "data:application/pdf;base64,JVBERi0xLjQKJcTl8uXrp/Og0MTGCjEgMCBvYmoKPDwvVHlwZSAvQ2F0YWxvZy9QYWdlcyAyIDAgUj4+CmVuZG9iago=",
+}];
+
+const addStandardDummyDocs = (docs, prefix, count) => {
+  for (let index = 0; index < count; index += 1) {
+    docs[`${prefix}-${index}`] = standardDummyPdfFor(`${prefix}-${index}`);
+  }
+};
+
+const buildStandardDummyDocs = () => {
+  const docs = {};
+  [
+    ["lec", 4], ["courseFile", 2], ["innov", 5], ["obe", 3], ["proj", 2], ["mentor", 3], ["qual", 2],
+    ["uni", 2], ["dept", 2], ["event", 2], ["soc", 2], ["ind", 2], ["alumni", 2], ["placement", 2],
+    ["jour", 2], ["book", 2], ["ict", 2], ["res", 2], ["project2", 2], ["externalProject", 2],
+    ["pat", 2], ["awd", 2], ["conf", 2], ["prop", 2], ["prod", 2], ["fdp", 2], ["train", 2],
+  ].forEach(([prefix, count]) => addStandardDummyDocs(docs, prefix, count));
+  return docs;
+};
+
 const evidenceClaimedOrScored = (row = {}) =>
   Boolean(String(row.score ?? "").trim()) || String(row.evidence ?? "").trim().toLowerCase() === "yes";
 
@@ -753,6 +777,129 @@ export default function StandardMyAppraisal({
     setResearch, setProjects2, setExternalProjects, setPatents, setAwards,
     setConfs, setProposals, setProducts, setFdps, setTraining, setExhibitions, setDocs,
     setSummaryOtherInfo, setSectionSaveStatus,
+  };
+
+  const fillStandardDummyData = () => {
+    if (formLocked || submitting || showClosedReportOnly) return;
+    setLectures([
+      { sem: "2026-27 Sem-I", code: "CS101 - Programming Fundamentals", planned: "40", conducted: "39", pctConducted: "97.5%", score: "10", hod: "", director: "" },
+      { sem: "2026-27 Sem-I", code: "CS205 - Data Structures", planned: "42", conducted: "40", pctConducted: "95.2%", score: "10", hod: "", director: "" },
+      { sem: "2026-27 Sem-II", code: "CS302 - Database Systems", planned: "38", conducted: "36", pctConducted: "94.7%", score: "10", hod: "", director: "" },
+      { sem: "2026-27 Sem-II", code: "CS404 - Cloud Computing", planned: "36", conducted: "34", pctConducted: "94.4%", score: "10", hod: "", director: "" },
+    ]);
+    setCourseFile([
+      { course: "CS101 - Programming Fundamentals", title: "Course File Sem-I", details: "Yes", score: "4", hod: "", director: "" },
+      { course: "CS302 - Database Systems", title: "Course File Sem-II", details: "Yes", score: "4", hod: "", director: "" },
+    ]);
+    setInnovRows([
+      { method: "Blended learning", details: "Yes", score: "4", max: A3_INNOVATIVE_ROW_MAX },
+      { method: "Virtual Lab", details: "Yes", score: "4", max: A3_INNOVATIVE_ROW_MAX },
+      { method: "Project-Based Learning", details: "Yes", score: "4", max: A3_INNOVATIVE_ROW_MAX },
+      { method: "Quiz", details: "Yes", score: "4", max: A3_INNOVATIVE_ROW_MAX },
+      { method: "Flip classroom (with proof of material shared)", details: "Yes", score: "4", max: A3_INNOVATIVE_ROW_MAX },
+    ]);
+    setInnovDetails("Blended learning, virtual lab, project-based learning, quiz and flipped classroom used.");
+    setInnovScore("20");
+    setObeRows(defaultObeRows().map((row) => ({ ...row, evidence: "Yes", score: String(row.max) })));
+    setMentoringRows(defaultMentoringRows().map((row) => ({ ...row, evidence: "Yes", score: String(row.max) })));
+    setProjects([
+      { label: "B.Tech / UG Major Project", score: "5", hod: "", director: "" },
+      { label: "Mini Project / Internship", score: "5", hod: "", director: "" },
+    ]);
+    setQuals([
+      { label: "PhD / Higher qualification progress", title: "NPTEL Certification", body: "NPTEL", date: "01/08/2026", score: "5", hod: "", director: "" },
+      { label: "Certification / FDP qualification enhancement", title: "Cloud Certification", body: "AWS Academy", date: "02/08/2026", score: "5", hod: "", director: "" },
+    ]);
+    setFeedback([
+      { code: "CS101 - Programming Fundamentals", fb1: "88", fb2: "90", score: "5", hod: "", director: "" },
+      { code: "CS302 - Database Systems", fb1: "86", fb2: "89", score: "5", hod: "", director: "" },
+    ]);
+    setUniActs([
+      { activity: "University examination committee", nature: "Coordinator", period: "Aug 2026 - Dec 2026", score: "20", hod: "", director: "" },
+      { activity: "Academic council support", nature: "Member", period: "Jan 2027 - Apr 2027", score: "20", hod: "", director: "" },
+    ]);
+    setDeptActs([
+      { activity: "Department timetable coordination", nature: "Coordinator", period: "Aug 2026 - Dec 2026", score: "10", hod: "", director: "" },
+      { activity: "Lab development activity", nature: "Member", period: "Jan 2027 - Apr 2027", score: "10", hod: "", director: "" },
+    ]);
+    setEventRows([
+      { event: "Technical workshop", role: "Coordinator", date: "03/08/2026", level: "University", score: "10" },
+      { event: "Hackathon mentoring", role: "Mentor", date: "04/08/2026", level: "National", score: "10" },
+    ]);
+    setSociety([
+      { label: "NSS / outreach activity", details: "Community coding awareness session", date: "05/08/2026", score: "5", hod: "", director: "", max: C4_OUTREACH_MAX },
+      { label: "Extension activity", details: "Digital literacy camp", date: "06/08/2026", score: "5", hod: "", director: "", max: C4_OUTREACH_MAX },
+    ]);
+    setIndustry([
+      { activity: "Industry expert session", partner: "Tech Partner Pvt Ltd", date: "07/08/2026", name: "Tech Partner Pvt Ltd", details: "Session conducted", score: "2", hod: "", director: "" },
+      { activity: "MoU discussion", partner: "Innovation Labs", date: "08/08/2026", name: "Innovation Labs", details: "Collaboration meeting", score: "2", hod: "", director: "" },
+    ]);
+    setAlumniRows([
+      { activity: "Alumni talk", details: "Career guidance by alumnus", date: "09/08/2026", score: "5" },
+      { activity: "Alumni mentoring", details: "Project mentoring session", date: "10/08/2026", score: "5" },
+    ]);
+    setPlacementRows([
+      { activityType: "Resume review", name: "Student Batch A", date: "11/08/2026", score: "10" },
+      { activityType: "Mock interview", name: "Student Batch B", date: "12/08/2026", score: "10" },
+    ]);
+    setJournals([
+      { title: "AI Enabled Learning Analytics", journal: "International Journal of Computing", issn: "2456-0001", index: "Scopus", impactFactor: "2.1", authorPosition: "First Author", score: "30", hod: "", director: "" },
+      { title: "Secure IoT Framework", journal: "Journal of Engineering Systems", issn: "2456-0002", index: "Web of Science", impactFactor: "1.8", authorPosition: "Co-author", score: "30", hod: "", director: "" },
+    ]);
+    setBooks([
+      { title: "Applied Data Science Chapter", book: "DYPIU Press, ISBN 9780000000001", issn: "9780000000001", pub: "Chapter", level: "National", coauth: "No", first: "Yes", score: "10", hod: "", director: "" },
+      { title: "Cloud Computing Practices", book: "Tech Press, ISBN 9780000000002", issn: "9780000000002", pub: "Book", level: "National", coauth: "Yes", first: "No", score: "10", hod: "", director: "" },
+    ]);
+    setIct([
+      { title: "LMS module on DBMS", desc: "Recorded module", type: "Video", quad: "Q1", score: "5", hod: "", director: "" },
+      { title: "MOOC content unit", desc: "E-content uploaded", type: "MOOC", quad: "Q2", score: "5", hod: "", director: "" },
+    ]);
+    setResearch([
+      { degree: "PhD", name: "Research Scholar A", thesis: "AI in Education", status: "Ongoing", date: "13/08/2026", score: "5", hod: "", director: "" },
+      { degree: "PG", name: "PG Student B", thesis: "Cloud Security", status: "Completed", date: "14/08/2026", score: "5", hod: "", director: "" },
+    ]);
+    setProjects2([
+      { title: "Smart Campus Analytics", agency: "AICTE", date: "15/08/2026", amount: "100000", role: "PI", status: "Ongoing", score: "10", hod: "", max: B4_PROJECT_MAX },
+      { title: "IoT Lab Prototype", agency: "DYPIU", date: "16/08/2026", amount: "75000", role: "Co-PI", status: "Completed", score: "10", hod: "", max: B4_PROJECT_MAX },
+    ]);
+    setExternalProjects([
+      { title: "Industry Consultancy Proof", agency: "Tech Partner Pvt Ltd", date: "17/08/2026", amount: "50000", role: "PI", status: "Completed", score: "5", hod: "" },
+      { title: "Testing Project", agency: "Innovation Labs", date: "18/08/2026", amount: "35000", role: "Co-PI", status: "Ongoing", score: "5", hod: "" },
+    ]);
+    setPatents([
+      { title: "Smart Attendance Device", type: "National", date: "19/08/2026", status: "Published", fileNo: "PAT-001", score: "10", hod: "", director: "" },
+      { title: "Learning Analytics Method", type: "National", date: "20/08/2026", status: "Filed", fileNo: "PAT-002", score: "10", hod: "", director: "" },
+    ]);
+    setAwards([
+      { title: "Best Paper Award", date: "21/08/2026", agency: "IEEE Chapter", level: "National", score: "5", hod: "", director: "" },
+      { title: "Reviewer Recognition", date: "22/08/2026", agency: "Journal Board", level: "International", score: "5", hod: "", director: "" },
+    ]);
+    setConfs([
+      { title: "AI Workshop", type: "Workshop", role: "Coordinator", date: "23/08/2026", org: "DYPIU", level: "National", score: "5", hod: "", director: "" },
+      { title: "Cybersecurity Seminar", type: "Seminar", role: "Speaker", date: "24/08/2026", org: "DYPIU", level: "University", score: "5", hod: "", director: "" },
+    ]);
+    setProposals([
+      { title: "Consultancy Proposal", duration: "2 weeks", agency: "Tech Partner Pvt Ltd", amount: "50000", score: "5", hod: "", director: "" },
+      { title: "Testing Proposal", duration: "1 month", agency: "Innovation Labs", amount: "75000", score: "5", hod: "", director: "" },
+    ]);
+    setProducts([
+      { details: "Prototype for lab automation", role: "Lead", usage: "Used in lab demo", status: "Completed", score: "5", hod: "", director: "" },
+      { details: "Startup mentoring contribution", role: "Mentor", usage: "Student startup support", status: "Ongoing", score: "5", hod: "", director: "" },
+    ]);
+    setFdps([
+      { program: "Advanced Pedagogy FDP", duration: "5 days", org: "NITTTR", score: "5", hod: "", director: "" },
+      { program: "AI Tools FDP", duration: "1 week", org: "AICTE", score: "5", hod: "", director: "" },
+    ]);
+    setTraining([
+      { company: "Tech Partner Pvt Ltd", duration: "1 week", nature: "Industrial training", score: "5", hod: "", director: "" },
+      { company: "Cloud Academy", duration: "5 days", nature: "Hands-on training", score: "5", hod: "", director: "" },
+    ]);
+    setExhibitions([
+      { title: "Engineering Project Expo", type: "Group", venueLevel: "University", date: "25/08/2026", score: "5", hod: "", director: "" },
+      { title: "Innovation Showcase", type: "Curated", venueLevel: "National", date: "26/08/2026", score: "5", hod: "", director: "" },
+    ]);
+    setDocs((prev) => ({ ...prev, ...buildStandardDummyDocs() }));
+    setSummaryOtherInfo("Dummy Engineering appraisal data generated for multi-row validation, attachment, report, save, and review testing.");
   };
 
   useEffect(() => {
@@ -1845,6 +1992,17 @@ export default function StandardMyAppraisal({
               />
             ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {!formLocked && !submitting && (
+                <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                  <button
+                    type="button"
+                    onClick={fillStandardDummyData}
+                    style={{ padding: "8px 14px", background: "#0f766e", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 800, fontSize: 12, fontFamily: "inherit", boxShadow: "0 8px 18px rgba(15,118,110,0.18)" }}
+                  >
+                    Fill Dummy Test Data
+                  </button>
+                </div>
+              )}
               <fieldset disabled={formLocked && hodAppraisalTab !== "summary"} style={{ flex: 1, minWidth: 0, border: 0, padding: 0, margin: 0, opacity: formLocked && hodAppraisalTab !== "summary" ? 0.86 : 1 }}>
 
                 {/* Part A Tab */}
