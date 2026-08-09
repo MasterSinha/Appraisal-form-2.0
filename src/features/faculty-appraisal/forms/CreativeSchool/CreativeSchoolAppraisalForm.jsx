@@ -2275,6 +2275,10 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
     total: averageSourceTotals.reduce((sum, item) => sum + n(item.total), 0) / averageSourceTotals.length,
     maxScores: totals.maxScores,
   } : { partA: 0, partB: 0, partC: 0, partD: 0, total: 0, maxScores: totals.maxScores };
+  const partDReportRoles = Array.from(new Set([
+    ...(reviewerRole === "vc" ? visiblePreviousRoles : authorityPreviousRoles),
+    reviewerRole,
+  ])).filter((role) => role && role !== "faculty" && role !== "score");
   const showAverageColumn = !(reviewerRole === "vc" && normalizedSubjectRole === "dean");
   const comparisonColumns = [
     { key: "self", label: "Self", totals: facultyTotals, maxScores: facultyTotals.maxScores },
@@ -2580,6 +2584,8 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
       partBSections: getPartBSectionsForSchool(reviewerForm?.info?.school || person),
       partCSections: PART_C_SECTIONS,
       partDSections: PART_D_SECTIONS,
+      partDScoreRoles: partDReportRoles,
+      roleLabel,
       totals: { partA: partATotal, partB: partBTotal, partC: partCTotal, partD: partDTotal, total: grandTotal },
       maxScores,
       generatedBy: sessionStorage.getItem("name") || roleLabel(reviewerRole),
@@ -2627,8 +2633,8 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
         ...summaryRow(applicability, "placements", { id: "C7", label: "Placement & Internship Support", max: 20, score: rowSum("placements", 20) }),
         { isTotal: true, label: "Part C Total", max: maxScores.partC, score: totals.partC },
         { isHeader: true, label: "Part D - Annual Confidential Report (ACR)" },
-        ...summaryRow(applicability, "acr", { id: "D1", label: "Annual Confidential Report", max: 50, score: rowSum("acr", 50) }),
-        { isTotal: true, label: "Part D Total", max: maxScores.partD, score: totals.partD },
+        ...summaryRow(applicability, "acr", { id: "D1", label: "Annual Confidential Report", max: 50, score: partDTotal }),
+        { isTotal: true, label: "Part D Total", max: maxScores.partD, score: partDTotal },
         { isGrandTotal: true, label: "Grand Total", max: maxScores.grand, score: grandTotal },
       ],
     });

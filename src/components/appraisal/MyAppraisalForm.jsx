@@ -248,7 +248,7 @@ export function DirectorFacultyReviewForm({ faculty, hodData, setHodData, dirDat
   const nextValue = clampDirectorReviewScore("innovRows", { ...sourceRow, max: sourceRow.max || STANDARD_INNOVATIVE_ROW_MAX }, value, STANDARD_INNOVATIVE_SECTION_MAX);
   setDirData(prev =>{
   const sourceRows = Array.isArray(prev.innovRows) && prev.innovRows.length ? prev.innovRows : JSON.parse(JSON.stringify(innovativeRows));
-  const nextRows = sourceRows.map((row, rowIndex) =>rowIndex === index ? { ...row, max: row.max || STANDARD_INNOVATIVE_ROW_MAX, director: nextValue } : row);
+  const nextRows = sourceRows.map((row, rowIndex) =>rowIndex === index ? { ...row, max: row.max || STANDARD_INNOVATIVE_ROW_MAX, sectionMax: row.sectionMax || STANDARD_INNOVATIVE_SECTION_MAX, dir: nextValue, director: nextValue } : row);
   const total = reviewSectionScore("innovRows", nextRows.map((row, rowIndex) =>({ ...innovativeRows[rowIndex], max: innovativeRows[rowIndex]?.max || STANDARD_INNOVATIVE_ROW_MAX, ...row })), STANDARD_INNOVATIVE_SECTION_MAX, "director");
   return { ...prev, innovRows: nextRows, innovDir: total ? String(total) : "" };
   });
