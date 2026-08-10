@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { clearUserSession, storeUserSession } from "../auth/session";
+import { clearUserSession, storeUserSession, getActiveAcademicYear, setActiveAcademicYear, getSessionItem, normalizeAcademicYearLabel } from "../auth/session";
 import { APP_INFO } from "../constants/formConfig";
 import { normalizeNonTeachingRole } from "../constants/nonTeachingHierarchy";
 import { api } from "../services/api";
@@ -45,6 +45,42 @@ const ACCENT = "#1d4ed8";
 const REG_ACCENT = "#155e75";
 const VC_ACCENT = "#6d28d9";
 const clampOptionalScore = (value, max) => String(value ?? "").trim() === "" ? "" : clampScore(value, max);
+
+const normalizeAcademicYearCycles = (cyclesData) => {
+  const normalizeCycle = (cycle) => {
+    if (!cycle) return null;
+    if (typeof cycle === "string") {
+      return { academic_year: normalizeAcademicYearLabel(cycle), is_open: cycle === APP_INFO.DEFAULT_AY };
+    }
+    const academicYear = normalizeAcademicYearLabel(cycle.academic_year || cycle.academicYear || cycle.year || cycle.year_label || "");
+    if (!academicYear) return null;
+    return {
+      academic_year: academicYear,
+      is_open: cycle.is_open ?? cycle.isOpen ?? cycle.active ?? cycle.open ?? (academicYear === APP_INFO.DEFAULT_AY),
+    };
+  };
+
+  let list = [];
+  if (Array.isArray(cyclesData)) list = cyclesData.map(normalizeCycle).filter(Boolean);
+  else if (Array.isArray(cyclesData?.cycles)) list = cyclesData.cycles.map(normalizeCycle).filter(Boolean);
+  else if (Array.isArray(cyclesData?.data)) list = cyclesData.data.map(normalizeCycle).filter(Boolean);
+
+  if (list.length === 0) {
+    list.push({ academic_year: APP_INFO.DEFAULT_AY || "2026-2027", is_open: true });
+  }
+
+  return list
+    .reduce((acc, cycle) => {
+      if (!acc.some((existing) => existing.academic_year === cycle.academic_year)) acc.push(cycle);
+      return acc;
+    }, [])
+    .sort((a, b) => b.academic_year.localeCompare(a.academic_year));
+};
+
+const storedAcademicYearCycles = () =>
+  getSessionItem("availableCyclesSource") === "backend"
+    ? JSON.parse(getSessionItem("availableCycles") || "[]")
+    : [];
 
 const roleAccent = (role) => {
   const normalized = normalizeNonTeachingRole(role, role);
@@ -516,6 +552,118 @@ function NonTeachingProgressCard({ totals, max }) {
   );
 }
 
+function NonTeachingClosedYearNotice({ academicYear }) {
+  return (
+    <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 10, padding: "14px 18px", display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+      <span aria-hidden="true" style={{ color: "#92400e", fontSize: 16, fontWeight: 900, flexShrink: 0 }}>!</span>
+      <span style={{ color: "#92400e", fontSize: 13, fontWeight: 700, lineHeight: 1.5 }}>
+        Appraisal cycle for Academic Year {academicYear} is closed. The next appraisal cycle form will be available soon. For any queries, please contact appraisal@dypiu.ac.in.
+      </span>
+    </div>
+  );
+}
+
+function ScoreMiniCard({ label, value, max, color }) {
+  return (
+    <div style={{ border: "1px solid #dbe3ef", borderRadius: 10, padding: "8px 10px", background: "#f8fafc" }}>
+      <div style={{ color: "#64748b", fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.3 }}>{label}</div>
+      <div style={{ color, fontSize: 14, fontWeight: 900, margin: "3px 0 5px" }}>{n(value).toFixed(1)} <span style={{ fontSize: 10, color: "#94a3b8", fontWeight: 700 }}>/ {max}</span></div>
+      <ScoreBar score={value} max={max} color={color} />
+    </div>
+  );
+}
+
+function NonTeachingPreviousYearReportCard({ recordFound, form, academicYear, onReport }) {
+  const docs = form.docs || {};
+  const attachments = SELF_ITEMS.flatMap((item) => {
+    const value = docs[item.key];
+    const files = Array.isArray(value) ? value : value ? [value] : [];
+    return files.map((file, index) => ({ ...file, particular: item.label, key: `${item.key}-${index}` }));
+  });
+
+  const selfTotals = calculateNonTeachingTotals(form, "self");
+  const authorityRows = [
+    ["reporting_officer", "#0891b2"],
+    ["registrar", "#7c3aed"],
+    ["vc", "#059669"],
+  ]
+    .map(([role, color]) => ({
+      role,
+      color,
+      label: workflowDesignationForNonTeachingRole(form, role),
+      totals: calculateNonTeachingTotals(form, role === "vc" ? "vc" : role),
+    }))
+    .filter((row) => row.totals.total > 0 || row.totals.partB > 0);
+
+  return (
+    <SectionCard title={`Previous Year Appraisal Report - ${academicYear}`} accent="#4f46e5">
+      {recordFound ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: "#334155", textTransform: "uppercase", letterSpacing: 0.4 }}>Final Status</div>
+            <NonTeachingStatusBadge status={form.status} />
+          </div>
+
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: "#334155", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 8 }}>Self Claimed - Part A</div>
+            <div style={{ maxWidth: 160 }}>
+              <ScoreMiniCard label="Part A" value={selfTotals.partA} max={NON_TEACHING_MAX.partA} color="#4f46e5" />
+            </div>
+          </div>
+
+          {authorityRows.map((row) => (
+            <div key={row.role}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: "#334155", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 8 }}>{row.label} Review</div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
+                <ScoreMiniCard label="Part A" value={row.totals.partA} max={NON_TEACHING_MAX.partA} color={row.color} />
+                <ScoreMiniCard label="Part B" value={row.totals.partB} max={NON_TEACHING_MAX.partB} color={row.color} />
+                <ScoreMiniCard label="Total" value={row.totals.total} max={NON_TEACHING_MAX.grand} color={row.color} />
+              </div>
+            </div>
+          ))}
+
+          <button type="button" className="appraisal-report-button" onClick={onReport} style={{ alignSelf: "flex-start", padding: "10px 22px", border: "1.5px solid #d1d5db", borderRadius: 10, background: "#fff", color: "#475569", cursor: "pointer", fontWeight: 700, fontFamily: "inherit" }}>
+            Generate Report
+          </button>
+
+          {attachments.length > 0 && (
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 800, color: "#334155", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 8 }}>Attachments</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {attachments.map((file) => (
+                  <a
+                    key={file.key}
+                    href={file.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    download={file.name || true}
+                    style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, color: "#1d4ed8", fontSize: 12, fontWeight: 700, textDecoration: "none" }}
+                  >
+                    <DocIcon />
+                    <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{file.name || file.particular}</span>
+                    <span style={{ color: "#94a3b8", fontWeight: 600 }}>{file.particular}</span>
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 12, background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 10, padding: "16px 18px" }}>
+          <span style={{ width: 36, height: 36, borderRadius: 10, background: "#ede9fe", color: "#6d28d9", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <DocIcon />
+          </span>
+          <div>
+            <div style={{ fontWeight: 800, color: "#0f172a", fontSize: 14, marginBottom: 4 }}>No previous-year report available</div>
+            <div style={{ color: "#4f46e5", fontWeight: 800, fontSize: 12, marginBottom: 4 }}>Academic Year: {academicYear}</div>
+            <div style={{ color: "#64748b", fontSize: 12, lineHeight: 1.5 }}>We could not find a submitted previous-year appraisal report for this academic year. Please contact appraisal@dypiu.ac.in.</div>
+          </div>
+        </div>
+      )}
+    </SectionCard>
+  );
+}
+
 export function NonTeachingAppraisalForm({ role = sessionStorage.getItem("role"), embedded = false }) {
   const normalizedRole = normalizeNonTeachingRole(role, "non_teaching_staff");
   const navigate = useNavigate();
@@ -528,16 +676,39 @@ export function NonTeachingAppraisalForm({ role = sessionStorage.getItem("role")
   const [confirmed, setConfirmed] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [workflow, setWorkflow] = useState(null);
+  const [selectedAcademicYear, setSelectedAcademicYear] = useState(() => getActiveAcademicYear(APP_INFO.DEFAULT_AY));
+  const [availableCyclesState, setAvailableCyclesState] = useState(() => normalizeAcademicYearCycles(storedAcademicYearCycles()));
+  const [recordFound, setRecordFound] = useState(true);
   const accent = roleAccent(normalizedRole);
   const locked = form.status !== NON_TEACHING_STATUS.DRAFT && !isNonTeachingRejectedStatus(form.status);
   const sidebarWorkflowText = (workflow?.approvalSteps || workflow?.steps || [])
     .filter((stage) => !stage.isInitial)
     .map((stage) => stage.designation)
     .join(" to ") || "Submit your appraisal to begin the review process.";
+  const academicYearOptions = availableCyclesState.length
+    ? availableCyclesState
+    : [{ academic_year: selectedAcademicYear, is_open: true }];
+  const selectedCycle = academicYearOptions.find((cycle) => cycle.academic_year === selectedAcademicYear);
+  const selectedYearIsClosed = selectedCycle ? !selectedCycle.is_open : false;
+
+  useEffect(() => {
+    const syncAvailableCycles = () => {
+      setAvailableCyclesState(normalizeAcademicYearCycles(storedAcademicYearCycles()));
+    };
+    window.addEventListener("academicYearChanged", syncAvailableCycles);
+    return () => window.removeEventListener("academicYearChanged", syncAvailableCycles);
+  }, []);
+
+  const handleAcademicYearChange = (nextAcademicYear) => {
+    const normalized = setActiveAcademicYear(nextAcademicYear) || nextAcademicYear;
+    setSelectedAcademicYear(normalized);
+    window.dispatchEvent(new CustomEvent("academicYearChanged", { detail: { academicYear: normalized } }));
+  };
 
   useEffect(() => {
     let active = true;
     const loadForm = async () => {
+      setLoading(true);
       try {
         let profile = profileFromsessionStorage();
         try {
@@ -547,24 +718,28 @@ export function NonTeachingAppraisalForm({ role = sessionStorage.getItem("role")
         } catch (profileErr) {
           console.warn("Could not refresh non-teaching profile:", profileErr?.message || profileErr);
         }
+        const profileForYear = { ...profile, academic_year: selectedAcademicYear };
         const saved = await loadNonTeachingAppraisal({
           email: profile.email,
-          academicYear: APP_INFO.DEFAULT_AY,
-          profile,
+          academicYear: selectedAcademicYear,
+          profile: profileForYear,
           role: normalizedRole,
         });
         const liveWorkflow = await loadNonTeachingWorkflow({
           email: profile.email,
-          academicYear: APP_INFO.DEFAULT_AY,
+          academicYear: selectedAcademicYear,
         }).catch(() => null);
         if (!active) return;
-        const loadedForm = saved?.form || emptyNonTeachingForm(profile, normalizedRole);
+        // A previous-year report only counts as "available" once the staff member actually
+        // submitted it - a never-touched draft row has nothing to report on or review.
+        setRecordFound(Boolean(saved?.form) && saved.form.status !== NON_TEACHING_STATUS.DRAFT);
+        const loadedForm = saved?.form || emptyNonTeachingForm(profileForYear, normalizedRole);
         const isEditable = loadedForm.status === NON_TEACHING_STATUS.DRAFT || isNonTeachingRejectedStatus(loadedForm.status);
         // Non-teaching staff only: while the appraisal is still editable, keep the profile-sourced
         // General Information fields in sync with whatever was last saved via Edit Profile, so a
         // stale saved draft doesn't keep showing outdated name/employee ID/designation/department.
         if (isEditable) {
-          const freshInfo = emptyNonTeachingForm(profile, normalizedRole).info;
+          const freshInfo = emptyNonTeachingForm(profileForYear, normalizedRole).info;
           setForm({
             ...loadedForm,
             info: {
@@ -587,7 +762,7 @@ export function NonTeachingAppraisalForm({ role = sessionStorage.getItem("role")
     };
     loadForm();
     return () => { active = false; };
-  }, [normalizedRole]);
+  }, [normalizedRole, selectedAcademicYear]);
 
   const updateInfo = (field, value) => {
     setForm((current) => ({ ...current, info: { ...(current.info || {}), [field]: value } }));
@@ -705,11 +880,43 @@ export function NonTeachingAppraisalForm({ role = sessionStorage.getItem("role")
               <AppraisalHeaderImage logo="dypiu" height={78} />
               <div>
                 <h2 style={{ margin: 0, fontSize: 22, fontWeight: 900, color: "#0f172a", letterSpacing: 0, lineHeight: 1.1 }}>Non-Teaching Staff Appraisal</h2>
-                <p style={{ margin: "6px 0 0", color: "#64748b", fontSize: 13, fontWeight: 600 }}>{nonTeachingRoleLabel(normalizedRole)} | AY {form.info?.ay || APP_INFO.DEFAULT_AY}</p>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 10, fontSize: 13, color: "#6b7280", fontWeight: 700, flexWrap: "wrap" }}>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 8, color: "#111827", fontWeight: 800 }}>
+                    <span style={{ width: 24, height: 24, borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#ede9fe", color: "#6d28d9", border: "1px solid #ddd6fe" }}>
+                      <PersonIcon />
+                    </span>
+                    <span>{form.info?.name || sessionStorage.getItem("name") || "Staff"}</span>
+                  </span>
+                  <span aria-hidden="true" style={{ width: 1, height: 20, background: "#cbd5e1", display: "inline-block" }} />
+                  <span>Academic Year:</span>
+                  <select
+                    value={selectedAcademicYear}
+                    onChange={(event) => handleAcademicYearChange(event.target.value)}
+                    className="appraisal-year-select"
+                    style={{ height: 36, minWidth: 176, border: "1px solid #d1d5db", borderRadius: 9, padding: "0 12px", fontSize: 13, fontFamily: "inherit", color: "#111827", background: "#fff", outline: "none", fontWeight: 800, boxShadow: "0 1px 2px rgba(15,23,42,0.04)" }}
+                  >
+                    {academicYearOptions.map((cycle) => (
+                      <option key={cycle.academic_year} value={cycle.academic_year}>
+                        {cycle.academic_year} {cycle.is_open ? "(Active)" : "(Closed / Read-Only)"}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
+            <AppraisalHeaderImage logo="iqas" height={78} />
           </div>
 
+          {selectedYearIsClosed ? (
+            <>
+              <div style={{ marginBottom: 16 }}>
+                <NonTeachingApprovalTracker workflow={workflow} />
+              </div>
+              <NonTeachingClosedYearNotice academicYear={selectedAcademicYear} />
+              <NonTeachingPreviousYearReportCard recordFound={recordFound} form={form} academicYear={selectedAcademicYear} onReport={handleReport} />
+            </>
+          ) : (
+          <>
           <div className="appraisal-status-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 316px", gap: 12, alignItems: "stretch", marginBottom: 16 }}>
             <NonTeachingApprovalTracker workflow={workflow} />
             <NonTeachingProgressCard totals={calculateNonTeachingTotals(form, "self")} max={NON_TEACHING_MAX} />
@@ -747,13 +954,27 @@ export function NonTeachingAppraisalForm({ role = sessionStorage.getItem("role")
                   ["Designation", "designation"],
                   ["Department / Office", "department"],
                   ["Reporting Head", "reportingHead"],
-                  ["Academic Year", "ay"],
                 ].map(([label, key]) => (
                   <label key={key} style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                     <span style={{ color: "#334155", fontSize: 11, fontWeight: 800 }}>{label}</span>
                     <TextInput value={form.info?.[key]} onChange={(value) => updateInfo(key, value)} readOnly={locked && key !== "reportingHead"} />
                   </label>
                 ))}
+                <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                  <span style={{ color: "#334155", fontSize: 11, fontWeight: 800 }}>Academic Year</span>
+                  <select
+                    value={selectedAcademicYear}
+                    onChange={(event) => handleAcademicYearChange(event.target.value)}
+                    className="appraisal-year-select"
+                    style={{ width: "100%", boxSizing: "border-box", height: 34, border: "1px solid #cbd5e1", borderRadius: 6, padding: "6px 9px", fontSize: 12, fontFamily: "inherit", outline: "none", background: "#fff", color: "#0f172a" }}
+                  >
+                    {academicYearOptions.map((cycle) => (
+                      <option key={cycle.academic_year} value={cycle.academic_year}>
+                        {cycle.academic_year} {cycle.is_open ? "(Active)" : "(Closed / Read-Only)"}
+                      </option>
+                    ))}
+                  </select>
+                </label>
               </div>
             </SectionCard>
           )}
@@ -784,6 +1005,8 @@ export function NonTeachingAppraisalForm({ role = sessionStorage.getItem("role")
               accent={accent}
               showReport={normalizedRole !== "registrar"}
             />
+          )}
+          </>
           )}
         </>
       )}
@@ -1543,6 +1766,15 @@ export function NonTeachingReviewDashboard({ reviewerRole, title, subtitle, acce
 
       {showLogoutModal && <LogoutConfirmModal portalName={APP_INFO.PORTAL_NAME} onCancel={() => setShowLogoutModal(false)} onConfirm={() => { clearUserSession(); navigate("/login", { replace: true }); }} />}
     </div>
+  );
+}
+
+function PersonIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M20 21a8 8 0 0 0-16 0" />
+      <path d="M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" />
+    </svg>
   );
 }
 
