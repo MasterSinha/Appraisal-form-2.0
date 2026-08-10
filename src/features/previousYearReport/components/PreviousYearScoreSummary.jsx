@@ -28,7 +28,16 @@ export default function PreviousYearScoreSummary({ report, compact = false, visi
     const totals = report.totals?.[level] || {};
     if (level !== "faculty" && !hasScore(totals.partA) && !hasScore(totals.partB) && !hasScore(totals.grand)) return [];
     const grand = totals.grand ?? ((parseFloat(totals.partA) || 0) + (parseFloat(totals.partB) || 0));
-    return [{ level, label: REVIEW_LABELS[level] || level, partA: totals.partA, partB: totals.partB, grand }];
+    return [{
+      level,
+      label: REVIEW_LABELS[level] || level,
+      partA: totals.partA,
+      partB: totals.partB,
+      grand,
+      partAMax: totals.partAMax || report.partA.max,
+      partBMax: totals.partBMax || report.partB.max,
+      grandMax: totals.max || report.totals?.faculty?.max || report.partA.max + report.partB.max,
+    }];
   });
 
   if (variant === "table") {
@@ -47,9 +56,9 @@ export default function PreviousYearScoreSummary({ report, compact = false, visi
             {rows.map((row) => (
               <tr key={row.level}>
                 <td style={summaryTdLabel}>{row.label}</td>
-                <td style={summaryTd}>{score(row.partA)} / {report.partA.max}</td>
-                <td style={summaryTd}>{score(row.partB)} / {report.partB.max}</td>
-                <td style={summaryTd}>{score(row.grand)} / {report.totals?.faculty?.max || report.partA.max + report.partB.max}</td>
+                <td style={summaryTd}>{score(row.partA)} / {row.partAMax}</td>
+                <td style={summaryTd}>{score(row.partB)} / {row.partBMax}</td>
+                <td style={summaryTd}>{score(row.grand)} / {row.grandMax}</td>
               </tr>
             ))}
           </tbody>
@@ -59,9 +68,9 @@ export default function PreviousYearScoreSummary({ report, compact = false, visi
   }
 
   const cards = rows.flatMap((row) => [
-    { label: `Part A ${row.label}`, value: row.partA, max: report.partA.max },
-    { label: `Part B ${row.label}`, value: row.partB, max: report.partB.max },
-    { label: `Grand ${row.label}`, value: row.grand, max: report.totals?.faculty?.max || report.partA.max + report.partB.max },
+    { label: `Part A ${row.label}`, value: row.partA, max: row.partAMax },
+    { label: `Part B ${row.label}`, value: row.partB, max: row.partBMax },
+    { label: `Grand ${row.label}`, value: row.grand, max: row.grandMax },
   ]);
 
   return (

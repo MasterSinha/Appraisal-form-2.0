@@ -266,7 +266,7 @@ const fetchAttachmentBlob = async (file) => {
   const finalUrl = rawUrl ? api.getFileUrl(rawUrl) : "";
   if (!finalUrl) throw new Error("Attachment URL is missing.");
   if (finalUrl.startsWith("data:")) return dataUrlToBlob(finalUrl);
-  const token = sessionStorage.getItem("accessToken") || sessionStorage.getItem("token") || localStorage.getItem("accessToken") || localStorage.getItem("token");
+  const token = sessionStorage.getItem("accessToken") || sessionStorage.getItem("token");
   const response = await fetch(finalUrl, {
     credentials: "include",
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
@@ -929,7 +929,7 @@ export default function StandardMyAppraisal({
   }, [info.ay, isLegacyTwoPartYear]);
 
   useEffect(() => {
-    const userEmail = sessionStorage.getItem("username") || sessionStorage.getItem("email") || localStorage.getItem("username") || localStorage.getItem("email");
+    const userEmail = sessionStorage.getItem("username") || sessionStorage.getItem("email");
     if (!userEmail || !info.ay) return;
     const requestId = loadRequestRef.current + 1;
     loadRequestRef.current = requestId;
@@ -1197,7 +1197,7 @@ export default function StandardMyAppraisal({
   const lastAutoSavedFingerprintRef = useRef("");
 
   useEffect(() => {
-    const userEmail = sessionStorage.getItem("username") || sessionStorage.getItem("email") || localStorage.getItem("username") || localStorage.getItem("email");
+    const userEmail = sessionStorage.getItem("username") || sessionStorage.getItem("email");
     if (!autoSaveReadyRef.current) {
       autoSaveReadyRef.current = true;
       return undefined;
@@ -1254,7 +1254,7 @@ export default function StandardMyAppraisal({
 
   const handleSaveCurrentSection = async (section, navigateNext = true) => {
     if (formLocked) return;
-    const userEmail = sessionStorage.getItem("username") || sessionStorage.getItem("email") || localStorage.getItem("username") || localStorage.getItem("email");
+    const userEmail = sessionStorage.getItem("username") || sessionStorage.getItem("email");
     if (!userEmail) {
       alert("Please login again before saving. Your session email was not found.");
       navigate("/login", { replace: true });
@@ -1349,7 +1349,7 @@ export default function StandardMyAppraisal({
       return;
     }
 
-    const userEmail = sessionStorage.getItem("username") || sessionStorage.getItem("email") || localStorage.getItem("username") || localStorage.getItem("email");
+    const userEmail = sessionStorage.getItem("username") || sessionStorage.getItem("email");
     if (!userEmail) {
       alert("Please login again before submitting. Your email was not found in this session.");
       navigate("/login", { replace: true });
@@ -1893,7 +1893,7 @@ export default function StandardMyAppraisal({
               declaration={workflowDeclaration}
               reviews={workflowReviews}
               status={workflowDeclaration?.status}
-              alertOnceKey={`${sessionStorage.getItem("username") || localStorage.getItem("username") || ""}:${info.ay || ""}:${workflowDeclaration?.status || ""}`}
+              alertOnceKey={`${sessionStorage.getItem("username") || ""}:${info.ay || ""}:${workflowDeclaration?.status || ""}`}
             />
             {formLocked && (
               <div style={{ background: appraisalWindowLockMessage || isSelectedCycleClosed ? "#fffbeb" : workflowRejected ? "#fef2f2" : "#ecfdf5", border: `1px solid ${appraisalWindowLockMessage || isSelectedCycleClosed ? "#fde68a" : workflowRejected ? "#fecaca" : "#bbf7d0"}`, color: appraisalWindowLockMessage || isSelectedCycleClosed ? "#92400e" : workflowRejected ? "#991b1b" : "#166534", borderRadius: 9, padding: "11px 14px", fontSize: 12, fontWeight: 750, display: "flex", alignItems: "center", gap: 10 }}>

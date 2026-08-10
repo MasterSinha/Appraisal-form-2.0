@@ -137,12 +137,15 @@ const renderSummary = (report = {}, levels = ["faculty"]) => `
     <tbody>
       ${levels.map((level) => {
         const totals = report.totals?.[level] || {};
+        const partAMax = totals.partAMax || report.partA?.max;
+        const partBMax = totals.partBMax || report.partB?.max;
+        const grandMax = totals.max || report.totals?.faculty?.max || ((report.partA?.max || 0) + (report.partB?.max || 0));
         return `
         <tr>
           <td>${safeHtml(roleLabels[level]?.replace(" Score", "") || level)}</td>
-          <td class="c">${score(totals.partA)} / ${safeHtml(report.partA?.max)}</td>
-          <td class="c">${score(totals.partB)} / ${safeHtml(report.partB?.max)}</td>
-          <td class="c">${score(totals.grand)} / ${safeHtml(totals.max || report.totals?.faculty?.max || ((report.partA?.max || 0) + (report.partB?.max || 0)))}</td>
+          <td class="c">${score(totals.partA)} / ${safeHtml(partAMax)}</td>
+          <td class="c">${score(totals.partB)} / ${safeHtml(partBMax)}</td>
+          <td class="c">${score(totals.grand)} / ${safeHtml(grandMax)}</td>
         </tr>`;
       }).join("")}
     </tbody>
