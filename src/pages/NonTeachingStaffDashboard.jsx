@@ -82,6 +82,17 @@ const storedAcademicYearCycles = () =>
     ? JSON.parse(getSessionItem("availableCycles") || "[]")
     : [];
 
+// Non-teaching staff only: "My Appraisal" should default to the active cycle when one exists,
+// otherwise fall back to the latest closed cycle (cycles are sorted newest-first) rather than
+// whatever academic year happens to be cached globally, which may not reflect a real open cycle.
+const resolveDefaultAcademicYear = () => {
+  const cycles = normalizeAcademicYearCycles(storedAcademicYearCycles());
+  const activeCycle = cycles.find((cycle) => cycle.is_open);
+  if (activeCycle) return activeCycle.academic_year;
+  if (cycles.length) return cycles[0].academic_year;
+  return getActiveAcademicYear(APP_INFO.DEFAULT_AY);
+};
+
 const roleAccent = (role) => {
   const normalized = normalizeNonTeachingRole(role, role);
   if (normalized === "registrar") return REG_ACCENT;
@@ -563,17 +574,8 @@ function NonTeachingClosedYearNotice({ academicYear }) {
   );
 }
 
-function ScoreMiniCard({ label, value, max, color }) {
-  return (
-    <div style={{ border: "1px solid #dbe3ef", borderRadius: 10, padding: "8px 10px", background: "#f8fafc" }}>
-      <div style={{ color: "#64748b", fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.3 }}>{label}</div>
-      <div style={{ color, fontSize: 14, fontWeight: 900, margin: "3px 0 5px" }}>{n(value).toFixed(1)} <span style={{ fontSize: 10, color: "#94a3b8", fontWeight: 700 }}>/ {max}</span></div>
-      <ScoreBar score={value} max={max} color={color} />
-    </div>
-  );
-}
-
 function NonTeachingPreviousYearReportCard({ recordFound, form, academicYear, onReport }) {
+  const [zipping, setZipping] = useState(false);
   const docs = form.docs || {};
   const attachments = SELF_ITEMS.flatMap((item) => {
     const value = docs[item.key];
@@ -582,71 +584,92 @@ function NonTeachingPreviousYearReportCard({ recordFound, form, academicYear, on
   });
 
   const selfTotals = calculateNonTeachingTotals(form, "self");
-  const authorityRows = [
-    ["reporting_officer", "#0891b2"],
-    ["registrar", "#7c3aed"],
-    ["vc", "#059669"],
-  ]
-    .map(([role, color]) => ({
-      role,
-      color,
-      label: workflowDesignationForNonTeachingRole(form, role),
-      totals: calculateNonTeachingTotals(form, role === "vc" ? "vc" : role),
-    }))
-    .filter((row) => row.totals.total > 0 || row.totals.partB > 0);
+
+  const handleDownloadZip = async () => {
+    if (zipping || !attachments.length) return;
+    setZipping(true);
+    try {
+      const { default: JSZip } = await import("jszip");
+      const zip = new JSZip();
+      const usedNames = new Set();
+      let anyFileAdded = false;
+      for (const file of attachments) {
+        try {
+          const response = await fetch(file.url);
+          const blob = await response.blob();
+          let fileName = file.name || `${file.particular}`;
+          if (usedNames.has(fileName)) {
+            const dotIndex = fileName.lastIndexOf(".");
+            fileName = dotIndex > 0
+              ? `${fileName.slice(0, dotIndex)}-${file.key}${fileName.slice(dotIndex)}`
+              : `${fileName}-${file.key}`;
+          }
+          usedNames.add(fileName);
+          zip.file(fileName, blob);
+          anyFileAdded = true;
+        } catch (err) {
+          console.error("Could not fetch attachment for zip:", file.name, err);
+        }
+      }
+      if (!anyFileAdded) {
+        alert("Unable to download attachments right now. Please try again later.");
+        return;
+      }
+      const content = await zip.generateAsync({ type: "blob" });
+      const zipUrl = URL.createObjectURL(content);
+      const link = document.createElement("a");
+      link.href = zipUrl;
+      link.download = `Attachments_${academicYear}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(zipUrl);
+    } catch (err) {
+      console.error("Could not create attachments zip:", err);
+      alert("Unable to create the attachments zip file.");
+    } finally {
+      setZipping(false);
+    }
+  };
 
   return (
     <SectionCard title={`Previous Year Appraisal Report - ${academicYear}`} accent="#4f46e5">
       {recordFound ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: "#334155", textTransform: "uppercase", letterSpacing: 0.4 }}>Final Status</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, flexWrap: "wrap", padding: "12px 16px", background: "linear-gradient(135deg,#eef2ff 0%,#f5f3ff 100%)", border: "1px solid #e0e7ff", borderRadius: 10 }}>
+            <div>
+              <div style={{ fontSize: 10, fontWeight: 800, color: "#4338ca", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 4 }}>Staff Given Score</div>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+                <span style={{ fontSize: 24, fontWeight: 900, color: "#312e81", lineHeight: 1 }}>{selfTotals.partA.toFixed(1)}</span>
+                <span style={{ fontSize: 12, color: "#6366f1", fontWeight: 700 }}>/ {NON_TEACHING_MAX.partA} marks</span>
+              </div>
+              <div style={{ width: 160, marginTop: 6 }}>
+                <ScoreBar score={selfTotals.partA} max={NON_TEACHING_MAX.partA} color="#4f46e5" />
+              </div>
+            </div>
             <NonTeachingStatusBadge status={form.status} />
           </div>
 
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 800, color: "#334155", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 8 }}>Self Claimed - Part A</div>
-            <div style={{ maxWidth: 160 }}>
-              <ScoreMiniCard label="Part A" value={selfTotals.partA} max={NON_TEACHING_MAX.partA} color="#4f46e5" />
-            </div>
+          <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.5 }}>
+            This appraisal has completed its review cycle for {academicYear}. The full breakdown - including reviewer scores, Part B ratings and remarks - is available in the generated report below.
           </div>
 
-          {authorityRows.map((row) => (
-            <div key={row.role}>
-              <div style={{ fontSize: 11, fontWeight: 800, color: "#334155", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 8 }}>{row.label} Review</div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
-                <ScoreMiniCard label="Part A" value={row.totals.partA} max={NON_TEACHING_MAX.partA} color={row.color} />
-                <ScoreMiniCard label="Part B" value={row.totals.partB} max={NON_TEACHING_MAX.partB} color={row.color} />
-                <ScoreMiniCard label="Total" value={row.totals.total} max={NON_TEACHING_MAX.grand} color={row.color} />
-              </div>
-            </div>
-          ))}
-
-          <button type="button" className="appraisal-report-button" onClick={onReport} style={{ alignSelf: "flex-start", padding: "10px 22px", border: "1.5px solid #d1d5db", borderRadius: 10, background: "#fff", color: "#475569", cursor: "pointer", fontWeight: 700, fontFamily: "inherit" }}>
-            Generate Report
-          </button>
-
-          {attachments.length > 0 && (
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 800, color: "#334155", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 8 }}>Attachments</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {attachments.map((file) => (
-                  <a
-                    key={file.key}
-                    href={file.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    download={file.name || true}
-                    style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, color: "#1d4ed8", fontSize: 12, fontWeight: 700, textDecoration: "none" }}
-                  >
-                    <DocIcon />
-                    <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{file.name || file.particular}</span>
-                    <span style={{ color: "#94a3b8", fontWeight: 600 }}>{file.particular}</span>
-                  </a>
-                ))}
-              </div>
-            </div>
-          )}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+            <button type="button" className="appraisal-submit-button" onClick={onReport} style={{ padding: "10px 22px", border: "none", borderRadius: 9, background: "#4f46e5", color: "#fff", cursor: "pointer", fontWeight: 800, fontFamily: "inherit", fontSize: 13, boxShadow: "0 8px 16px rgba(79,70,229,0.20)" }}>
+              Generate Report
+            </button>
+            {attachments.length > 0 && (
+              <button
+                type="button"
+                onClick={handleDownloadZip}
+                disabled={zipping}
+                style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "10px 18px", border: "1.5px solid #c7d2fe", borderRadius: 9, background: zipping ? "#eef2ff" : "#fff", color: "#4338ca", fontSize: 13, fontWeight: 800, fontFamily: "inherit", cursor: zipping ? "wait" : "pointer" }}
+              >
+                <DocIcon />
+                {zipping ? "Preparing zip..." : `Download Attachments (${attachments.length})`}
+              </button>
+            )}
+          </div>
         </div>
       ) : (
         <div style={{ display: "flex", alignItems: "flex-start", gap: 12, background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 10, padding: "16px 18px" }}>
@@ -676,11 +699,11 @@ export function NonTeachingAppraisalForm({ role = sessionStorage.getItem("role")
   const [confirmed, setConfirmed] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [workflow, setWorkflow] = useState(null);
-  const [selectedAcademicYear, setSelectedAcademicYear] = useState(() => getActiveAcademicYear(APP_INFO.DEFAULT_AY));
+  const [selectedAcademicYear, setSelectedAcademicYear] = useState(resolveDefaultAcademicYear);
   const [availableCyclesState, setAvailableCyclesState] = useState(() => normalizeAcademicYearCycles(storedAcademicYearCycles()));
   const [recordFound, setRecordFound] = useState(true);
   const accent = roleAccent(normalizedRole);
-  const locked = form.status !== NON_TEACHING_STATUS.DRAFT && !isNonTeachingRejectedStatus(form.status);
+  const statusLocked = form.status !== NON_TEACHING_STATUS.DRAFT && !isNonTeachingRejectedStatus(form.status);
   const sidebarWorkflowText = (workflow?.approvalSteps || workflow?.steps || [])
     .filter((stage) => !stage.isInitial)
     .map((stage) => stage.designation)
@@ -690,6 +713,15 @@ export function NonTeachingAppraisalForm({ role = sessionStorage.getItem("role")
     : [{ academic_year: selectedAcademicYear, is_open: true }];
   const selectedCycle = academicYearOptions.find((cycle) => cycle.academic_year === selectedAcademicYear);
   const selectedYearIsClosed = selectedCycle ? !selectedCycle.is_open : false;
+  // academicYearOptions is sorted newest-first, so index 0 is always the current cycle -
+  // whichever is most recent, whether it's active or (when nothing newer exists yet) closed.
+  const isLatestCycle = academicYearOptions[0]?.academic_year === selectedAcademicYear;
+  // A closed cycle only becomes "historical" once it is no longer the latest cycle (i.e. a
+  // newer cycle - active or itself since-closed - exists above it); the single latest cycle
+  // always stays on the normal appraisal form, even while closed.
+  const showAsHistorical = selectedYearIsClosed && !isLatestCycle;
+  const cycleReadOnly = selectedYearIsClosed;
+  const locked = statusLocked || cycleReadOnly;
 
   useEffect(() => {
     const syncAvailableCycles = () => {
@@ -734,7 +766,7 @@ export function NonTeachingAppraisalForm({ role = sessionStorage.getItem("role")
         // submitted it - a never-touched draft row has nothing to report on or review.
         setRecordFound(Boolean(saved?.form) && saved.form.status !== NON_TEACHING_STATUS.DRAFT);
         const loadedForm = saved?.form || emptyNonTeachingForm(profileForYear, normalizedRole);
-        const isEditable = loadedForm.status === NON_TEACHING_STATUS.DRAFT || isNonTeachingRejectedStatus(loadedForm.status);
+        const isEditable = !selectedYearIsClosed && (loadedForm.status === NON_TEACHING_STATUS.DRAFT || isNonTeachingRejectedStatus(loadedForm.status));
         // Non-teaching staff only: while the appraisal is still editable, keep the profile-sourced
         // General Information fields in sync with whatever was last saved via Edit Profile, so a
         // stale saved draft doesn't keep showing outdated name/employee ID/designation/department.
@@ -762,7 +794,7 @@ export function NonTeachingAppraisalForm({ role = sessionStorage.getItem("role")
     };
     loadForm();
     return () => { active = false; };
-  }, [normalizedRole, selectedAcademicYear]);
+  }, [normalizedRole, selectedAcademicYear, selectedYearIsClosed]);
 
   const updateInfo = (field, value) => {
     setForm((current) => ({ ...current, info: { ...(current.info || {}), [field]: value } }));
@@ -804,6 +836,7 @@ export function NonTeachingAppraisalForm({ role = sessionStorage.getItem("role")
   };
 
   const handleSubmit = async () => {
+    if (locked) return;
     if (!confirmed) {
       alert("Please confirm the accuracy declaration before submitting.");
       return;
@@ -853,6 +886,9 @@ export function NonTeachingAppraisalForm({ role = sessionStorage.getItem("role")
     }
   };
   const handleReport = () => {
+    // Once the cycle being viewed is closed, the record is done and locked - the report should
+    // show the complete picture (Part B + whichever authorities reviewed it and their remarks),
+    // not just the self-submitted view used while the appraisal is still active/in progress.
     openNonTeachingReport({
       item: {
         name: form.info?.name,
@@ -864,8 +900,8 @@ export function NonTeachingAppraisalForm({ role = sessionStorage.getItem("role")
         academicYear: form.info?.ay,
       },
       form,
-      visibleRoles: ["self"],
-      includePartB: false,
+      visibleRoles: selectedYearIsClosed ? ["self", "ro", "registrar", "vc"] : ["self"],
+      includePartB: selectedYearIsClosed,
     });
   };
 
@@ -907,7 +943,7 @@ export function NonTeachingAppraisalForm({ role = sessionStorage.getItem("role")
             <AppraisalHeaderImage logo="iqas" height={78} />
           </div>
 
-          {selectedYearIsClosed ? (
+          {showAsHistorical ? (
             <>
               <div style={{ marginBottom: 16 }}>
                 <NonTeachingApprovalTracker workflow={workflow} />
@@ -957,7 +993,7 @@ export function NonTeachingAppraisalForm({ role = sessionStorage.getItem("role")
                 ].map(([label, key]) => (
                   <label key={key} style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                     <span style={{ color: "#334155", fontSize: 11, fontWeight: 800 }}>{label}</span>
-                    <TextInput value={form.info?.[key]} onChange={(value) => updateInfo(key, value)} readOnly={locked && key !== "reportingHead"} />
+                    <TextInput value={form.info?.[key]} onChange={(value) => updateInfo(key, value)} readOnly={key === "reportingHead" ? cycleReadOnly : locked} />
                   </label>
                 ))}
                 <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
