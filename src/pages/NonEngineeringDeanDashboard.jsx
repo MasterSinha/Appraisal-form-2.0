@@ -992,8 +992,6 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
  const recordSchoolGroupLabel = { engineering: "Engineering", non_engineering: "Non-Engineering", direct_vc: "CISR" }[recordSchoolTrack] || approval.school || approval.info?.school || APP_INFO.UNIVERSITY_NAME;
  const recordScoreRows = [
  { key: "self", label: "Self", icon: "user", values: { partA: selfSummary.partA, partB: selfSummary.partB, partC: selfSummary.partC, partD: selfSummary.partD, total: selfSummary.total }, note: summaryOtherInfoValueFrom(approval) },
- ...(isSoemrFaculty ? [{ key: "hod", label: "HOD", icon: "briefcase", values: roleTotalsFor("hod"), note: approval.hodRemarks }] : []),
- ...(["faculty", "hod"].includes(subjectRole) ? [{ key: "director", label: "Director", icon: "briefcase", values: roleTotalsFor("director"), note: approval.directorRemarks }] : []),
  { key: "dean", label: "Dean", icon: "briefcase", values: displayedDeanScores, accent: true },
  ];
  const deanRemarksSideContent = (
@@ -1425,7 +1423,9 @@ export default function NonEngineeringDeanDashboard() {
       {(activeMainTab === "schoolAppraisal" || activeMainTab === "directorApprovals" || activeMainTab === "facultyApprovals") && !reviewingApproval && (
         <>
           {/* Horizontal School Selector Bar */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap", background: "#fff", borderRadius: 14, padding: "16px 24px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 16, minWidth: 0 }}>
+            <AppraisalHeaderImage logo="dypiu" />
             <div style={{ minWidth: 0 }}>
               <h1 style={{ margin: 0, fontSize: 26, fontWeight: 900, color: "#0f172a", lineHeight: 1.15, letterSpacing: -0.5 }}>Non-Engineering School Appraisal Reviews</h1>
               <p style={{ margin: "5px 0 0", color: "#64748b", fontSize: 12, display: "flex", alignItems: "center", gap: 8 }}>
@@ -1443,6 +1443,7 @@ export default function NonEngineeringDeanDashboard() {
                   ))}
                 </select>
               </p>
+            </div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", justifyContent: "flex-end" }}>
               <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 14, padding: "10px 16px", boxShadow: "0 2px 8px rgba(15,23,42,0.08)", minWidth: 250 }}>
@@ -1476,7 +1477,7 @@ export default function NonEngineeringDeanDashboard() {
                   </div>
                 )}
               </div>
-              <AppraisalHeaderImage />
+              <AppraisalHeaderImage logo="iqas" />
             </div>
           </div>
 

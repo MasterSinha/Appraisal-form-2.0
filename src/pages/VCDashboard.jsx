@@ -2238,7 +2238,9 @@ University Overview
  {!reviewing && (
 <>
  {/* Hero */}
-<div className="vc-dashboard-hero fa-slide-top" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+<div className="vc-dashboard-hero fa-slide-top" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#fff", borderRadius: 14, padding: "16px 24px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb", flexWrap: "wrap" }}>
+<div style={{ display: "flex", alignItems: "center", gap: 16, minWidth: 0 }}>
+<AppraisalHeaderImage logo="dypiu" style={{ alignSelf: "center" }} />
 <div style={{ minWidth: 0 }}>
 <h1 style={{ margin: 0, fontSize: 26, fontWeight: 900, color: "#0f172a", lineHeight: 1.15, letterSpacing: -0.5 }}>School-wise Appraisal Reviews</h1>
 <p style={{ margin: "5px 0 0", color: "#64748b", fontSize: 12, display: "flex", alignItems: "center", gap: 8 }}>
@@ -2257,6 +2259,7 @@ University Overview
 </select>
 </p>
 </div>
+</div>
 <div className="vc-hero-right" style={{ display: "flex", alignItems: "center", gap: 14 }}>
 <div className="vc-total-pill" style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12, color: "#374151", background: "#fff", padding: "10px 18px", borderRadius: 12, border: "1px solid #ede9fe", boxShadow: "0 8px 20px rgba(109,40,217,0.10)", fontWeight: 700 }}>
 <span style={{ width: 32, height: 32, borderRadius: 9, background: "linear-gradient(135deg,#ede9fe,#ddd6fe)", color: "#6d28d9", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -2267,7 +2270,7 @@ University Overview
 <span style={{ display: "block", fontSize: 10.5, color: "#6b7280", fontWeight: 700, marginTop: 1 }}>total submissions</span>
 </span>
 </div>
-<AppraisalHeaderImage height={68} style={{ alignSelf: "center" }} />
+<AppraisalHeaderImage logo="iqas" style={{ alignSelf: "center" }} />
 </div>
 </div>
 

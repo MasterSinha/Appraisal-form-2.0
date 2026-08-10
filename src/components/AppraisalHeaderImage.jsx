@@ -1,8 +1,14 @@
-export default function AppraisalHeaderImage({ height = 88, style = {} }) {
+const LOGO_SOURCES = {
+  dypiu: { src: "/image.png", alt: "DYPIU" },
+  iqas: { src: "/IQAS.png", alt: "IQAS" },
+};
+
+export default function AppraisalHeaderImage({ height = 88, style = {}, logo = "dypiu" }) {
+  const { src, alt } = LOGO_SOURCES[logo] || LOGO_SOURCES.dypiu;
   return (
     <img
-      src="/image.png"
-      alt="DYPIU"
+      src={src}
+      alt={alt}
       style={{
         height,
         width: "auto",

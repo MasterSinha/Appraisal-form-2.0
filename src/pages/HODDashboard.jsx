@@ -616,7 +616,9 @@ export default function HODDashboard({
 
  {activeMainTab === "approvals" && !reviewingFaculty && (
 <>
-<div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 18, background: "#fff", borderRadius: 14, padding: "16px 24px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb" }}>
+<div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+<AppraisalHeaderImage logo="dypiu" />
 <div>
 <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "#0f172a", letterSpacing: -0.5 }}>Faculty's Appraisal</h1>
 <div style={{ marginTop: 5, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", color: "#64748b", fontSize: 11 }}>
@@ -635,10 +637,11 @@ export default function HODDashboard({
 </select>
 </div>
 </div>
+</div>
 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
 <div style={{ fontSize: 11, fontWeight: 700, padding: "5px 12px", borderRadius: 20, background: "#fef3c7", color: "#92400e" }}>{pendingCount} Pending</div>
 <div style={{ fontSize: 11, fontWeight: 700, padding: "5px 12px", borderRadius: 20, background: "#d1fae5", color: "#065f46" }}>{reviewedCount} Reviewed</div>
-<AppraisalHeaderImage />
+<AppraisalHeaderImage logo="iqas" />
 </div>
 </div>
 

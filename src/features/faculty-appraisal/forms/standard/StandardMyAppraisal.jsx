@@ -1826,7 +1826,9 @@ export default function StandardMyAppraisal({
       )}
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <div className="appraisal-page-header" style={{ background: "#fff", borderRadius: 14, padding: "16px 24px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 18, flexWrap: "wrap" }}>
-              <div style={{ minWidth: 260 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 16, minWidth: 260 }}>
+              <AppraisalHeaderImage logo="dypiu" height={78} />
+              <div>
                 <h2 style={{ margin: 0, fontSize: 26, fontWeight: 900, color: "#111827", letterSpacing: 0, lineHeight: 1.05 }}>My Appraisal Form</h2>
                 {headerSchoolName && (
                   <div style={{ marginTop: 6, color: "#4b5563", fontSize: 13, fontWeight: 800, lineHeight: 1.25 }}>{headerSchoolName}</div>
@@ -1854,7 +1856,8 @@ export default function StandardMyAppraisal({
                   </select>
                 </div>
               </div>
-              <AppraisalHeaderImage height={78} />
+              </div>
+              <AppraisalHeaderImage logo="iqas" height={78} />
             </div>
             <div className="appraisal-status-grid" style={{ display: "grid", gridTemplateColumns: isSelectedCycleClosed || isLegacyTwoPartYear ? "1fr" : "minmax(0, 1fr) 316px", gap: 12, alignItems: "stretch" }}>
               <WorkflowStatusTracker

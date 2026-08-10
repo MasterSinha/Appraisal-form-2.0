@@ -679,7 +679,6 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
  const directorRecordSchoolGroupLabel = { engineering: "Engineering", non_engineering: "Non-Engineering", direct_vc: "CISR" }[directorRecordSchoolTrack] || faculty.school || faculty.info?.school || APP_INFO.UNIVERSITY_NAME;
  const directorRecordScoreRows = [
  { key: "self", label: "Self", icon: "user", values: { partA: facultySummary.partA, partB: facultySummary.partB, partC: facultySummary.partC, partD: facultySummary.partD, total: facultySummary.total }, note: summaryOtherInfoValueFrom(faculty) },
- ...(showHodSummaryCard ? [{ key: "hod", label: "HOD", icon: "briefcase", values: { partA, partB, partC, partD, total }, note: hodRemarks }] : []),
  { key: "director", label: "Director", icon: "briefcase", values: { partA: dirPartA, partB: dirPartB, partC: dirPartC, partD: dirPartD, total: dirTotal }, accent: true },
  ];
 
@@ -988,7 +987,9 @@ export default function DirectorDashboard() {
 
  {(activeMainTab === "facultyApprovals" || activeMainTab === "hodApprovals") && !reviewingFaculty && !reviewingHod && (
 <>
-<div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 18, background: "#fff", borderRadius: 14, padding: "16px 24px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb" }}>
+<div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+<AppraisalHeaderImage logo="dypiu" />
 <div>
 <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "#0f172a", letterSpacing: -0.5 }}>
  {activeMainTab === "facultyApprovals" ? "Faculty's Appraisal" : "HOD's Appraisal"}
@@ -1009,6 +1010,7 @@ export default function DirectorDashboard() {
 </select>
 </div>
 </div>
+</div>
 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
 <div style={{ fontSize: 11, fontWeight: 700, padding: "5px 12px", borderRadius: 20, background: "#fef3c7", color: "#92400e" }}>
  {activeMainTab === "facultyApprovals" ? facultyPendingCount : hodPendingCount} Pending
@@ -1016,7 +1018,7 @@ export default function DirectorDashboard() {
 <div style={{ fontSize: 11, fontWeight: 700, padding: "5px 12px", borderRadius: 20, background: "#d1fae5", color: "#065f46" }}>
  {activeMainTab === "facultyApprovals" ? facultyReviewedCount : hodReviewedCount} Reviewed
 </div>
-<AppraisalHeaderImage />
+<AppraisalHeaderImage logo="iqas" />
 </div>
 </div>
 

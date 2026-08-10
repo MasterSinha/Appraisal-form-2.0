@@ -791,7 +791,9 @@ export default function MediaCommDashboard({ fixedRole }) {
     >
       <div style={{ marginBottom: 0, display: "flex", flexDirection: "column", gap: 0 }}>
         <div className="appraisal-page-header" style={{ background: "#fff", borderRadius: 14, padding: "16px 24px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 18, flexWrap: "wrap" }}>
-          <div style={{ minWidth: 260 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 16, minWidth: 260 }}>
+          <AppraisalHeaderImage logo="dypiu" height={78} />
+          <div>
             <h2 style={{ margin: 0, fontSize: 26, fontWeight: 900, color: "#111827", letterSpacing: 0, lineHeight: 1.05 }}>My Appraisal Form</h2>
             <div style={{ marginTop: 6, color: "#4b5563", fontSize: 13, fontWeight: 800, lineHeight: 1.25 }}>{currentSchoolName}</div>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 10, fontSize: 13, color: "#6b7280", fontWeight: 700, flexWrap: "wrap" }}>
@@ -817,7 +819,8 @@ export default function MediaCommDashboard({ fixedRole }) {
               </select>
             </div>
           </div>
-          <AppraisalHeaderImage height={78} />
+          </div>
+          <AppraisalHeaderImage logo="iqas" height={78} />
         </div>
       </div>
 
@@ -1005,7 +1008,9 @@ export default function MediaCommDashboard({ fixedRole }) {
 
  {activeTab === "approvals" && !reviewing && role !== "faculty" && (
 <div>
-<div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 18, background: "#fff", borderRadius: 14, padding: "16px 24px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb" }}>
+<div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+<AppraisalHeaderImage logo="dypiu" />
 <div>
 <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "#0f172a", letterSpacing: -0.5 }}>Faculty's Appraisal</h1>
 <div style={{ marginTop: 5, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", color: "#64748b", fontSize: 11 }}>
@@ -1023,6 +1028,7 @@ export default function MediaCommDashboard({ fixedRole }) {
 </select>
 </div>
 </div>
+</div>
 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
 <div style={{ fontSize: 11, fontWeight: 700, padding: "5px 12px", borderRadius: 20, background: "#fef3c7", color: "#92400e" }}>
  {pendingCount} Pending
@@ -1030,7 +1036,7 @@ export default function MediaCommDashboard({ fixedRole }) {
 <div style={{ fontSize: 11, fontWeight: 700, padding: "5px 12px", borderRadius: 20, background: "#d1fae5", color: "#065f46" }}>
  {reviewedCount} Reviewed
 </div>
-<AppraisalHeaderImage />
+<AppraisalHeaderImage logo="iqas" />
 </div>
 </div>
 
