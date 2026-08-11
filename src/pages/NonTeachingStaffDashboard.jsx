@@ -1630,6 +1630,27 @@ export function NonTeachingReviewDashboard({ reviewerRole, title, subtitle, acce
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [selectedAcademicYear, setSelectedAcademicYear] = useState(resolveDefaultAcademicYear);
+  const [availableCyclesState, setAvailableCyclesState] = useState(() => normalizeAcademicYearCycles(storedAcademicYearCycles()));
+  const academicYearOptions = availableCyclesState.length
+    ? availableCyclesState
+    : [{ academic_year: selectedAcademicYear, is_open: true }];
+
+  const handleAcademicYearChange = (nextAcademicYear) => {
+    const normalized = setActiveAcademicYear(nextAcademicYear) || nextAcademicYear;
+    setSelectedAcademicYear(normalized);
+    setSelectedId("");
+    window.dispatchEvent(new CustomEvent("academicYearChanged", { detail: { academicYear: normalized } }));
+  };
+
+  useEffect(() => {
+    const syncAcademicYear = (event) => {
+      setAvailableCyclesState(normalizeAcademicYearCycles(storedAcademicYearCycles()));
+      if (event?.detail?.academicYear) setSelectedAcademicYear(event.detail.academicYear);
+    };
+    window.addEventListener("academicYearChanged", syncAcademicYear);
+    return () => window.removeEventListener("academicYearChanged", syncAcademicYear);
+  }, []);
 
   const loadQueue = async () => {
     setLoading(true);
@@ -1637,7 +1658,7 @@ export function NonTeachingReviewDashboard({ reviewerRole, title, subtitle, acce
     try {
       const queue = await fetchNonTeachingQueueForRole({
         reviewerRole,
-        academicYear: APP_INFO.DEFAULT_AY,
+        academicYear: selectedAcademicYear,
       });
       setItems(queue);
       if (selectedId && !queue.some((item) => item.id === selectedId)) {
@@ -1656,7 +1677,7 @@ export function NonTeachingReviewDashboard({ reviewerRole, title, subtitle, acce
     const timer = setTimeout(loadQueue, 0);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reviewerRole]);
+  }, [reviewerRole, selectedAcademicYear]);
 
   const selected = items.find((item) => item.id === selectedId);
   const normalizedReviewerRole = normalizeNonTeachingRole(reviewerRole, reviewerRole);
@@ -1759,7 +1780,17 @@ export function NonTeachingReviewDashboard({ reviewerRole, title, subtitle, acce
                   <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "#0f172a", letterSpacing: -0.5 }}>Non Teaching Approval</h1>
                   <div style={{ marginTop: 5, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", color: "#64748b", fontSize: 11 }}>
                     <span>AY</span>
-                    <span style={{ height: 28, display: "inline-flex", alignItems: "center", border: "1px solid #cbd5e1", borderRadius: 7, background: "#fff", color: "#0f172a", fontSize: 11, fontWeight: 800, padding: "0 12px" }}>{APP_INFO.DEFAULT_AY}</span>
+                    <select
+                      value={selectedAcademicYear}
+                      onChange={(event) => handleAcademicYearChange(event.target.value)}
+                      style={{ height: 28, display: "inline-flex", alignItems: "center", border: "1px solid #cbd5e1", borderRadius: 7, background: "#fff", color: "#0f172a", fontSize: 11, fontWeight: 800, padding: "0 10px", fontFamily: "inherit", outline: "none", cursor: "pointer" }}
+                    >
+                      {academicYearOptions.map((cycle) => (
+                        <option key={cycle.academic_year} value={cycle.academic_year}>
+                          {cycle.academic_year} {cycle.is_open ? "(Active)" : "(Closed)"}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               </div>
