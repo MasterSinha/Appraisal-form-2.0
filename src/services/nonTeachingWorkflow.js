@@ -12,7 +12,7 @@ import {
   workflowSourceFrom,
 } from "../utils/workflow";
 import { api } from "./api";
-import { PRINT_REPORT_CSS, safeHtml, isFilledValue } from "../utils/fullFormReport";
+import { PRINT_REPORT_CSS, safeHtml, isFilledValue, fetchImageAsDataUrl } from "../utils/fullFormReport";
 
 export const NON_TEACHING_STATUS = {
   DRAFT: "Draft",
@@ -1181,18 +1181,8 @@ export const openNonTeachingReport = async ({
     return;
   }
 
-  let logoSrc = `${window.location.origin}/image.png`;
-  try {
-    const res = await fetch(logoSrc);
-    const blob = await res.blob();
-    logoSrc = await new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.readAsDataURL(blob);
-    });
-  } catch {
-    /* use URL fallback */
-  }
+  const logoSrc = await fetchImageAsDataUrl("/image.png");
+  const iqacLogoSrc = await fetchImageAsDataUrl("/IQAS.png");
 
   const reportForm = normalizeNonTeachingForm(
     form || item.form,
@@ -1412,7 +1402,7 @@ ${PRINT_REPORT_CSS}
       <h2>Non-Teaching Staff Appraisal Report</h2>
       ${academicYear ? `<h2>Academic Year ${safeHtml(academicYear)}</h2>` : ""}
     </td>
-    <td style="width:20%"></td>
+    <td style="width:20%;text-align:right"><img class="logo" src="${iqacLogoSrc}" alt="IQAC"/></td>
   </tr></table>
 
   <table>

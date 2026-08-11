@@ -79,6 +79,7 @@ import {
   workflowValidationError,
 } from "../../../../utils/hierarchy";
 import { getSchoolByValue } from "../../../../constants/universityHierarchy";
+import { fetchImageAsDataUrl } from "../../../../utils/fullFormReport";
 import LegacyPreviousYearReport from "./LegacyPreviousYearReport";
 import {
   isLegacyTwoPartAcademicYear,
@@ -1109,7 +1110,7 @@ export default function StandardMyAppraisal({
       { label: "B1. Journals", rows: journals, fields: ["title", "journal", "score"], rowMax: B1_JOURNAL_MAX, maxScore: B1_JOURNAL_MAX },
       { label: "B2. Books / Chapters", rows: books, fields: ["title", "book", "pub", "score"], rowMax: B2_BOOK_MAX, maxScore: B2_BOOK_MAX },
       { label: "B3. Patents, Copyrights & IP and Product Development", rows: patents, fields: ["title", "type", "status", "fileNo", "score"], rowMax: B3_PATENT_MAX, maxScore: B3_PATENT_MAX },
-      { label: "B4. Funded Research Projects", rows: projects2, fields: ["title", "agency", "date", "amount", "role", "status", "score"] },
+      { label: "B4. External Funded Research Projects", rows: projects2, fields: ["title", "agency", "date", "amount", "role", "status", "score"] },
       { label: "B5. Research Guidance", rows: research, fields: ["degree", "name", "status", "date", "score"], rowMax: b5RowMax },
       { label: "B6. Consultancy, Testing & Training", rows: proposals, fields: ["agency", "duration", "amount", "score"], rowMax: B6_CONSULTANCY_MAX, maxScore: B6_CONSULTANCY_MAX },
       { label: "B7. Conference / FDP Contributions - Organised", rows: confs, fields: ["title", "role", "date", "level", "score"], rowMax: B7_CONFERENCE_MAX, maxScore: B7_CONFERENCE_MAX },
@@ -1151,7 +1152,7 @@ export default function StandardMyAppraisal({
       { label: "B1. Journals", rows: journals, fields: ["title", "journal", "issn", "index", "score"], rowMax: B1_JOURNAL_MAX, maxScore: B1_JOURNAL_MAX },
       { label: "B2. Books / Chapters", rows: books, fields: ["title", "book", "issn", "pub", "coauth", "first", "score"], rowMax: B2_BOOK_MAX, maxScore: B2_BOOK_MAX },
       { label: "B3. Patents, Copyrights & IP and Product Development", rows: patents, fields: ["title", "type", "status", "fileNo", "score"], rowMax: B3_PATENT_MAX, maxScore: B3_PATENT_MAX },
-      { label: "B4. Funded Research Projects", rows: projects2, fields: ["title", "agency", "date", "amount", "role", "status", "score"] },
+      { label: "B4. External Funded Research Projects", rows: projects2, fields: ["title", "agency", "date", "amount", "role", "status", "score"] },
       { label: "B5. Research Guidance", rows: research, fields: ["degree", "name", "status", "date", "score"], rowMax: b5RowMax },
       { label: "B6. Consultancy, Testing & Training", rows: proposals, fields: ["agency", "duration", "amount", "score"], rowMax: B6_CONSULTANCY_MAX, maxScore: B6_CONSULTANCY_MAX },
       { label: "B7. Conference / FDP Contributions - Organised", rows: confs, fields: ["title", "role", "date", "level", "score"], rowMax: B7_CONFERENCE_MAX, maxScore: B7_CONFERENCE_MAX },
@@ -1403,12 +1404,8 @@ export default function StandardMyAppraisal({
   const generateReport = async () => {
     const win = window.open('', '_blank');
     if (!win) { alert("Please allow popups to generate the report."); return; }
-    let logoSrc = `${window.location.origin}/image.png`;
-    try {
-      const res = await fetch(logoSrc);
-      const blob = await res.blob();
-      logoSrc = await new Promise((resolve) => { const r = new FileReader(); r.onload = () => resolve(r.result); r.readAsDataURL(blob); });
-    } catch { /* use URL fallback */ }
+    const logoSrc = await fetchImageAsDataUrl("/image.png");
+    const iqacLogoSrc = await fetchImageAsDataUrl("/IQAS.png");
 
     const html = `
   <html>
@@ -1457,7 +1454,7 @@ export default function StandardMyAppraisal({
         <h1>D Y PATIL INTERNATIONAL UNIVERSITY, AKURDI, PUNE</h1>
         <h2>Faculty Appraisal Form - Academic Year ${info.ay || ""}</h2>
       </td>
-      <td style="width:20%"></td>
+      <td style="width:20%;text-align:right"><img class="logo" src="${iqacLogoSrc}" alt="IQAC" /></td>
     </tr></table>
 
     <table>
@@ -1551,7 +1548,7 @@ export default function StandardMyAppraisal({
       <tr class="tr"><td colspan="6" class="c b">Total (Max 40)</td><td class="c">${patentScore > 0 ? patentScore.toFixed(1) : "&nbsp;"}</td></tr>
     </table>
 
-    <h3>B4. Funded Research Projects &nbsp;(Max 40)</h3>
+    <h3>B4. External Funded Research Projects &nbsp;(Max 40)</h3>
     <table>
       <tr><th>SN</th><th>Title</th><th>Funding Agency</th><th>Date of Sanction</th><th>Grant Amount</th><th>Role</th><th>Status</th><th>Self Score</th></tr>
       ${projects2.map((p, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(p.title)}</td><td>${reportTextValue(p.agency)}</td><td class="c">${reportTextValue(p.date)}</td><td class="c">${reportTextValue(p.amount)}</td><td>${reportTextValue(p.role)}</td><td>${reportTextValue(p.status)}</td><td class="c">${reportTextValue(p.score)}</td></tr>`).join('')}
@@ -2077,7 +2074,7 @@ export default function StandardMyAppraisal({
                           <tr>
                             <th style={{ ...TH, width: 30 }}>SN</th>
                             <th style={TH}>Course / Paper</th>
-                            <th style={TH}>Title</th>
+                            <th style={TH}>Program & Semester</th>
                             <th style={TH}>IQAC Index Compliance (Yes/No, with proof)</th>
                             <th style={TH}>Attachment</th>
                             <th style={TH}>View Docs</th>
@@ -2903,9 +2900,9 @@ export default function StandardMyAppraisal({
                       </>
                     </div>
 
-                    {/* B4. Funded Research Projects */}
+                    {/* B4. External Funded Research Projects */}
                     <div style={{ marginBottom: 16, order: 4 }}>
-                      <SubsectionTitle icon="fundedProject">B4. Funded Research Projects - Max 40 marks</SubsectionTitle>
+                      <SubsectionTitle icon="fundedProject">B4. External Funded Research Projects - Max 40 marks</SubsectionTitle>
                       <table style={T}>
                         <thead>
                           <tr>

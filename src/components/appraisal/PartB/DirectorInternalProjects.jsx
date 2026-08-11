@@ -31,7 +31,7 @@ export default function DirectorInternalProjects({ ctx }) {
  const { faculty, docs, lectures, courseFile, projects, quals, feedback, deptActs, uniActs, society, industry, acr, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, rows, getDir, setDir, getInnovDir, setInnovDir, innovativeRows } = ctx;
  return (
 <>
-<SC title="B4. Funded Research Projects (Max 40)" accent="#059669">
+<SC title="B4. External Funded Research Projects (Max 40)" accent="#059669">
 <div style={{ overflowX: "auto" }}>
 <table style={T}>
 <thead><tr>

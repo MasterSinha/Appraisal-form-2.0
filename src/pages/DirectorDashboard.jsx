@@ -13,6 +13,7 @@ import { legacyDashboardMetrics } from "../utils/legacyDashboardMetrics";
 import { canReviewerRejectProfile, getDeanTrack, rejectedStatusFor, reviewedStatusFor, profileFromsessionStorage, workflowValidationError, roleLabel, getSchoolKey, isAppraisalFinalisedByVc, isRejectedStatus, isPendingReviewStatusFor, hasActiveRejection, reviewListFrom } from "../utils/hierarchy";
 import { n, pct, grade, RO, TI } from "../features/faculty-appraisal/shared";
 import { FacultyRecordHeader, ScoreTable, VCFinalRemarks, FinalSubmitButton, FACULTY_RECORD_THEME } from "../components/dashboard/FacultyAppraisalRecord";
+import { fetchImageAsDataUrl } from "../utils/fullFormReport";
 
 // - Helpers - (n, pct, grade, RO, TI → imported from shared)
 const docsCount = (docs = {}, item = {}) => uploadedDocCount(docs, item);
@@ -177,7 +178,7 @@ const STANDARD_REPORT_PART_B_SECTIONS = [
  { key: "journals", title: "B1. Journal Publications", max: 100, doc: "jour", fields: [["title", "Title"], ["journal", "Journal"], ["issn", "ISSN"], ["impactFactor", "Impact Factor"], ["authorPosition", "Author Position"]] },
  { key: "books", title: "B2. Books, Book Chapters & Edited Volumes", max: 30, doc: "book", fields: [["title", "Title"], ["book", "Publisher & ISBN"], ["pub", "Type"], ["level", "Level"], ["coauth", "Co-authors from DYPIU"]] },
  { key: "patents", title: "B3. Patents, Copyrights & IP and Product Development", max: 40, doc: "pat", fields: [["title", "Title"], ["type", "National / International"], ["status", "Status"], ["fileNo", "Filing / Grant No. & Date"]] },
- { key: "projects2", title: "B4. Funded Research Projects", max: 40, doc: "project2", fields: [["title", "Title of Project"], ["agency", "Funding Agency"], ["date", "Sanction Date"], ["amount", "Amount"], ["role", "PI / Co-PI"], ["status", "Status"]] },
+ { key: "projects2", title: "B4. External Funded Research Projects", max: 40, doc: "project2", fields: [["title", "Title of Project"], ["agency", "Funding Agency"], ["date", "Sanction Date"], ["amount", "Amount"], ["role", "PI / Co-PI"], ["status", "Status"]] },
  { key: "research", title: "B5. Research Guidance", max: 20, doc: "res", fields: [["degree", "Degree"], ["name", "Name of Student / Scholar"], ["status", "Status"], ["date", "Date"]] },
  { key: "proposals", title: "B6. Consultancy, Testing & Training", max: 20, doc: "prop", fields: [["agency", "Client / Organisation"], ["duration", "Nature of Engagement"], ["amount", "Revenue Generated"]] },
  { key: "confs", title: "B7. Conference / FDP / Training / Workshop Contributions Organised", max: 20, doc: "conf", fields: [["title", "Event / Session Title"], ["role", "Role"], ["date", "Date"], ["level", "Level"]] },
@@ -571,7 +572,7 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
     }
   };
 
- const generateDirectorReport = () =>{
+ const generateDirectorReport = async () =>{
  const reportForm = {
  ...faculty,
  ...directorSectionScores,
@@ -601,7 +602,8 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
  alert("Please allow popups to generate the report.");
  return;
  }
- const logoSrc = `${window.location.origin}/image.png`;
+ const logoSrc = await fetchImageAsDataUrl("/image.png");
+ const iqacLogoSrc = await fetchImageAsDataUrl("/IQAS.png");
  const html = `<!doctype html>
 <html>
 <head>

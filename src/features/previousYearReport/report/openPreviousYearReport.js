@@ -1,4 +1,4 @@
-import { PRINT_REPORT_CSS, displayValue, safeHtml } from "../../../utils/fullFormReport";
+import { PRINT_REPORT_CSS, displayValue, safeHtml, fetchImageAsDataUrl } from "../../../utils/fullFormReport";
 import { previousYearCellValue, previousYearRemarks, previousYearScore } from "../normalizers/commonPreviousYearNormalizer";
 
 const score = (value) => (parseFloat(value) || 0).toFixed(1);
@@ -177,18 +177,8 @@ export const openPreviousYearReport = async ({ report, title = "Previous Year Ap
     return;
   }
 
-  let logoSrc = `${window.location.origin}/image.png`;
-  try {
-    const res = await fetch(logoSrc);
-    const blob = await res.blob();
-    logoSrc = await new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.readAsDataURL(blob);
-    });
-  } catch {
-    /* use URL fallback */
-  }
+  const logoSrc = await fetchImageAsDataUrl("/image.png");
+  const iqacLogoSrc = await fetchImageAsDataUrl("/IQAS.png");
 
   const info = report?.profile || {};
   const facultyName = firstFilled(info.name, info.faculty_name, info.facultyName, info.full_name, info.fullName, info.username, info.email);
@@ -210,7 +200,7 @@ export const openPreviousYearReport = async ({ report, title = "Previous Year Ap
       <h2>${safeHtml(title)}</h2>
       <h2>Academic Year: ${displayValue(report?.academicYear)}</h2>
     </td>
-    <td style="width:20%"></td>
+    <td style="width:20%;text-align:right"><img class="logo" src="${iqacLogoSrc}" alt="IQAC"/></td>
   </tr></table>
   <table>
     <tr><td class="b" style="width:35%">Name of Faculty</td><td>${displayValue(facultyName)}</td></tr>

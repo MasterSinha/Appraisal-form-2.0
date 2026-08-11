@@ -210,7 +210,7 @@ export const SECTION_GUIDELINES = {
     ]
   },
   B4: {
-    title: "B4. Funded Research Projects (Max 40)",
+    title: "B4. External Funded Research Projects (Max 40)",
     rules: [
       "Completed (external): >₹10L → 15, ₹5–10L → 10, <₹5L → 6 marks.",
       "Ongoing (external): >₹10L → 10, ₹5–10L → 8, <₹5L → 5 marks.",
@@ -385,7 +385,7 @@ export const SECTION_GUIDELINES = {
       "B1. Research Papers & Publications: Max 60 marks",
       "B2. Books & Book Chapters: Max 30 marks",
       "B3. Patents, IP & Copyrights: Max 40 marks",
-      "B4. Funded Research Projects: Max 40 marks",
+      "B4. External Funded Research Projects: Max 40 marks",
       "B5. Research Guidance (PhD): Max 20 marks",
       "B6. Consultancy, Testing & Training: Max 20 marks",
       "B7. Conferences / FDPs Organised: Max 20 marks",

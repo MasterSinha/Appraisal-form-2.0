@@ -753,7 +753,7 @@ function DeanReviewScoreForm({ approval, deanData, setDeanData, sectionView = "p
  />
 
 <ReviewTable
- title="B4. Funded Research Projects"
+ title="B4. External Funded Research Projects"
  accent="#059669"
  sectionKey="projects2"
  docPrefix="project2"

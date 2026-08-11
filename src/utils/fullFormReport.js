@@ -45,6 +45,21 @@ const collapsePartBSummaryRows = (rows) => {
   return nextRows;
 };
 
+export const fetchImageAsDataUrl = async (path) => {
+  const url = `${window.location.origin}${path}`;
+  try {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    return await new Promise((resolve) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result);
+      r.readAsDataURL(blob);
+    });
+  } catch {
+    return url;
+  }
+};
+
 export const safeHtml = (value) =>
   String(value ?? "")
     .replace(/&/g, "&amp;")
@@ -600,18 +615,8 @@ export const openFullFormReport = async ({
     return;
   }
 
-  let logoSrc = `${window.location.origin}/image.png`;
-  try {
-    const res = await fetch(logoSrc);
-    const blob = await res.blob();
-    logoSrc = await new Promise((resolve) => {
-      const r = new FileReader();
-      r.onload = () => resolve(r.result);
-      r.readAsDataURL(blob);
-    });
-  } catch {
-    /* use URL fallback */
-  }
+  const logoSrc = await fetchImageAsDataUrl("/image.png");
+  const iqacLogoSrc = await fetchImageAsDataUrl("/IQAS.png");
 
   const info = form.info || {};
   const displayPartAMax = n(maxScores.partA || 0);
@@ -679,7 +684,7 @@ ${PRINT_REPORT_CSS}
       <h2>${safeHtml(title)}</h2>
       ${subtitle ? `<h2>${safeHtml(subtitle)}</h2>` : ""}
     </td>
-    <td style="width:20%"></td>
+    <td style="width:20%;text-align:right"><img class="logo" src="${iqacLogoSrc}" alt="IQAC"/></td>
   </tr></table>
   <table>
     <tr><td class="b" style="width:35%">Name of Faculty</td><td>${displayValue(info.name || form.name)}</td></tr>
@@ -808,18 +813,8 @@ export const generateMediaCommReport = async ({
     alert("Please allow popups to generate the report.");
     return;
   }
-  let logoSrc = `${window.location.origin}/image.png`;
-  try {
-    const res = await fetch(logoSrc);
-    const blob = await res.blob();
-    logoSrc = await new Promise((resolve) => {
-      const r = new FileReader();
-      r.onload = () => resolve(r.result);
-      r.readAsDataURL(blob);
-    });
-  } catch {
-    /* use URL fallback */
-  }
+  const logoSrc = await fetchImageAsDataUrl("/image.png");
+  const iqacLogoSrc = await fetchImageAsDataUrl("/IQAS.png");
 
   const info = form.info || {};
   const resolvedPartDScoreRoles = Array.isArray(partDScoreRoles)
@@ -857,7 +852,7 @@ ${PRINT_REPORT_CSS}
       <h2>${safeHtml(title)}</h2>
       ${subtitle ? `<h2>${safeHtml(subtitle)}</h2>` : ""}
     </td>
-    <td style="width:20%"></td>
+    <td style="width:20%;text-align:right"><img class="logo" src="${iqacLogoSrc}" alt="IQAC"/></td>
   </tr></table>
   <table>
     <tr><td class="b" style="width:35%">Name of Faculty</td><td>${displayValue(info.name)}</td></tr>
@@ -1072,25 +1067,15 @@ export const generateStandardReport = async ({
     alert("Please allow popups to generate the report.");
     return;
   }
-  let logoSrc = `${window.location.origin}/image.png`;
-  try {
-    const res = await fetch(logoSrc);
-    const blob = await res.blob();
-    logoSrc = await new Promise((resolve) => {
-      const r = new FileReader();
-      r.onload = () => resolve(r.result);
-      r.readAsDataURL(blob);
-    });
-  } catch {
-    /* use URL fallback */
-  }
+  const logoSrc = await fetchImageAsDataUrl("/image.png");
+  const iqacLogoSrc = await fetchImageAsDataUrl("/IQAS.png");
   const html = `<html><head><title>Faculty Appraisal</title><style>
 ${PRINT_REPORT_CSS}
   </style></head><body>
   <table class="ht"><tr>
     <td style="width:20%;text-align:left"><img class="logo" src="${logoSrc}" alt="DYPIU"/></td>
     <td style="text-align:center"><h1>D Y PATIL INTERNATIONAL UNIVERSITY, AKURDI, PUNE</h1><h2>Faculty Appraisal Form - Academic Year ${displayValue(info.ay)}</h2></td>
-    <td style="width:20%"></td>
+    <td style="width:20%;text-align:right"><img class="logo" src="${iqacLogoSrc}" alt="IQAC"/></td>
   </tr></table>
   <table>
     <tr><td class="b" style="width:35%">Name of Faculty</td><td>${displayValue(info.name)}</td></tr>
