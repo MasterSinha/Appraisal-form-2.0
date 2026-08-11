@@ -1,12 +1,15 @@
 /* eslint-disable no-unused-vars, react-hooks/set-state-in-effect */
  import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Avatar, LogoutConfirmModal, ScoreCard } from "../components/dashboard/dashboardPrimitives";
+import { Avatar, LogoutConfirmModal, ScoreCard, ReviewMetricsStrip } from "../components/dashboard/dashboardPrimitives";
 import { fetchNonTeachingQueueForRole, isNonTeachingReviewComplete } from "../services/nonTeachingWorkflow";
-import { fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, fetchSavedAppraisal, mergeFacultyInfo, ACR_DETAIL_POINTS, MAX_SCORES, APP_INFO, createAcrRows, buildReviewRemarks, openFullFormReport, SummaryOtherInfoField, summaryOtherInfoValueFrom, SCORE_LIMITS, clampScore, clampReviewScore, effectiveMaxScore, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewRowMaxForSection, reviewSectionScore, rowHasReviewableData, selfEffectivePartAMax, societyRowLocked, societyRowScore, standardReviewSummary, qualificationRowDescription, AppraisalHeaderImage, ViewDocsCell, SectionCard as SC, CreativeSchoolAuthorityReviewPanel, isCreativeSchool } from "../features/faculty-appraisal";
+import { fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, fetchSavedAppraisal, mergeFacultyInfo, ACR_DETAIL_POINTS, MAX_SCORES, APP_INFO, createAcrRows, buildReviewRemarks, openFullFormReport, SummaryOtherInfoField, summaryOtherInfoValueFrom, SCORE_LIMITS, clampScore, clampReviewScore, effectiveMaxScore, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewRowMaxForSection, reviewSectionScore, rowHasReviewableData, selfEffectivePartAMax, societyRowLocked, societyRowScore, standardReviewSummary, standardSubmittedScoreSummary, qualificationRowDescription, AppraisalHeaderImage, ViewDocsCell, SectionCard as SC, CreativeSchoolAuthorityReviewPanel, isCreativeSchool, isDesignArtsSchool, isMediaCommSchool } from "../features/faculty-appraisal";
+import { getActiveAcademicYear, getSessionItem, normalizeAcademicYearLabel, setActiveAcademicYear } from "../auth/session";
+import { PreviousYearReportViewer } from "../features/previousYearReport";
+import { isLegacyTwoPartAcademicYear } from "../features/faculty-appraisal/forms/standard/legacyPreviousYearReportUtils";
 
 import { DEAN_TRACKS, UNIVERSITY_SCHOOLS, normalizeHierarchyText } from "../constants/universityHierarchy";
-import { canReviewerRejectProfile, getSchoolKey, profileFromsessionStorage, rejectedStatusFor, visiblePreviousReviewRoles, isAppraisalFinalisedByVc, isPendingReviewStatusFor } from "../utils/hierarchy";
+import { canReviewerRejectProfile, getSchoolKey, profileFromsessionStorage, rejectedStatusFor, visiblePreviousReviewRoles, isAppraisalFinalisedByVc, isPendingReviewStatusFor, reviewListFrom } from "../utils/hierarchy";
 import { NonTeachingAuthorityReviewPanel } from "./NonTeachingStaffDashboard";
 import { n, pct, grade, RO } from "../features/faculty-appraisal/shared";
 import FacultyInfoSection from "../components/appraisal/common/FacultyInfoSection";
@@ -93,7 +96,7 @@ function StatusBadge({ status }) {
  const s = map[status] || map["Pending Review"];
  const label = status === "Reviewed" ? "VC Reviewed" : status === "Pending Review" ? "Pending VC Review" : status;
  return (
-<span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: s.bg, color: s.color, fontSize: 9, fontWeight: 800, padding: "4px 10px", borderRadius: 20, border: `1px solid ${s.border}`, letterSpacing: 0.3, whiteSpace: "nowrap" }}>
+<span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: s.bg, color: s.color, fontSize: 9, fontWeight: 800, padding: "4px 10px", borderRadius: 999, border: `1px solid ${s.border}`, letterSpacing: 0.3, whiteSpace: "nowrap" }}>
 <span style={{ width: 5, height: 5, borderRadius: "50%", background: s.dot, flexShrink: 0, boxShadow: `0 0 4px ${s.dot}88` }} />{label}
 </span>
  );
@@ -108,7 +111,7 @@ function RoleBadge({ role }) {
  };
  const s = map[role] || map.Faculty;
  return (
-<span style={{ display: "inline-flex", alignItems: "center", background: s.bg, color: s.color, fontSize: 9, fontWeight: 800, padding: "3px 9px", borderRadius: 20, border: `1px solid ${s.border}`, letterSpacing: 0.4, whiteSpace: "nowrap" }}>
+<span style={{ display: "inline-flex", alignItems: "center", background: s.bg, color: s.color, fontSize: 9, fontWeight: 800, padding: "3px 9px", borderRadius: 999, border: `1px solid ${s.border}`, letterSpacing: 0.4, whiteSpace: "nowrap" }}>
  {role}
 </span>
  );
@@ -129,7 +132,7 @@ function VCInput({ val, onChange, max, disabled = false }) {
  );
 }
 // --- Table style constants -----------------------------------------------------
-const T = { width: "100%", minWidth: 1080, tableLayout: "fixed", borderCollapse: "separate", borderSpacing: 0, fontSize: 13, color: "#111827", background: "#fff", border: "1px solid #e7eaf3", borderRadius: 12, overflow: "hidden", boxShadow: "0 10px 26px rgba(15,23,42,0.045)" };
+const T = { width: "100%", minWidth: 1080, tableLayout: "fixed", borderCollapse: "separate", borderSpacing: 0, fontSize: 13, color: "#111827", background: "#fff", border: "1px solid #e7eaf3", borderRadius: 10, overflow: "hidden", boxShadow: "0 6px 18px rgba(15,23,42,0.045)" };
 const TH = { border: "none", borderBottom: "1px solid #e6e9f4", padding: "12px 14px", background: "linear-gradient(180deg,#fafaff 0%,#f2f5ff 100%)", color: "#273166", fontWeight: 800, textAlign: "center", fontSize: 12, letterSpacing: 0, lineHeight: 1.25, height: 50, whiteSpace: "normal" };
 const TH_HOD = { ...TH, background: "linear-gradient(180deg,#f5f3ff 0%,#eef2ff 100%)", color: "#4c1d95" };
 const TH_DIR = { ...TH, background: "linear-gradient(180deg,#ecfdf5 0%,#f0fdfa 100%)", color: "#047857" };
@@ -266,6 +269,62 @@ const vcAverageBeforeVc = (person = {}, personMode = "faculty", previousRoles = 
  if (!scores.length) return 0;
  return scores.reduce((sum, value) =>sum + value, 0) / scores.length;
 };
+const firstNumberFrom = (sources = [], keys = []) =>{
+ for (const source of sources) {
+ if (!source || typeof source !== "object") continue;
+ for (const key of keys) {
+ const value = source[key];
+ if (value !== undefined && value !== null && String(value).trim() !== "") return n(value);
+ }
+ }
+ return null;
+};
+const legacyCardPrefixesForMode = (personMode) =>{
+ if (personMode === "director") return ["director", "dir"];
+ if (personMode === "dean") return ["dean"];
+ if (personMode === "hod" || personMode === "center_head") return ["hod", "centerHead", "center_head"];
+ return ["faculty", "self"];
+};
+const legacyCardTotalsForPerson = (person = {}, personMode = "faculty") =>{
+ const sources = [
+ person,
+ person.info,
+ person.payload,
+ person.previousYearResponse?.payload?.totals,
+ person.previousYearResponse?.totals,
+ ];
+ const prefixes = legacyCardPrefixesForMode(personMode);
+ const partAKeys = prefixes.flatMap((prefix) =>[
+ `${prefix}PartA`,
+ `${prefix}PartATotal`,
+ `${prefix}_part_a`,
+ `${prefix}_part_a_total`,
+ `${prefix}_part_a_score`,
+ ]);
+ const partBKeys = prefixes.flatMap((prefix) =>[
+ `${prefix}PartB`,
+ `${prefix}PartBTotal`,
+ `${prefix}_part_b`,
+ `${prefix}_part_b_total`,
+ `${prefix}_part_b_score`,
+ ]);
+ const totalKeys = prefixes.flatMap((prefix) =>[
+ `${prefix}Total`,
+ `${prefix}Grand`,
+ `${prefix}GrandTotal`,
+ `${prefix}_total`,
+ `${prefix}_grand`,
+ `${prefix}_grand_total`,
+ ]);
+ const partA = firstNumberFrom(sources, ["partATotal", "partA", "part_a_total", ...partAKeys]);
+ const partB = firstNumberFrom(sources, ["partBTotal", "partB", "part_b_total", ...partBKeys]);
+ const total = firstNumberFrom(sources, ["grandTotal", "grand_total", "totalScore", "total_score", "total", ...totalKeys]);
+ return {
+ partA: partA ?? 0,
+ partB: partB ?? 0,
+ total: total ?? n(partA) + n(partB),
+ };
+};
 
 const vcReviewSummaryFrom = standardReviewSummary;
 
@@ -376,7 +435,11 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
  const set = (section, idx, field, val) =>{
  setVcData(prev =>{
  const updated = { ...prev };
- if (!updated[section]) updated[section] = JSON.parse(JSON.stringify(person[section] || []));
+ if (!updated[section]) {
+    updated[section] = section === "acr"
+      ? createAcrRows(person[section])
+      : JSON.parse(JSON.stringify(person[section] || []));
+ }
  const sourceRow = section === "acr" && idx !== null ? createAcrRows(person.acr)[idx] : person[section]?.[idx] || {};
  const nextVal = field === "vc" && idx !== null
  ? clampReviewScore(section, sourceRow, val, VC_SECTION_MAX[section] || 0)
@@ -434,9 +497,9 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
  const renderScoreCells = (r, section, i) =>{
  const maxForRow = vcRowMax(section, r);
  const societyLocked = section === "society" && societyRowLocked(r);
- const rowReviewable = rowHasReviewableData(section, r);
- const locked = societyLocked || !rowReviewable;
- const displayScore = (value) =>rowReviewable && maxForRow ? (String(value ?? "").trim() ? clampScore(value, maxForRow) : "") : "";
+ const rowReviewable = rowHasReviewableData(section, r, docs);
+ const locked = section === "acr" ? false : (societyLocked || !rowReviewable);
+ const displayScore = (value) => maxForRow ? (String(value ?? "").trim() ? clampScore(value, maxForRow) : "") : "";
  const facultyScore = section === "research"
  ? (r.degree || r.name || r.thesis || r.score ? researchGuidanceScore(r).toFixed(1) : "")
  : section === "society"
@@ -465,8 +528,7 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
  return (
 <div style={{ display: "flex", flexDirection: "column" }}>
  {/* Mode banner */}
-<div style={{ background: "linear-gradient(180deg,#faf5ff 0%,#f5f3ff 100%)", color: "#334155", borderRadius: 12, padding: "11px 14px", marginBottom: 14, display: "flex", alignItems: "center", gap: 10, fontSize: 12, border: "1px solid #ddd6fe", boxShadow: "0 10px 24px rgba(124,58,237,0.08)" }}>
-<span style={{ width: 28, height: 28, borderRadius: 999, background: "#ffffff", color: "#7c3aed", border: "1px solid #ddd6fe", display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: 900, flexShrink: 0 }}>i</span>
+<div style={{ background: "linear-gradient(180deg,#faf5ff 0%,#f5f3ff 100%)", color: "#334155", borderRadius: 10, padding: "10px 14px", marginBottom: 14, display: "flex", alignItems: "center", gap: 10, fontSize: 12, border: "1px solid #ddd6fe", boxShadow: "0 4px 14px rgba(124,58,237,0.08)" }}>
 <div>
 <strong style={{ color: "#581c87" }}>Vice Chancellor Review Mode</strong> - Only the <span style={{ color: "#7c3aed", fontWeight: 900 }}>VC Score</span> column is editable.
  {" "}All previous scores are shown read-only for reference.
@@ -474,7 +536,7 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
 </div>
 
  {/* Faculty Info */}
-<FacultyInfoSection info={info} />
+{sectionView === "partA" && <FacultyInfoSection info={info} />}
 
  {sectionView === "partA" && (<div className="review-part-stack">
 <div className="review-part-stack__title">PART A - Teaching &amp; Academic Activities</div>
@@ -526,7 +588,7 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
  const rowReviewable = rowHasReviewableData("innovRows", row);
  const previousInnovScore = (role) =>{
  const value = row[role] ?? "";
- return String(value ?? "").trim() ? clampScore(value, SCORE_LIMITS.innovativeRow) : "";
+ return String(value ?? "").trim() ? clampScore(value, row.max || SCORE_LIMITS.innovativeRow) : "";
  };
  return (
 <tr key={`innov-${index}`}>
@@ -534,12 +596,12 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
 <td style={TD}><RO val={row.method || person.innovDetails} /></td>
 <td style={TD}><RO val={row.details} /></td>
 <td style={TDV}><ViewDocsCell docKey={index === 0 ? ["innov", "innov-0"] : `innov-${index}`} docs={docs} /></td>
-<td style={TDS}><ScoreValue val={String(row.score ?? "").trim() ? clampScore(row.score, SCORE_LIMITS.innovativeRow) : ""} center /></td>
+<td style={TDS}><ScoreValue val={String(row.score ?? "").trim() ? clampScore(row.score, row.max || SCORE_LIMITS.innovativeRow) : ""} center /></td>
  {reviewRoles.map((role) =>{
  const meta = vcRoleMeta(role);
  return<td key={role} style={meta.cellStyle}><ScoreValue val={previousInnovScore(role)} center /></td>;
  })}
-<td style={TDS_VC}><VCInput val={String(getInnovVc(index) ?? "").trim() ? clampScore(getInnovVc(index), SCORE_LIMITS.innovativeRow) : ""} max={SCORE_LIMITS.innovativeRow} disabled={!rowReviewable} onChange={v =>setInnovVc(index, v)} /></td>
+<td style={TDS_VC}><VCInput val={String(getInnovVc(index) ?? "").trim() ? clampScore(getInnovVc(index), row.max || SCORE_LIMITS.innovativeRow) : ""} max={row.max || SCORE_LIMITS.innovativeRow} disabled={!rowReviewable} onChange={v =>setInnovVc(index, v)} /></td>
 </tr>
  );
  })}</tbody></table>
@@ -1015,9 +1077,9 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  const meta = vcRoleMeta(role);
  return { label: meta.label, val: vcTotalForRole(person, role), color: meta.color };
  }),
- { label: "Average Score", val: vcAverageBeforeVc(person, personMode, previousRoles), color: "#f59e0b" },
+ ...(personMode === "dean" ? [] : [{ label: "Average Score", val: vcAverageBeforeVc(person, personMode, previousRoles), color: "#f59e0b" }]),
  ];
- const showAverageColumn = true;
+ const showAverageColumn = personMode !== "dean";
  const vcComparisonColumns = [
  { key: "self", label: "Self", totals: facultyTotals, maxScores: facultyTotals.maxScores },
  ...previousSummaryCards.map(({ role, meta, totals }) =>({ key: role, label: meta.shortLabel, totals, maxScores: totals.maxScores })),
@@ -1032,6 +1094,7 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  { key: "total", label: "Grand Total", icon: "Σ" },
  ];
  const vcPartColors = { partA: "#6d5dfc", partB: "#0f9f9a", partC: "#ef6f61", partD: "#f59e0b", total: "#059669" };
+ const compactReferenceCards = ["faculty", "director", "dean"].includes(personMode);
  const vcSummaryCards = [
  {
  key: "self",
@@ -1040,7 +1103,8 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  totals: facultyTotals,
  maxScores: facultyTotals.maxScores,
  accent: "#0ea5e9",
- extraContent: <SummaryOtherInfoField value={summaryOtherInfoValueFrom(person)} readOnly rows={4} />,
+ compact: compactReferenceCards,
+ extraContent: <SummaryOtherInfoField value={summaryOtherInfoValueFrom(person)} readOnly rows={compactReferenceCards ? 2 : 4} />,
  },
  ...previousSummaryCards.map(({ role, meta, totals, remarks: roleRemarks }) =>({
  key: role,
@@ -1049,6 +1113,7 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  totals,
  maxScores: totals.maxScores,
  accent: meta.remarksColor || meta.color,
+ compact: compactReferenceCards,
  remarksTitle: `${meta.shortLabel} Remarks`,
  remarksContent: <div style={{ color: "#334155", fontSize: 12, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{String(roleRemarks || "").trim() || "-"}</div>,
  })),
@@ -1059,8 +1124,9 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  totals: averageSummaryTotals,
  maxScores: averageSummaryTotals.maxScores,
  accent: "#f59e0b",
- partsLayout: "horizontal",
- cardStyle: { gridColumn: "1 / -1" },
+ partsLayout: personMode === "dean" ? "vertical" : "horizontal",
+ compact: personMode === "dean",
+ cardStyle: personMode === "dean" ? undefined : { gridColumn: "1 / -1" },
  }] : []),
  {
  key: "vc",
@@ -1070,20 +1136,32 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  maxScores: reviewerSummaryTotals.maxScores,
  accent: "#7c3aed",
  isFinal: true,
- cardStyle: { gridColumn: "1 / -1" },
+ cardStyle: personMode === "dean" ? undefined : { gridColumn: "1 / -1" },
  sideContent: (
- <div style={{ background: "#f8fbff", border: "1px solid #e9d5ff", borderRadius: 10, padding: "12px 14px", display: "grid", gap: 9, alignContent: "start" }}>
+ <div style={{ background: "#f5f3ff", border: "2px solid #c4b5fd", borderRadius: 10, padding: "14px 15px", display: "grid", gap: 9, alignContent: "start", boxShadow: "0 0 0 4px rgba(196,181,253,0.18), 0 14px 28px rgba(124,58,237,0.10)" }}>
  <div>
- <div style={{ color: "#5b21b6", fontSize: 12, fontWeight: 900, textTransform: "uppercase", letterSpacing: 0.5 }}>Vice Chancellor Remarks</div>
- <div style={{ color: "#64748b", fontSize: 11, marginTop: 2 }}>Enter your assessment remarks and confirm before submitting</div>
+ <div style={{ color: "#6d28d9", fontSize: 12, fontWeight: 900, textTransform: "uppercase", letterSpacing: 0.5 }}>Vice Chancellor Remarks</div>
+ <div style={{ color: "#5b21b6", fontSize: 11, fontWeight: 700, marginTop: 3 }}>Enter your assessment remarks and confirm before submitting</div>
  </div>
- <textarea value={remarks} readOnly={reviewLocked} onChange={e =>setRemarks(e.target.value)} rows={8}
+ <textarea value={remarks} readOnly={reviewLocked} onChange={e =>setRemarks(e.target.value)} rows={7}
  placeholder="Write your assessment remarks here..."
- style={{ width: "100%", minHeight: 210, boxSizing: "border-box", border: "1px solid #cbd5e1", borderRadius: 10, padding: "12px 14px", fontFamily: "inherit", fontSize: 12, resize: "vertical", background: reviewLocked ? "#f8fafc" : "#fff", color: "#1e293b", outline: "none", lineHeight: 1.6 }} />
+ style={{ width: "100%", height: 235, minHeight: 235, boxSizing: "border-box", border: "1px solid #c4b5fd", borderRadius: 10, padding: "10px 11px", fontFamily: "inherit", fontSize: 12, resize: "none", background: reviewLocked ? "#f8fafc" : "#fff", color: "#1e293b", outline: "none", lineHeight: 1.5 }} />
  </div>
  ),
  },
  ];
+ const splitDirectorSummaryRows = personMode === "director";
+ const splitDeanSummaryRows = personMode === "dean";
+ const splitReferenceCards = splitDirectorSummaryRows
+ ? vcSummaryCards.filter((card) =>["self", "dean"].includes(card.key))
+ : splitDeanSummaryRows
+ ? vcSummaryCards.filter((card) =>["self", "vc"].includes(card.key))
+ : [];
+ const splitRemainingCards = splitDirectorSummaryRows
+ ? vcSummaryCards.filter((card) =>!["self", "dean"].includes(card.key))
+ : splitDeanSummaryRows
+ ? vcSummaryCards.filter((card) =>!["self", "vc"].includes(card.key))
+ : vcSummaryCards;
 
  return (
 <div style={{ display: "flex", flexDirection: "column" }}>
@@ -1091,7 +1169,7 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  {/* Header */}
 <div style={{ background: "#0f172a", padding: "14px 20px", display: "flex", alignItems: "center", gap: 14, marginBottom: 16, borderRadius: 10 }}>
 <button onClick={onBack} style={{ background: "#1e293b", border: "none", color: "#94a3b8", cursor: "pointer", borderRadius: 6, padding: "6px 12px", fontSize: 12, fontFamily: "inherit" }}>Back</button>
-<Avatar initials={person.avatar} color={person.avatarColor || "#7c3aed"} size={40} />
+<Avatar initials={person.avatar} src={person.avatarUrl} color={person.avatarColor || "#7c3aed"} size={50} />
 <div style={{ flex: 1 }}>
 <div style={{ color: "#f1f5f9", fontWeight: 700, fontSize: 15 }}>{person.name}</div>
 <div style={{ color: "#64748b", fontSize: 11 }}>{person.designation} - {person.employeeId}</div>
@@ -1127,7 +1205,8 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
 </div>
 
  {/* Section switcher */}
-<div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
+<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 14 }}>
+<div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
  {[["partA", "Part A"], ["partB", "Part B"], ["partC", "Part C"], ["partD", "Part D"], ["summary", "Summary"]].map(([id, label]) =>(
 <button key={id} onClick={() =>{ setSectionView(id); requestAnimationFrame(() =>{ window.scrollTo({ top: 0, left: 0, behavior: "auto" }); }); }}
  style={{ padding: "7px 18px", border: "none", borderRadius: 6, cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 700, background: sectionView === id ? "#4c1d95" : "#e2e8f0", color: sectionView === id ? "#ddd6fe" : "#475569" }}>
@@ -1136,13 +1215,12 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  ))}
 </div>
  {finalisedReadOnly && (
-<div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 14 }}>
 <button onClick={() =>{ setEditingFinalised(true); setReviewConfirmed(false); }}
- style={{ padding: "10px 28px", background: "#4c1d95", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 700, fontSize: 13, fontFamily: "inherit" }}>
+ style={{ padding: "10px 28px", background: "#4c1d95", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 700, fontSize: 13, fontFamily: "inherit", marginLeft: "auto", whiteSpace: "nowrap" }}>
  Edit Form
 </button>
-</div>
  )}
+</div>
 
  {["partA", "partB", "partC", "partD"].includes(sectionView) && (
 <fieldset disabled={reviewLocked} style={{ border: "none", padding: 0, margin: 0 }}>
@@ -1168,44 +1246,41 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
 <div style={{ display: "grid", gap: 14 }}>
 
 
-<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(330px, 1fr))", gap: 16 }}>
+{(splitDirectorSummaryRows || splitDeanSummaryRows) ? (
+<>
+<div style={{ display: "grid", gridTemplateColumns: splitDeanSummaryRows ? "minmax(280px, 0.68fr) minmax(640px, 1.32fr)" : "repeat(2, minmax(0, 1fr))", gap: 16, width: "100%" }}>
+{splitReferenceCards.map((card) =>(
+<ScoreCard key={card.key} {...card} cardStyle={{ ...(card.cardStyle || {}), width: "100%", minWidth: 0 }} />
+))}
+</div>
+<div style={{ display: "grid", gap: 16, width: "100%" }}>
+{splitRemainingCards.map((card) =>(
+<ScoreCard key={card.key} {...card} />
+))}
+</div>
+</>
+) : (
+<div
+ className={`vc-summary-card-grid ${isSoemrFacultyReview ? "vc-summary-card-grid--soemr-faculty" : ""} ${personMode === "dean" ? "vc-summary-card-grid--dean" : ""}`}
+ style={{ display: "grid", gap: 16, gridTemplateColumns: (personMode === "dean" || isSoemrFacultyReview) ? "repeat(2, minmax(330px, 1fr))" : undefined }}
+>
 {vcSummaryCards.map((card) =>(
 <ScoreCard key={card.key} {...card} />
 ))}
 </div>
+)}
 
- {/* VC Remarks & Actions */}
-<div style={{ background: "#fff", border: "1px solid #a5b4fc", borderRadius: 16, overflow: "hidden", boxShadow: "0 8px 24px rgba(79,70,229,0.10)" }}>
-
- {/* Header strip */}
-<div style={{ padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #c7d2fe", background: "#f5f7ff" }}>
-<div>
-<div style={{ fontSize: 15, fontWeight: 900, color: "#1e293b", letterSpacing: -0.3 }}>Review Confirmation</div>
-<div style={{ fontSize: 10, color: "#64748b", marginTop: 3 }}>Confirm before submitting the final assessment</div>
-</div>
-<div style={{ display: "flex", gap: 10, alignItems: "stretch" }}>
-<div style={{ background: "#fff", border: "1px solid #c7d2fe", borderRadius: 10, padding: "7px 16px", textAlign: "center" }}>
-<div style={{ fontSize: 8, fontWeight: 800, color: "#6366f1", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 2 }}>VC Total</div>
-<div style={{ fontSize: 18, fontWeight: 900, color: "#4338ca", lineHeight: 1 }}>{oneDecimal(reviewerSummaryTotals.total)}<span style={{ fontSize: 10, color: "#94a3b8", fontWeight: 500 }}>/{reviewerSummaryTotals.maxScores.grand}</span></div>
-</div>
-</div>
-</div>
-
- {/* Body */}
-<div style={{ padding: "18px 20px", display: "grid", gap: 14 }}>
-
- {/* Confirmation checkbox */}
+ {/* VC Actions */}
+<div style={{ display: "grid", gap: 10 }}>
  {!reviewLocked && (
-<label style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 14px", background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: 10, color: "#334155", fontSize: 12, lineHeight: 1.65, cursor: "pointer" }}>
-<input type="checkbox" checked={reviewConfirmed} onChange={e =>setReviewConfirmed(e.target.checked)} style={{ marginTop: 3, accentColor: "#a78bfa", flexShrink: 0, width: 14, height: 14 }} />
+<label className="appraisal-confirmation-card" style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 8, color: "#334155", fontSize: 12, lineHeight: 1.5, cursor: "pointer" }}>
+<input type="checkbox" checked={reviewConfirmed} onChange={e =>setReviewConfirmed(e.target.checked)} style={{ margin: 0, accentColor: "#16a34a", flexShrink: 0 }} />
 <span>I have verified all the details and confirm that the information provided is correct. I am responsible for the accuracy of this data.</span>
 </label>
  )}
-
- {/* Footer: status + buttons */}
-<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, paddingTop: 4, borderTop: "1px solid #c7d2fe", flexWrap: "wrap" }}>
+<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
 <span style={{ color: "#64748b", fontSize: 11, fontStyle: "italic" }}>{draftStatus}</span>
-<div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+<div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", justifyContent: "flex-end", marginLeft: "auto" }}>
 <button onClick={onBack} style={{ padding: "9px 16px", background: "#fff", color: "#475569", border: "1px solid #cbd5e1", borderRadius: 9, cursor: "pointer", fontWeight: 700, fontSize: 12, fontFamily: "inherit" }}>Close</button>
 <button onClick={generateVcReport} disabled={!vcReviewCompleted}
  style={{ minWidth: 170, height: 42, padding: "0 20px", background: vcReviewCompleted ? "linear-gradient(135deg,#7c3aed,#581c87)" : "#cbd5e1", color: "#fff", border: "none", borderRadius: 8, cursor: vcReviewCompleted ? "pointer" : "not-allowed", fontWeight: 900, fontSize: 13, fontFamily: "inherit", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 9, boxShadow: vcReviewCompleted ? "0 10px 20px rgba(88,28,135,0.20)" : "none" }}>
@@ -1225,18 +1300,17 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  {canReject && (
 <button onClick={() =>{ if (window.confirm("Reject this appraisal and send it back to the user for editing?")) { onSubmit(person.id, { partA, partB, partC, partD, total }, remarks, personMode, buildVcSectionScores(person, vcData), reviewConfirmed, "rejected"); } }}
  disabled={!reviewConfirmed || !remarks.trim()}
- style={{ padding: "9px 16px", background: (reviewConfirmed && remarks.trim()) ? "linear-gradient(135deg,#b91c1c,#ef4444)" : "rgba(255,255,255,0.06)", color: "#fff", border: "none", borderRadius: 9, cursor: (reviewConfirmed && remarks.trim()) ? "pointer" : "not-allowed", fontWeight: 700, fontSize: 12, fontFamily: "inherit", boxShadow: (reviewConfirmed && remarks.trim()) ? "0 3px 12px rgba(185,28,28,0.4)" : "none" }}>
+ style={{ padding: "9px 16px", background: (reviewConfirmed && remarks.trim()) ? "linear-gradient(135deg,#b91c1c,#ef4444)" : "#cbd5e1", color: "#fff", border: "none", borderRadius: 9, cursor: (reviewConfirmed && remarks.trim()) ? "pointer" : "not-allowed", fontWeight: 700, fontSize: 12, fontFamily: "inherit", boxShadow: (reviewConfirmed && remarks.trim()) ? "0 3px 12px rgba(185,28,28,0.4)" : "none" }}>
  Reject Form
 </button>
  )}
 <button onClick={() =>onSubmit(person.id, { partA, partB, partC, partD, total }, remarks, personMode, buildVcSectionScores(person, vcData), reviewConfirmed)}
  disabled={!reviewConfirmed || !remarks.trim()}
- style={{ padding: "9px 22px", background: (reviewConfirmed && remarks.trim()) ? "linear-gradient(135deg,#047857,#10b981)" : "rgba(255,255,255,0.06)", color: "#fff", border: "none", borderRadius: 9, cursor: (reviewConfirmed && remarks.trim()) ? "pointer" : "not-allowed", fontWeight: 900, fontSize: 12, fontFamily: "inherit", letterSpacing: 0.2, boxShadow: (reviewConfirmed && remarks.trim()) ? "0 4px 16px rgba(4,120,87,0.5)" : "none" }}>
+ style={{ padding: "9px 22px", background: (reviewConfirmed && remarks.trim()) ? "linear-gradient(135deg,#047857,#10b981)" : "#cbd5e1", color: "#fff", border: "none", borderRadius: 9, cursor: (reviewConfirmed && remarks.trim()) ? "pointer" : "not-allowed", fontWeight: 900, fontSize: 12, fontFamily: "inherit", letterSpacing: 0.2, boxShadow: (reviewConfirmed && remarks.trim()) ? "0 4px 16px rgba(4,120,87,0.5)" : "none" }}>
  {finalisedByVc ? "Edit & Resubmit" : "Submit VC Review"}
 </button>
 </>
- )}
-</div>
+)}
 </div>
 </div>
 </div>
@@ -1253,6 +1327,25 @@ function PersonCard({ person, role, onReview, schoolColor, loading = false }) {
  const personMode = role === "Director" ? "director" : role === "HOD" ? "hod" : role === "Dean" ? "dean" : role === "Center Head" ? "center_head" : "faculty";
  const previousRoles = vcPreviousRolesFor(person, personMode);
  const vcTotal = n(person.vcTotal);
+ const academicYear = person.academicYear || person.academic_year || person.info?.ay;
+ const legacyTwoPartCard = isLegacyTwoPartAcademicYear(academicYear);
+ const scoreGrandMax = legacyTwoPartCard ? 575 : MAX_SCORES.GRAND_TOTAL;
+ const sectionSummary = standardSubmittedScoreSummary(person);
+ const legacySummary = legacyCardTotalsForPerson(person, personMode);
+ const roleMetricPrefix = personMode === "director" ? "Dir" : personMode === "dean" ? "Dean" : (personMode === "hod" || personMode === "center_head") ? "HOD" : "Faculty";
+ const sectionMetrics = legacyTwoPartCard
+ ? [
+ { label: `${roleMetricPrefix} Part A`, val: legacySummary.partA, max: 200, color: "#6366f1" },
+ { label: `${roleMetricPrefix} Part B`, val: legacySummary.partB, max: 375, color: "#0ea5e9" },
+ { label: `${roleMetricPrefix} Total`, val: legacySummary.total, max: 575, color: "#4338ca" },
+ ]
+ : [
+ { label: "Part A", val: sectionSummary.partA, max: sectionSummary.partAMax, color: "#6366f1" },
+ { label: "Part B", val: sectionSummary.partB, max: sectionSummary.partBMax, color: "#0ea5e9" },
+ { label: "Part C", val: sectionSummary.partC, max: sectionSummary.partCMax, color: "#10b981" },
+ { label: "Part D", val: sectionSummary.partD, max: sectionSummary.partDMax, color: "#f59e0b" },
+ { label: "Total", val: sectionSummary.total, max: sectionSummary.grandMax, color: "#4338ca" },
+ ];
  const scoreTiles = [
  {
  label: personMode === "faculty" ? "Faculty Score" : "Self Score",
@@ -1263,7 +1356,7 @@ function PersonCard({ person, role, onReview, schoolColor, loading = false }) {
  const meta = vcRoleMeta(reviewRole);
  return { label: meta.shortLabel, value: vcTotalForRole(person, reviewRole), color: meta.color };
  }),
- { label: "Average Score", value: vcAverageBeforeVc(person, personMode, previousRoles), color: "#f59e0b" },
+ ...(personMode === "dean" ? [] : [{ label: "Average Score", value: vcAverageBeforeVc(person, personMode, previousRoles), color: "#f59e0b" }]),
  { label: "VC Score", value: vcTotal, color: "#7c3aed", isVc: true },
  ];
  const remarkTiles = previousRoles
@@ -1283,14 +1376,14 @@ function PersonCard({ person, role, onReview, schoolColor, loading = false }) {
  const rolePalette = ROLE_PALETTE[role] || { color: schoolColor || "#7c3aed", light: "#f3e8ff", label: role };
  const cardColor = rolePalette.color;
  return (
-<div className="vc-review-card fa-fade-up" style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 8px rgba(15,23,42,0.07)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+<div className="vc-review-card fa-fade-up" style={{ background: "#fff", borderRadius: 10, boxShadow: "0 2px 10px rgba(15,23,42,0.07)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
  {/* Role-colored top stripe */}
 <div style={{ height: 4, background: `linear-gradient(90deg,${cardColor},${cardColor}66)`, flexShrink: 0 }} />
 
 <div style={{ padding: "14px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
  {/* Header row */}
 <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-<Avatar initials={person.avatar} color={person.avatarColor || cardColor} size={42} />
+<Avatar initials={person.avatar} src={person.avatarUrl} color={person.avatarColor || cardColor} size={54} />
 <div style={{ flex: 1, minWidth: 0 }}>
 <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2, flexWrap: "wrap" }}>
 <span style={{ fontSize: 13, fontWeight: 800, color: "#0f172a" }}>{person.name}</span>
@@ -1302,8 +1395,15 @@ function PersonCard({ person, role, onReview, schoolColor, loading = false }) {
 <StatusBadge status={person.status} />
 </div>
 
- {/* Score grid */}
-<div className="vc-score-strip" style={{ display: "grid", gridTemplateColumns: `repeat(${Math.max(scoreTiles.length, 1)}, minmax(0, 1fr))`, gap: 6, background: "#f8fafc", borderRadius: 10, padding: "10px 12px" }}>
+ {/* Submitted section scores */}
+<ReviewMetricsStrip
+ metrics={sectionMetrics}
+ docs={person.docs}
+ compact
+/>
+
+ {/* Review chain totals */}
+<div className="vc-score-strip" style={{ display: "grid", gridTemplateColumns: `repeat(${Math.max(scoreTiles.length, 1)}, minmax(0, 1fr))`, gap: 6, background: "#f8fafc", borderRadius: 8, padding: "10px 12px" }}>
  {scoreTiles.map((tile) =>{
  const score = n(tile.value);
  return (
@@ -1312,9 +1412,9 @@ function PersonCard({ person, role, onReview, schoolColor, loading = false }) {
  {score >0 || tile.isVc ? (
 <>
 <div style={{ fontSize: 15, fontWeight: 900, color: tile.color, lineHeight: 1 }}>
- {score >0 ? score.toFixed(1) : "-"}<span style={{ fontSize: 8, color: "#cbd5e1", fontWeight: 600 }}>/{MAX_SCORES.GRAND_TOTAL}</span>
+ {score >0 ? score.toFixed(1) : "-"}<span style={{ fontSize: 8, color: "#cbd5e1", fontWeight: 600 }}>/{scoreGrandMax}</span>
 </div>
-<ScoreBar score={score} max={MAX_SCORES.GRAND_TOTAL} color={tile.color} />
+<ScoreBar score={score} max={scoreGrandMax} color={tile.color} />
 </>
  ) : (
 <div style={{ fontSize: 15, fontWeight: 900, color: "#cbd5e1" }}>-</div>
@@ -1327,7 +1427,7 @@ function PersonCard({ person, role, onReview, schoolColor, loading = false }) {
  {remarkTiles.length >0 && (
 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
  {remarkTiles.map((item) =>(
-<div key={item.label} style={{ background: item.bg, borderRadius: 7, padding: "6px 10px", fontSize: 10, color: item.color, borderLeft: `3px solid ${item.border}` }}>
+<div key={item.label} style={{ background: item.bg, borderRadius: 8, padding: "6px 10px", fontSize: 10, color: item.color, borderLeft: `3px solid ${item.border}` }}>
 <span style={{ fontWeight: 800 }}>{item.label}:</span>{" "}{item.value.slice(0, 55)}{item.value.length >55 ? "..." : ""}
 </div>
  ))}
@@ -1368,30 +1468,30 @@ function SchoolPanel({ school, deanList, dirList, hodList, centerHeadList = [], 
  return (
 <div className="vc-school-panel">
  {/* School banner */}
-<div className="vc-school-summary fa-slide-top" style={{ background: "#fff", borderRadius: 14, padding: "18px 22px", marginBottom: 16, borderLeft: `5px solid ${school.color}`, display: "flex", alignItems: "center", gap: 16 }}>
-<div className="vc-school-icon" style={{ width: 52, height: 52, borderRadius: 14, background: `linear-gradient(135deg,${school.color}22,${school.color}11)`, color: school.color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 900, flexShrink: 0, border: `1.5px solid ${school.color}30` }}>
+<div className="vc-school-summary fa-slide-top" style={{ background: "#fff", borderRadius: 10, padding: "16px 18px", marginBottom: 16, borderLeft: `5px solid ${school.color}`, display: "flex", alignItems: "center", gap: 14 }}>
+<div className="vc-school-icon" style={{ width: 48, height: 48, borderRadius: 10, background: `linear-gradient(135deg,${school.color}22,${school.color}11)`, color: school.color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, fontWeight: 900, flexShrink: 0, border: `1.5px solid ${school.color}30` }}>
  {school.icon}
 </div>
 <div style={{ flex: 1, minWidth: 0 }}>
 <div style={{ fontWeight: 900, fontSize: 17, color: "#0f172a", letterSpacing: -0.3 }}>{school.name}</div>
-<div style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>{school.code} &nbsp;Â·&nbsp; {allPeople.length} member{allPeople.length !== 1 ? "s" : ""}</div>
+<div style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>{school.code} - {allPeople.length} member{allPeople.length !== 1 ? "s" : ""}</div>
 </div>
 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
  {pendingCount >0 && (
 <div className="vc-count-pill vc-count-pill--pending" style={{ padding: "5px 13px", fontSize: 11, fontWeight: 800 }}>{pendingCount} Pending</div>
  )}
  {reviewedCount >0 && (
-<div className="vc-count-pill" style={{ background: "#fdf4ff", color: "#6b21a8", border: "1px solid #e9d5ff", borderRadius: 20, padding: "5px 13px", fontSize: 11, fontWeight: 800 }}>{reviewedCount} Reviewed</div>
+<div className="vc-count-pill" style={{ background: "#fdf4ff", color: "#6b21a8", border: "1px solid #e9d5ff", borderRadius: 999, padding: "5px 13px", fontSize: 11, fontWeight: 800 }}>{reviewedCount} Reviewed</div>
  )}
  {school.hasHods && (
-<div className="vc-count-pill" style={{ background: "#ede9fe", color: "#6d28d9", border: "1px solid #ddd6fe", borderRadius: 20, padding: "5px 10px", fontSize: 10, fontWeight: 700 }}>Has HODs</div>
+<div className="vc-count-pill" style={{ background: "#ede9fe", color: "#6d28d9", border: "1px solid #ddd6fe", borderRadius: 999, padding: "5px 10px", fontSize: 10, fontWeight: 700 }}>Has HODs</div>
  )}
 </div>
 </div>
 
  {allPeople.length === 0 ? (
 <div className="vc-empty-state fa-fade-up" style={{ textAlign: "center", padding: "44px 20px" }}>
-<div className="vc-empty-orb" style={{ width: 52, height: 52, borderRadius: 14, margin: "0 auto 14px", background: `${school.color}15`, color: school.color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: 17, border: `1.5px dashed ${school.color}44` }}>{school.code}</div>
+<div className="vc-empty-orb" style={{ width: 48, height: 48, borderRadius: 10, margin: "0 auto 14px", background: `${school.color}15`, color: school.color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: 16, border: `1.5px dashed ${school.color}44` }}>{school.code}</div>
 <div style={{ fontWeight: 800, color: "#475569", fontSize: 14 }}>No submissions yet</div>
 <div style={{ marginTop: 6, fontSize: 11, color: "#94a3b8", lineHeight: 1.5 }}>New appraisal forms will appear here automatically.</div>
 </div>
@@ -1413,21 +1513,21 @@ function NonTeachingCard({ item, onReview }) {
  const reviewed = isNonTeachingReviewComplete(item);
  const cardColor = "#1d4ed8";
  return (
-<div className="vc-review-card fa-fade-up" style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 8px rgba(15,23,42,0.07)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+<div className="vc-review-card fa-fade-up" style={{ background: "#fff", borderRadius: 10, boxShadow: "0 2px 10px rgba(15,23,42,0.07)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
 <div style={{ height: 4, background: `linear-gradient(90deg,${cardColor},#0ea5e9)`, flexShrink: 0 }} />
 
 <div style={{ padding: "14px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
 <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-<Avatar initials={item.avatar} color={item.avatarColor || cardColor} size={42} />
+<Avatar initials={item.avatar} src={item.avatarUrl} color={item.avatarColor || cardColor} size={54} />
 <div style={{ flex: 1, minWidth: 0 }}>
 <div style={{ fontSize: 13, fontWeight: 800, color: "#0f172a" }}>{item.name}</div>
-<div style={{ fontSize: 10, color: "#64748b", marginTop: 2 }}>{item.roleLabel} Â· {item.designation}</div>
+<div style={{ fontSize: 10, color: "#64748b", marginTop: 2 }}>{item.roleLabel} - {item.designation}</div>
 <div style={{ fontSize: 9, color: "#94a3b8", fontFamily: "monospace", marginTop: 1 }}>{item.employeeId}</div>
 </div>
- {reviewed && <span style={{ fontSize: 9, fontWeight: 800, background: "#fdf4ff", color: "#6b21a8", border: "1px solid #e9d5ff", borderRadius: 20, padding: "4px 10px", whiteSpace: "nowrap" }}>VC Reviewed</span>}
+ {reviewed && <span style={{ fontSize: 9, fontWeight: 800, background: "#fdf4ff", color: "#6b21a8", border: "1px solid #e9d5ff", borderRadius: 999, padding: "4px 10px", whiteSpace: "nowrap" }}>VC Reviewed</span>}
 </div>
 
-<div className="vc-score-strip" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 6, background: "#f8fafc", borderRadius: 10, padding: "10px 12px" }}>
+<div className="vc-score-strip" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 6, background: "#f8fafc", borderRadius: 8, padding: "10px 12px" }}>
  {[
  ["Self", item.selfTotal, "#1d4ed8"],
  ["RO", item.roTotal, "#0891b2"],
@@ -1445,12 +1545,12 @@ function NonTeachingCard({ item, onReview }) {
  {(item.form?.roRemarks || item.form?.registrarRemarks) && (
 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
  {item.form?.roRemarks && (
-<div style={{ background: "#eff6ff", borderLeft: "3px solid #1d4ed8", borderRadius: 7, padding: "6px 10px", color: "#1e40af", fontSize: 10 }}>
+<div style={{ background: "#eff6ff", borderLeft: "3px solid #1d4ed8", borderRadius: 8, padding: "6px 10px", color: "#1e40af", fontSize: 10 }}>
 <span style={{ fontWeight: 800 }}>RO:</span>{" "}{item.form.roRemarks.slice(0, 70)}{item.form.roRemarks.length >70 ? "..." : ""}
 </div>
  )}
  {item.form?.registrarRemarks && (
-<div style={{ background: "#ecfeff", borderLeft: "3px solid #155e75", borderRadius: 7, padding: "6px 10px", color: "#155e75", fontSize: 10 }}>
+<div style={{ background: "#ecfeff", borderLeft: "3px solid #155e75", borderRadius: 8, padding: "6px 10px", color: "#155e75", fontSize: 10 }}>
 <span style={{ fontWeight: 800 }}>Registrar:</span>{" "}{item.form.registrarRemarks.slice(0, 70)}{item.form.registrarRemarks.length >70 ? "..." : ""}
 </div>
  )}
@@ -1489,21 +1589,21 @@ function NonTeachingPanel({ pendingItems = [], reviewedItems = [], onReview }) {
 
  return (
 <div className="vc-school-panel">
-<div className="vc-school-summary fa-slide-top" style={{ background: "#fff", borderRadius: 14, padding: "18px 22px", marginBottom: 16, borderLeft: "5px solid #1d4ed8", display: "flex", alignItems: "center", gap: 16 }}>
-<div className="vc-school-icon" style={{ width: 52, height: 52, borderRadius: 14, background: "linear-gradient(135deg,#dbeafe,#eff6ff)", display: "flex", alignItems: "center", justifyContent: "center", color: "#1d4ed8", fontWeight: 900, fontSize: 16, border: "1.5px solid #bfdbfe" }}>NT</div>
+<div className="vc-school-summary fa-slide-top" style={{ background: "#fff", borderRadius: 10, padding: "16px 18px", marginBottom: 16, borderLeft: "5px solid #1d4ed8", display: "flex", alignItems: "center", gap: 14 }}>
+<div className="vc-school-icon" style={{ width: 48, height: 48, borderRadius: 10, background: "linear-gradient(135deg,#dbeafe,#eff6ff)", display: "flex", alignItems: "center", justifyContent: "center", color: "#1d4ed8", fontWeight: 900, fontSize: 16, border: "1.5px solid #bfdbfe" }}>NT</div>
 <div style={{ flex: 1, minWidth: 0 }}>
 <div style={{ fontWeight: 900, fontSize: 17, color: "#0f172a", letterSpacing: -0.3 }}>Non-Teaching Staff Reviews</div>
-<div style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>Registrar Â· Reporting Officer Â· Staff branch</div>
+<div style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>Registrar - Reporting Officer - Staff branch</div>
 </div>
  {pending >0 &&<div className="vc-count-pill vc-count-pill--pending" style={{ padding: "5px 13px", fontSize: 11, fontWeight: 800 }}>{pending} Pending</div>}
- {reviewed >0 &&<div className="vc-count-pill" style={{ background: "#fdf4ff", color: "#6b21a8", border: "1px solid #e9d5ff", borderRadius: 20, padding: "5px 13px", fontSize: 11, fontWeight: 800 }}>{reviewed} Reviewed</div>}
+ {reviewed >0 &&<div className="vc-count-pill" style={{ background: "#fdf4ff", color: "#6b21a8", border: "1px solid #e9d5ff", borderRadius: 999, padding: "5px 13px", fontSize: 11, fontWeight: 800 }}>{reviewed} Reviewed</div>}
 </div>
 
 <div className="vc-list-section" style={{ marginBottom: 20 }}>
 <div style={{ fontWeight: 800, fontSize: 12, color: "#475569", marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.8 }}>Pending Reviews</div>
  {pendingItems.length === 0 ? (
 <div className="vc-empty-state fa-fade-up" style={{ padding: "44px 20px", textAlign: "center" }}>
-<div className="vc-empty-orb" style={{ width: 52, height: 52, borderRadius: 14, margin: "0 auto 14px", background: "#dbeafe", color: "#1d4ed8", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: 16, border: "1.5px dashed #bfdbfe" }}>NT</div>
+<div className="vc-empty-orb" style={{ width: 48, height: 48, borderRadius: 10, margin: "0 auto 14px", background: "#dbeafe", color: "#1d4ed8", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: 16, border: "1.5px dashed #bfdbfe" }}>NT</div>
 <div style={{ fontWeight: 800, color: "#475569", fontSize: 14 }}>No pending reviews</div>
 <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 5 }}>Non-teaching submissions will appear here once approved by the Registrar.</div>
 </div>
@@ -1603,6 +1703,35 @@ const withVcSchoolId = (item) =>({
  schoolId: item.schoolId || schoolIdForPerson(item),
 });
 
+const storedAcademicYearCycles = () =>{
+ try {
+ if (getSessionItem("availableCyclesSource") !== "backend") return [];
+ return JSON.parse(getSessionItem("availableCycles") || "[]")
+ .map((cycle) =>{
+ const academicYear = normalizeAcademicYearLabel(cycle?.academic_year || cycle?.academicYear || cycle?.year || cycle?.year_label || cycle);
+ return academicYear ? { academic_year: academicYear, is_open: cycle?.is_open ?? cycle?.isOpen ?? cycle?.active ?? cycle?.open ?? academicYear === APP_INFO.DEFAULT_AY } : null;
+ })
+ .filter(Boolean);
+ } catch {
+ return [];
+ }
+};
+
+const previousYearFormTypeFor = (profile = {}) =>{
+ if (isMediaCommSchool(profile, profile.info?.school, profile.school)) return "mediaCommunication";
+ if (isDesignArtsSchool(profile, profile.info?.school, profile.school)) return "designArts";
+ return "engineering";
+};
+
+function PreviousYearAuthorityResult({ item, onBack }) {
+ return (
+ <div style={{ display: "grid", gap: 12 }}>
+ <button type="button" onClick={onBack} style={{ justifySelf: "start", border: "1px solid #cbd5e1", background: "#fff", color: "#334155", borderRadius: 8, padding: "8px 14px", fontWeight: 800, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>Back</button>
+ <PreviousYearReportViewer showTables visibleLevels={["faculty", "hod", "director", "dean", "vc"]} formType={previousYearFormTypeFor(item)} form={item} docs={item.docs || {}} response={item.previousYearResponse || item} academicYear={item.academicYear || item.academic_year || item.info?.ay} profile={item} reviews={reviewListFrom(item.reviews || item.previousYearResponse?.reviews || item.previousYearResponse?.payload?.reviews)} />
+ </div>
+ );
+}
+
 export default function VCDashboard() {
  const navigate = useNavigate();
  const [deanTypeFilter, setDeanTypeFilter] = useState("engg");
@@ -1617,9 +1746,28 @@ export default function VCDashboard() {
  const [facList, setFacList] = useState([]);
  const [nonTeachingList, setNonTeachingList] = useState([]);
  const [nonTeachingReviewedList, setNonTeachingReviewedList] = useState([]);
+ const [selectedAcademicYear, setSelectedAcademicYear] = useState(() =>getActiveAcademicYear());
+ const [availableCycles, setAvailableCycles] = useState(() =>storedAcademicYearCycles());
+ const academicYearOptions = availableCycles.length ? availableCycles : [{ academic_year: selectedAcademicYear || APP_INFO.DEFAULT_AY, is_open: true }];
 
  const pollingActiveRef = useRef(true);
  const prevDataRef = useRef(null);
+
+ const handleReviewAcademicYearChange = (academicYear) =>{
+ const nextAcademicYear = setActiveAcademicYear(academicYear);
+ setSelectedAcademicYear(nextAcademicYear);
+ setReviewing(null);
+ window.dispatchEvent(new CustomEvent("academicYearChanged", { detail: { academicYear: nextAcademicYear } }));
+ };
+
+ useEffect(() =>{
+ const syncAcademicYear = (event) =>{
+ setSelectedAcademicYear(event?.detail?.academicYear || getActiveAcademicYear());
+ setAvailableCycles(storedAcademicYearCycles());
+ };
+ window.addEventListener("academicYearChanged", syncAcademicYear);
+ return () =>window.removeEventListener("academicYearChanged", syncAcademicYear);
+ }, []);
 
  const loadReviewQueue = useCallback(async (silent = false) =>{
  if (!pollingActiveRef.current) return;
@@ -1627,6 +1775,7 @@ export default function VCDashboard() {
  const items = await fetchReviewQueueForRole({
  reviewerRole: "vc",
  reviewerProfile: { ...profileFromsessionStorage(), appraisal_role: "vc" },
+ academicYear: selectedAcademicYear,
  schoolValues: [
  ...UNIVERSITY_SCHOOLS.flatMap((school) =>[school.code, school.name, school.label]),
  "CioD",
@@ -1638,7 +1787,7 @@ export default function VCDashboard() {
  try {
  nonTeachingItems = await fetchNonTeachingQueueForRole({
  reviewerRole: "vc",
- academicYear: APP_INFO.DEFAULT_AY,
+ academicYear: selectedAcademicYear,
  });
  } catch (nonTeachingErr) {
  console.warn("Could not load VC non-teaching review queue:", nonTeachingErr.message);
@@ -1672,7 +1821,7 @@ export default function VCDashboard() {
  setNonTeachingReviewedList([]);
  }
  }
- }, []);
+ }, [selectedAcademicYear]);
 
  useEffect(() =>{
  pollingActiveRef.current = true;
@@ -1754,7 +1903,7 @@ export default function VCDashboard() {
  const mergedForm = preserveSavedReviewScores(form, person);
  const declaration = data?.declaration || person.declaration || null;
  setReviewing({
- person: { ...person, ...mergedForm, ...reviewSummary, docs, academicYear, academic_year: academicYear, declaration, status: declaration?.status || data?.status || person.status, workflowStatus: declaration?.status || data?.workflowStatus || person.workflowStatus },
+ person: { ...person, ...mergedForm, ...reviewSummary, docs, academicYear, academic_year: academicYear, declaration, previousYearResponse: data, previousYearResultOnly: isLegacyTwoPartAcademicYear(academicYear), status: declaration?.status || data?.status || person.status, workflowStatus: declaration?.status || data?.workflowStatus || person.workflowStatus },
  personMode,
  });
  } catch (err) {
@@ -1785,26 +1934,35 @@ export default function VCDashboard() {
 <div className="vc-app-shell" style={{ display: "flex", minHeight: "100vh", fontFamily: "inherit", background: "#f0f4ff", color: "#1e293b" }}>
 
  {/* -- Sidebar -- */}
-<aside className="vc-sidebar" style={{ width: 264, height: "100vh", minHeight: "100vh", boxSizing: "border-box", overflow: "hidden", background: "#0f172a", display: "flex", flexDirection: "column", padding: "22px 16px", gap: 12, position: "sticky", top: 0, alignSelf: "flex-start", flexShrink: 0, borderRight: "1px solid rgba(255,255,255,0.06)", boxShadow: "2px 0 16px rgba(15,23,42,0.14)" }}>
-<div className="vc-sidebar-brand" style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-<div className="vc-brand-mark" style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg,#0ea5e9,#7c3aed)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 900, fontSize: 13 }}>FA</div>
+<aside className="vc-sidebar" style={{ width: 264, height: "100vh", minHeight: "100vh", boxSizing: "border-box", overflow: "hidden", background: "#0f172a", display: "flex", flexDirection: "column", padding: "20px 14px", gap: 10, position: "sticky", top: 0, alignSelf: "flex-start", flexShrink: 0, borderRight: "1px solid rgba(255,255,255,0.06)", boxShadow: "2px 0 14px rgba(15,23,42,0.14)" }}>
+<div className="vc-sidebar-brand" style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4, padding: "0 1px" }}>
+<div className="vc-brand-mark" style={{ width: 40, height: 40, borderRadius: 10, background: "linear-gradient(135deg,#0ea5e9,#7c3aed)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 900, fontSize: 13 }}>FA</div>
 <div>
 <div style={{ color: "#f8fafc", fontWeight: 800, fontSize: 13 }}>{APP_INFO.PORTAL_NAME}</div>
 <div style={{ color: "#94a3b8", fontSize: 9, marginTop: 2 }}>{APP_INFO.UNIVERSITY_NAME}</div>
 </div>
 </div>
 
-<div className="vc-sidebar-role-card" style={{ background: "#3b0764", borderRadius: 12, padding: "11px 12px", fontSize: 11, color: "#c4b5fd" }}>
+<div className="vc-sidebar-role-card" style={{ background: "#3b0764", borderRadius: 10, padding: "12px", fontSize: 11, color: "#c4b5fd" }}>
 <div style={{ fontWeight: 800, marginBottom: 2, color: "#fff" }}>Vice Chancellor</div>
 <div style={{ color: "#c4b5fd", fontSize: 10 }}>Full university oversight</div>
-<div style={{ color: "#93c5fd", fontSize: 9, marginTop: 6 }}>AY {APP_INFO.DEFAULT_AY}</div>
+<select
+ value={selectedAcademicYear}
+ onChange={(event) =>handleReviewAcademicYearChange(event.target.value)}
+ style={{ width: "100%", height: 28, marginTop: 8, border: "1px solid rgba(255,255,255,0.18)", borderRadius: 7, background: "rgba(255,255,255,0.08)", color: "#e0f2fe", fontSize: 10, fontWeight: 800, padding: "3px 8px", fontFamily: "inherit", outline: "none" }}
+>
+ {academicYearOptions.map((cycle) =>(
+ <option key={cycle.academic_year} value={cycle.academic_year}>
+ AY {cycle.academic_year} {cycle.is_open ? "(Active)" : "(Closed)"}
+ </option>
+ ))}
+</select>
 </div>
 
 <div style={{ height: 1, background: "rgba(255,255,255,0.08)" }} />
 
 <button className="vc-sidebar-nav" onClick={() =>setReviewing(null)}
- style={{ background: "rgba(99,102,241,0.18)", border: "none", borderRadius: 8, padding: "10px 11px", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, width: "100%", fontFamily: "inherit", transition: "background 0.15s" }}>
-<span className="vc-sidebar-nav-icon" style={{ fontSize: 12, fontWeight: 900 }}>SR</span>
+ style={{ background: "rgba(99,102,241,0.18)", border: "none", borderRadius: 8, padding: "10px 12px", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, width: "100%", fontFamily: "inherit", transition: "background 0.15s" }}>
 <div style={{ flex: 1, textAlign: "left" }}>
 <div style={{ color: "#e2e8f0", fontWeight: 700, fontSize: 12 }}>School Reviews</div>
 <div style={{ color: "#64748b", fontSize: 10, marginTop: 1 }}>{totalPending} awaiting</div>
@@ -1814,24 +1972,8 @@ export default function VCDashboard() {
  )}
 </button>
 
- {/* Score legend */}
-<div className="vc-sidebar-card" style={{ background: "#1e293b", borderRadius: 10, padding: "10px 12px" }}>
-<div style={{ fontSize: 9, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 8 }}>Score Columns</div>
- {[
- { color: "#818cf8", label: "HOD Score" },
- { color: "#38bdf8", label: "Director Score" },
- { color: "#34d399", label: "Dean Score" },
- { color: "#a78bfa", label: "VC Score" },
- ].map(({ color, label }) =>(
-<div key={label} style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 5 }}>
-<div style={{ width: 10, height: 10, borderRadius: 2, background: color, flexShrink: 0 }} />
-<div style={{ fontSize: 10, color: "#94a3b8" }}>{label}</div>
-</div>
- ))}
-</div>
-
  {/* University summary */}
-<div className="vc-sidebar-card" style={{ background: "#1e293b", borderRadius: 10, padding: "10px 12px" }}>
+<div className="vc-sidebar-card" style={{ background: "#1e293b", borderRadius: 8, padding: "10px 12px" }}>
 <div style={{ fontSize: 9, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 8 }}>University Overview</div>
 <div style={{ fontSize: 10, color: "#94a3b8", marginBottom: 3 }}>4 Engineering Schools</div>
 <div style={{ fontSize: 10, color: "#94a3b8", marginBottom: 3 }}>4 Non-Engineering Schools</div>
@@ -1857,7 +1999,12 @@ export default function VCDashboard() {
  title="Edit profile"
  style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", padding: 0, width: "100%", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
  >
-<Avatar initials={(sessionStorage.getItem("name") || "U").split(" ").map(w =>w[0]).join("").toUpperCase()} color="#7c3aed" size={34} />
+<Avatar
+  initials={(sessionStorage.getItem("name") || "U").split(" ").map(w =>w[0]).join("").toUpperCase()}
+  src={sessionStorage.getItem("profilePictureUrl") || sessionStorage.getItem("profile_picture_url") || sessionStorage.getItem("avatarUrl") || ""}
+  color="#7c3aed"
+  size={44}
+/>
 <div>
 <div style={{ color: "#e2e8f0", fontSize: 11, fontWeight: 700 }}>{sessionStorage.getItem("name") || "Vice Chancellor"}</div>
 <div style={{ color: "#475569", fontSize: 9 }}>Vice Chancellor - {APP_INFO.SHORT_NAME}</div>
@@ -1868,11 +2015,15 @@ export default function VCDashboard() {
 <a href="mailto:appraisal@dypiu.ac.in" style={{ color: "#60a5fa", fontWeight: 600, fontSize: 11, wordBreak: "break-all", textDecoration: "none" }}>appraisal@dypiu.ac.in</a>
 </div>
 <button onClick={() =>setShowLogoutModal(true)}
- style={{ width: "100%", display: "flex", alignItems: "center", gap: 9, background: "none", border: "1px solid #374151", borderRadius: 8, padding: "9px 11px", cursor: "pointer", fontFamily: "inherit" }}
- onMouseEnter={e =>e.currentTarget.style.background = "#1e293b"}
- onMouseLeave={e =>e.currentTarget.style.background = "none"}>
-<span style={{ fontSize: 12, fontWeight: 900 }}>OUT</span>
-<span style={{ color: "#f87171", fontWeight: 700, fontSize: 12 }}>Logout</span>
+ style={{ width: "100%", minHeight: 44, display: "flex", alignItems: "center", justifyContent: "flex-start", gap: 8, background: "rgba(127,29,29,0.02)", border: "1px solid rgba(248,113,113,0.42)", borderRadius: 14, padding: "10px 13px", cursor: "pointer", fontFamily: "inherit" }}
+ onMouseEnter={e =>e.currentTarget.style.background = "rgba(127,29,29,0.18)"}
+ onMouseLeave={e =>e.currentTarget.style.background = "rgba(127,29,29,0.02)"}>
+<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
+<path d="M10 17 15 12 10 7" />
+<path d="M15 12H3" />
+<path d="M21 19V5a2 2 0 0 0-2-2h-6" />
+</svg>
+<span style={{ color: "#f87171", fontWeight: 900, fontSize: 12 }}>Logout</span>
 </button>
 </aside>
 
@@ -1887,11 +2038,22 @@ export default function VCDashboard() {
 <h1 style={{ margin: 0, fontSize: 26, fontWeight: 900, color: "#0f172a", lineHeight: 1.15, letterSpacing: -0.5 }}>School-wise Appraisal Reviews</h1>
 <p style={{ margin: "5px 0 0", color: "#64748b", fontSize: 12, display: "flex", alignItems: "center", gap: 8 }}>
 <span style={{ background: "#e0e7ff", color: "#3730a3", borderRadius: 6, padding: "2px 8px", fontSize: 10, fontWeight: 700 }}>{APP_INFO.SHORT_NAME}</span>
-<span>AY {APP_INFO.DEFAULT_AY}</span>
+<span>AY</span>
+<select
+ value={selectedAcademicYear}
+ onChange={(event) =>handleReviewAcademicYearChange(event.target.value)}
+ style={{ height: 28, border: "1px solid #cbd5e1", borderRadius: 7, background: "#fff", color: "#0f172a", fontSize: 11, fontWeight: 800, padding: "3px 28px 3px 9px", fontFamily: "inherit", outline: "none" }}
+>
+ {academicYearOptions.map((cycle) =>(
+ <option key={cycle.academic_year} value={cycle.academic_year}>
+ {cycle.academic_year} {cycle.is_open ? "(Active)" : "(Closed)"}
+ </option>
+ ))}
+</select>
 </p>
 </div>
 <div className="vc-hero-right" style={{ display: "flex", alignItems: "center", gap: 12 }}>
-<div className="vc-total-pill" style={{ fontSize: 12, color: "#374151", background: "#fff", padding: "10px 18px", borderRadius: 12, boxShadow: "0 2px 8px rgba(15,23,42,0.08)", fontWeight: 700 }}>
+<div className="vc-total-pill" style={{ fontSize: 12, color: "#374151", background: "#fff", padding: "10px 18px", borderRadius: 8, boxShadow: "0 2px 8px rgba(15,23,42,0.08)", fontWeight: 700 }}>
 <span style={{ color: "#6d28d9", fontWeight: 900, fontSize: 16 }}>{deanList.length + dirList.length + hodList.length + centerHeadList.length + facList.length + nonTeachingList.length + nonTeachingReviewedList.length}</span>{" "}total submissions
 </div>
 <AppraisalHeaderImage />
@@ -1899,7 +2061,7 @@ export default function VCDashboard() {
 </div>
 
  {/* Division Switcher */}
-<div className="vc-segmented-tabs fa-fade-up" style={{ display: "flex", width: "fit-content", gap: 2 }}>
+<div className="vc-segmented-tabs fa-fade-up" style={{ display: "inline-flex", width: "auto", maxWidth: "max-content", gap: 2 }}>
  {[
  { key: "engg", label: "Engineering Schools", color: "#1e40af", bg: "linear-gradient(135deg,#dbeafe,#bfdbfe)" },
  { key: "non-engg", label: "Non-Engineering Schools", color: "#6b21a8", bg: "linear-gradient(135deg,#f3e8ff,#e9d5ff)" },
@@ -1912,7 +2074,7 @@ export default function VCDashboard() {
  const isActive = deanTypeFilter === key;
  return (
 <button className={`vc-segmented-tab${isActive ? " is-active" : ""}`} key={key} onClick={() =>switchDeanType(key)}
- style={{ padding: "9px 20px", border: isActive ? `1.5px solid ${color}44` : "1.5px solid transparent", borderRadius: 10, cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 700, background: isActive ? bg : "none", color: isActive ? color : "#64748b", display: "flex", alignItems: "center", gap: 7, boxShadow: isActive ? `0 2px 12px ${color}22` : "none" }}>
+ style={{ padding: "9px 20px", border: isActive ? `1.5px solid ${color}44` : "1.5px solid transparent", borderRadius: 7, cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 700, background: isActive ? bg : "none", color: isActive ? color : "#64748b", display: "flex", alignItems: "center", gap: 7, boxShadow: isActive ? `0 2px 10px ${color}1f` : "none" }}>
  {label}
  {schoolPending >0 && (
 <span style={{ background: isActive ? color : "#94a3b8", color: "#fff", borderRadius: 10, padding: "2px 8px", fontSize: 9, fontWeight: 900 }}>{schoolPending}</span>
@@ -1980,13 +2142,17 @@ export default function VCDashboard() {
  }}
  />
  ) : (
+reviewing.person?.previousYearResultOnly ? (
+<PreviousYearAuthorityResult item={reviewing.person} onBack={() =>setReviewing(null)} />
+) : (
 <VCReviewPanel
- person={reviewing.person}
- personMode={reviewing.personMode}
- onBack={() =>setReviewing(null)}
- onSubmit={handleSubmit}
- readOnly={isVcReviewed(reviewing.person)}
- />
+person={reviewing.person}
+personMode={reviewing.personMode}
+onBack={() =>setReviewing(null)}
+onSubmit={handleSubmit}
+readOnly={isVcReviewed(reviewing.person)}
+/>
+)
  ))}
 </main>
 
@@ -1994,9 +2160,8 @@ export default function VCDashboard() {
  {showLogoutModal && (
 <div style={{ position: "fixed", inset: 0, background: "rgba(8,9,26,0.65)", backdropFilter: "blur(4px)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}
  onClick={() =>setShowLogoutModal(false)}>
-<div style={{ background: "#fff", borderRadius: 20, padding: "36px 40px", maxWidth: 360, width: "90%", boxShadow: "0 32px 80px rgba(0,0,0,0.3)", display: "flex", flexDirection: "column", alignItems: "center", gap: 20, fontFamily: "inherit" }}
+<div style={{ background: "#fff", borderRadius: 10, padding: "30px 34px", maxWidth: 360, width: "90%", boxShadow: "0 24px 56px rgba(0,0,0,0.26)", display: "flex", flexDirection: "column", alignItems: "center", gap: 18, fontFamily: "inherit" }}
  onClick={e =>e.stopPropagation()}>
-<div style={{ width: 60, height: 60, borderRadius: "50%", background: "linear-gradient(135deg,#fee2e2,#fecaca)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 900, color: "#dc2626", boxShadow: "0 8px 20px rgba(239,68,68,0.25)" }}>OUT</div>
 <div style={{ textAlign: "center" }}>
 <div style={{ fontWeight: 900, fontSize: 18, color: "#0f172a", marginBottom: 8, letterSpacing: -0.3 }}>Confirm Logout</div>
 <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.7 }}>

@@ -47,7 +47,7 @@ export default function DirectorPatents({ ctx }) {
 <td style={TDC}><RO val={r.fileNo || r.date} center /></td>
 <td style={TDV}><ViewDocsCell docKey={`pat-${i}`} docs={docs} /></td>
 <td style={TDS}><RO val={r.score} center /></td>
-<td style={TDS_DIR}><DirInput val={getDir("patents", i, "dir")} onChange={v =>setDir("patents", i, "dir", v)} /></td>
+<td style={TDS_DIR}><DirInput val={getDir("patents", i, "dir")} max={40} disabled={!rowHasReviewableData("patents", r, docs, `pat-${i}`)} onChange={v =>setDir("patents", i, "dir", v)} /></td>
 </tr>
  ))}
 </tbody>

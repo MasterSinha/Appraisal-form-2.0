@@ -217,12 +217,7 @@ const legacyTotalsForSubmit = (totals = {}) => {
 
 const legacyFormForSubmit = (form = {}) => {
  const legacyForm = { ...form };
- [
- "obeRows",
- "mentoringRows",
- "eventRows",
- "alumniRows",
- "placementRows",
+[
  "acr",
  "exhibitions",
  "popularWritings",
@@ -256,7 +251,7 @@ const resetSnapshotSetters = (academicYear, setters) =>{
  });
  setters.setLectures?.([{ sem: "", code: "", planned: "", conducted: "", score: "", hod: "", director: "" }]);
  setters.setCourseFile?.([{ course: "", title: "", details: "", score: "", hod: "", director: "" }]);
- setters.setInnovRows?.([{ method: "", details: "", score: "" }]);
+ setters.setInnovRows?.([{ method: "", details: "", score: "", max: 4, sectionMax: 10 }]);
  setters.setInnovDetails?.("");
  setters.setInnovScore?.("");
  setters.setInnovHod?.("");
@@ -280,7 +275,7 @@ const resetSnapshotSetters = (academicYear, setters) =>{
  setters.setUniActs?.([{ activity: "", nature: "", period: "", score: "", hod: "", director: "" }]);
  setters.setEvents?.([{ event: "", role: "", date: "", level: "", score: "" }]);
  setters.setEventRows?.([{ event: "", role: "", date: "", level: "", score: "" }]);
- setters.setSociety?.([{ label: "", details: "", date: "", score: "", hod: "", director: "" }]);
+ setters.setSociety?.([{ label: "", details: "", date: "", score: "", hod: "", director: "", max: 10 }]);
  setters.setIndustry?.([{ activity: "", partner: "", date: "", name: "", details: "", score: "", hod: "", director: "" }]);
  setters.setAlumni?.([{ activity: "", details: "", date: "", score: "" }]);
  setters.setAlumniRows?.([{ activity: "", details: "", date: "", score: "" }]);
@@ -294,7 +289,7 @@ const resetSnapshotSetters = (academicYear, setters) =>{
  setters.setResearch?.([{ degree: "", name: "", thesis: "", score: "", hod: "", director: "" }]);
  setters.setProjects2?.([{ title: "", agency: "", date: "", amount: "", role: "", status: "", score: "", hod: "" }]);
  setters.setInternalProjects?.([{ title: "", agency: "", date: "", amount: "", role: "", status: "", score: "", hod: "" }]);
- setters.setExternalProjects?.([{ title: "", agency: "", date: "", amount: "", role: "", status: "", score: "", hod: "" }]);
+ setters.setExternalProjects?.([{ title: "", agency: "", date: "", amount: "", role: "", status: "", score: "", hod: "", max: 20 }]);
  setters.setIpr?.([{ title: "", type: "", date: "", status: "", fileNo: "", score: "", hod: "", director: "" }]);
  setters.setPatents?.([{ title: "", type: "", date: "", status: "", fileNo: "", score: "", hod: "", director: "" }]);
  setters.setAwards?.([{ title: "", date: "", agency: "", level: "", score: "", hod: "", director: "" }]);
@@ -513,10 +508,10 @@ const repairDeanDivisionProfile = async () =>{
 };
 
 const FORM_SECTION_KEYS = [
- "lectures", "courseFile", "projects", "quals", "feedback", "deptActs", "uniActs",
- "society", "industry", "acr", "journals", "books", "ict", "research", "projects2",
+ "lectures", "courseFile", "obeRows", "projects", "mentoringRows", "quals", "feedback", "deptActs", "uniActs",
+ "eventRows", "events", "society", "industry", "alumniRows", "alumni", "placementRows", "placements", "acr", "journals", "books", "ict", "research", "projects2",
  "internalProjects", "externalProjects", "ipr", "patents", "awards", "confs",
- "proposals", "products", "fdps", "training", "popularWritings",
+ "proposals", "products", "innovation", "consultancy", "fdps", "training", "popularWritings",
 ];
 
 const REVIEW_FIELD_BY_ROLE = {
@@ -1038,6 +1033,55 @@ const SOCIETY_ROW_ALIASES = {
  yesNo: "participated",
 };
 
+const OBE_ROW_ALIASES = {
+ component_name: "component",
+ componentName: "component",
+ outcome_component: "component",
+ outcomeComponent: "component",
+ proof: "evidence",
+ evidence_attached: "evidence",
+ evidenceAttached: "evidence",
+};
+
+const MENTORING_ROW_ALIASES = {
+ mentoring_activity: "activity",
+ mentoringActivity: "activity",
+ component: "activity",
+ proof: "evidence",
+ evidence_attached: "evidence",
+ evidenceAttached: "evidence",
+};
+
+const EVENT_ROW_ALIASES = {
+ activity: "event",
+ title: "event",
+ event_name: "event",
+ eventName: "event",
+ responsibility: "role",
+ scope: "level",
+};
+
+const ALUMNI_ROW_ALIASES = {
+ event: "activity",
+ title: "activity",
+ description: "details",
+ name: "details",
+ period: "date",
+};
+
+const PLACEMENT_ROW_ALIASES = {
+ type: ["activityType", "type"],
+ activity: ["activityType", "type"],
+ activity_type: "activityType",
+ activityType: "activityType",
+ student: "name",
+ company: "name",
+ organization: "name",
+ organisation: "name",
+ details: "name",
+ period: "date",
+};
+
 const JOURNAL_ROW_ALIASES = {
  indexing: "index",
  index_name: "index",
@@ -1064,16 +1108,24 @@ const BOOK_ROW_ALIASES = {
 };
 
 const ICT_ROW_ALIASES = {
- description: "desc",
- short_description: "desc",
- shortDescription: "desc",
- quadrant: "quad",
- quadrants: "quad",
+ description: ["desc", "platform"],
+ short_description: ["desc", "platform"],
+ shortDescription: ["desc", "platform"],
+ type: "platform",
+ quadrant: ["quad", "reach"],
+ quadrants: ["quad", "reach"],
+ views: "reach",
 };
 
 const RESEARCH_ROW_ALIASES = {
  student_name: "name",
  studentName: "name",
+ thesis: "status",
+ stage: "status",
+ award_date: "date",
+ awardDate: "date",
+ registration_date: "date",
+ registrationDate: "date",
 };
 
 const RESEARCH_PROJECT_ROW_ALIASES = {
@@ -1115,11 +1167,25 @@ const CONF_ROW_ALIASES = {
  organiser: "org",
 };
 
+const CONSULTANCY_ROW_ALIASES = {
+ organisation: "client",
+ organization: "client",
+ agency: "client",
+ company: "client",
+ title: "client",
+ type: "nature",
+ role: "nature",
+ status: "nature",
+ details: "nature",
+};
+
 const PRODUCT_ROW_ALIASES = {
  usage: ["usage", "used"],
  used: ["usage", "used"],
  product_details: "details",
  productDetails: "details",
+ impact: "status",
+ nature: "role",
 };
 
 const FDP_ROW_ALIASES = {
@@ -1151,6 +1217,8 @@ const INNOVATIVE_ROW_ALIASES = {
  method_used: "method",
  methodUsed: "method",
  description: "details",
+ proof: "details",
+ evidence: "details",
 };
 
 const normalizeReviewScoreAliasesOnRows = (normalized) =>{
@@ -1195,6 +1263,7 @@ const normalizeFetchedForm = (form = {}) =>{
  if (!form || typeof form !== "object") return form;
  const normalized = { ...form };
  normalized.info = normalizeInfo(normalized.info || {}, normalized);
+ const mediaOrDesign = isMediaOrDesignForm(normalized);
 
  normalizeSectionRows(normalized, "lectures", [
  "teaching_process",
@@ -1225,6 +1294,22 @@ const normalizeFetchedForm = (form = {}) =>{
  "studentFeedback",
  ], FEEDBACK_ROW_ALIASES);
 
+ normalizeSectionRows(normalized, "obeRows", [
+ "obe_rows",
+ "obeRows",
+ "learning_outcomes",
+ "learningOutcomes",
+ "obe_practice",
+ "obePractice",
+ ], OBE_ROW_ALIASES);
+
+ normalizeSectionRows(normalized, "mentoringRows", [
+ "mentoring_rows",
+ "mentoringRows",
+ "student_mentoring",
+ "studentMentoring",
+ ], MENTORING_ROW_ALIASES);
+
  normalizeSectionRows(normalized, "deptActs", [
  "department_activities",
  "departmentActivities",
@@ -1239,46 +1324,25 @@ const normalizeFetchedForm = (form = {}) =>{
  "uni_acts",
  ]);
 
-  normalizeSectionRows(normalized, "events", [
-    "event_organisation",
-    "eventOrganisation",
-    "eventRows",
-    "events"
-  ]);
-  normalizeSectionRows(normalized, "eventRows", [
-    "event_organisation",
-    "eventOrganisation",
-    "eventRows",
-    "events"
-  ]);
+ const eventRows = normalizeSectionRows(normalized, "eventRows", [
+ "event_rows",
+ "eventRows",
+ "events",
+ "event_organisation",
+ "eventOrganisation",
+ ], EVENT_ROW_ALIASES);
+ normalizeSectionRows(normalized, "events", [
+ "events",
+ "eventRows",
+ "event_rows",
+ "event_organisation",
+ "eventOrganisation",
+ ], EVENT_ROW_ALIASES);
+ if (!Array.isArray(normalized.events) && eventRows) {
+ normalized.events = aliasKeys(eventRows, EVENT_ROW_ALIASES);
+ }
 
-  normalizeSectionRows(normalized, "alumni", [
-    "alumni_engagement",
-    "alumniEngagement",
-    "alumniRows",
-    "alumni"
-  ]);
-  normalizeSectionRows(normalized, "alumniRows", [
-    "alumni_engagement",
-    "alumniEngagement",
-    "alumniRows",
-    "alumni"
-  ]);
-
-  normalizeSectionRows(normalized, "placements", [
-    "placement_mentoring",
-    "placementMentoring",
-    "placementRows",
-    "placements"
-  ]);
-  normalizeSectionRows(normalized, "placementRows", [
-    "placement_mentoring",
-    "placementMentoring",
-    "placementRows",
-    "placements"
-  ]);
-
-  normalizeSectionRows(normalized, "society", [
+ normalizeSectionRows(normalized, "society", [
  "social_contributions",
  "socialContributions",
  "contribution_to_society",
@@ -1289,6 +1353,42 @@ const normalizeFetchedForm = (form = {}) =>{
  "industry_connect",
  "industryConnect",
  ], INDUSTRY_ROW_ALIASES);
+
+ const alumniRows = normalizeSectionRows(normalized, "alumniRows", [
+ "alumni_rows",
+ "alumniRows",
+ "alumni",
+ "alumni_engagement",
+ "alumniEngagement",
+ ], ALUMNI_ROW_ALIASES);
+ normalizeSectionRows(normalized, "alumni", [
+ "alumni",
+ "alumniRows",
+ "alumni_rows",
+ "alumni_engagement",
+ "alumniEngagement",
+ ], ALUMNI_ROW_ALIASES);
+ if (!Array.isArray(normalized.alumni) && alumniRows) {
+ normalized.alumni = aliasKeys(alumniRows, ALUMNI_ROW_ALIASES);
+ }
+
+ const placementRows = normalizeSectionRows(normalized, "placementRows", [
+ "placement_rows",
+ "placementRows",
+ "placements",
+ "student_placements",
+ "studentPlacements",
+ ], PLACEMENT_ROW_ALIASES);
+ normalizeSectionRows(normalized, "placements", [
+ "placements",
+ "placementRows",
+ "placement_rows",
+ "student_placements",
+ "studentPlacements",
+ ], PLACEMENT_ROW_ALIASES);
+ if (!Array.isArray(normalized.placements) && placementRows) {
+ normalized.placements = aliasKeys(placementRows, PLACEMENT_ROW_ALIASES);
+ }
 
  normalizeSectionRows(normalized, "acr", [
  "acr_scores",
@@ -1388,6 +1488,14 @@ const normalizeFetchedForm = (form = {}) =>{
  "invitedLectures",
  ], CONF_ROW_ALIASES);
 
+ normalizeSectionRows(normalized, "consultancy", [
+ "consultancy",
+ "consultancy_rows",
+ "consultancyRows",
+ "creative_commissions",
+ "creativeCommissions",
+ ], CONSULTANCY_ROW_ALIASES);
+
  normalizeSectionRows(normalized, "proposals", [
  "research_proposals",
  "researchProposals",
@@ -1398,6 +1506,17 @@ const normalizeFetchedForm = (form = {}) =>{
  normalizeSectionRows(normalized, "products", [
  "products_developed",
  "productsDeveloped",
+ ], PRODUCT_ROW_ALIASES);
+
+ normalizeSectionRows(normalized, "innovation", [
+ "innovation",
+ "innovation_rows",
+ "innovationRows",
+ "products",
+ "products_developed",
+ "productsDeveloped",
+ "startupRows",
+ "startups",
  ], PRODUCT_ROW_ALIASES);
 
  normalizeSectionRows(normalized, "fdps", [
@@ -1435,6 +1554,16 @@ const normalizeFetchedForm = (form = {}) =>{
  vc: innovativeTeaching.vc ?? innovativeTeaching.vc_score,
  }];
  }
+ }
+
+ if (mediaOrDesign) {
+ if (Array.isArray(normalized.innovRows)) normalized.innovRows = normalized.innovRows.map((row) =>({ ...row, max: row.max || 4, sectionMax: row.sectionMax || row.section_max || 10 }));
+ if (Array.isArray(normalized.society)) normalized.society = normalized.society.map((row) =>({ ...row, max: row.max || 10 }));
+ if (Array.isArray(normalized.externalProjects)) normalized.externalProjects = normalized.externalProjects.map((row) =>({ ...row, max: row.max || 20 }));
+ } else {
+ if (Array.isArray(normalized.innovRows)) normalized.innovRows = normalized.innovRows.map((row) =>({ ...row, max: row.max || 4 }));
+ if (Array.isArray(normalized.projects2)) normalized.projects2 = normalized.projects2.map((row) =>({ ...row, max: row.max || 40 }));
+ if (Array.isArray(normalized.society)) normalized.society = normalized.society.map((row) =>({ ...row, max: row.max || 20 }));
  }
 
  return normalizeInnovativeReviewScoreAliases(normalizeReviewScoreAliasesOnRows(normalized));

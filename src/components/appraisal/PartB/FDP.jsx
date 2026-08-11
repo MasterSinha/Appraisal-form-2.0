@@ -43,7 +43,7 @@ export default function FDP({ ctx }) {
 <td style={TD}><RO val={r.org} /></td>
 <td style={TDV}><ViewDocsCell docKey={`fdp-${i}`} docs={docs} /></td>
 <td style={TDS}><RO val={String(r.score ?? "").trim() ? clampScore(r.score, SCORE_LIMITS.fdpRow) : ""} center /></td>
-<td style={TDS_HOD}><HodInput val={get("fdps", i, "hod")} max={SCORE_LIMITS.fdpRow} onChange={v =>set("fdps", i, "hod", v)} /></td>
+<td style={TDS_HOD}><HodInput val={get("fdps", i, "hod")} max={SCORE_LIMITS.fdpRow} disabled={!rowHasReviewableData("fdps", r, docs, `fdp-${i}`)} onChange={v =>set("fdps", i, "hod", v)} /></td>
 </tr>
  ))}
 </tbody>

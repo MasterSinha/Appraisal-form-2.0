@@ -1,4 +1,5 @@
 import { api } from "./api";
+import { getActiveAcademicYear } from "../auth/session";
 import { APP_INFO } from "../constants/formConfig";
 import {
   canAuthorityReviewProfile,
@@ -28,6 +29,192 @@ const firstValue = (...values) =>
 
 const numberValue = (...values) => n(firstValue(...values));
 
+const docCountFromValue = (value, item = {}) => {
+  const countKeys = new Set([
+    "doc_count",
+    "docCount",
+    "docs_count",
+    "docsCount",
+    "document_count",
+    "documentCount",
+    "documents_count",
+    "documentsCount",
+    "uploaded_docs_count",
+    "uploadedDocsCount",
+    "supporting_documents_count",
+    "supportingDocumentsCount",
+  ]);
+  const fileLocatorKeys = [
+    "url",
+    "file_url",
+    "fileUrl",
+    "document_url",
+    "documentUrl",
+    "path",
+    "location",
+    "storage_path",
+    "storagePath",
+    "public_id",
+    "publicId",
+  ];
+  const fileNameKeys = [
+    "file_name",
+    "fileName",
+    "filename",
+    "original_name",
+    "originalName",
+    "name",
+  ];
+  const isFileReference = (src) => {
+    const fileRef = clean(src);
+    return /^(https?:|blob:|data:)/i.test(fileRef) || /[\\/]/.test(fileRef) || /\.[a-z0-9]{2,8}($|[?#])/i.test(fileRef);
+  };
+  const hasFileMimeType = (src) =>
+    ["type", "file_type", "fileType", "mime_type", "mimeType"].some((key) =>
+      /^(image|application|text|video|audio)\//i.test(clean(src?.[key]))
+    );
+  const hasFileIdentity = (src) => {
+    if (!src || typeof src !== "object") return false;
+    const hasLocator = fileLocatorKeys.some((key) => clean(src?.[key]) !== "");
+    const hasFileName = fileNameKeys.some((key) => clean(src?.[key]) !== "");
+    return hasLocator || fileNameKeys.some((key) => isFileReference(src?.[key])) || (hasFileName && hasFileMimeType(src));
+  };
+  const ignoredFileMetaKeys = new Set([...fileLocatorKeys, ...fileNameKeys, "type", "file_type", "fileType", "mime_type", "mimeType", "size", "lastModified"]);
+
+  const parseNum = (v) => {
+    if (v === undefined || v === null || v === "") return 0;
+    const parsed = n(v);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+  };
+
+  const explicit = Math.max(
+    parseNum(item?.docCount),
+    parseNum(item?.doc_count),
+    parseNum(item?.docsCount),
+    parseNum(item?.docs_count),
+    parseNum(item?.documentCount),
+    parseNum(item?.document_count),
+    parseNum(item?.documentsCount),
+    parseNum(item?.documents_count),
+    parseNum(item?.uploadedDocsCount),
+    parseNum(item?.uploaded_docs_count),
+    parseNum(item?.payload?.docCount),
+    parseNum(item?.payload?.doc_count),
+    parseNum(typeof value === "object" ? value?.docCount : null),
+    parseNum(typeof value === "object" ? value?.doc_count : null),
+    parseNum(typeof value === "object" ? value?.docsCount : null),
+    parseNum(typeof value === "object" ? value?.docs_count : null)
+  );
+
+  if (typeof value === "number") return Math.max(value, explicit);
+  if (typeof value === "string") return Math.max(isFileReference(value) ? 1 : 0, explicit);
+  if (Array.isArray(value)) {
+    return Math.max(value.reduce((total, entry) => total + docCountFromValue(entry), 0), explicit);
+  }
+  if (!value || typeof value !== "object") return explicit;
+
+  const mapCount = Object.entries(value).reduce((total, [key, entry]) => {
+    if (countKeys.has(key) || ignoredFileMetaKeys.has(key)) return total;
+    return total + docCountFromValue(entry);
+  }, 0);
+
+  return Math.max(hasFileIdentity(value) ? 1 : 0, mapCount, explicit);
+};
+
+const documentSourcesFromItem = (item = {}) => [
+    item.docs,
+    item.payload?.docs,
+    item.payload?.form?.docs,
+    item.form?.docs,
+    item.documents,
+    item.appraisal_documents,
+    item.appraisalDocuments,
+    item.payload?.documents,
+    item.payload?.appraisal_documents,
+    item.payload?.appraisalDocuments,
+    item.payload?.form?.documents,
+    item.payload?.form?.appraisal_documents,
+    item.payload?.form?.appraisalDocuments,
+    item.form?.documents,
+    item.form?.appraisal_documents,
+    item.form?.appraisalDocuments,
+    item.data?.docs,
+    item.data?.documents,
+    item.data?.appraisal_documents,
+    item.data?.appraisalDocuments,
+    item.data?.payload?.docs,
+    item.data?.payload?.documents,
+    item.data?.payload?.appraisal_documents,
+    item.data?.payload?.appraisalDocuments,
+  ];
+
+const docsForQueueCard = (item = {}) => {
+  const validSources = documentSourcesFromItem(item)
+    .filter((source) => docCountFromValue(source) > 0)
+    .sort((a, b) => docCountFromValue(b) - docCountFromValue(a));
+
+  if (validSources.length > 0) {
+    return validSources[0];
+  }
+
+  const explicitCount = firstValue(
+    item.doc_count,
+    item.docCount,
+    item.docs_count,
+    item.docsCount,
+    item.document_count,
+    item.documentCount,
+    item.documents_count,
+    item.documentsCount,
+    item.uploaded_docs_count,
+    item.uploadedDocsCount,
+    item.supporting_documents_count,
+    item.supportingDocumentsCount,
+    item.payload?.doc_count,
+    item.payload?.docCount,
+    item.payload?.documents_count,
+    item.payload?.documentsCount,
+  );
+  if (explicitCount !== "") return n(explicitCount);
+
+  return item.docs || item.payload?.docs || {};
+};
+
+const enrichQueueItemDocs = async (item = {}) => {
+  if (!item.email || !item.academicYear) return item;
+
+  try {
+    const rows = await api.get("/appraisal-documents", {
+      params: {
+        academic_year: item.academicYear,
+        faculty_email: item.email,
+      },
+    });
+    const fetchedCount = docCountFromValue(rows);
+    const currentCount = docCountFromValue(item.docs, item);
+    if (fetchedCount > currentCount) {
+      return { ...item, docs: rows, docCount: fetchedCount };
+    }
+  } catch {
+    // Fall through to the submitted-form endpoint below.
+  }
+
+  try {
+    const submitted = await api.get(`/dashboard/faculty/${encodeURIComponent(item.email)}`, {
+      params: { academic_year: item.academicYear },
+    });
+    const bestSubmittedDocs = docsForQueueCard(submitted);
+    const submittedCount = docCountFromValue(bestSubmittedDocs, submitted);
+    const currentCount = docCountFromValue(item.docs, item);
+    if (submittedCount > currentCount) {
+      return { ...item, docs: bestSubmittedDocs, docCount: submittedCount };
+    }
+    return item;
+  } catch {
+    return item;
+  }
+};
+
 const initialsFor = (name, fallback = "U") =>
   String(name || fallback)
     .split(/\s+/)
@@ -36,6 +223,40 @@ const initialsFor = (name, fallback = "U") =>
     .join("")
     .slice(0, 2)
     .toUpperCase();
+
+const profileImageFrom = (item = {}) =>
+  firstValue(
+    item.profile_picture_url,
+    item.profilePictureUrl,
+    item.avatar_url,
+    item.avatarUrl,
+    item.photo_url,
+    item.photoUrl,
+    item.picture_url,
+    item.pictureUrl,
+    item.profile?.profile_picture_url,
+    item.profile?.profilePictureUrl,
+    item.profile?.avatar_url,
+    item.profile?.avatarUrl,
+    item.facultyProfile?.profile_picture_url,
+    item.facultyProfile?.profilePictureUrl,
+    item.faculty_profile?.profile_picture_url,
+    item.faculty_profile?.profilePictureUrl,
+    item.submitterProfile?.profile_picture_url,
+    item.submitterProfile?.profilePictureUrl,
+    item.submitter_profile?.profile_picture_url,
+    item.submitter_profile?.profilePictureUrl,
+    item.payload?.submitterProfile?.profile_picture_url,
+    item.payload?.submitterProfile?.profilePictureUrl,
+    item.payload?.submitter_profile?.profile_picture_url,
+    item.payload?.submitter_profile?.profilePictureUrl,
+    item.payload?.profile_picture_url,
+    item.payload?.profilePictureUrl,
+    item.form?.profile_picture_url,
+    item.form?.profilePictureUrl,
+    item.info?.profile_picture_url,
+    item.info?.profilePictureUrl,
+  );
 
 const roleColor = (role) =>
   role === "hod" || role === "center_head" ? "#f59e0b"
@@ -70,6 +291,8 @@ const subjectProfileFromItem = (item = {}) => {
     ...item,
     email: firstValue(item.email, item.faculty_email, item.facultyEmail, item.username),
     full_name: firstValue(item.name, item.full_name, item.fullName, item.profile?.full_name),
+    profile_picture_url: profileImageFrom(item),
+    profilePictureUrl: profileImageFrom(item),
     appraisal_role: role,
     role,
     school: firstValue(
@@ -331,7 +554,7 @@ const normalizeQueueItem = (item = {}) => {
   const submitted = hasSubmittedAppraisal(item);
   const status = getWorkflowStatus(item) || (submitted ? pendingStatusFor(getReviewChain(subjectProfile)[0]) : "");
   const email = subjectProfile.email;
-  const academicYear = firstValue(item.academicYear, item.academic_year, item.info?.ay, APP_INFO.DEFAULT_AY, "2026-2027");
+  const academicYear = firstValue(item.academicYear, item.academic_year, item.info?.ay, getActiveAcademicYear(), APP_INFO.DEFAULT_AY, "2026-2027");
   const school = subjectProfile.school;
   const selfSummary = standardSubmittedScoreSummary(item);
   const reviewSummary = standardReviewSummary(item, item.payload, item.form);
@@ -364,6 +587,8 @@ const normalizeQueueItem = (item = {}) => {
     },
     status,
     workflowStatus: status,
+    docs: docsForQueueCard(item),
+    docCount: docCountFromValue(docsForQueueCard(item)),
     hasSubmittedAppraisal: submitted,
     partATotal: selfSummary.partA,
     partBTotal: selfSummary.partB,
@@ -406,6 +631,9 @@ const normalizeQueueItem = (item = {}) => {
     vcPartDMax: numberValue(firstValue(item.vc_part_d_max, item.vcPartDMax)),
     vcTotalMax: numberValue(firstValue(item.vc_total_max, item.vcTotalMax)),
     avatar: initialsFor(firstValue(item.name, item.full_name, email), email),
+    avatarUrl: profileImageFrom(item),
+    profile_picture_url: profileImageFrom(item),
+    profilePictureUrl: profileImageFrom(item),
     avatarColor: roleColor(appraisalRole),
     hodTotal: numberValue(reviewSummary.hodTotal),
     hodPartA: numberValue(reviewSummary.hodPartA),
@@ -445,7 +673,7 @@ export const fetchReviewQueueForRole = async ({
 
   try {
     const params = {
-      academic_year: academicYear || APP_INFO.DEFAULT_AY || "2026-2027",
+      academic_year: academicYear || getActiveAcademicYear() || APP_INFO.DEFAULT_AY || "2026-2027",
       reviewer_role: role,
       pending_status: pendingStatusFor(role),
     };
@@ -454,9 +682,10 @@ export const fetchReviewQueueForRole = async ({
     if (reviewerProfile?.department) params.reviewer_department = reviewerProfile.department;
 
     const items = await api.get("/dashboard/subordinates", { params });
-    return (items || [])
+    const normalizedItems = (items || [])
       .map(normalizeQueueItem)
       .filter((item) => isReviewableForRole(item, role, reviewerProfile));
+    return await Promise.all(normalizedItems.map(enrichQueueItemDocs));
   } catch (err) {
     throw new Error(err?.message || "Could not load review queue.", { cause: err });
   }

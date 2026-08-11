@@ -47,9 +47,11 @@ export const createAcrRows = (rows = []) => {
 };
 
 export const MAX_SCORES = {
-  PART_A: 200,
-  PART_B: 375,
-  GRAND_TOTAL: 575,
+  PART_A: 150,
+  PART_B: 350,
+  PART_C: 150,
+  PART_D: 50,
+  GRAND_TOTAL: 700,
   TEACHING_PROCESS: 100,
   STUDENT_FEEDBACK: 10,
   DEPT_ACTIVITIES: 20,
@@ -88,7 +90,7 @@ export const RESEARCH_MULTIPLIERS = {
 
 
 export const APP_INFO = {
-  UNIVERSITY_NAME: "University Name",
+  UNIVERSITY_NAME: "D Y Patil International University, Pune",
   UNIVERSITY_LOCATION: "City, Country",
   DEFAULT_AY: "2026-2027",
   PORTAL_NAME: "Faculty Appraisal Portal",

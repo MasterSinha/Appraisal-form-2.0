@@ -46,7 +46,7 @@ export default function DirectorConferences({ ctx }) {
 <td style={TD}><RO val={r.level || r.org} /></td>
 <td style={TDV}><ViewDocsCell docKey={`conf-${i}`} docs={docs} /></td>
 <td style={TDS}><RO val={r.score} center /></td>
-<td style={TDS_DIR}><DirInput val={getDir("confs", i, "dir")} onChange={v =>setDir("confs", i, "dir", v)} /></td>
+<td style={TDS_DIR}><DirInput val={getDir("confs", i, "dir")} max={20} disabled={!rowHasReviewableData("confs", r, docs, `conf-${i}`)} onChange={v =>setDir("confs", i, "dir", v)} /></td>
 </tr>
  ))}
 </tbody>

@@ -91,7 +91,7 @@ export const resolveRelativeUrls = (data) => {
     for (const [key, value] of Object.entries(data)) {
       if (
         typeof value === "string" &&
-        ["url", "file_url", "fileUrl", "avatar_url", "avatarUrl"].includes(key)
+        ["url", "file_url", "fileUrl", "avatar_url", "avatarUrl", "profile_picture_url", "profilePictureUrl", "photo_url", "photoUrl"].includes(key)
       ) {
         resolved[key] = getFileUrl(value);
       } else if (typeof value === "object" && value !== null) {

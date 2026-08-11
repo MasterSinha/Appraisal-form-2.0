@@ -7,6 +7,7 @@ import {
   normalizeHierarchyText,
 } from "../constants/universityHierarchy";
 import { NON_TEACHING_ROLES, isNonTeachingRole } from "../constants/nonTeachingHierarchy";
+import { APP_INFO } from "../constants/formConfig";
 import { departmentHasHod, getDeanTrack } from "../utils/hierarchy";
 
 export const VALID_ROLES = ["faculty", "hod", "center_head", "director", "dean", "vc", ...NON_TEACHING_ROLES];
@@ -48,6 +49,31 @@ export const normalizeRole = (role, fallback = "faculty") => {
 
 export const hasValidRole = (role) => VALID_ROLES.includes(normalizeRole(role, ""));
 
+export const normalizeAcademicYearLabel = (value) => {
+  const label = String(value || "").trim();
+  const shortMatch = label.match(/^(\d{2})-(\d{2})$/);
+  if (shortMatch) return `20${shortMatch[1]}-20${shortMatch[2]}`;
+  return label;
+};
+
+export const getActiveAcademicYear = (fallback = APP_INFO.DEFAULT_AY) => {
+  if (typeof window === "undefined") return normalizeAcademicYearLabel(fallback || APP_INFO.DEFAULT_AY);
+  return normalizeAcademicYearLabel(
+    sessionStorage.getItem("academicYear") ||
+    localStorage.getItem("academicYear") ||
+    fallback ||
+    APP_INFO.DEFAULT_AY,
+  );
+};
+
+export const setActiveAcademicYear = (academicYear) => {
+  const normalized = normalizeAcademicYearLabel(academicYear);
+  if (!normalized || typeof window === "undefined") return normalized;
+  sessionStorage.setItem("academicYear", normalized);
+  localStorage.setItem("academicYear", normalized);
+  return normalized;
+};
+
 export const schoolHasHod = (school) => {
   if (!school) return false;
   return isSoemrSchool(school);
@@ -61,6 +87,18 @@ const boolFlag = (...values) => {
   if (value === true || value === 1) return true;
   return ["true", "1", "yes", "y"].includes(String(value || "").trim().toLowerCase());
 };
+
+const profilePictureValue = (profile = {}) =>
+  firstValue(
+    profile.profile_picture_url,
+    profile.profilePictureUrl,
+    profile.avatar_url,
+    profile.avatarUrl,
+    profile.photo_url,
+    profile.photoUrl,
+    profile.picture_url,
+    profile.pictureUrl,
+  );
 
 const deanDivisionValue = (value) => {
   const normalized = normalizeHierarchyText(value);
@@ -98,6 +136,7 @@ export const buildProfilePayload = (formData, academicYear = "2026-2027") => {
     school: school || null,
     teaching_experience: String(formData.experience || "").trim() || null,
     phone: String(formData.phone || "").trim() || null,
+    profile_picture_url: String(formData.profilePictureUrl || formData.profile_picture_url || "").trim() || null,
     academic_year: academicYear,
     appraisal_role: role,
     reports_to_registrar: nonTeachingRole && boolFlag(formData.reports_to_registrar, formData.reportsToRegistrar),
@@ -123,6 +162,8 @@ export const storeUserSession = ({ token, profile = {}, fallbackEmail = "" }) =>
     safeProfile.direct_to_registrar,
     safeProfile.directToRegistrar,
   );
+  const profilePictureUrl = profilePictureValue(safeProfile);
+  const academicYear = getActiveAcademicYear(firstValue(safeProfile.academic_year, safeProfile.academicYear, safeProfile.ay, APP_INFO.DEFAULT_AY));
 
   if (token) {
     sessionStorage.setItem("accessToken", token);
@@ -141,8 +182,12 @@ export const storeUserSession = ({ token, profile = {}, fallbackEmail = "" }) =>
     qualification: firstValue(safeProfile.qualification),
     experience: firstValue(safeProfile.teaching_experience),
     phone: firstValue(safeProfile.phone),
+    profilePictureUrl,
+    profile_picture_url: profilePictureUrl,
+    avatarUrl: profilePictureUrl,
     reports_to_registrar: reportsToRegistrar ? "true" : "false",
     reportsToRegistrar: reportsToRegistrar ? "true" : "false",
+    academicYear,
   };
 
   Object.entries(items).forEach(([k, v]) => {

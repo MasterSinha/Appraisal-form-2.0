@@ -1,4 +1,4 @@
-export default function AppraisalHeaderImage({ height = 72, style = {} }) {
+export default function AppraisalHeaderImage({ height = 88, style = {} }) {
   return (
     <img
       src="/image.png"

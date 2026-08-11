@@ -1,6 +1,7 @@
 import { HodInput } from "../../Inputs";
 import {
   clampScore,
+  rowHasReviewableData,
   SectionCard as SC,
   T,
   TH,
@@ -41,7 +42,7 @@ export default function EvidenceScoreTable({ ctx, title, accent, sectionKey, doc
 <td style={TDC}><RO val={row.evidence} center /></td>
 <td style={TDV}><ViewDocsCell docKey={`${docPrefix}-${index}`} docs={docs} /></td>
 <td style={TDS}><RO val={String(row.score ?? "").trim() ? clampScore(row.score, rowMax) : ""} center /></td>
-<td style={TDS_HOD}><HodInput val={get(sectionKey, index, "hod")} max={rowMax} onChange={(value) =>set(sectionKey, index, "hod", value)} /></td>
+<td style={TDS_HOD}><HodInput val={get(sectionKey, index, "hod")} max={rowMax} disabled={!rowHasReviewableData(sectionKey, row, docs, `${docPrefix}-${index}`)} onChange={(value) =>set(sectionKey, index, "hod", value)} /></td>
 </tr>
  );})}
 </tbody>

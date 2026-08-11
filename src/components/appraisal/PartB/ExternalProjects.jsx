@@ -1,4 +1,4 @@
-﻿/* eslint-disable no-unused-vars */
+/* eslint-disable no-unused-vars */
 import { HodInput } from "../../Inputs";
 import {
   SCORE_LIMITS,
@@ -47,7 +47,7 @@ export default function ExternalProjects({ ctx }) {
 <td style={TD}><RO val={r.role} /></td>
 <td style={TD}><RO val={r.status} /></td>
 <td style={TDS}><RO val={r.score} center /></td>
-<td style={TDS_HOD}><HodInput val={get("externalProjects", i, "hod")} max={SCORE_LIMITS.researchExternalProjects} onChange={v =>set("externalProjects", i, "hod", v)} /></td>
+<td style={TDS_HOD}><HodInput val={get("externalProjects", i, "hod")} max={30} disabled={!rowHasReviewableData("externalProjects", r, docs, `extproj-${i}`)} onChange={v =>set("externalProjects", i, "hod", v)} /></td>
 </tr>
  ))}
 </tbody>

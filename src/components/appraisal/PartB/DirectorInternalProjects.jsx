@@ -24,6 +24,9 @@ import {
 } from "../../../features/faculty-appraisal";
 import { n, RO } from "../../../features/faculty-appraisal/shared";
 import { DirectorInput as DirInput } from "../common/ReviewerInput";
+
+const B4_FUNDED_PROJECT_MAX = 40;
+
 export default function DirectorInternalProjects({ ctx }) {
  const { faculty, docs, lectures, courseFile, projects, quals, feedback, deptActs, uniActs, society, industry, acr, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, rows, getDir, setDir, getInnovDir, setInnovDir, innovativeRows } = ctx;
  return (
@@ -48,7 +51,7 @@ export default function DirectorInternalProjects({ ctx }) {
 <td style={TD}><RO val={r.status} /></td>
 <td style={TDV}><ViewDocsCell docKey={`project2-${i}`} docs={docs} /></td>
 <td style={TDS}><RO val={r.score} center /></td>
-<td style={TDS_DIR}><DirInput val={getDir("projects2", i, "dir")} max={SCORE_LIMITS.researchInternalProjects} onChange={v =>setDir("projects2", i, "dir", v)} /></td>
+<td style={TDS_DIR}><DirInput val={getDir("projects2", i, "dir")} max={r.max || B4_FUNDED_PROJECT_MAX} disabled={!rowHasReviewableData("projects2", r, docs, `project2-${i}`)} onChange={v =>setDir("projects2", i, "dir", v)} /></td>
 </tr>
  ))}
 </tbody>

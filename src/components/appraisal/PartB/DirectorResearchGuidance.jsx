@@ -5,6 +5,7 @@ import {
   clampScore,
   courseFileRowScore,
   projectGuidanceRowMax,
+  researchGuidanceRowMax,
   researchGuidanceScore,
   rowHasReviewableData,
   societyRowLocked,
@@ -45,7 +46,7 @@ export default function DirectorResearchGuidance({ ctx }) {
 <td style={TDC}><RO val={r.date} center /></td>
 <td style={TDV}><ViewDocsCell docKey={`res-${i}`} docs={docs} /></td>
 <td style={TDS}><RO val={r.score} center /></td>
-<td style={TDS_DIR}><DirInput val={getDir("research", i, "dir")} onChange={v =>setDir("research", i, "dir", v)} /></td>
+<td style={TDS_DIR}><DirInput val={getDir("research", i, "dir")} max={researchGuidanceRowMax(r)} disabled={!rowHasReviewableData("research", r, docs, `res-${i}`)} onChange={v =>setDir("research", i, "dir", v)} /></td>
 </tr>
  ))}
 </tbody>

@@ -1,9 +1,13 @@
 const percent = (score, max) => Math.min(100, Math.round(((parseFloat(score) || 0) / (parseFloat(max) || 1)) * 100)) || 0;
 
-export function Avatar({ initials, color = "#6366f1", size = 40 }) {
+export function Avatar({ initials, src, alt = "Profile picture", color = "#6366f1", size = 40 }) {
   return (
-    <div style={{ width: size, height: size, borderRadius: "50%", background: `linear-gradient(135deg,${color},${color}99)`, color: "#fff", fontWeight: 800, fontSize: size * 0.32, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, letterSpacing: 0.5 }}>
-      {initials}
+    <div style={{ width: size, height: size, borderRadius: "50%", background: `linear-gradient(135deg,${color},${color}99)`, color: "#fff", fontWeight: 800, fontSize: size * 0.32, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, letterSpacing: 0.5, overflow: "hidden" }}>
+      {src ? (
+        <img src={src} alt={alt} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+      ) : (
+        initials
+      )}
     </div>
   );
 }
@@ -12,6 +16,158 @@ export function ScoreBar({ score, max, color = "#6366f1" }) {
   return (
     <div style={{ width: "100%", background: "#f1f5f9", borderRadius: 4, height: 5, overflow: "hidden" }}>
       <div style={{ width: `${percent(score, max)}%`, height: "100%", background: color, borderRadius: 4, transition: "width .5s" }} />
+    </div>
+  );
+}
+
+export const uploadedDocCount = (docs = {}, item = {}) => {
+  const countKeys = new Set([
+    "doc_count",
+    "docCount",
+    "docs_count",
+    "docsCount",
+    "document_count",
+    "documentCount",
+    "documents_count",
+    "documentsCount",
+    "uploaded_docs_count",
+    "uploadedDocsCount",
+    "supporting_documents_count",
+    "supportingDocumentsCount",
+  ]);
+  const fileLocatorKeys = [
+    "url",
+    "file_url",
+    "fileUrl",
+    "document_url",
+    "documentUrl",
+    "path",
+    "location",
+    "storage_path",
+    "storagePath",
+    "public_id",
+    "publicId",
+  ];
+  const fileNameKeys = [
+    "file_name",
+    "fileName",
+    "filename",
+    "original_name",
+    "originalName",
+    "name",
+  ];
+
+  const isFileReference = (src) => {
+    const value = String(src ?? "").trim();
+    return /^(https?:|blob:|data:)/i.test(value) || /[\\/]/.test(value) || /\.[a-z0-9]{2,8}($|[?#])/i.test(value);
+  };
+  const hasFileMimeType = (src) =>
+    ["type", "file_type", "fileType", "mime_type", "mimeType"].some((key) =>
+      /^(image|application|text|video|audio)\//i.test(String(src?.[key] ?? "").trim())
+    );
+  const hasFileIdentity = (src) => {
+    if (!src || typeof src !== "object") return false;
+    const hasLocator = fileLocatorKeys.some((key) => String(src?.[key] ?? "").trim() !== "");
+    const hasFileName = fileNameKeys.some((key) => String(src?.[key] ?? "").trim() !== "");
+    return hasLocator || fileNameKeys.some((key) => isFileReference(src?.[key])) || (hasFileName && hasFileMimeType(src));
+  };
+  const ignoredFileMetaKeys = new Set([...fileLocatorKeys, ...fileNameKeys, "type", "file_type", "fileType", "mime_type", "mimeType", "size", "lastModified"]);
+
+  const countFromSource = (src) => {
+    if (typeof src === "number") return src;
+    if (typeof src === "string") return isFileReference(src) ? 1 : 0;
+    if (Array.isArray(src)) return src.reduce((total, entry) => total + countFromSource(entry), 0);
+    if (!src || typeof src !== "object") return 0;
+    const nestedCount = Object.entries(src).reduce((total, [key, value]) => {
+      if (countKeys.has(key) || ignoredFileMetaKeys.has(key)) return total;
+      return total + countFromSource(value);
+    }, 0);
+    return Math.max(hasFileIdentity(src) ? 1 : 0, nestedCount);
+  };
+
+  const parseNum = (v) => {
+    if (v === undefined || v === null || v === "") return 0;
+    const parsed = parseFloat(v);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+  };
+
+  const explicit = Math.max(
+    parseNum(item?.docCount),
+    parseNum(item?.doc_count),
+    parseNum(item?.docsCount),
+    parseNum(item?.docs_count),
+    parseNum(item?.documentCount),
+    parseNum(item?.document_count),
+    parseNum(item?.documentsCount),
+    parseNum(item?.documents_count),
+    parseNum(item?.uploadedDocsCount),
+    parseNum(item?.uploaded_docs_count),
+    parseNum(item?.payload?.docCount),
+    parseNum(item?.payload?.doc_count),
+    parseNum(docs?.docCount),
+    parseNum(docs?.doc_count),
+    parseNum(docs?.docsCount),
+    parseNum(docs?.docs_count)
+  );
+
+  const c1 = countFromSource(docs);
+  const c2 = countFromSource(item?.docs);
+  const c3 = countFromSource(item?.documents);
+  const c4 = countFromSource(item?.appraisal_documents);
+  const c5 = countFromSource(item?.appraisalDocuments);
+  const c6 = countFromSource(item?.payload?.docs);
+  const c7 = countFromSource(item?.payload?.documents);
+  const c8 = countFromSource(item?.payload?.appraisal_documents);
+
+  return Math.max(c1, c2, c3, c4, c5, c6, c7, c8, explicit);
+};
+
+const metricText = (value) => {
+  const score = parseFloat(value) || 0;
+  return Number.isFinite(score) ? score.toFixed(1) : "0.0";
+};
+
+export function ReviewMetricsStrip({
+  metrics = [],
+  docs,
+  item,
+  includeDocs = true,
+  columns,
+  background = "#f8fafc",
+  style = {},
+  compact = false,
+}) {
+  const docCount = uploadedDocCount(docs, item || (typeof docs === "object" ? docs : {}));
+  const allMetrics = [
+    ...metrics,
+    ...(includeDocs ? [{ label: "Docs", val: docCount, color: "#10b981", helper: "files uploaded" }] : []),
+  ];
+
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: columns || "repeat(auto-fit, minmax(92px, 1fr))",
+        gap: compact ? 8 : 10,
+        background,
+        borderRadius: 8,
+        padding: compact ? "10px 12px" : "12px 14px",
+        ...style,
+      }}
+    >
+      {allMetrics.map(({ label, val, max, color = "#6366f1", helper }) => {
+        const hasMax = max !== undefined && max !== null;
+        return (
+          <div key={label} style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
+            <div style={{ fontSize: compact ? 8 : 9, fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{label}</div>
+            <div style={{ fontSize: compact ? 13 : 15, fontWeight: 900, color, lineHeight: 1, whiteSpace: "nowrap" }}>
+              {hasMax ? metricText(val) : parseFloat(val) || 0}
+              {hasMax && <span style={{ fontSize: compact ? 8 : 9, color: "#94a3b8", fontWeight: 700 }}>/{max}</span>}
+            </div>
+            {hasMax ? <ScoreBar score={val} max={max} color={color} /> : <div style={{ fontSize: 9, color: "#94a3b8" }}>{helper || "files uploaded"}</div>}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -37,6 +193,7 @@ export function ScoreCard({
   partsLayout = "vertical",
   cardStyle = {},
   isFinal = false,
+  compact = false,
   accent = "#0ea5e9",
 }) {
   const parts = [
@@ -48,44 +205,47 @@ export function ScoreCard({
   const totalMax = maxScores.grand ?? maxScores.total ?? 0;
   const hasRemarks = remarksContent !== undefined && remarksContent !== null;
   const horizontalParts = partsLayout === "horizontal";
+  const rowPadding = compact ? "7px 10px" : "8px 12px";
+  const rowMargin = compact ? 4 : 5;
+  const barHeight = compact ? 4 : 5;
   const marksPanel = (
     <>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
-          <span style={{ width: 40, height: 40, borderRadius: 10, background: `${accent}16`, border: `1px solid ${accent}30`, color: accent, display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: 900, flexShrink: 0 }}>{title.slice(0, 1)}</span>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: compact ? 8 : 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+          <span style={{ width: compact ? 32 : 36, height: compact ? 32 : 36, borderRadius: 9, background: `${accent}16`, border: `1px solid ${accent}30`, color: accent, display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: 900, flexShrink: 0 }}>{title.slice(0, 1)}</span>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 15, fontWeight: 900, color: "#0f172a" }}>{title}</div>
+            <div style={{ fontSize: compact ? 13 : 14, fontWeight: 900, color: "#0f172a" }}>{title}</div>
             {subtitle && <div style={{ fontSize: 11, color: "#64748b", marginTop: 2, lineHeight: 1.25 }}>{subtitle}</div>}
           </div>
         </div>
-        <div style={{ border: `1px solid ${accent}35`, background: `${accent}10`, borderRadius: 10, padding: "7px 12px", fontSize: 15, fontWeight: 900, color: accent, whiteSpace: "nowrap" }}>
+        <div style={{ border: `1px solid ${accent}35`, background: `${accent}10`, borderRadius: 10, padding: compact ? "5px 9px" : "6px 10px", fontSize: compact ? 13 : 14, fontWeight: 900, color: accent, whiteSpace: "nowrap" }}>
           {scoreValue(totals.total)}<span style={{ fontSize: 11, color: "#94a3b8" }}> /{totalMax}</span>
         </div>
       </div>
 
-      <div style={{ border: "1px solid #dbe3ef", borderRadius: 10, overflow: "hidden", boxShadow: "0 10px 22px rgba(15,23,42,0.035)", display: horizontalParts ? "grid" : "block", gridTemplateColumns: horizontalParts ? "repeat(auto-fit, minmax(135px, 1fr))" : undefined }}>
+      <div style={{ border: "1px solid #dbe3ef", borderRadius: 10, overflow: "hidden", boxShadow: "0 8px 18px rgba(15,23,42,0.03)", display: horizontalParts ? "grid" : "block", gridTemplateColumns: horizontalParts ? "repeat(auto-fit, minmax(135px, 1fr))" : undefined }}>
         {parts.map(([key, label]) => {
           const color = PART_COLORS[key];
           const value = totals[key];
           const max = maxScores[key] ?? 0;
           return (
-            <div key={key} style={{ padding: "12px 13px", borderBottom: horizontalParts ? "none" : "1px solid #edf2f7", borderRight: horizontalParts ? "1px solid #edf2f7" : "none", background: "#fff" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, marginBottom: 7 }}>
+            <div key={key} style={{ padding: rowPadding, borderBottom: horizontalParts ? "none" : "1px solid #edf2f7", borderRight: horizontalParts ? "1px solid #edf2f7" : "none", background: "#fff" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, marginBottom: rowMargin }}>
                 <span style={{ color: "#475569", fontSize: 11, fontWeight: 900, textTransform: "uppercase", letterSpacing: 0.4 }}>{label}</span>
-                <span style={{ color, fontSize: 14, fontWeight: 900, whiteSpace: "nowrap" }}>{scoreValue(value)}<span style={{ fontSize: 10, color: "#94a3b8" }}> /{max}</span></span>
+                <span style={{ color, fontSize: compact ? 13 : 14, fontWeight: 900, whiteSpace: "nowrap" }}>{scoreValue(value)}<span style={{ fontSize: 10, color: "#94a3b8" }}> /{max}</span></span>
               </div>
-              <div style={{ height: 5, background: "#eef2f7", borderRadius: 999, overflow: "hidden" }}>
+              <div style={{ height: barHeight, background: "#eef2f7", borderRadius: 999, overflow: "hidden" }}>
                 <div style={{ height: "100%", width: `${percent(value, max)}%`, background: color, borderRadius: 999 }} />
               </div>
             </div>
           );
         })}
-        <div style={{ padding: "12px 13px", background: "#fff" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, marginBottom: 7 }}>
+        <div style={{ padding: rowPadding, background: "#fff" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, marginBottom: rowMargin }}>
             <span style={{ color: "#475569", fontSize: 11, fontWeight: 900, textTransform: "uppercase", letterSpacing: 0.4 }}>Total</span>
-            <span style={{ color: "#059669", fontSize: 15, fontWeight: 900, whiteSpace: "nowrap" }}>{scoreValue(totals.total)}<span style={{ fontSize: 10, color: "#94a3b8" }}> /{totalMax}</span></span>
+            <span style={{ color: "#059669", fontSize: compact ? 14 : 15, fontWeight: 900, whiteSpace: "nowrap" }}>{scoreValue(totals.total)}<span style={{ fontSize: 10, color: "#94a3b8" }}> /{totalMax}</span></span>
           </div>
-          <div style={{ height: 5, background: "#eef2f7", borderRadius: 999, overflow: "hidden" }}>
+          <div style={{ height: barHeight, background: "#eef2f7", borderRadius: 999, overflow: "hidden" }}>
             <div style={{ height: "100%", width: `${percent(totals.total, totalMax)}%`, background: "#059669", borderRadius: 999 }} />
           </div>
         </div>
@@ -100,17 +260,18 @@ export function ScoreCard({
         border: isFinal ? "1.5px solid #7c3aed" : "1px solid #dbe3ef",
         borderLeft: `4px solid ${isFinal ? "#7c3aed" : accent}`,
         borderRadius: 12,
-        padding: 16,
-        display: "grid",
-        gap: 14,
+        padding: compact ? 10 : 12,
+        display: "flex",
+        flexDirection: "column",
+        gap: compact ? 8 : 10,
         boxShadow: isFinal ? "0 14px 34px rgba(124,58,237,0.12)" : "0 10px 26px rgba(15,23,42,0.06)",
-        alignContent: "start",
+        minHeight: 0,
         ...cardStyle,
       }}
     >
       {sideContent ? (
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(320px, 0.9fr) minmax(320px, 1.1fr)", gap: 14, alignItems: "stretch" }}>
-          <div style={{ display: "grid", gap: 14, alignContent: "start" }}>
+        <div className="score-card-side-layout" style={{ display: "grid", gridTemplateColumns: "minmax(320px, 0.9fr) minmax(320px, 1.1fr)", gap: compact ? 10 : 12, alignItems: "start", minHeight: 0 }}>
+          <div style={{ display: "grid", gap: compact ? 8 : 10, alignContent: "start" }}>
             {marksPanel}
             {extraContent}
           </div>
@@ -119,14 +280,14 @@ export function ScoreCard({
       ) : (
         <>
           {marksPanel}
-          {extraContent}
+          {extraContent && <div className="score-card-extra-slot">{extraContent}</div>}
         </>
       )}
 
       {hasRemarks && (
-        <div style={{ background: isFinal ? "#fff" : "#f8fafc", border: isFinal ? "1px solid #e9d5ff" : "1px solid #e2e8f0", borderRadius: 10, padding: "11px 12px" }}>
-          <div style={{ fontSize: 11, fontWeight: 850, color: isFinal ? "#5b21b6" : "#475569", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 7 }}>{remarksTitle || `${title} Remarks`}</div>
-          {remarksContent}
+        <div className="score-card-remarks-slot" style={{ background: isFinal ? "#fff" : "#f8fafc", border: isFinal ? "1px solid #e9d5ff" : "1px solid #e2e8f0", borderRadius: 10, padding: compact ? "8px 10px" : "9px 11px" }}>
+          <div style={{ fontSize: 11, fontWeight: 850, color: isFinal ? "#5b21b6" : "#475569", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 5 }}>{remarksTitle || `${title} Remarks`}</div>
+          <div className="score-card-remarks-content">{remarksContent}</div>
         </div>
       )}
     </div>

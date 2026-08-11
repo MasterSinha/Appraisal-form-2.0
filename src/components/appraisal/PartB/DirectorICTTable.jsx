@@ -44,7 +44,7 @@ export default function DirectorICTTable({ ctx }) {
 <td style={TD}><RO val={r.quad || r.reach} /></td>
 <td style={TDV}><ViewDocsCell docKey={`ict-${i}`} docs={docs} /></td>
 <td style={TDS}><RO val={r.score} center /></td>
-<td style={TDS_DIR}><DirInput val={getDir("ict", i, "dir")} onChange={v =>setDir("ict", i, "dir", v)} /></td>
+<td style={TDS_DIR}><DirInput val={getDir("ict", i, "dir")} max={20} disabled={!rowHasReviewableData("ict", r, docs, `ict-${i}`)} onChange={v =>setDir("ict", i, "dir", v)} /></td>
 </tr>
  ))}
 </tbody>

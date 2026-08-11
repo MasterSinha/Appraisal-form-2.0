@@ -2,10 +2,14 @@
 import { createContext, useContext, useState, useRef, useEffect } from "react";
 import MyAppraisalForm from "../components/appraisal";
 import { api } from "../services/api";
-import { Avatar, ScoreCard, ScoreBar, StatusBadge } from "../components/dashboard/dashboardPrimitives";
+import { Avatar, ScoreCard, ScoreBar, StatusBadge, ReviewMetricsStrip, uploadedDocCount } from "../components/dashboard/dashboardPrimitives";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import DashboardSidebar from "../components/dashboard/DashboardSidebar";
-import { ACR_DETAIL_POINTS, SOCIETY_LABELS, MAX_SCORES, APP_INFO, createAcrRows, fetchSavedAppraisal, loadAppraisalDocuments, loadSavedAppraisal, mergeFacultyInfo, saveAppraisalDraftSection, submitAppraisal, fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, INNOVATIVE_METHODS, SCORE_LIMITS, averageSectionScore, clampScore, clampReviewScore, courseFileAverageScore, courseFileRowScore, effectiveMaxScore, feedbackAverage, feedbackRowScore, feedbackSectionScore, innovativeSelectionsFromDetails, innovativeTeachingScore, isAllowedAttachmentFile, isValidDDMMYYYY, maskDateDDMMYYYY, normalizeAutoScores, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewSectionScore, rowHasReviewableData, scoreRemaining, selfEffectivePartAMax, societyRowLocked, societyRowScore, sumSectionScore, toggleInnovativeMethod, validateCompleteRows, generateStandardReport, standardSubmittedScoreSummary, qualificationRowDescription, AppraisalHeaderImage, SummaryOtherInfoField, summaryOtherInfoValueFrom, RejectionNotice, DocCell, ViewCell, ViewDocsCell, RowButtons as RowBtns, SectionSaveFooter, SectionCard as SC, T, TH, TH_HOD, TH_DIR, TH_DEAN, TD, TDC, TDS, TDS_HOD, TDS_DIR, TDS_DEAN, TDV, MyAppraisalSection, CreativeSchoolAuthorityReviewPanel, isCreativeSchool } from "../features/faculty-appraisal";
+import { ACR_DETAIL_POINTS, SOCIETY_LABELS, MAX_SCORES, APP_INFO, createAcrRows, fetchSavedAppraisal, loadAppraisalDocuments, loadSavedAppraisal, mergeFacultyInfo, saveAppraisalDraftSection, submitAppraisal, fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, INNOVATIVE_METHODS, SCORE_LIMITS, averageSectionScore, clampScore, clampReviewScore, courseFileAverageScore, courseFileRowScore, effectiveMaxScore, feedbackAverage, feedbackRowScore, feedbackSectionScore, innovativeSelectionsFromDetails, innovativeTeachingScore, isAllowedAttachmentFile, isValidDDMMYYYY, maskDateDDMMYYYY, normalizeAutoScores, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewSectionScore, rowHasReviewableData, scoreRemaining, selfEffectivePartAMax, societyRowLocked, societyRowScore, sumSectionScore, toggleInnovativeMethod, validateCompleteRows, generateStandardReport, standardSubmittedScoreSummary, qualificationRowDescription, AppraisalHeaderImage, SummaryOtherInfoField, summaryOtherInfoValueFrom, RejectionNotice, DocCell, ViewCell, ViewDocsCell, RowButtons as RowBtns, SectionSaveFooter, SectionCard as SC, T, TH, TH_HOD, TH_DIR, TH_DEAN, TD, TDC, TDS, TDS_HOD, TDS_DIR, TDS_DEAN, TDV, MyAppraisalSection, CreativeSchoolAuthorityReviewPanel, isCreativeSchool, isDesignArtsSchool, isMediaCommSchool } from "../features/faculty-appraisal";
+import { getActiveAcademicYear, getSessionItem, normalizeAcademicYearLabel, setActiveAcademicYear } from "../auth/session";
+import { PreviousYearReportViewer } from "../features/previousYearReport";
+import { isLegacyTwoPartAcademicYear } from "../features/faculty-appraisal/forms/standard/legacyPreviousYearReportUtils";
+import { legacyDashboardMetrics } from "../utils/legacyDashboardMetrics";
 import { DEAN_TRACKS, getSchoolKey, getSchoolsByDeanTrack } from "../constants/universityHierarchy";
 import { canReviewerRejectProfile, rejectedStatusFor, reviewedStatusFor, profileFromsessionStorage, workflowValidationError, roleLabel, isAppraisalFinalisedByVc, isRejectedStatus, isPendingReviewStatusFor, hasActiveRejection, reviewListFrom, getDeanTrack } from "../utils/hierarchy";
 import { n, pct, grade, RO, TI } from "../features/faculty-appraisal/shared";
@@ -28,6 +32,32 @@ const SCHOOL_VISUALS = {
  SoD: { icon: "SD", color: "#ec4899", bg: "#fdf2f8" },
  SoAA: { icon: "AA", color: "#7c3aed", bg: "#f3e8ff" },
 };
+const storedAcademicYearCycles = () => {
+  try {
+    if (getSessionItem("availableCyclesSource") !== "backend") return [];
+    return JSON.parse(getSessionItem("availableCycles") || "[]")
+      .map((cycle) => {
+        const academicYear = normalizeAcademicYearLabel(cycle?.academic_year || cycle?.academicYear || cycle?.year || cycle?.year_label || cycle);
+        return academicYear ? { academic_year: academicYear, is_open: cycle?.is_open ?? cycle?.isOpen ?? cycle?.active ?? cycle?.open ?? academicYear === APP_INFO.DEFAULT_AY } : null;
+      })
+      .filter(Boolean);
+  } catch {
+    return [];
+  }
+};
+const previousYearFormTypeFor = (profile = {}) => {
+  if (isMediaCommSchool(profile, profile.info?.school, profile.school)) return "mediaCommunication";
+  if (isDesignArtsSchool(profile, profile.info?.school, profile.school)) return "designArts";
+  return "engineering";
+};
+function PreviousYearAuthorityResult({ item, onBack }) {
+  return (
+    <div style={{ display: "grid", gap: 12 }}>
+      <button type="button" onClick={onBack} style={{ justifySelf: "start", border: "1px solid #cbd5e1", background: "#fff", color: "#334155", borderRadius: 8, padding: "8px 14px", fontWeight: 800, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>Back</button>
+      <PreviousYearReportViewer showTables visibleLevels={["faculty", "dean"]} formType={previousYearFormTypeFor(item)} form={item} docs={item.docs || {}} response={item.previousYearResponse || item} academicYear={item.academicYear || item.academic_year || item.info?.ay} profile={item} reviews={reviewListFrom(item.reviews || item.previousYearResponse?.reviews || item.previousYearResponse?.payload?.reviews)} />
+    </div>
+  );
+}
 
 // n, pct, grade, RO, TI → imported from shared
 const preserveScrollAfterStateUpdate = (update) =>{
@@ -123,7 +153,7 @@ function ReviewPanel({ faculty, onBack, onSubmit }) {
  };
 
  const { partA, partB, partC, partD, total } = calcHodScore();
- const g = grade(total, 625);
+ const g = grade(total, 700);
  const facultySummary = standardSubmittedScoreSummary(faculty, {
  partA: faculty.lectures?.reduce((a, r) =>a + n(r.score), 0) || 0,
  partB: faculty.journals?.reduce((a, r) =>a + n(r.score), 0) || 0,
@@ -134,7 +164,7 @@ function ReviewPanel({ faculty, onBack, onSubmit }) {
  {/* Header */}
 <div style={{ background: "#0f172a", padding: "14px 20px", display: "flex", alignItems: "center", gap: 14, marginBottom: 16, borderRadius: 10 }}>
 <button onClick={onBack} style={{ background: "#1e293b", border: "none", color: "#94a3b8", cursor: "pointer", borderRadius: 6, padding: "6px 12px", fontSize: 12, fontFamily: "inherit" }}>Back</button>
-<Avatar initials={faculty.avatar} color={faculty.avatarColor} size={40} />
+<Avatar initials={faculty.avatar} src={faculty.avatarUrl} color={faculty.avatarColor} size={50} />
 <div style={{ flex: 1 }}>
 <div style={{ color: "#f1f5f9", fontWeight: 700, fontSize: 15 }}>{faculty.name}</div>
 <div style={{ color: "#64748b", fontSize: 11 }}>{faculty.designation} - {faculty.employeeId}</div>
@@ -150,7 +180,7 @@ function ReviewPanel({ faculty, onBack, onSubmit }) {
 </div>
 <div style={{ background: g.bg, border: `2px solid ${g.color}40`, borderRadius: 8, padding: "8px 14px", textAlign: "center" }}>
 <div style={{ color: g.color, fontSize: 9, textTransform: "uppercase", letterSpacing: 0.6, fontWeight: 700 }}>HOD Total</div>
-<div style={{ color: g.color, fontWeight: 800, fontSize: 16 }}>{total.toFixed(1)}<span style={{ fontSize: 10, color: "#94a3b8" }}>/575</span></div>
+<div style={{ color: g.color, fontWeight: 800, fontSize: 16 }}>{total.toFixed(1)}<span style={{ fontSize: 10, color: "#94a3b8" }}>/700</span></div>
 </div>
 </div>
 </div>
@@ -189,9 +219,9 @@ function ReviewPanel({ faculty, onBack, onSubmit }) {
  remarksTitle="HOD Remarks"
  isFinal
  remarksContent={(
-<textarea value={remarks} onChange={e =>setRemarks(e.target.value)} rows={4}
+<textarea value={remarks} onChange={e =>setRemarks(e.target.value)} rows={7}
  placeholder="Enter your remarks, observations, and recommendations for this faculty member..."
- style={{ width: "100%", border: "1px solid #e2e8f0", borderRadius: 7, padding: "10px 12px", fontSize: 12, fontFamily: "inherit", resize: "vertical", boxSizing: "border-box" }} />
+ style={{ width: "100%", height: 235, minHeight: 235, border: "1px solid #e2e8f0", borderRadius: 7, padding: "10px 12px", fontSize: 12, fontFamily: "inherit", resize: "none", boxSizing: "border-box" }} />
  )}
 />
 </div>
@@ -248,7 +278,7 @@ const preserveSavedReviewScores = (form = {}, source = {}) =>{
  return merged;
 };
 const DEAN_SECTION_MAX = { lectures: 40, courseFile: 20, obeRows: 20, projects: 20, mentoringRows: 10, quals: 10, feedback: 10, uniActs: 50, deptActs: 30, eventRows: 20, society: 20, industry: 8, alumniRows: 10, placementRows: 20, acr: 50, journals: 100, books: 30, ict: 20, research: 20, projects2: 40, patents: 40, awards: 20, confs: 20, proposals: 20, products: 20, fdps: 20 };
-const DEAN_ROW_MAX = { courseFile: () =>SCORE_LIMITS.courseFileRow, obeRows: (row) =>row.max || 20, projects: projectGuidanceRowMax, mentoringRows: (row) =>row.max || 10, quals: () =>SCORE_LIMITS.qualificationRow, feedback: () =>10, society: () =>SCORE_LIMITS.societyRow, acr: () =>SCORE_LIMITS.acrRow, research: researchGuidanceRowMax, fdps: () =>SCORE_LIMITS.fdpRow };
+const DEAN_ROW_MAX = { courseFile: () =>SCORE_LIMITS.courseFileRow, obeRows: (row) =>row.max || 20, projects: projectGuidanceRowMax, projects2: (row) =>row.max || 40, mentoringRows: (row) =>row.max || 10, quals: () =>SCORE_LIMITS.qualificationRow, feedback: () =>10, society: () =>SCORE_LIMITS.societyRow, acr: () =>SCORE_LIMITS.acrRow, research: researchGuidanceRowMax, fdps: () =>SCORE_LIMITS.fdpRow };
 
 const deanScorePayload = (approval, deanData) =>{
  const payload = {};
@@ -314,8 +344,8 @@ function DeanScoreCell({ sectionKey, index, row, deanData, setDeanData }) {
  const value = deanData[sectionKey]?.[index]?.dean ?? row.dean ?? "";
  const maxForRow = DEAN_ROW_MAX[sectionKey]?.(row) || DEAN_SECTION_MAX[sectionKey];
  const societyLocked = sectionKey === "society" && societyRowLocked(row);
- const locked = societyLocked || !rowHasReviewableData(sectionKey, row);
- const displayValue = societyLocked ? "0" : locked ? "" : String(value ?? "").trim() ? clampScore(value, maxForRow) : "";
+ const locked = sectionKey === "acr" ? false : (societyLocked || !rowHasReviewableData(sectionKey, row));
+ const displayValue = societyLocked ? "0" : String(value ?? "").trim() ? clampScore(value, maxForRow) : "";
 
  const update = (nextValue) =>{
  const clampedValue = clampReviewScore(sectionKey, row, nextValue, DEAN_SECTION_MAX[sectionKey] || 0);
@@ -350,8 +380,8 @@ function DeanInnovativeScoreCell({ row, index, rows, deanData, setDeanData }) {
  };
  return (
 <DeanInput
- val={String(value ?? "").trim() ? clampScore(value, SCORE_LIMITS.innovativeRow) : ""}
- max={SCORE_LIMITS.innovativeRow}
+ val={String(value ?? "").trim() ? clampScore(value, row.max || SCORE_LIMITS.innovativeRow) : ""}
+ max={row.max || SCORE_LIMITS.innovativeRow}
  disabled={locked}
  onChange={update}
  />
@@ -366,11 +396,11 @@ function ReviewTable({ title, accent = "#4338ca", sectionKey, columns, docPrefix
   const dataRows = sectionRows || ctx.rows(sectionKey);
   const visibleRows = dataRows.length ? dataRows : [{}];
   const hasDocs = Boolean(docPrefix);
-  const previousScoreLabel = sectionKey === "acr" ? "Director Score" : "Faculty Score";
+  const showPreviousScoreColumn = sectionKey !== "acr";
+  const previousScoreLabel = "Faculty Score";
   const previousScoreFor = (row) => {
     if (sectionKey === "research") return row.degree || row.name || row.thesis || row.score ? researchGuidanceScore(row).toFixed(1) : "";
     if (sectionKey === "society") return String(row.score ?? "").trim() ? societyRowScore(row) : "";
-    if (sectionKey === "acr") return row.director ?? row.dir ?? row.director_score ?? row.dir_score ?? "";
     return row.score;
   };
 
@@ -385,7 +415,7 @@ function ReviewTable({ title, accent = "#4338ca", sectionKey, columns, docPrefix
                 <th key={column.label} style={TH}>{column.label}</th>
               ))}
               {hasDocs && <th style={TH}>View Docs</th>}
-              <th style={TH}>{previousScoreLabel}</th>
+              {showPreviousScoreColumn && <th style={TH}>{previousScoreLabel}</th>}
               <th style={TH_DEAN}>Dean Score</th>
             </tr>
           </thead>
@@ -399,8 +429,36 @@ function ReviewTable({ title, accent = "#4338ca", sectionKey, columns, docPrefix
                   </td>
                 ))}
                 {hasDocs && <td style={TDV}><ViewDocsCell docKey={`${docPrefix}-${index}`} docs={ctx.docs} /></td>}
-                <td style={TDS}>{ctx.cell(previousScoreFor(row), true)}</td>
+                {showPreviousScoreColumn && <td style={TDS}>{ctx.cell(previousScoreFor(row), true)}</td>}
                 <td style={TDS_DEAN}><DeanScoreCell sectionKey={sectionKey} index={index} row={row} deanData={ctx.deanData} setDeanData={ctx.setDeanData} /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </SC>
+  );
+}
+
+function DeanFacultyInfoTable({ approval, info }) {
+  const rows = [
+    ["Academic Year", approval.academicYear || info.ay],
+    ["Name", info.name || approval.name],
+    ["Qualification", info.qual || info.qualification || approval.qualification],
+    ["Designation", info.desig || info.designation || approval.designation],
+    ["School", info.school || approval.school || approval.department],
+    ["Experience", info.experience || info.teachingExperience || approval.experience || approval.teachingExperience],
+  ];
+
+  return (
+    <SC title="Faculty Information" accent="#4338ca">
+      <div style={{ border: "1px solid #dbe3ef", borderRadius: 8, background: "#fff", overflow: "hidden" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", fontSize: 13 }}>
+          <tbody>
+            {rows.map(([label, value]) => (
+              <tr key={label}>
+                <td style={{ width: "32%", border: "1px solid #e5e7eb", background: "#f8fafc", padding: "11px 16px", color: "#334155", fontWeight: 900, textTransform: "uppercase" }}>{label}</td>
+                <td style={{ border: "1px solid #e5e7eb", padding: "11px 16px", color: "#1e293b", fontWeight: 700, overflowWrap: "anywhere" }}>{value || "-"}</td>
               </tr>
             ))}
           </tbody>
@@ -426,18 +484,7 @@ function DeanReviewScoreForm({ approval, deanData, setDeanData, sectionView = "p
           <strong>Dean Review Mode</strong> - Faculty self-scores are read-only. Only the Dean score column is editable.
         </div>
 
-        <SC title="Faculty Information" accent="#4338ca">
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-            <tbody>
-              {[["Name", info.name || approval.name], ["Qualification", info.qual], ["Designation", info.desig || approval.designation], ["Academic Year", approval.academicYear || info.ay]].map(([label, value]) => (
-                <tr key={label}>
-                  <td style={{ padding: "6px 10px", background: "#f8fafc", fontWeight: 600, border: "1px solid #e2e8f0", width: "35%" }}>{label}</td>
-                  <td style={{ padding: "5px 10px", border: "1px solid #e2e8f0", color: "#334155" }}>{value || "-"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </SC>
+        <DeanFacultyInfoTable approval={approval} info={info} />
 
         {sectionView === "partA" && (
           <div className="review-part-stack">
@@ -488,7 +535,7 @@ function DeanReviewScoreForm({ approval, deanData, setDeanData, sectionView = "p
 <td style={TD}><RO val={row.method || approval.innovDetails} /></td>
 <td style={TD}><RO val={row.details} /></td>
 <td style={TDV}><ViewDocsCell docKey={index === 0 ? ["innov", "innov-0"] : `innov-${index}`} docs={docs} /></td>
-<td style={TDS}><RO val={String(row.score ?? "").trim() ? clampScore(row.score, SCORE_LIMITS.innovativeRow) : ""} center /></td>
+<td style={TDS}><RO val={String(row.score ?? "").trim() ? clampScore(row.score, row.max || SCORE_LIMITS.innovativeRow) : ""} center /></td>
 <td style={TDS_DEAN}><DeanInnovativeScoreCell row={row} index={index} rows={innovativeRows} deanData={deanData} setDeanData={setDeanData} /></td>
 </tr>
  ))}
@@ -871,6 +918,9 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
  const selfSummary = standardSubmittedScoreSummary(approval);
  const subjectRole = (approval.appraisalRole || approval.appraisal_role || approval.role || "faculty").toLowerCase();
  const isSoemrFaculty = subjectRole === "faculty" && getSchoolKey(approval.school || approval.schoolName || approval.info?.school || "") === "SoEMR";
+ const useTwoCardDeanSummary = subjectRole === "hod" || (subjectRole === "faculty" && !isSoemrFaculty);
+ const useDirectorDeanSummaryRow = subjectRole === "director";
+ const selfScoreTitle = subjectRole === "faculty" ? "Faculty Score" : `${subjectRole === "hod" ? "HOD" : subjectRole === "director" ? "Director" : "Self"} Self Score`;
  const roleTotalsFor = (prefix) =>({
  partA: n(approval[`${prefix}PartA`]),
  partB: n(approval[`${prefix}PartB`]),
@@ -879,10 +929,10 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
  total: n(approval[`${prefix}Total`]),
  });
  const deanSummaryCards = [
- ...(subjectRole === "faculty" ? [{
+ ...(["faculty", "hod", "director"].includes(subjectRole) ? [{
  key: "self",
- title: "Faculty Score",
- subtitle: "Self score for the engineering appraisal form.",
+ title: selfScoreTitle,
+ subtitle: `Self score for the ${subjectRole === "hod" ? "HOD" : subjectRole === "director" ? "Director" : "engineering"} appraisal form.`,
  totals: { partA: selfSummary.partA, partB: selfSummary.partB, partC: selfSummary.partC, partD: selfSummary.partD, total: selfSummary.total },
  maxScores: { partA: selfSummary.partAMax, partB: selfSummary.partBMax, partC: selfSummary.partCMax, partD: selfSummary.partDMax, grand: selfSummary.grandMax },
  accent: "#0ea5e9",
@@ -972,7 +1022,7 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
 <div style={{ background: "#fff", borderRadius: 14, padding: "24px", boxShadow: "0 18px 45px rgba(15,23,42,0.18)", minHeight: "100%" }}>
 <div style={{ background: "linear-gradient(135deg,#0f172a 0%,#312e81 58%,#4c1d95 100%)", borderRadius: 14, padding: "16px 18px", marginBottom: 16, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", boxShadow: "0 18px 42px rgba(15,23,42,0.20)", border: "1px solid rgba(255,255,255,0.08)" }}>
 <button onClick={onBack} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.08)", color: "#cbd5e1", cursor: "pointer", borderRadius: 8, padding: "8px 14px", fontSize: 12, fontFamily: "inherit", fontWeight: 700 }}>Back</button>
-<Avatar initials={approval.avatar} color={approval.avatarColor} size={40} />
+<Avatar initials={approval.avatar} src={approval.avatarUrl} color={approval.avatarColor} size={50} />
 <div style={{ flex: 1, minWidth: 220 }}>
 <div style={{ color: "#c4b5fd", fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.7, marginBottom: 2 }}>{titleMap[approvalType]}</div>
 <div style={{ color: "#f8fafc", fontWeight: 800, fontSize: 15 }}>{approval.name}</div>
@@ -1001,29 +1051,6 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
 </div>
 </div>
 </div>
-
-<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginBottom: 20 }}>
- {[
- { label: "Employee ID", value: approval.employeeId },
- { label: "Submitted", value: approval.submittedOn },
- { label: "Self Part A", value: `${selfSummary.partA.toFixed(1)} / ${selfSummary.partAMax}` },
- { label: "Self Part B", value: `${selfSummary.partB.toFixed(1)} / ${selfSummary.partBMax}` },
- { label: "Self Part C", value: `${selfSummary.partC.toFixed(1)} / ${selfSummary.partCMax}` },
- { label: "Self Part D", value: `${selfSummary.partD.toFixed(1)} / ${selfSummary.partDMax}` },
- { label: "Self Total", value: `${selfSummary.total.toFixed(1)} / ${selfSummary.grandMax}` },
- { label: "Dean Total", value: displayedDeanScores.total.toFixed(1) },
- ].map((item) =>(
-<div key={item.label} style={{ background: "#f8fafc", borderRadius: 12, padding: "18px 16px" }}>
-<div style={{ fontSize: 10, color: "#64748b", fontWeight: 700, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.7 }}>{item.label}</div>
-<div style={{ fontSize: 16, fontWeight: 800, color: "#0f172a" }}>{item.value}</div>
-</div>
- ))}
-</div>
- {finalisedByVc && (
-<div style={{ background: "#ecfdf5", border: "1px solid #86efac", color: "#065f46", borderRadius: 8, padding: "10px 12px", fontSize: 12, fontWeight: 700, marginBottom: 14 }}>
- This appraisal has been finalised by the VC.
-</div>
- )}
 
 <div style={{ display: "inline-flex", gap: 6, marginBottom: 16, padding: 4, background: "#f5f3ff", border: "1px solid #ddd6fe", borderRadius: 12, width: "fit-content", flexWrap: "wrap" }}>
  {[["partA", "Part A"], ["partB", "Part B"], ["partC", "Part C"], ["partD", "Part D"], ["summary", "Summary"]].map(([id, label]) =>(
@@ -1069,7 +1096,7 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
 
  {sectionView === "summary" && (
 <>
-<div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 14, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 14, boxShadow: "0 1px 6px rgba(0,0,0,.06)", marginBottom: 14 }}>
+<div className={`dean-review-summary-grid ${useTwoCardDeanSummary ? "dean-review-summary-grid--two" : ""}`} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 14, display: "grid", gridTemplateColumns: useDirectorDeanSummaryRow ? "minmax(280px, 0.72fr) minmax(640px, 1.28fr)" : undefined, gap: 14, boxShadow: "0 1px 6px rgba(0,0,0,.06)", marginBottom: 14 }}>
 {deanSummaryCards.map((card) =>(
 <ScoreCard key={card.key} {...card} />
 ))}
@@ -1078,13 +1105,18 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
  subtitle="Dean score for the engineering appraisal form."
  totals={displayedDeanScores}
  maxScores={reviewerMaxScores}
- remarksTitle="Dean Remarks"
  isFinal
  accent="#7c3aed"
- remarksContent={(
-<textarea value={remarks} onChange={(e) =>setRemarks(e.target.value)} rows={4} readOnly={reviewLocked}
- style={{ width: "100%", border: "none", padding: 0, fontFamily: "inherit", fontSize: 12, color: "#334155", resize: "vertical", background: "transparent", outline: "none" }}
- />
+ cardStyle={useDirectorDeanSummaryRow ? { minWidth: 0 } : { gridColumn: "1 / -1" }}
+ sideContent={(
+<div style={{ background: "#eff6ff", border: "2px solid #93c5fd", borderRadius: 10, padding: "14px 15px", display: "flex", flexDirection: "column", minWidth: 0, boxShadow: "0 0 0 4px rgba(147,197,253,0.16), 0 14px 28px rgba(37,99,235,0.08)" }}>
+<div style={{ fontSize: 11, fontWeight: 900, color: "#1d4ed8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 5 }}>Dean Remarks Required</div>
+<div style={{ color: "#1e40af", fontSize: 11, fontWeight: 700, marginBottom: 10 }}>Please enter remarks before submitting the review.</div>
+<textarea value={remarks} onChange={(e) =>setRemarks(e.target.value)} rows={7} readOnly={reviewLocked}
+ placeholder="Enter dean remarks, observations, and recommendations..."
+ style={{ width: "100%", height: 235, minHeight: 235, border: "1px solid #bfdbfe", borderRadius: 8, padding: "10px 11px", fontFamily: "inherit", fontSize: 12, lineHeight: 1.5, color: "#334155", resize: "none", background: "#fff", outline: "none", boxSizing: "border-box" }}
+/>
+</div>
  )}
 />
 </div>
@@ -1094,12 +1126,12 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
  {sectionView === "summary" && (
 <>
  {!reviewLocked && (
-<label style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 14px", background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: 8, marginBottom: 14, color: "#334155", fontSize: 12, lineHeight: 1.5, cursor: "pointer" }}>
+<label className="appraisal-confirmation-card" style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 8, marginBottom: 14, color: "#334155", fontSize: 12, lineHeight: 1.5, cursor: "pointer" }}>
 <input
  type="checkbox"
  checked={reviewConfirmed}
  onChange={(e) =>setReviewConfirmed(e.target.checked)}
- style={{ marginTop: 3 }}
+ style={{ margin: 0, accentColor: "#16a34a", flexShrink: 0 }}
  />
 <span>I have verified all the details and confirm that the information provided is correct. I am responsible for the accuracy of this data.</span>
 </label>
@@ -1107,14 +1139,14 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
 
 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
 <span style={{ color: "#64748b", fontSize: 11, fontWeight: 700 }}>{draftStatus}</span>
-<div style={{ display: "flex", gap: 12, flex: 1, justifyContent: "flex-end", flexWrap: "wrap" }}>
-<button onClick={onBack} style={{ flex: 1, padding: "12px 16px", borderRadius: 10, border: "1px solid #cbd5e1", background: "#f8fafc", color: "#475569", fontWeight: 700, cursor: "pointer" }}>{reviewLocked ? "Close" : "Cancel"}</button>
+<div style={{ display: "flex", gap: 12, justifyContent: "flex-end", flexWrap: "wrap", marginLeft: "auto" }}>
+<button onClick={onBack} style={{ padding: "12px 22px", borderRadius: 10, border: "1px solid #cbd5e1", background: "#f8fafc", color: "#475569", fontWeight: 700, cursor: "pointer" }}>{reviewLocked ? "Close" : "Cancel"}</button>
  {!reviewLocked && (
 <>
 <button
  onClick={handleSaveDraft}
  disabled={savingDraft}
- style={{ flex: 1, padding: "12px 16px", borderRadius: 10, border: "none", background: savingDraft ? "#94a3b8" : "#2563eb", color: "#f8fafc", fontWeight: 700, cursor: savingDraft ? "not-allowed" : "pointer" }}
+ style={{ padding: "12px 22px", borderRadius: 10, border: "none", background: savingDraft ? "#94a3b8" : "#2563eb", color: "#f8fafc", fontWeight: 700, cursor: savingDraft ? "not-allowed" : "pointer" }}
 >
  {savingDraft ? "Saving..." : "Save Draft"}
 </button>
@@ -1126,12 +1158,12 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
  }
  }}
  disabled={!reviewConfirmed || !remarks.trim()}
- style={{ flex: 1, padding: "12px 16px", borderRadius: 10, border: "none", background: (reviewConfirmed && remarks.trim()) ? "#dc2626" : "#94a3b8", color: "#f8fafc", fontWeight: 700, cursor: (reviewConfirmed && remarks.trim()) ? "pointer" : "not-allowed" }}
+ style={{ padding: "12px 22px", borderRadius: 10, border: "none", background: (reviewConfirmed && remarks.trim()) ? "#dc2626" : "#94a3b8", color: "#f8fafc", fontWeight: 700, cursor: (reviewConfirmed && remarks.trim()) ? "pointer" : "not-allowed" }}
 >
  Reject Form
 </button>
  )}
-<button onClick={() =>onSubmit(approval.id, deanScores, remarks, sectionScores, reviewConfirmed)} disabled={!reviewConfirmed || !remarks.trim()} style={{ flex: 1, padding: "12px 16px", borderRadius: 10, border: "none", background: (reviewConfirmed && remarks.trim()) ? "#0f172a" : "#64748b", color: "#f8fafc", fontWeight: 700, cursor: (reviewConfirmed && remarks.trim()) ? "pointer" : "not-allowed" }}>Approve & Forward</button>
+<button onClick={() =>onSubmit(approval.id, deanScores, remarks, sectionScores, reviewConfirmed)} disabled={!reviewConfirmed || !remarks.trim()} style={{ padding: "12px 22px", borderRadius: 10, border: "none", background: (reviewConfirmed && remarks.trim()) ? "#0f172a" : "#64748b", color: "#f8fafc", fontWeight: 700, cursor: (reviewConfirmed && remarks.trim()) ? "pointer" : "not-allowed" }}>Approve & Forward</button>
 </>
  )}
 </div>
@@ -1153,25 +1185,47 @@ export default function DeanDashboard() {
   const [facultyList, setFacultyList] = useState([]);
   const [hodList, setHodList] = useState([]);
   const [directorList, setDirectorList] = useState([]);
+  const [selectedAcademicYear, setSelectedAcademicYear] = useState(() => getActiveAcademicYear());
+  const [availableCycles, setAvailableCycles] = useState(() => storedAcademicYearCycles());
 
   const userProfile = profileFromsessionStorage();
   const activeDeanTrack = getDeanTrack(userProfile);
   const activeSchools = getSchoolsByDeanTrack(activeDeanTrack);
   const activeSchoolCodes = activeSchools.map((s) => s.code);
+  const activeSchoolCodesKey = activeSchoolCodes.join(",");
+  const academicYearOptions = availableCycles.length ? availableCycles : [{ academic_year: selectedAcademicYear || APP_INFO.DEFAULT_AY, is_open: true }];
+
+  const handleReviewAcademicYearChange = (academicYear) => {
+    const nextAcademicYear = setActiveAcademicYear(academicYear);
+    setSelectedAcademicYear(nextAcademicYear);
+    window.dispatchEvent(new CustomEvent("academicYearChanged", { detail: { academicYear: nextAcademicYear } }));
+  };
+
+  useEffect(() => {
+    const syncAcademicYear = (event) => {
+      setSelectedAcademicYear(event?.detail?.academicYear || getActiveAcademicYear());
+      setAvailableCycles(storedAcademicYearCycles());
+    };
+    window.addEventListener("academicYearChanged", syncAcademicYear);
+    return () => window.removeEventListener("academicYearChanged", syncAcademicYear);
+  }, []);
 
   useEffect(() => {
     const loadReviewQueue = async () => {
+      const schoolValues = activeSchoolCodesKey.split(",").filter(Boolean);
+      const reviewerProfile = profileFromsessionStorage();
       try {
         const items = await fetchReviewQueueForRole({
           reviewerRole: "dean",
-          reviewerProfile: userProfile,
-          schoolValues: activeSchoolCodes,
+          reviewerProfile,
+          academicYear: selectedAcademicYear,
+          schoolValues,
         });
         const schoolOf = (item) => getSchoolKey(item.school || item.school_name || item.schoolName || "");
         const roleOf = (item) => (item.appraisalRole || item.appraisal_role || "").toLowerCase();
         const scopedItems = items.filter((item) => {
           const code = schoolOf(item);
-          return activeSchoolCodes.includes(code) || activeSchoolCodes.includes(item.school);
+          return schoolValues.includes(code) || schoolValues.includes(item.school);
         });
         setFacultyList(scopedItems.filter((item) => roleOf(item) === "faculty"));
         setHodList(scopedItems.filter((item) => roleOf(item) === "hod" && (schoolOf(item) === "SoEMR" || item.school === "SoEMR")));
@@ -1185,7 +1239,7 @@ export default function DeanDashboard() {
     };
 
     loadReviewQueue();
-  }, [activeSchoolCodes.join(",")]);
+  }, [activeSchoolCodesKey, selectedAcademicYear]);
 
   const [filterStatus, setFilterStatus] = useState("All");
   const [selectedSchoolCode, setSelectedSchoolCode] = useState(activeSchools[0]?.code || "SoCSEA");
@@ -1365,21 +1419,6 @@ export default function DeanDashboard() {
           showSectionSelector={activeMainTab === "myAppraisal"}
           sectionTab={hodAppraisalTab}
           onSectionChange={handleMyAppraisalSectionChange}
-          afterNav={(
-            <div style={{ background: "#1e293b", borderRadius: 9, padding: "12px 13px", display: "grid", gap: 8 }}>
-              <div style={{ fontSize: 9, color: "#94a3b8", fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.9 }}>Schools Overseen</div>
-              {ENGINEERING_SCHOOLS.map((school) => {
-                const visual = SCHOOL_VISUALS[school.code] || {};
-                return (
-                  <div key={school.code} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 10, color: "#cbd5e1" }}>
-                    <span style={{ width: 9, height: 9, borderRadius: 2, background: visual.color || "#64748b", display: "inline-block" }} />
-                    <span style={{ color: visual.color || "#cbd5e1", fontWeight: 800 }}>{visual.icon || "-"}</span>
-                    <span>{school.code}</span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
           profileSubtitle={`Dean - ${sessionStorage.getItem("department")?.split(" ")[0] || ""}`}
           onLogout={() => setShowLogoutModal(true)}
           showLogoutSpacer
@@ -1405,7 +1444,18 @@ export default function DeanDashboard() {
               <h1 style={{ margin: 0, fontSize: 26, fontWeight: 900, color: "#0f172a", lineHeight: 1.15, letterSpacing: -0.5 }}>Engineering School Appraisal Reviews</h1>
               <p style={{ margin: "5px 0 0", color: "#64748b", fontSize: 12, display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ background: "#e0e7ff", color: "#3730a3", borderRadius: 6, padding: "2px 8px", fontSize: 10, fontWeight: 700 }}>{APP_INFO.SHORT_NAME}</span>
-                <span>AY {APP_INFO.DEFAULT_AY}</span>
+                <span>AY</span>
+                <select
+                  value={selectedAcademicYear}
+                  onChange={(event) => handleReviewAcademicYearChange(event.target.value)}
+                  style={{ height: 28, border: "1px solid #cbd5e1", borderRadius: 7, background: "#fff", color: "#0f172a", fontSize: 11, fontWeight: 800, padding: "3px 28px 3px 9px", fontFamily: "inherit", outline: "none" }}
+                >
+                  {academicYearOptions.map((cycle) => (
+                    <option key={cycle.academic_year} value={cycle.academic_year}>
+                      {cycle.academic_year} {cycle.is_open ? "(Active)" : "(Closed)"}
+                    </option>
+                  ))}
+                </select>
               </p>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", justifyContent: "flex-end" }}>
@@ -1576,18 +1626,31 @@ export default function DeanDashboard() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 14 }}>
               {filtered.map((faculty) => {
                 const facultySummary = standardSubmittedScoreSummary(faculty);
+                const facultyAcademicYear = faculty.academic_year || faculty.academicYear || selectedAcademicYear || APP_INFO.DEFAULT_AY;
+                const facultyMetrics = legacyDashboardMetrics({
+                  academicYear: facultyAcademicYear,
+                  partA: facultySummary.partA,
+                  partB: facultySummary.partB,
+                  total: facultySummary.total,
+                }) || [
+                  { label: "Part A", val: facultySummary.partA, max: facultySummary.partAMax, color: "#6366f1" },
+                  { label: "Part B", val: facultySummary.partB, max: facultySummary.partBMax, color: "#0ea5e9" },
+                  { label: "Part C", val: facultySummary.partC, max: facultySummary.partCMax, color: "#10b981" },
+                  { label: "Part D", val: facultySummary.partD, max: facultySummary.partDMax, color: "#f59e0b" },
+                  { label: "Total", val: facultySummary.total, max: facultySummary.grandMax, color: "#4338ca" },
+                ];
                 const courseFilePartA = Array.isArray(faculty.courseFile)
                   ? (() => {
                       const filled = faculty.courseFile.filter((row) => String(row?.score ?? "").trim() !== "");
                       return filled.length ? filled.reduce((total, row) => total + courseFileRowScore(row), 0) / filled.length : 0;
                     })()
                   : n(faculty.courseFile?.score);
-                const docCount = Object.values(faculty.docs || {}).reduce((a, arr) => a + arr.length, 0);
+                const docCount = uploadedDocCount(faculty.docs, faculty);
 
                 return (
                   <div key={faculty.id} style={{ background: "#fff", borderRadius: 12, padding: "18px 20px", boxShadow: "0 1px 6px rgba(0,0,0,.07)", display: "flex", flexDirection: "column", gap: 14, border: "1px solid #e2e8f0" }}>
                     <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-                      <Avatar initials={faculty.avatar} color={faculty.avatarColor} size={46} />
+                      <Avatar initials={faculty.avatar} src={faculty.avatarUrl} color={faculty.avatarColor} size={58} />
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", marginBottom: 2 }}>{faculty.name}</div>
                         <div style={{ fontSize: 11, color: "#475569", marginBottom: 2 }}>{faculty.designation}</div>
@@ -1596,23 +1659,10 @@ export default function DeanDashboard() {
                       <StatusBadge status={faculty.status} />
                     </div>
 
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 8, background: "#f8fafc", borderRadius: 8, padding: "12px 10px" }}>
-                      {[
-                        { label: "Part A", val: facultySummary.partA, max: facultySummary.partAMax, color: "#6366f1" },
-                        { label: "Part B", val: facultySummary.partB, max: facultySummary.partBMax, color: "#0ea5e9" },
-                        { label: "Part C", val: facultySummary.partC, max: facultySummary.partCMax, color: "#10b981" },
-                        { label: "Part D", val: facultySummary.partD, max: facultySummary.partDMax, color: "#f59e0b" },
-                        { label: "Total", val: facultySummary.total, max: facultySummary.grandMax, color: "#4338ca" },
-                      ].map(({ label, val, max, color }) => (
-                        <div key={label} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                          <div style={{ fontSize: 9, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5 }}>{label}</div>
-                          <div style={{ fontSize: 13, fontWeight: 800, color, lineHeight: 1 }}>
-                            {val.toFixed ? val.toFixed(1) : val}{max != null && <span style={{ fontSize: 8, color: "#94a3b8" }}>/{max}</span>}
-                          </div>
-                          {max != null && max > 0 && <ScoreBar score={val} max={max} color={color} />}
-                        </div>
-                      ))}
-                    </div>
+                    <ReviewMetricsStrip
+                      metrics={facultyMetrics}
+                      docs={faculty.docs}
+                    />
 
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #f1f5f9", paddingTop: 12 }}>
                       <div style={{ fontSize: 10, color: "#94a3b8" }}>Submitted: {faculty.submittedOn}</div>
@@ -1621,16 +1671,17 @@ export default function DeanDashboard() {
                         onClick={async () => {
                           setReviewLoading(faculty.id);
                           try {
+                            const academicYear = faculty.academic_year || faculty.academicYear || selectedAcademicYear || APP_INFO.DEFAULT_AY || "2026-2027";
                             const data = await fetchSavedAppraisal({
                               facultyEmail: faculty.email,
-                              academicYear: faculty.academic_year || faculty.academicYear || APP_INFO.DEFAULT_AY || "2026-2027",
+                              academicYear,
                               reviewerRole: "dean",
                             });
                             const form = data?.payload?.form || data?.form || {};
                             const docs = data?.payload?.docs || data?.docs || {};
                             const mergedForm = preserveSavedReviewScores(form, faculty);
                             const declaration = data?.declaration || faculty.declaration || null;
-                            setReviewingApproval({ ...faculty, ...mergedForm, docs, declaration, status: declaration?.status || data?.status || faculty.status, workflowStatus: declaration?.status || data?.workflowStatus || faculty.workflowStatus });
+                            setReviewingApproval({ ...faculty, ...mergedForm, docs, declaration, academicYear, academic_year: academicYear, previousYearResponse: data, previousYearResultOnly: isLegacyTwoPartAcademicYear(academicYear), status: declaration?.status || data?.status || faculty.status, workflowStatus: declaration?.status || data?.workflowStatus || faculty.workflowStatus });
                           } catch (err) {
                             alert(`Unable to open submitted form.\n\n${err.message}`);
                           } finally {
@@ -1664,6 +1715,9 @@ export default function DeanDashboard() {
 
       {/* REVIEW PANEL */}
       {(activeMainTab === "schoolAppraisal" || activeMainTab === "hodApprovals" || activeMainTab === "directorApprovals" || activeMainTab === "facultyApprovals") && reviewingApproval && (
+        reviewingApproval.previousYearResultOnly ? (
+        <PreviousYearAuthorityResult item={reviewingApproval} onBack={() => setReviewingApproval(null)} />
+        ) : (
         <ApprovalReviewPanel
           approval={reviewingApproval}
           approvalType={activeRoleTab}
@@ -1671,6 +1725,7 @@ export default function DeanDashboard() {
           onSubmit={handleSubmitReview}
           readOnly={isDeanReviewed(reviewingApproval)}
         />
+        )
       )}
     </DashboardLayout>
   );

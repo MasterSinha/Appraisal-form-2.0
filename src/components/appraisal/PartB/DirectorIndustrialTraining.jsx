@@ -1,4 +1,4 @@
-﻿/* eslint-disable no-unused-vars */
+/* eslint-disable no-unused-vars */
 import { HodInput } from "../../Inputs";
 import {
   SCORE_LIMITS,
@@ -43,7 +43,7 @@ export default function DirectorIndustrialTraining({ ctx }) {
 <td style={TD}><RO val={r.nature} /></td>
 <td style={TDV}><ViewDocsCell docKey={`train-${i}`} docs={docs} /></td>
 <td style={TDS}><RO val={String(r.score ?? "").trim() ? clampScore(r.score, SCORE_LIMITS.fdpRow) : ""} center /></td>
-<td style={TDS_DIR}><DirInput val={getDir("training", i, "dir")} max={SCORE_LIMITS.fdpRow} onChange={v =>setDir("training", i, "dir", v)} /></td>
+<td style={TDS_DIR}><DirInput val={getDir("training", i, "dir")} max={SCORE_LIMITS.fdpRow} disabled={!rowHasReviewableData("training", r, docs, `train-${i}`)} onChange={v =>setDir("training", i, "dir", v)} /></td>
 </tr>
  ))}
 </tbody>

@@ -46,7 +46,7 @@ export default function DirectorProjects({ ctx }) {
 <td style={TDC}><RO val={r.studentPub} center /></td>
 <td style={TDV}><ViewDocsCell docKey={`proj-${i}`} docs={docs} /></td>
 <td style={TDS}><RO val={String(r.score ?? "").trim() ? clampScore(r.score, projectGuidanceRowMax(r)) : ""} center /></td>
-<td style={TDS_DIR}><DirInput val={getDir("projects", i, "dir")} max={projectGuidanceRowMax(r)} onChange={v =>setDir("projects", i, "dir", v)} /></td>
+<td style={TDS_DIR}><DirInput val={getDir("projects", i, "dir")} max={projectGuidanceRowMax(r)} disabled={!rowHasReviewableData("projects", r, docs, `proj-${i}`)} onChange={v =>setDir("projects", i, "dir", v)} /></td>
 </tr>
  ))}
 </tbody>

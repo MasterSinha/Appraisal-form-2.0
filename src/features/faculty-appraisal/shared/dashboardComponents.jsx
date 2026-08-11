@@ -7,7 +7,7 @@
  *
  * Import from here instead of redefining in each dashboard file.
  */
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { StatusBadge } from "../../../components/dashboard/dashboardPrimitives";
 import {
@@ -20,7 +20,6 @@ import {
 } from "../../../utils/hierarchy";
 import { clampScore } from "../../../utils/appraisalFormUtils";
 
-/* eslint-disable no-unused-vars */
 function HoverPreviewCard({ value, position }) {
   if (!value) return null;
 
@@ -33,28 +32,42 @@ function HoverPreviewCard({ value, position }) {
         top: position.top,
         left: Math.max(12, position.left),
         width: "max-content",
-        maxWidth: "min(320px, calc(100vw - 24px))",
-        minWidth: 160,
+        maxWidth: "min(360px, calc(100vw - 24px))",
+        minWidth: 170,
         height: "auto",
-        maxHeight: "min(320px, calc(100vh - 24px))",
+        maxHeight: "min(280px, calc(100vh - 24px))",
         overflowY: "auto",
         background: "#fff",
-        color: "#111827",
-        border: "1px solid #e5e7eb",
-        borderRadius: 12,
-        padding: "10px 12px",
-        fontSize: 12.5,
-        fontWeight: 500,
-        lineHeight: 1.38,
+        color: "#0f172a",
+        border: "1px solid #dbe3ef",
+        borderRadius: 8,
+        padding: "9px 11px",
+        fontSize: 12,
+        fontWeight: 650,
+        lineHeight: 1.45,
         textAlign: "left",
         whiteSpace: "normal",
         overflowWrap: "break-word",
         wordBreak: "normal",
         pointerEvents: "none",
-        boxShadow: "0 12px 30px rgba(17,24,39,0.16), 0 1px 2px rgba(17,24,39,0.08)",
+        boxShadow: "0 14px 34px rgba(15,23,42,0.14), 0 2px 8px rgba(15,23,42,0.08)",
       }}
     >
-      {value}
+      <span
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          top: -5,
+          left: 18,
+          width: 10,
+          height: 10,
+          background: "#fff",
+          borderLeft: "1px solid #dbe3ef",
+          borderTop: "1px solid #dbe3ef",
+          transform: "rotate(45deg)",
+        }}
+      />
+      <span style={{ position: "relative", zIndex: 1 }}>{value}</span>
     </div>,
     document.body
   );
@@ -120,18 +133,15 @@ export function TI({
 
   const [textErr, setTextErr] = useState(false);
   const textAreaRef = useRef(null);
+  const [preview, setPreview] = useState(null);
   const displayValue = String(actualVal ?? "");
 
-  const resizeTextArea = () => {
+  const showPreview = () => {
     const el = textAreaRef.current;
-    if (!el) return;
-    el.style.height = "auto";
-    el.style.height = `${Math.max(38, el.scrollHeight)}px`;
+    if (!displayValue.trim() || !hasHiddenOverflow(el)) return;
+    const rect = el.getBoundingClientRect();
+    setPreview({ top: rect.bottom + 6, left: rect.left });
   };
-
-  useEffect(() => {
-    if (!isNumeric) resizeTextArea();
-  }, [displayValue, isNumeric]);
 
   const handleChange = (e) => {
     if (readOnly) return;
@@ -187,12 +197,13 @@ export function TI({
   };
   const textStyle = {
     ...baseStyle,
-    height: "auto",
+    height: 38,
     overflow: "hidden",
     resize: "none",
-    whiteSpace: "pre-wrap",
-    overflowWrap: "anywhere",
-    wordBreak: "normal",
+    whiteSpace: "nowrap",
+    textOverflow: "ellipsis",
+    overflowWrap: "normal",
+    wordBreak: "keep-all",
   };
 
   return (
@@ -217,14 +228,21 @@ export function TI({
           value={actualVal ?? ""}
           disabled={readOnly}
           onChange={handleChange}
-          onInput={resizeTextArea}
-          onBlur={handleBlur}
+          onFocus={showPreview}
+          onMouseEnter={showPreview}
+          onMouseLeave={() => setPreview(null)}
+          onBlur={(event) => {
+            setPreview(null);
+            handleBlur(event);
+          }}
           placeholder={placeholder || ""}
           aria-label={displayValue || placeholder || "Appraisal field"}
           rows={1}
+          wrap="off"
           style={center ? { ...textStyle, textAlign: "center" } : textStyle}
         />
       )}
+      {!isNumeric && preview && <HoverPreviewCard value={displayValue} position={preview} />}
       {textErr && (
         <span
           style={{

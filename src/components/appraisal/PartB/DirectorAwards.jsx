@@ -46,7 +46,7 @@ export default function DirectorAwards({ ctx }) {
 <td style={TDC}><RO val={r.date} center /></td>
 <td style={TDV}><ViewDocsCell docKey={`awd-${i}`} docs={docs} /></td>
 <td style={TDS}><RO val={r.score} center /></td>
-<td style={TDS_DIR}><DirInput val={getDir("awards", i, "dir")} onChange={v =>setDir("awards", i, "dir", v)} /></td>
+<td style={TDS_DIR}><DirInput val={getDir("awards", i, "dir")} max={20} disabled={!rowHasReviewableData("awards", r, docs, `awd-${i}`)} onChange={v =>setDir("awards", i, "dir", v)} /></td>
 </tr>
  ))}
 </tbody>

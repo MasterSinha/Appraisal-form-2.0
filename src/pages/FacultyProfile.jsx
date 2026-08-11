@@ -100,7 +100,13 @@ export default function FacultyProfile({ user, onProceed }) {
         <div style={S.card}>
           {/* Avatar section */}
           <div style={S.avatarSection}>
-            <div style={S.avatar}>{user.avatar}</div>
+            <div style={S.avatar}>
+              {user.avatarUrl ? (
+                <img src={user.avatarUrl} alt="Profile" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+              ) : (
+                user.avatar
+              )}
+            </div>
             <div style={S.avatarInfo}>
               <div style={S.avatarName}>{user.name}</div>
               <div style={S.avatarDesig}>{edits.designation} - {user.department}</div>
@@ -186,12 +192,12 @@ export default function FacultyProfile({ user, onProceed }) {
 
           {/* Confirmation */}
           <div style={S.confirmRow}>
-            <label style={S.checkLabel}>
+            <label className="appraisal-confirmation-card" style={S.checkLabel}>
               <input
                 type="checkbox"
                 checked={confirmed}
                 onChange={(e) => setConfirmed(e.target.checked)}
-                style={{ width: 15, height: 15, accentColor: "#0f172a", cursor: "pointer" }}
+                style={{ width: 15, height: 15, accentColor: "#16a34a", cursor: "pointer" }}
               />
               <span>
                 I confirm that the above information is correct and I wish to proceed with my{" "}
@@ -279,10 +285,10 @@ const S = {
 
   avatarSection: { display: "flex", alignItems: "center", gap: 18, marginBottom: 22 },
   avatar: {
-    width: 64, height: 64, borderRadius: "50%",
+    width: 86, height: 86, borderRadius: "50%",
     background: "linear-gradient(135deg,#6366f1,#0ea5e9)",
     color: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
-    fontWeight: 800, fontSize: 20, flexShrink: 0, letterSpacing: 1,
+    fontWeight: 800, fontSize: 26, flexShrink: 0, letterSpacing: 1, overflow: "hidden",
   },
   avatarInfo: {},
   avatarName:  { fontSize: 18, fontWeight: 700, color: "#0f172a", marginBottom: 3 },
@@ -335,7 +341,8 @@ const S = {
   confirmRow: { marginBottom: 18 },
   checkLabel: {
     display: "flex", alignItems: "flex-start", gap: 10,
-    fontSize: 13, color: "#374151", cursor: "pointer", lineHeight: 1.6,
+    padding: "11px 12px", background: "#f0fdf4", border: "1px solid #86efac",
+    borderRadius: 8, fontSize: 13, color: "#374151", cursor: "pointer", lineHeight: 1.6,
   },
 
   proceedBtn: {

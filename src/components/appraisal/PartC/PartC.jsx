@@ -14,18 +14,24 @@ import {
   TDS_HOD,
   TDV,
   ViewDocsCell,
+  rowHasReviewableData,
 } from "../../../features/faculty-appraisal";
 import { RO } from "../../../features/faculty-appraisal/shared";
 
-function SimplePartCTable({ title, rows, docPrefix, columns, get, set, reviewerScoreLabel, max }) {
+function SimplePartCTable({ title, rows, rowKey, docs, docPrefix, columns, get, set, reviewerScoreLabel, max }) {
   const safeRows = rows && rows.length > 0 ? rows : [{}];
+  const displayValue = (row, column) => {
+    const keys = Array.isArray(column.key) ? column.key : [column.key];
+    const foundKey = keys.find((key) => String(row?.[key] ?? "").trim() !== "");
+    return foundKey ? row[foundKey] : "";
+  };
   return (
     <SC title={title} accent="#0f766e">
       <table style={T}>
         <thead>
           <tr>
             <th style={TH}>SN</th>
-            {columns.map((column) => <th key={column.key} style={TH}>{column.label}</th>)}
+            {columns.map((column) => <th key={Array.isArray(column.key) ? column.key.join("-") : column.key} style={TH}>{column.label}</th>)}
             <th style={TH}>View Docs</th>
             <th style={TH}>Faculty Score</th>
             <th style={TH_HOD}>{reviewerScoreLabel}</th>
@@ -35,10 +41,10 @@ function SimplePartCTable({ title, rows, docPrefix, columns, get, set, reviewerS
           {safeRows.map((row, index) => (
             <tr key={index} style={index % 2 ? { background: "#f8fafc" } : {}}>
               <td style={TDC}>{index + 1}</td>
-              {columns.map((column) => <td key={column.key} style={TD}><RO val={row[column.key]} /></td>)}
-              <td style={TDV}><ViewDocsCell docKey={`${docPrefix}-${index}`} docs={rows.docs || {}} /></td>
+              {columns.map((column) => <td key={Array.isArray(column.key) ? column.key.join("-") : column.key} style={TD}><RO val={displayValue(row, column)} /></td>)}
+              <td style={TDV}><ViewDocsCell docKey={`${docPrefix}-${index}`} docs={docs || {}} /></td>
               <td style={TDS}><RO val={row.score} center /></td>
-              <td style={TDS_HOD}><HodInput val={get(rows.key, index, "hod")} max={max} onChange={(value) => set(rows.key, index, "hod", value)} /></td>
+              <td style={TDS_HOD}><HodInput val={get(rowKey, index, "hod")} max={max} disabled={!rowHasReviewableData(rowKey, row, docs, `${docPrefix}-${index}`)} onChange={(value) => set(rowKey, index, "hod", value)} /></td>
             </tr>
           ))}
         </tbody>
@@ -49,7 +55,6 @@ function SimplePartCTable({ title, rows, docPrefix, columns, get, set, reviewerS
 
 export default function PartC({ ctx }) {
   const { docs, eventRows, alumniRows, placementRows, get, set, reviewerScoreLabel } = ctx;
-  const withMeta = (key, rows) => Object.assign(rows || [], { key, docs });
 
   return (
     <div className="review-part-stack">
@@ -58,9 +63,11 @@ export default function PartC({ ctx }) {
       <DepartmentActivities ctx={ctx} />
       <SimplePartCTable
         title="C3. Event Organisation & Institutional Visibility (Max 20)"
-        rows={withMeta("eventRows", eventRows)}
+        rows={eventRows}
+        rowKey="eventRows"
+        docs={docs}
         docPrefix="event"
-        columns={[{ key: "event", label: "Event / Contribution" }, { key: "role", label: "Role" }, { key: "date", label: "Date" }, { key: "level", label: "Level" }]}
+        columns={[{ key: ["event", "activity", "title"], label: "Event / Contribution" }, { key: "role", label: "Role" }, { key: "date", label: "Date" }, { key: "level", label: "Level" }]}
         get={get}
         set={set}
         reviewerScoreLabel={reviewerScoreLabel}
@@ -70,9 +77,11 @@ export default function PartC({ ctx }) {
       <IndustryConnect ctx={ctx} />
       <SimplePartCTable
         title="C6. Alumni Engagement & Networking (Max 10)"
-        rows={withMeta("alumniRows", alumniRows)}
+        rows={alumniRows}
+        rowKey="alumniRows"
+        docs={docs}
         docPrefix="alumni"
-        columns={[{ key: "activity", label: "Activity" }, { key: "details", label: "Details" }, { key: "date", label: "Date" }]}
+        columns={[{ key: ["activity", "event", "title"], label: "Activity" }, { key: ["details", "description", "name"], label: "Details" }, { key: "date", label: "Date" }]}
         get={get}
         set={set}
         reviewerScoreLabel={reviewerScoreLabel}
@@ -80,9 +89,11 @@ export default function PartC({ ctx }) {
       />
       <SimplePartCTable
         title="C7. Student Placement Mentoring & Career Development (Max 20)"
-        rows={withMeta("placementRows", placementRows)}
+        rows={placementRows}
+        rowKey="placementRows"
+        docs={docs}
         docPrefix="placement"
-        columns={[{ key: "activityType", label: "Activity Type" }, { key: "name", label: "Student / Company Name" }, { key: "date", label: "Date" }]}
+        columns={[{ key: ["activityType", "type", "activity"], label: "Activity Type" }, { key: ["name", "student", "company", "details"], label: "Student / Company Name" }, { key: "date", label: "Date" }]}
         get={get}
         set={set}
         reviewerScoreLabel={reviewerScoreLabel}

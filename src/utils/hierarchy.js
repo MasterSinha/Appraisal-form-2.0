@@ -197,13 +197,14 @@ export const reviewStatusForDecision = (role, decision = "approved") =>
 
 export const canReviewerRejectProfile = (reviewerRole, subjectProfile = {}) => {
   const role = normalizeRoleForWorkflow(reviewerRole);
-  const subjectRole = normalizeRoleForWorkflow(subjectProfile.appraisal_role || subjectProfile.appraisalRole || subjectProfile.role);
-  const firstReviewer = getReviewChain(subjectProfile)[0];
-  if (firstReviewer !== role) return false;
+  if (!role || role === "faculty") return false;
+  const chain = getReviewChain(subjectProfile);
+  if (chain.includes(role)) return true;
 
-  if (subjectRole === "faculty") return ["hod", "center_head", "director"].includes(role);
-  if (subjectRole === "hod") return role === "director";
-  if (subjectRole === "director") return role === "dean";
+  const subjectRole = normalizeRoleForWorkflow(subjectProfile.appraisal_role || subjectProfile.appraisalRole || subjectProfile.role);
+  if (subjectRole === "faculty") return ["hod", "center_head", "director", "dean", "vc"].includes(role);
+  if (subjectRole === "hod") return ["director", "dean", "vc"].includes(role);
+  if (subjectRole === "director") return ["dean", "vc"].includes(role);
   if (subjectRole === "dean") return role === "vc";
   return false;
 };
@@ -297,6 +298,10 @@ export const profileFromsessionStorage = () => ({
   teaching_experience: getItem("experience") || "",
   experience: getItem("experience") || "",
   employee_id: getItem("employeeId") || "",
+  profile_picture_url: getItem("profilePictureUrl") || getItem("profile_picture_url") || getItem("avatarUrl") || "",
+  profilePictureUrl: getItem("profilePictureUrl") || getItem("profile_picture_url") || getItem("avatarUrl") || "",
+  avatar_url: getItem("profilePictureUrl") || getItem("profile_picture_url") || getItem("avatarUrl") || "",
+  avatarUrl: getItem("profilePictureUrl") || getItem("profile_picture_url") || getItem("avatarUrl") || "",
   reports_to_registrar: getItem("reports_to_registrar") === "true" || getItem("reportsToRegistrar") === "true",
   reportsToRegistrar: getItem("reports_to_registrar") === "true" || getItem("reportsToRegistrar") === "true",
 });

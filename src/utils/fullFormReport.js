@@ -128,7 +128,7 @@ const displayExperience = (info = {}, form = {}) => {
   return splitValue ? displayWithOptionalYears(splitValue) : "&nbsp;";
 };
 
-const PRINT_REPORT_CSS = `
+export const PRINT_REPORT_CSS = `
     @page{size:A4;margin:12mm}
     *{box-sizing:border-box}
     body{font-family:"Times New Roman",Times,serif;font-size:10.8px;line-height:1.34;color:#111;background:#fff;margin:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}

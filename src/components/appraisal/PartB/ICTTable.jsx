@@ -44,7 +44,7 @@ export default function ICTTable({ ctx }) {
 <td style={TD}><RO val={r.quad || r.reach} /></td>
 <td style={TDV}><ViewDocsCell docKey={`ict-${i}`} docs={docs} /></td>
 <td style={TDS}><RO val={r.score} center /></td>
-<td style={TDS_HOD}><HodInput val={get("ict", i, "hod")} onChange={v =>set("ict", i, "hod", v)} /></td>
+<td style={TDS_HOD}><HodInput val={get("ict", i, "hod")} max={20} disabled={!rowHasReviewableData("ict", r, docs, `ict-${i}`)} onChange={v =>set("ict", i, "hod", v)} /></td>
 </tr>
  ))}
 </tbody>
