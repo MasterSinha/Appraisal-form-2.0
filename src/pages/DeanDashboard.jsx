@@ -5,7 +5,7 @@ import { api } from "../services/api";
 import { Avatar, ScoreCard, ScoreBar, StatusBadge, ReviewMetricsStrip, uploadedDocCount } from "../components/dashboard/dashboardPrimitives";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import DashboardSidebar from "../components/dashboard/DashboardSidebar";
-import { ACR_DETAIL_POINTS, SOCIETY_LABELS, MAX_SCORES, APP_INFO, createAcrRows, fetchSavedAppraisal, loadAppraisalDocuments, loadSavedAppraisal, mergeFacultyInfo, saveAppraisalDraftSection, submitAppraisal, fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, INNOVATIVE_METHODS, SCORE_LIMITS, averageSectionScore, clampScore, clampReviewScore, courseFileAverageScore, courseFileRowScore, effectiveMaxScore, feedbackAverage, feedbackRowScore, feedbackSectionScore, innovativeSelectionsFromDetails, innovativeTeachingScore, isAllowedAttachmentFile, isValidDDMMYYYY, maskDateDDMMYYYY, normalizeAutoScores, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewSectionScore, rowHasReviewableData, scoreRemaining, selfEffectivePartAMax, societyRowLocked, societyRowScore, sumSectionScore, toggleInnovativeMethod, validateCompleteRows, generateStandardReport, standardSubmittedScoreSummary, qualificationRowDescription, AppraisalHeaderImage, SummaryOtherInfoField, summaryOtherInfoValueFrom, RejectionNotice, DocCell, ViewCell, ViewDocsCell, RowButtons as RowBtns, SectionSaveFooter, SectionCard as SC, T, TH, TH_HOD, TH_DIR, TH_DEAN, TD, TDC, TDS, TDS_HOD, TDS_DIR, TDS_DEAN, TDV, MyAppraisalSection, CreativeSchoolAuthorityReviewPanel, isCreativeSchool, isDesignArtsSchool, isMediaCommSchool } from "../features/faculty-appraisal";
+import { ACR_DETAIL_POINTS, SOCIETY_LABELS, MAX_SCORES, APP_INFO, createAcrRows, fetchSavedAppraisal, loadAppraisalDocuments, loadSavedAppraisal, mergeFacultyInfo, saveAppraisalDraftSection, submitAppraisal, fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, INNOVATIVE_METHODS, SCORE_LIMITS, averageSectionScore, clampScore, clampReviewScore, courseFileAverageScore, courseFileRowScore, effectiveMaxScore, feedbackAverage, feedbackRowScore, feedbackSectionScore, innovativeSelectionsFromDetails, innovativeTeachingScore, isAllowedAttachmentFile, isValidDDMMYYYY, maskDateDDMMYYYY, normalizeAutoScores, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewSectionScore, rowHasReviewableData, isSectionEmpty, scoreRemaining, selfEffectivePartAMax, societyRowLocked, societyRowScore, sumSectionScore, toggleInnovativeMethod, validateCompleteRows, generateStandardReport, standardSubmittedScoreSummary, qualificationRowDescription, AppraisalHeaderImage, SummaryOtherInfoField, summaryOtherInfoValueFrom, RejectionNotice, DocCell, ViewCell, ViewDocsCell, RowButtons as RowBtns, SectionSaveFooter, SectionCard as SC, T, TH, TH_HOD, TH_DIR, TH_DEAN, TD, TDC, TDS, TDS_HOD, TDS_DIR, TDS_DEAN, TDV, MyAppraisalSection, CreativeSchoolAuthorityReviewPanel, isCreativeSchool, isDesignArtsSchool, isMediaCommSchool } from "../features/faculty-appraisal";
 import { getActiveAcademicYear, getSessionItem, normalizeAcademicYearLabel, setActiveAcademicYear } from "../auth/session";
 import { PreviousYearReportViewer } from "../features/previousYearReport";
 import { isLegacyTwoPartAcademicYear } from "../features/faculty-appraisal/forms/standard/legacyPreviousYearReportUtils";
@@ -13,6 +13,7 @@ import { legacyDashboardMetrics } from "../utils/legacyDashboardMetrics";
 import { DEAN_TRACKS, getSchoolKey, getSchoolsByDeanTrack } from "../constants/universityHierarchy";
 import { canReviewerRejectProfile, rejectedStatusFor, reviewedStatusFor, profileFromsessionStorage, workflowValidationError, roleLabel, isAppraisalFinalisedByVc, isRejectedStatus, isPendingReviewStatusFor, hasActiveRejection, reviewListFrom, getDeanTrack } from "../utils/hierarchy";
 import { n, pct, grade, RO, TI } from "../features/faculty-appraisal/shared";
+import { FacultyRecordHeader, ScoreTable, VCFinalRemarks, FinalSubmitButton, FACULTY_RECORD_THEME } from "../components/dashboard/FacultyAppraisalRecord";
 
 const ENGINEERING_SCHOOLS = getSchoolsByDeanTrack(DEAN_TRACKS.ENGINEERING);
 const ENGINEERING_SCHOOL_VALUES = ENGINEERING_SCHOOLS.flatMap((school) => [
@@ -220,7 +221,7 @@ function ReviewPanel({ faculty, onBack, onSubmit }) {
  isFinal
  remarksContent={(
 <textarea value={remarks} onChange={e =>setRemarks(e.target.value)} rows={7}
- placeholder="Enter your remarks, observations, and recommendations for this faculty member..."
+ placeholder="Enter your remarks here..."
  style={{ width: "100%", height: 235, minHeight: 235, border: "1px solid #e2e8f0", borderRadius: 7, padding: "10px 12px", fontSize: 12, fontFamily: "inherit", resize: "none", boxSizing: "border-box" }} />
  )}
 />
@@ -277,21 +278,23 @@ const preserveSavedReviewScores = (form = {}, source = {}) =>{
  }
  return merged;
 };
-const DEAN_SECTION_MAX = { lectures: 40, courseFile: 20, obeRows: 20, projects: 20, mentoringRows: 10, quals: 10, feedback: 10, uniActs: 50, deptActs: 30, eventRows: 20, society: 20, industry: 8, alumniRows: 10, placementRows: 20, acr: 50, journals: 100, books: 30, ict: 20, research: 20, projects2: 40, patents: 40, awards: 20, confs: 20, proposals: 20, products: 20, fdps: 20 };
-const DEAN_ROW_MAX = { courseFile: () =>SCORE_LIMITS.courseFileRow, obeRows: (row) =>row.max || 20, projects: projectGuidanceRowMax, projects2: (row) =>row.max || 40, mentoringRows: (row) =>row.max || 10, quals: () =>SCORE_LIMITS.qualificationRow, feedback: () =>10, society: () =>SCORE_LIMITS.societyRow, acr: () =>SCORE_LIMITS.acrRow, research: researchGuidanceRowMax, fdps: () =>SCORE_LIMITS.fdpRow };
+const DEAN_SECTION_MAX = { lectures: 40, courseFile: 20, obeRows: 20, projects: 20, mentoringRows: 10, quals: 10, feedback: 10, uniActs: 50, deptActs: 30, eventRows: 20, society: 10, industry: 10, alumniRows: 10, placementRows: 20, acr: 50, journals: 100, books: 30, ict: 20, research: 20, projects2: 40, patents: 40, awards: 20, confs: 20, proposals: 20, products: 20, fdps: 20 };
+const DEAN_ROW_MAX = { lectures: () =>10, courseFile: () =>SCORE_LIMITS.courseFileRow, obeRows: (row) =>row.max || 20, projects: projectGuidanceRowMax, projects2: (row) =>row.max || 40, mentoringRows: (row) =>row.max || 10, quals: () =>SCORE_LIMITS.qualificationRow, feedback: () =>10, society: (row) =>row.max || 10, acr: () =>SCORE_LIMITS.acrRow, research: researchGuidanceRowMax, fdps: () =>SCORE_LIMITS.fdpRow };
 
 const deanScorePayload = (approval, deanData) =>{
  const payload = {};
 
  DEAN_REVIEW_ARRAY_KEYS.forEach((key) =>{
- const rows = key === "acr" ? createAcrRows(approval[key]) : (Array.isArray(approval[key]) ? approval[key] : []);
- payload[key] = rows.map((row, index) =>({
- ...row,
- dean: key === "society" && societyRowLocked(row)
- ? "0"
- : clampReviewScore(key, row, deanData[key]?.[index]?.dean ?? row.dean ?? "", DEAN_SECTION_MAX[key] || 0),
- }));
- });
+  const rows = key === "acr" ? createAcrRows(approval[key]) : (Array.isArray(approval[key]) ? approval[key] : []);
+  payload[key] = rows.map((row, index) =>({
+  ...row,
+  dean: key === "society" && societyRowLocked(row)
+  ? "0"
+  : isSectionEmpty(key, approval[key], approval.docs)
+    ? ""
+    : clampReviewScore(key, row, deanData[key]?.[index]?.dean ?? row.dean ?? "", key === "lectures" ? 10 : (DEAN_SECTION_MAX[key] || 0)),
+  }));
+  });
 
  const innovRows = Array.isArray(approval.innovRows) ? approval.innovRows : [];
  const reviewInnovRows = Array.isArray(deanData.innovRows) ? deanData.innovRows : [];
@@ -308,47 +311,50 @@ const deanScorePayload = (approval, deanData) =>{
  return payload;
 };
 
-const sumDeanRows = (payload, keys) =>
- keys.reduce((total, key) =>{
- if (key === "lectures" || key === "courseFile" || key === "feedback") return total + reviewSectionScore(key, payload[key] || [], DEAN_SECTION_MAX[key] || 0, "dean");
- return total + clampScore((payload[key] || []).reduce((sum, row) =>{
- if (key === "society" && societyRowLocked(row)) return sum;
- if (!rowHasReviewableData(key, row)) return sum;
- const rowMax = DEAN_ROW_MAX[key]?.(row);
- return sum + (rowMax ? clampScore(row.dean, rowMax) : n(row.dean));
- }, 0), DEAN_SECTION_MAX[key] || 0);
- }, 0);
+const sumDeanRows = (payload, keys, approval) =>
+  keys.reduce((total, key) =>{
+  if (key !== "acr" && isSectionEmpty(key, approval[key], approval.docs)) return total;
+  if (key === "lectures" || key === "courseFile" || key === "feedback") return total + reviewSectionScore(key, payload[key] || [], DEAN_SECTION_MAX[key] || 0, "dean");
+  return total + clampScore((payload[key] || []).reduce((sum, row) =>{
+  if (key === "society" && societyRowLocked(row)) return sum;
+  if (!rowHasReviewableData(key, row)) return sum;
+  const rowMax = DEAN_ROW_MAX[key]?.(row);
+  return sum + (rowMax ? clampScore(row.dean, rowMax) : n(row.dean));
+  }, 0), DEAN_SECTION_MAX[key] || 0);
+  }, 0);
 
-const deanScoreTotals = (payload) =>{
- const reviewerMaxScores = {
- partA: effectiveMaxScore(150),
- partB: effectiveMaxScore(350),
- partC: 150,
- partD: 50,
- grand: 0,
- };
-reviewerMaxScores.grand = reviewerMaxScores.partA + reviewerMaxScores.partB + reviewerMaxScores.partC + reviewerMaxScores.partD;
- const innovativeScore = Array.isArray(payload.innovRows) && payload.innovRows.length
- ? reviewSectionScore("innovRows", payload.innovRows, 10, "dean")
- : clampScore(payload.innovativeTeaching?.dean, 10);
- const partA = clampScore(sumDeanRows(payload, DEAN_REVIEW_PART_A_KEYS) + innovativeScore, reviewerMaxScores.partA);
- const b8 = sumDeanRows(payload, ["fdps"]);
- const partBWithoutB8 = sumDeanRows(payload, DEAN_REVIEW_PART_B_KEYS.filter(k =>k !== "fdps"));
- const cappedPartB = clampScore(partBWithoutB8 + b8, reviewerMaxScores.partB);
- const partC = clampScore(sumDeanRows(payload, DEAN_REVIEW_PART_C_KEYS), reviewerMaxScores.partC);
- const partD = clampScore(sumDeanRows(payload, DEAN_REVIEW_PART_D_KEYS), reviewerMaxScores.partD);
- return { partA, partB: cappedPartB, partC, partD, total: clampScore(partA + cappedPartB + partC + partD, reviewerMaxScores.grand) };
+const deanScoreTotals = (payload, approval) =>{
+  const reviewerMaxScores = {
+  partA: effectiveMaxScore(150),
+  partB: effectiveMaxScore(350),
+  partC: 150,
+  partD: 50,
+  grand: 0,
+  };
+  reviewerMaxScores.grand = reviewerMaxScores.partA + reviewerMaxScores.partB + reviewerMaxScores.partC + reviewerMaxScores.partD;
+  const innovativeScore = Array.isArray(payload.innovRows) && payload.innovRows.length
+  ? reviewSectionScore("innovRows", payload.innovRows, 10, "dean")
+  : clampScore(payload.innovativeTeaching?.dean, 10);
+  const partA = clampScore(sumDeanRows(payload, DEAN_REVIEW_PART_A_KEYS, approval) + innovativeScore, reviewerMaxScores.partA);
+  const b8 = clampScore(sumDeanRows(payload, ["fdps"], approval), 10);
+  const partBWithoutB8 = sumDeanRows(payload, DEAN_REVIEW_PART_B_KEYS.filter(k =>k !== "fdps"), approval);
+  const cappedPartB = clampScore(partBWithoutB8 + b8, reviewerMaxScores.partB);
+  const partC = clampScore(sumDeanRows(payload, DEAN_REVIEW_PART_C_KEYS, approval), reviewerMaxScores.partC);
+  const partD = clampScore(sumDeanRows(payload, DEAN_REVIEW_PART_D_KEYS, approval), reviewerMaxScores.partD);
+  return { partA, partB: cappedPartB, partC, partD, total: clampScore(partA + cappedPartB + partC + partD, reviewerMaxScores.grand) };
 };
 
 function DeanScoreCell({ sectionKey, index, row, deanData, setDeanData }) {
+ const ctx = useContext(DeanReviewTableContext);
+ const approval = ctx?.approval || {};
  const value = deanData[sectionKey]?.[index]?.dean ?? row.dean ?? "";
  const maxForRow = DEAN_ROW_MAX[sectionKey]?.(row) || DEAN_SECTION_MAX[sectionKey];
  const societyLocked = sectionKey === "society" && societyRowLocked(row);
- const locked = sectionKey === "acr" ? false : (societyLocked || !rowHasReviewableData(sectionKey, row));
+ const locked = sectionKey === "acr" ? false : (societyLocked || !rowHasReviewableData(sectionKey, row) || isSectionEmpty(sectionKey, approval[sectionKey], ctx?.docs));
  const displayValue = societyLocked ? "0" : String(value ?? "").trim() ? clampScore(value, maxForRow) : "";
 
  const update = (nextValue) =>{
- const clampedValue = clampReviewScore(sectionKey, row, nextValue, DEAN_SECTION_MAX[sectionKey] || 0);
+ const clampedValue = clampReviewScore(sectionKey, row, nextValue, sectionKey === "lectures" ? 10 : (DEAN_SECTION_MAX[sectionKey] || 0));
  preserveScrollAfterStateUpdate(() =>setDeanData((prev) =>{
  const baseRows = Array.isArray(prev[sectionKey]) ? prev[sectionKey] : [];
  const updatedRows = [...baseRows];
@@ -361,8 +367,9 @@ function DeanScoreCell({ sectionKey, index, row, deanData, setDeanData }) {
 }
 
 function DeanInnovativeScoreCell({ row, index, rows, deanData, setDeanData }) {
+ const ctx = useContext(DeanReviewTableContext);
  const value = deanData.innovRows?.[index]?.dean ?? row.dean ?? "";
- const locked = !rowHasReviewableData("innovRows", row);
+ const locked = !rowHasReviewableData("innovRows", row) || isSectionEmpty("innovRows", rows, ctx?.docs);
  const update = (nextValue) =>{
  const clampedValue = clampReviewScore("innovRows", row, nextValue, 10);
  preserveScrollAfterStateUpdate(() =>setDeanData((prev) =>{
@@ -862,7 +869,7 @@ function ApprovalReviewPanel({ approval, approvalType, onBack, onSubmit, readOnl
         onBack={onBack}
         onSubmit={onSubmit}
         readOnly={readOnly}
-        showReport={true}
+        showReport={false}
       />
     );
   }
@@ -899,7 +906,7 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
  grand: 0,
  };
  reviewerMaxScores.grand = reviewerMaxScores.partA + reviewerMaxScores.partB + reviewerMaxScores.partC + reviewerMaxScores.partD;
- const deanScores = deanScoreTotals(sectionScores);
+ const deanScores = deanScoreTotals(sectionScores, approval);
  const hasSavedDeanScores = ["deanPartA", "deanPartB", "deanPartC", "deanPartD", "deanTotal"].some((key) =>String(approval?.[key] ?? "").trim() !== "");
  const rawDisplayedDeanScores = reviewLocked && hasSavedDeanScores ? {
  partA: String(approval?.deanPartA ?? "").trim() !== "" ? n(approval?.deanPartA) : deanScores.partA,
@@ -964,6 +971,12 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
  directorApprovals: "Director's Appraisal Review",
  facultyApprovals: "Faculty's Appraisal Review",
  };
+ const recordSchoolTrack = getDeanTrack({ school: approval.school || approval.info?.school, department: approval.department, designation: approval.designation });
+ const recordSchoolGroupLabel = { engineering: "Engineering", non_engineering: "Non-Engineering", direct_vc: "CISR" }[recordSchoolTrack] || approval.school || approval.info?.school || APP_INFO.UNIVERSITY_NAME;
+ const recordScoreRows = [
+ { key: "self", label: "Self", icon: "user", values: { partA: selfSummary.partA, partB: selfSummary.partB, partC: selfSummary.partC, partD: selfSummary.partD, total: selfSummary.total }, note: summaryOtherInfoValueFrom(approval) },
+ { key: "dean", label: "Dean", icon: "briefcase", values: displayedDeanScores, accent: true },
+ ];
  useEffect(() =>{
  let active = true;
  if (reviewLocked || !subjectEmail) return undefined;
@@ -1095,80 +1108,67 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
  )}
 
  {sectionView === "summary" && (
-<>
-<div className={`dean-review-summary-grid ${useTwoCardDeanSummary ? "dean-review-summary-grid--two" : ""}`} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 14, display: "grid", gridTemplateColumns: useDirectorDeanSummaryRow ? "minmax(280px, 0.72fr) minmax(640px, 1.28fr)" : undefined, gap: 14, boxShadow: "0 1px 6px rgba(0,0,0,.06)", marginBottom: 14 }}>
-{deanSummaryCards.map((card) =>(
-<ScoreCard key={card.key} {...card} />
-))}
-<ScoreCard
- title="Dean Score"
- subtitle="Dean score for the engineering appraisal form."
- totals={displayedDeanScores}
- maxScores={reviewerMaxScores}
- isFinal
- accent="#7c3aed"
- cardStyle={useDirectorDeanSummaryRow ? { minWidth: 0 } : { gridColumn: "1 / -1" }}
- sideContent={(
-<div style={{ background: "#eff6ff", border: "2px solid #93c5fd", borderRadius: 10, padding: "14px 15px", display: "flex", flexDirection: "column", minWidth: 0, boxShadow: "0 0 0 4px rgba(147,197,253,0.16), 0 14px 28px rgba(37,99,235,0.08)" }}>
-<div style={{ fontSize: 11, fontWeight: 900, color: "#1d4ed8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 5 }}>Dean Remarks Required</div>
-<div style={{ color: "#1e40af", fontSize: 11, fontWeight: 700, marginBottom: 10 }}>Please enter remarks before submitting the review.</div>
-<textarea value={remarks} onChange={(e) =>setRemarks(e.target.value)} rows={7} readOnly={reviewLocked}
- placeholder="Enter dean remarks, observations, and recommendations..."
- style={{ width: "100%", height: 235, minHeight: 235, border: "1px solid #bfdbfe", borderRadius: 8, padding: "10px 11px", fontFamily: "inherit", fontSize: 12, lineHeight: 1.5, color: "#334155", resize: "none", background: "#fff", outline: "none", boxSizing: "border-box" }}
+<div className="far-wrap" style={{ width: "100%" }}>
+<div className="far-card" style={{ width: "100%", boxSizing: "border-box", background: FACULTY_RECORD_THEME.card, border: `1px solid ${FACULTY_RECORD_THEME.borderStrong}`, borderRadius: 16, padding: "22px 24px", display: "grid", gap: 18, boxShadow: "0 10px 30px rgba(15,23,42,0.08)" }}>
+<FacultyRecordHeader
+ title="Faculty appraisal record"
+ subtitle={`${APP_INFO.UNIVERSITY_NAME} · ${recordSchoolGroupLabel} · AY ${academicYear}`}
+ referenceNumber={approval.employeeId}
 />
-</div>
- )}
+<ScoreTable
+ columns={[
+ { key: "partA", label: "Part A", max: MAX_SCORES.PART_A },
+ { key: "partB", label: "Part B", max: MAX_SCORES.PART_B },
+ { key: "partC", label: "Part C", max: MAX_SCORES.PART_C },
+ { key: "partD", label: "Part D", max: MAX_SCORES.PART_D },
+ { key: "total", label: "Total", max: MAX_SCORES.GRAND_TOTAL },
+ ]}
+ rows={recordScoreRows}
 />
-</div>
-</>
- )}
-
- {sectionView === "summary" && (
-<>
- {!reviewLocked && (
-<label className="appraisal-confirmation-card" style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 8, marginBottom: 14, color: "#334155", fontSize: 12, lineHeight: 1.5, cursor: "pointer" }}>
-<input
- type="checkbox"
- checked={reviewConfirmed}
- onChange={(e) =>setReviewConfirmed(e.target.checked)}
- style={{ margin: 0, accentColor: "#16a34a", flexShrink: 0 }}
- />
+<VCFinalRemarks
+ title="Dean final remarks"
+ icon="briefcase"
+ value={remarks}
+ onChange={setRemarks}
+ readOnly={reviewLocked}
+ description="This statement is entered against the official appraisal record before final submission."
+/>
+{!reviewLocked && (
+<label style={{ display: "flex", alignItems: "flex-start", gap: 9, color: FACULTY_RECORD_THEME.textMuted, fontSize: 11, lineHeight: 1.5, cursor: "pointer" }}>
+<input type="checkbox" checked={reviewConfirmed} onChange={(e) =>setReviewConfirmed(e.target.checked)} style={{ marginTop: 2, accentColor: FACULTY_RECORD_THEME.accent, flexShrink: 0 }} />
 <span>I have verified all the details and confirm that the information provided is correct. I am responsible for the accuracy of this data.</span>
 </label>
- )}
-
-<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-<span style={{ color: "#64748b", fontSize: 11, fontWeight: 700 }}>{draftStatus}</span>
-<div style={{ display: "flex", gap: 12, justifyContent: "flex-end", flexWrap: "wrap", marginLeft: "auto" }}>
-<button onClick={onBack} style={{ padding: "12px 22px", borderRadius: 10, border: "1px solid #cbd5e1", background: "#f8fafc", color: "#475569", fontWeight: 700, cursor: "pointer" }}>{reviewLocked ? "Close" : "Cancel"}</button>
- {!reviewLocked && (
-<>
-<button
- onClick={handleSaveDraft}
- disabled={savingDraft}
- style={{ padding: "12px 22px", borderRadius: 10, border: "none", background: savingDraft ? "#94a3b8" : "#2563eb", color: "#f8fafc", fontWeight: 700, cursor: savingDraft ? "not-allowed" : "pointer" }}
+)}
+{!reviewLocked && (
+<FinalSubmitButton
+ disabled={!reviewConfirmed || !remarks.trim()}
+ onClick={() =>onSubmit(approval.id, deanScores, remarks, sectionScores, reviewConfirmed)}
 >
+ Confirm and submit final score
+</FinalSubmitButton>
+)}
+<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap", borderTop: `1px solid ${FACULTY_RECORD_THEME.border}`, paddingTop: 14 }}>
+<span style={{ color: FACULTY_RECORD_THEME.textFaint, fontSize: 10.5, fontStyle: "italic" }}>{draftStatus}</span>
+<div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginLeft: "auto" }}>
+<button onClick={onBack} style={{ padding: "8px 14px", background: "transparent", color: FACULTY_RECORD_THEME.textMuted, border: `1px solid ${FACULTY_RECORD_THEME.border}`, borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: 11.5, fontFamily: "inherit" }}>{reviewLocked ? "Close" : "Cancel"}</button>
+{!reviewLocked && (
+<>
+<button onClick={handleSaveDraft} disabled={savingDraft} style={{ padding: "8px 14px", background: "transparent", color: savingDraft ? FACULTY_RECORD_THEME.textFaint : "#2563eb", border: `1px solid ${savingDraft ? FACULTY_RECORD_THEME.border : "#bfdbfe"}`, borderRadius: 8, cursor: savingDraft ? "not-allowed" : "pointer", fontWeight: 700, fontSize: 11.5, fontFamily: "inherit" }}>
  {savingDraft ? "Saving..." : "Save Draft"}
 </button>
- {canReject && (
-<button
- onClick={() =>{
- if (window.confirm("Reject this appraisal and send it back to the user for editing?")) {
- onSubmit(approval.id, deanScores, remarks, sectionScores, reviewConfirmed, "rejected");
- }
- }}
+{canReject && (
+<button onClick={() =>{ if (window.confirm("Reject this appraisal and send it back to the user for editing?")) { onSubmit(approval.id, deanScores, remarks, sectionScores, reviewConfirmed, "rejected"); } }}
  disabled={!reviewConfirmed || !remarks.trim()}
- style={{ padding: "12px 22px", borderRadius: 10, border: "none", background: (reviewConfirmed && remarks.trim()) ? "#dc2626" : "#94a3b8", color: "#f8fafc", fontWeight: 700, cursor: (reviewConfirmed && remarks.trim()) ? "pointer" : "not-allowed" }}
->
+ style={{ padding: "8px 14px", background: "transparent", color: (reviewConfirmed && remarks.trim()) ? "#dc2626" : FACULTY_RECORD_THEME.textFaint, border: `1px solid ${(reviewConfirmed && remarks.trim()) ? "#fecaca" : FACULTY_RECORD_THEME.border}`, borderRadius: 8, cursor: (reviewConfirmed && remarks.trim()) ? "pointer" : "not-allowed", fontWeight: 700, fontSize: 11.5, fontFamily: "inherit" }}>
  Reject Form
 </button>
- )}
-<button onClick={() =>onSubmit(approval.id, deanScores, remarks, sectionScores, reviewConfirmed)} disabled={!reviewConfirmed || !remarks.trim()} style={{ padding: "12px 22px", borderRadius: 10, border: "none", background: (reviewConfirmed && remarks.trim()) ? "#0f172a" : "#64748b", color: "#f8fafc", fontWeight: 700, cursor: (reviewConfirmed && remarks.trim()) ? "pointer" : "not-allowed" }}>Approve & Forward</button>
+)}
 </>
- )}
+)}
 </div>
 </div>
-</>
+</div>
+</div>
  )}
 </div>
  );
@@ -1439,7 +1439,9 @@ export default function DeanDashboard() {
       {(activeMainTab === "schoolAppraisal" || activeMainTab === "hodApprovals" || activeMainTab === "directorApprovals" || activeMainTab === "facultyApprovals") && !reviewingApproval && (
         <>
           {/* Horizontal School Selector Bar */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap", background: "#fff", borderRadius: 14, padding: "16px 24px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 16, minWidth: 0 }}>
+            <AppraisalHeaderImage logo="dypiu" />
             <div style={{ minWidth: 0 }}>
               <h1 style={{ margin: 0, fontSize: 26, fontWeight: 900, color: "#0f172a", lineHeight: 1.15, letterSpacing: -0.5 }}>Engineering School Appraisal Reviews</h1>
               <p style={{ margin: "5px 0 0", color: "#64748b", fontSize: 12, display: "flex", alignItems: "center", gap: 8 }}>
@@ -1457,6 +1459,7 @@ export default function DeanDashboard() {
                   ))}
                 </select>
               </p>
+            </div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", justifyContent: "flex-end" }}>
               <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 14, padding: "10px 16px", boxShadow: "0 2px 8px rgba(15,23,42,0.08)", minWidth: 250 }}>
@@ -1490,7 +1493,7 @@ export default function DeanDashboard() {
                   </div>
                 )}
               </div>
-              <AppraisalHeaderImage />
+              <AppraisalHeaderImage logo="iqas" />
             </div>
           </div>
 

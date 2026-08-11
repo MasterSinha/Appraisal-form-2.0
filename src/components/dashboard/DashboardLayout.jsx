@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { clearUserSession } from "../../auth/session";
 import { LogoutConfirmModal } from "./dashboardPrimitives";
 
 export default function DashboardLayout({
@@ -16,7 +17,7 @@ export default function DashboardLayout({
   const handleConfirmLogout = () => {
     onCancelLogout?.();
     sessionStorage.removeItem("user");
-    sessionStorage.clear();
+    clearUserSession();
     if (onAfterLogout) {
       onAfterLogout();
       return;

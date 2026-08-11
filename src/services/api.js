@@ -1,4 +1,5 @@
 import axios from "axios";
+import { clearUserSession } from "../auth/session";
 // Default API URL fallback. For production or custom configurations, specify VITE_API_BASE_URL in your .env file.
 const DEFAULT_API_BASE_URL = "/api/v2";
 
@@ -34,9 +35,7 @@ export const apiClient = axios.create({
 apiClient.interceptors.request.use((config) => {
   const token =
     sessionStorage.getItem("accessToken") ||
-    sessionStorage.getItem("token") ||
-    localStorage.getItem("accessToken") ||
-    localStorage.getItem("token");
+    sessionStorage.getItem("token");
 
   if (token) {
     config.headers = config.headers || {};
@@ -157,8 +156,7 @@ apiClient.interceptors.response.use(
     const suppressRedirect = Boolean(error?.config?.suppressAuthRedirect);
 
     if (status === 401 && !isAuthFormRequest(error?.config?.url) && !isUpload && !suppressRedirect) {
-      sessionStorage.clear();
-      localStorage.clear();
+      clearUserSession();
       if (typeof window !== "undefined" && window.location.pathname !== "/login") {
         alert("Your session has expired. Please log in again.");
         window.location.href = "/login";

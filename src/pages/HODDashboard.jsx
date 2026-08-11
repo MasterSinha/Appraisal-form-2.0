@@ -5,18 +5,19 @@ import { Avatar, ScoreCard, ScoreBar, StatusBadge, ReviewMetricsStrip, uploadedD
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import DashboardSidebar from "../components/dashboard/DashboardSidebar";
 import { api } from "../services/api";
-import { ACR_DETAIL_POINTS, APP_INFO, createAcrRows, fetchSavedAppraisal, loadAppraisalDocuments, loadSavedAppraisal, mergeFacultyInfo, saveAppraisalDraftSection, submitAppraisal, fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, INNOVATIVE_METHODS, SCORE_LIMITS, averageSectionScore, clampScore, clampReviewScore, courseFileAverageScore, courseFileRowScore, effectiveMaxScore, feedbackAverage, feedbackRowScore, feedbackSectionScore, innovativeSelectionsFromDetails, innovativeTeachingScore, isAllowedAttachmentFile, isValidDDMMYYYY, maskDateDDMMYYYY, normalizeAutoScores, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewSectionScore, rowHasReviewableData, scoreRemaining, selfEffectivePartAMax, societyRowLocked, societyRowScore, sumSectionScore, toggleInnovativeMethod, validateCompleteRows, standardSubmittedScoreSummary, AppraisalHeaderImage, SummaryOtherInfoField, summaryOtherInfoValueFrom, RejectionNotice, DocCell, ViewCell, ViewDocsCell, RowButtons as RowBtns, SectionSaveFooter, SectionCard as SC, T, TH, TH_HOD, TD, TDC, TDS, TDS_HOD, TDV, MyAppraisalSection, CreativeSchoolAuthorityReviewPanel, isCreativeSchool, isDesignArtsSchool, isMediaCommSchool } from "../features/faculty-appraisal";
+import { ACR_DETAIL_POINTS, APP_INFO, MAX_SCORES, createAcrRows, fetchSavedAppraisal, loadAppraisalDocuments, loadSavedAppraisal, mergeFacultyInfo, saveAppraisalDraftSection, submitAppraisal, fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, INNOVATIVE_METHODS, SCORE_LIMITS, averageSectionScore, clampScore, clampReviewScore, courseFileAverageScore, courseFileRowScore, effectiveMaxScore, feedbackAverage, feedbackRowScore, feedbackSectionScore, innovativeSelectionsFromDetails, innovativeTeachingScore, isAllowedAttachmentFile, isValidDDMMYYYY, maskDateDDMMYYYY, normalizeAutoScores, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewSectionScore, rowHasReviewableData, isSectionEmpty, scoreRemaining, selfEffectivePartAMax, societyRowLocked, societyRowScore, sumSectionScore, toggleInnovativeMethod, validateCompleteRows, standardSubmittedScoreSummary, AppraisalHeaderImage, SummaryOtherInfoField, summaryOtherInfoValueFrom, RejectionNotice, DocCell, ViewCell, ViewDocsCell, RowButtons as RowBtns, SectionSaveFooter, SectionCard as SC, T, TH, TH_HOD, TD, TDC, TDS, TDS_HOD, TDV, MyAppraisalSection, CreativeSchoolAuthorityReviewPanel, isCreativeSchool, isDesignArtsSchool, isMediaCommSchool } from "../features/faculty-appraisal";
 import { getActiveAcademicYear, getSessionItem, normalizeAcademicYearLabel, setActiveAcademicYear } from "../auth/session";
 import { PreviousYearReportViewer } from "../features/previousYearReport";
 import { isLegacyTwoPartAcademicYear } from "../features/faculty-appraisal/forms/standard/legacyPreviousYearReportUtils";
 import { legacyDashboardMetrics } from "../utils/legacyDashboardMetrics";
-import { canReviewerRejectProfile, rejectedStatusFor, reviewedStatusFor, profileFromsessionStorage, workflowValidationError, roleLabel, isAppraisalFinalisedByVc, isRejectedStatus, isPendingReviewStatusFor, hasActiveRejection, reviewListFrom } from "../utils/hierarchy";
+import { canReviewerRejectProfile, getDeanTrack, rejectedStatusFor, reviewedStatusFor, profileFromsessionStorage, workflowValidationError, roleLabel, isAppraisalFinalisedByVc, isRejectedStatus, isPendingReviewStatusFor, hasActiveRejection, reviewListFrom, getSchoolKey } from "../utils/hierarchy";
 import { n, pct, grade, reportValue, reportTextValue, reportQualification, reportExperience, RO, TI } from "../features/faculty-appraisal/shared";
+import { FacultyRecordHeader, ScoreTable, VCFinalRemarks, FinalSubmitButton, FACULTY_RECORD_THEME } from "../components/dashboard/FacultyAppraisalRecord";
 
 // - Helpers - (n, pct, grade, reportValue, reportTextValue, reportQualification, reportExperience, RO, TI → imported from shared)
 
 const REVIEW_ARRAY_KEYS = ["lectures", "courseFile", "obeRows", "projects", "mentoringRows", "quals", "feedback", "deptActs", "uniActs", "eventRows", "society", "industry", "alumniRows", "placementRows", "acr", "journals", "books", "ict", "research", "projects2", "patents", "awards", "confs", "proposals", "products", "fdps"];
-const REVIEW_SECTION_MAX = { lectures: 40, courseFile: 20, obeRows: 20, projects: 20, mentoringRows: 10, quals: 10, feedback: 10, deptActs: 30, uniActs: 50, eventRows: 20, society: 20, industry: 8, alumniRows: 10, placementRows: 20, acr: 50, journals: 100, books: 30, ict: 20, research: 20, projects2: 40, patents: 40, awards: 20, confs: 20, proposals: 20, products: 20, fdps: 20 };
+const REVIEW_SECTION_MAX = { lectures: 40, courseFile: 20, obeRows: 20, projects: 20, mentoringRows: 10, quals: 10, feedback: 10, deptActs: 30, uniActs: 50, eventRows: 20, society: 20, industry: 10, alumniRows: 10, placementRows: 20, acr: 50, journals: 100, books: 30, ict: 20, research: 20, projects2: 40, patents: 40, awards: 20, confs: 20, proposals: 20, products: 20, fdps: 20 };
 const REVIEW_SCORE_FIELDS = ["hod", "director", "dean", "vc"];
 const storedAcademicYearCycles = () => {
  try {
@@ -79,23 +80,38 @@ const preserveSavedReviewScores = (form = {}, source = {}) =>{
  }
  return merged;
 };
+const getHodSectionMax = (key, faculty) => {
+  const baseMax = REVIEW_SECTION_MAX[key] || 0;
+  if (key === "proposals" || key === "awards" || key === "products") {
+    const school = faculty?.info?.school || faculty?.school || "";
+    const schoolKey = getSchoolKey(school);
+    const isApplicable = ["SoCSEA", "SoBB", "SoCE", "SoEMR", "SoCM"].includes(schoolKey);
+    return isApplicable ? 20 : 10;
+  }
+  return baseMax;
+};
+
 const buildHodSectionScores = (faculty, hodData) =>{
- const payload = {};
- REVIEW_ARRAY_KEYS.forEach((key) =>{
- const rows = key === "acr" ? createAcrRows(faculty[key]) : (Array.isArray(faculty[key]) ? faculty[key] : []);
- payload[key] = rows.map((row, index) =>({
- ...row,
- hod: key === "society" && societyRowLocked(row)
- ? "0"
- : clampReviewScore(key, row, hodData[key]?.[index]?.hod ?? row.hod ?? "", REVIEW_SECTION_MAX[key] || 0),
- }));
- });
+  const payload = {};
+  REVIEW_ARRAY_KEYS.forEach((key) =>{
+  const rows = key === "acr" ? createAcrRows(faculty[key]) : (Array.isArray(faculty[key]) ? faculty[key] : []);
+  payload[key] = rows.map((row, index) =>({
+  ...row,
+  hod: key === "society" && societyRowLocked(row)
+  ? "0"
+  : isSectionEmpty(key, faculty[key], faculty.docs)
+    ? ""
+    : clampReviewScore(key, row, hodData[key]?.[index]?.hod ?? row.hod ?? "", getHodSectionMax(key, faculty)),
+  }));
+  });
  const innovRows = Array.isArray(faculty.innovRows) ? faculty.innovRows : [];
  const reviewInnovRows = Array.isArray(hodData.innovRows) ? hodData.innovRows : [];
- const mergedInnovRows = innovRows.map((row, index) =>({
- ...row,
- hod: clampReviewScore("innovRows", row, reviewInnovRows[index]?.hod ?? row.hod ?? "", 10),
- }));
+  const mergedInnovRows = innovRows.map((row, index) =>({
+  ...row,
+  hod: isSectionEmpty("innovRows", faculty.innovRows, faculty.docs)
+    ? ""
+    : clampReviewScore("innovRows", row, reviewInnovRows[index]?.hod ?? row.hod ?? "", 10),
+  }));
  const innovTotal = reviewSectionScore("innovRows", mergedInnovRows, 10, "hod");
  payload.innovRows = mergedInnovRows;
  payload.innovativeTeaching = {
@@ -114,7 +130,7 @@ function ReviewPanel({ faculty, onBack, onSubmit, readOnly = false, reviewerLabe
         onBack={onBack}
         onSubmit={onSubmit}
         readOnly={readOnly}
-        showReport={true}
+        showReport={false}
       />
     );
   }
@@ -205,10 +221,10 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false, revi
  const res = sumReviewRows("research", "hod", 20, researchGuidanceRowMax);
  const resProjects = sumReviewRows("projects2", "hod", 40);
  const pat = sumReviewRows("patents", "hod", 40);
- const awd = sumReviewRows("awards", "hod", 20);
- const conf = sumReviewRows("confs", "hod", 20);
- const prop = sumReviewRows("proposals", "hod", 20);
- const prod = sumReviewRows("products", "hod", 20);
+  const awd = sumReviewRows("awards", "hod", getHodSectionMax("awards", faculty));
+  const conf = sumReviewRows("confs", "hod", 20);
+  const prop = sumReviewRows("proposals", "hod", getHodSectionMax("proposals", faculty));
+  const prod = sumReviewRows("products", "hod", getHodSectionMax("products", faculty));
  const b8 = sumReviewRows("fdps", "hod", 20, SCORE_LIMITS.fdpRow);
  const partB = clampScore(jour + bk + pat + resProjects + res + prop + conf + b8 + awd + prod + ictT, reviewerMaxScores.partB);
 
@@ -216,7 +232,7 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false, revi
  const dept = sumReviewRows("deptActs", "hod", 30);
  const events = sumReviewRows("eventRows", "hod", 20);
  const soc = sumReviewRows("society", "hod", 20, SCORE_LIMITS.societyRow);
- const ind = sumReviewRows("industry", "hod", 8);
+ const ind = sumReviewRows("industry", "hod", 10);
  const alumni = sumReviewRows("alumniRows", "hod", 10);
  const placement = sumReviewRows("placementRows", "hod", 20);
  const partC = clampScore(uni + dept + events + soc + ind + alumni + placement, reviewerMaxScores.partC);
@@ -300,6 +316,12 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false, revi
  partA: faculty.lectures?.reduce((a, r) =>a + n(r.score), 0) || 0,
  partB: faculty.journals?.reduce((a, r) =>a + n(r.score), 0) || 0,
  });
+ const hodRecordSchoolTrack = getDeanTrack({ school: faculty.school || faculty.info?.school, department: faculty.department, designation: faculty.designation });
+ const hodRecordSchoolGroupLabel = { engineering: "Engineering", non_engineering: "Non-Engineering", direct_vc: "CISR" }[hodRecordSchoolTrack] || faculty.school || faculty.info?.school || APP_INFO.UNIVERSITY_NAME;
+ const hodRecordScoreRows = [
+ { key: "self", label: "Self", icon: "user", values: { partA: facultySummary.partA, partB: facultySummary.partB, partC: facultySummary.partC, partD: facultySummary.partD, total: facultySummary.total }, note: summaryOtherInfoValueFrom(faculty) },
+ { key: reviewerRole, label: reviewerLabel, icon: "briefcase", values: { partA, partB, partC, partD, total }, accent: true },
+ ];
 
  return (
 <div style={{ display: "flex", flexDirection: "column", gap: 0, minHeight: "100%" }}>
@@ -378,78 +400,64 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false, revi
  )}
 
  {sectionView === "summary" && (
-<div className="hod-review-summary-grid" style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 14, display: "grid", gap: 14, boxShadow: "0 1px 6px rgba(0,0,0,.06)" }}>
-<ScoreCard
- title="Faculty Score"
- subtitle="Self score for the engineering appraisal form."
- totals={{ partA: facultySummary.partA, partB: facultySummary.partB, partC: facultySummary.partC, partD: facultySummary.partD, total: facultySummary.total }}
- maxScores={{ partA: facultySummary.partAMax, partB: facultySummary.partBMax, partC: facultySummary.partCMax, partD: facultySummary.partDMax, grand: facultySummary.grandMax }}
- accent="#0ea5e9"
- extraContent={<SummaryOtherInfoField value={summaryOtherInfoValueFrom(faculty)} readOnly rows={4} />}
+<div className="far-wrap" style={{ width: "100%" }}>
+<div className="far-card" style={{ width: "100%", boxSizing: "border-box", background: FACULTY_RECORD_THEME.card, border: `1px solid ${FACULTY_RECORD_THEME.borderStrong}`, borderRadius: 16, padding: "22px 24px", display: "grid", gap: 18, boxShadow: "0 10px 30px rgba(15,23,42,0.08)" }}>
+<FacultyRecordHeader
+ title="Faculty appraisal record"
+ subtitle={`${APP_INFO.UNIVERSITY_NAME} · ${hodRecordSchoolGroupLabel} · AY ${academicYear}`}
+ referenceNumber={faculty.employeeId}
 />
-<ScoreCard
- title={`${reviewerLabel} Score`}
- subtitle={`${reviewerLabel} score for the engineering appraisal form.`}
- totals={{ partA, partB, partC, partD, total }}
- maxScores={reviewerMaxScores}
- isFinal
- accent="#7c3aed"
- sideContent={(
-<div style={{ background: "#eff6ff", border: "2px solid #93c5fd", borderRadius: 10, padding: "14px 15px", display: "flex", flexDirection: "column", minWidth: 0, boxShadow: "0 0 0 4px rgba(147,197,253,0.16), 0 14px 28px rgba(37,99,235,0.08)" }}>
-<div style={{ fontSize: 11, fontWeight: 900, color: "#1d4ed8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 5 }}>{reviewerLabel} Remarks Required</div>
-<div style={{ color: "#1e40af", fontSize: 11, fontWeight: 700, marginBottom: 10 }}>Please enter remarks before submitting the review.</div>
-<textarea value={remarks} onChange={e =>setRemarks(e.target.value)} rows={7} readOnly={reviewLocked}
- placeholder="Enter your remarks, observations, and recommendations for this faculty member..."
- style={{ width: "100%", height: 235, minHeight: 235, border: "1px solid #bfdbfe", borderRadius: 8, padding: "10px 11px", fontSize: 12, lineHeight: 1.5, fontFamily: "inherit", resize: "none", boxSizing: "border-box", background: "#fff", color: "#334155", outline: "none" }} />
-</div>
- )}
+<ScoreTable
+ columns={[
+ { key: "partA", label: "Part A", max: MAX_SCORES.PART_A },
+ { key: "partB", label: "Part B", max: MAX_SCORES.PART_B },
+ { key: "partC", label: "Part C", max: MAX_SCORES.PART_C },
+ { key: "partD", label: "Part D", max: MAX_SCORES.PART_D },
+ { key: "total", label: "Total", max: MAX_SCORES.GRAND_TOTAL },
+ ]}
+ rows={hodRecordScoreRows}
 />
-
- {!reviewLocked && (
-<label className="appraisal-confirmation-card" style={{ gridColumn: "1 / -1", display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 8, marginBottom: 0, color: "#334155", fontSize: 12, lineHeight: 1.5, cursor: "pointer" }}>
-<input
- type="checkbox"
- checked={reviewConfirmed}
- onChange={(e) =>setReviewConfirmed(e.target.checked)}
- style={{ margin: 0, accentColor: "#16a34a", flexShrink: 0 }}
- />
+<VCFinalRemarks
+ title={`${reviewerLabel} final remarks`}
+ icon="briefcase"
+ value={remarks}
+ onChange={setRemarks}
+ readOnly={reviewLocked}
+ description="This statement is entered against the official appraisal record before final submission."
+/>
+{!reviewLocked && (
+<label style={{ display: "flex", alignItems: "flex-start", gap: 9, color: FACULTY_RECORD_THEME.textMuted, fontSize: 11, lineHeight: 1.5, cursor: "pointer" }}>
+<input type="checkbox" checked={reviewConfirmed} onChange={(e) =>setReviewConfirmed(e.target.checked)} style={{ marginTop: 2, accentColor: FACULTY_RECORD_THEME.accent, flexShrink: 0 }} />
 <span>I have verified all the details and confirm that the information provided is correct. I am responsible for the accuracy of this data.</span>
 </label>
- )}
-
-<div style={{ gridColumn: "1 / -1", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-<span style={{ color: "#64748b", fontSize: 11, fontWeight: 700 }}>{draftStatus}</span>
-<div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap", marginLeft: "auto" }}>
-<button onClick={onBack} style={{ padding: "9px 22px", background: "#f1f5f9", color: "#475569", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 700, fontSize: 12, fontFamily: "inherit" }}>{reviewLocked ? "Close" : "Cancel"}</button>
- {!reviewLocked && (
-<>
-<button
- onClick={handleSaveDraft}
- disabled={savingDraft}
- style={{ padding: "10px 22px", background: savingDraft ? "#94a3b8" : "#2563eb", color: "#fff", border: "none", borderRadius: 7, cursor: savingDraft ? "not-allowed" : "pointer", fontWeight: 700, fontSize: 13, fontFamily: "inherit" }}
+)}
+{!reviewLocked && (
+<FinalSubmitButton
+ disabled={!reviewConfirmed || !remarks.trim()}
+ onClick={() =>onSubmit(faculty.id, { partA, partB, partC, partD, total }, remarks, buildHodSectionScores(faculty, hodData), reviewConfirmed)}
 >
+ Confirm and submit final score
+</FinalSubmitButton>
+)}
+<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap", borderTop: `1px solid ${FACULTY_RECORD_THEME.border}`, paddingTop: 14 }}>
+<span style={{ color: FACULTY_RECORD_THEME.textFaint, fontSize: 10.5, fontStyle: "italic" }}>{draftStatus}</span>
+<div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginLeft: "auto" }}>
+<button onClick={onBack} style={{ padding: "8px 14px", background: "transparent", color: FACULTY_RECORD_THEME.textMuted, border: `1px solid ${FACULTY_RECORD_THEME.border}`, borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: 11.5, fontFamily: "inherit" }}>{reviewLocked ? "Close" : "Cancel"}</button>
+{!reviewLocked && (
+<>
+<button onClick={handleSaveDraft} disabled={savingDraft} style={{ padding: "8px 14px", background: "transparent", color: savingDraft ? FACULTY_RECORD_THEME.textFaint : "#2563eb", border: `1px solid ${savingDraft ? FACULTY_RECORD_THEME.border : "#bfdbfe"}`, borderRadius: 8, cursor: savingDraft ? "not-allowed" : "pointer", fontWeight: 700, fontSize: 11.5, fontFamily: "inherit" }}>
  {savingDraft ? "Saving..." : "Save Draft"}
 </button>
 {canReject && (
-<button
- onClick={() =>{
- if (window.confirm("Reject this appraisal and send it back to the user for editing?")) {
- onSubmit(faculty.id, { partA, partB, partC, partD, total }, remarks, buildHodSectionScores(faculty, hodData), reviewConfirmed, "rejected");
- }
- }}
+<button onClick={() =>{ if (window.confirm("Reject this appraisal and send it back to the user for editing?")) { onSubmit(faculty.id, { partA, partB, partC, partD, total }, remarks, buildHodSectionScores(faculty, hodData), reviewConfirmed, "rejected"); } }}
  disabled={!reviewConfirmed || !remarks.trim()}
- style={{ padding: "10px 22px", background: (reviewConfirmed && remarks.trim()) ? "#dc2626" : "#94a3b8", color: "#fff", border: "none", borderRadius: 7, cursor: (reviewConfirmed && remarks.trim()) ? "pointer" : "not-allowed", fontWeight: 700, fontSize: 13, fontFamily: "inherit" }}
->
+ style={{ padding: "8px 14px", background: "transparent", color: (reviewConfirmed && remarks.trim()) ? "#dc2626" : FACULTY_RECORD_THEME.textFaint, border: `1px solid ${(reviewConfirmed && remarks.trim()) ? "#fecaca" : FACULTY_RECORD_THEME.border}`, borderRadius: 8, cursor: (reviewConfirmed && remarks.trim()) ? "pointer" : "not-allowed", fontWeight: 700, fontSize: 11.5, fontFamily: "inherit" }}>
  Reject Form
 </button>
 )}
-<button onClick={() =>onSubmit(faculty.id, { partA, partB, partC, partD, total }, remarks, buildHodSectionScores(faculty, hodData), reviewConfirmed)}
- disabled={!reviewConfirmed || !remarks.trim()}
- style={{ padding: "10px 28px", background: (reviewConfirmed && remarks.trim()) ? "#059669" : "#64748b", color: "#fff", border: "none", borderRadius: 7, cursor: (reviewConfirmed && remarks.trim()) ? "pointer" : "not-allowed", fontWeight: 700, fontSize: 13, fontFamily: "inherit" }}>
- Submit {reviewerLabel} Review
-</button>
 </>
- )}
+)}
+</div>
 </div>
 </div>
 </div>
@@ -608,7 +616,9 @@ export default function HODDashboard({
 
  {activeMainTab === "approvals" && !reviewingFaculty && (
 <>
-<div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 18, background: "#fff", borderRadius: 14, padding: "16px 24px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb" }}>
+<div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+<AppraisalHeaderImage logo="dypiu" />
 <div>
 <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "#0f172a", letterSpacing: -0.5 }}>Faculty's Appraisal</h1>
 <div style={{ marginTop: 5, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", color: "#64748b", fontSize: 11 }}>
@@ -627,10 +637,11 @@ export default function HODDashboard({
 </select>
 </div>
 </div>
+</div>
 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
 <div style={{ fontSize: 11, fontWeight: 700, padding: "5px 12px", borderRadius: 20, background: "#fef3c7", color: "#92400e" }}>{pendingCount} Pending</div>
 <div style={{ fontSize: 11, fontWeight: 700, padding: "5px 12px", borderRadius: 20, background: "#d1fae5", color: "#065f46" }}>{reviewedCount} Reviewed</div>
-<AppraisalHeaderImage />
+<AppraisalHeaderImage logo="iqas" />
 </div>
 </div>
 

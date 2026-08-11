@@ -140,7 +140,7 @@ const fetchAttachmentBlob = async (file) => {
   const finalUrl = finalAttachmentUrl(file);
   if (!finalUrl) throw new Error("Attachment URL is missing.");
   if (finalUrl.startsWith("data:")) return dataUrlToBlob(finalUrl);
-  const token = sessionStorage.getItem("accessToken") || sessionStorage.getItem("token") || localStorage.getItem("accessToken") || localStorage.getItem("token");
+  const token = sessionStorage.getItem("accessToken") || sessionStorage.getItem("token");
   const response = await fetch(finalUrl, {
     credentials: "include",
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,

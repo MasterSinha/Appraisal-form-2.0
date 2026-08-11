@@ -23,7 +23,7 @@ export const stripMaxMarksFromTitle = (title) =>
 export const SCORE_LIMITS = {
  courseFileRow: 20,
  innovativeRow: 2,
- qualificationRow: 5,
+ qualificationRow: 10,
  acrRow: 10,
  feedbackAverage: 100,
  societyRow: 5,
@@ -109,6 +109,8 @@ export const researchGuidanceRowMax = (row = {}) =>{
 export const researchGuidanceScore = (row = {}) =>{
  const rowMax = researchGuidanceRowMax(row);
  if (!rowMax) return 0;
+ const storedScore = String(row.score ?? "").trim();
+ if (storedScore !== "") return clampScore(storedScore, rowMax);
  return rowHasAnyValue(row, ["name", "thesis"])
  ? rowMax
  : clampScore(row.score, rowMax);
@@ -192,7 +194,7 @@ export const rowMaxForSection = (sectionKey, row = {}, sectionMax = 0) =>{
  return sectionMax;
 };
 
-export const scoreSectionRows = (sectionKey, rows = [], maxScore, scoreKey = "score") =>{
+export const scoreSectionRows = (sectionKey, rows = [], maxScore, scoreKey = "score", options = {}) =>{
  if (sectionKey === "feedback") {
  return scoreKey === "score"
  ? feedbackSectionScore(rows, maxScore)
@@ -201,10 +203,14 @@ export const scoreSectionRows = (sectionKey, rows = [], maxScore, scoreKey = "sc
  if (sectionKey === "lectures" || sectionKey === "courseFile") {
  return reviewSectionScore(sectionKey, rows, maxScore, scoreKey);
  }
- if (sectionKey === "research" && scoreKey === "score") return sumCalculatedSectionScore(rows, maxScore, (row) =>{
+ if (sectionKey === "research" && scoreKey === "score") {
+ const autoFill = options.autoFillResearchScore !== false;
+ return sumCalculatedSectionScore(rows, maxScore, (row) =>{
  const stored = String(row?.score ?? "").trim();
- return stored !== "" ? clampScore(stored, researchGuidanceRowMax(row)) : researchGuidanceScore(row);
+ if (stored !== "") return clampScore(stored, researchGuidanceRowMax(row));
+ return autoFill ? researchGuidanceScore(row) : 0;
  });
+ }
  if (sectionKey === "society") {
  return sumCalculatedSectionScore(rows, maxScore, (row) =>
  societyRowLocked(row) ? 0 : clampScore(row?.[scoreKey], row.max || SCORE_LIMITS.societyRow),
@@ -366,8 +372,52 @@ export const REVIEW_ROW_VALUE_KEYS = {
 
 const IGNORED_METADATA_KEYS = new Set([
   "_id", "id", "hod", "director", "dir", "dean", "vc", "ro", "reg", "status", "workflowStatus", "workflow_status",
-  "label", "code", "isStatic", "defaultLabel"
+  "label", "code", "isStatic", "defaultLabel", "max"
 ]);
+
+export const rowHasFacultyData = (sectionKey, row = {}) => {
+  if (!row || typeof row !== "object") return false;
+  if (sectionKey === "acr") return true;
+
+  if (
+    isFilled(row.score) ||
+    isFilled(row.marks) ||
+    isFilled(row.claimedScore) ||
+    isFilled(row.selfScore) ||
+    isFilled(row.facultyScore)
+  ) {
+    return true;
+  }
+
+  if (
+    isFilled(row.evidence) ||
+    isFilled(row.doc) ||
+    isFilled(row.document) ||
+    isFilled(row.attachment) ||
+    isFilled(row.file) ||
+    isFilled(row.proof) ||
+    isFilled(row.proofAttached) ||
+    isFilled(row.filePath) ||
+    isFilled(row.evidenceUrl)
+  ) {
+    return true;
+  }
+
+  if (sectionKey === "lectures") {
+    return isFilled(row.planned) || isFilled(row.conducted);
+  }
+  if (sectionKey === "obeRows") {
+    return isFilled(row.evidence) || isFilled(row.attainment);
+  }
+  if (sectionKey === "mentoringRows") {
+    return isFilled(row.studentsCount) || isFilled(row.evidence);
+  }
+  if (sectionKey === "projects") {
+    return isFilled(row.details) || isFilled(row.studentsCount);
+  }
+
+  return Object.entries(row).some(([key, value]) => !IGNORED_METADATA_KEYS.has(key) && isFilled(value));
+};
 
 export const rowHasReviewableData = (sectionKey, row = {}, docs = null, docKey = null) => {
   if (!row || typeof row !== "object") return false;
@@ -383,35 +433,17 @@ export const rowHasReviewableData = (sectionKey, row = {}, docs = null, docKey =
     if (hasDoc) return true;
   }
 
-  if (
-    isFilled(row.score) ||
-    isFilled(row.marks) ||
-    isFilled(row.claimedScore) ||
-    isFilled(row.selfScore) ||
-    isFilled(row.points) ||
-    isFilled(row.facultyScore) ||
-    isFilled(row.evidence) ||
-    isFilled(row.doc) ||
-    isFilled(row.document) ||
-    isFilled(row.attachment) ||
-    isFilled(row.file) ||
-    isFilled(row.viewDocs) ||
-    isFilled(row.evidenceUrl) ||
-    isFilled(row.docUrl) ||
-    isFilled(row.proofAttached) ||
-    isFilled(row.proof) ||
-    isFilled(row.filePath)
-  ) {
-    return true;
-  }
-
-  const valueKeys = REVIEW_ROW_VALUE_KEYS[sectionKey] || [];
-  if (valueKeys.length && rowHasAnyValue(row, valueKeys)) {
-    return true;
-  }
-
-  return Object.entries(row).some(([key, value]) => !IGNORED_METADATA_KEYS.has(key) && isFilled(value));
+  return rowHasFacultyData(sectionKey, row);
 };
+
+export const isSectionEmpty = (sectionKey, rows, docs = null) => {
+  if (sectionKey === "acr") return false; // ACR is evaluator-only, never considered empty
+  const arr = Array.isArray(rows) ? rows : [];
+  if (arr.length === 0) return true;
+  return !arr.some(row => rowHasReviewableData(sectionKey, row, docs));
+};
+
+
 
 export const reviewRowMaxForSection = (sectionKey, row = {}, sectionMax = 0) =>
  sectionKey === "innovRows"
@@ -508,39 +540,87 @@ export const ATTACHMENT_REQUIREMENT_TEXT = "";
 
 export const isAllowedAttachmentFile = () => true;
 
-export const filesForDocValue = (value) =>
- (Array.isArray(value) ? value : value ? [value] : []).filter(Boolean);
+const docFileIdentity = (file) =>{
+ if (!file) return "";
+ if (typeof file === "string") return file.trim();
+ const url = file.url || file.file_url || file.fileUrl || file.document_url || file.documentUrl || file.path || file.location;
+ if (url) return String(url).trim();
+ return [file.name || file.file_name || file.fileName || "", file.size || "", file.type || file.file_type || file.fileType || ""].join("|");
+};
+
+export const filesForDocValue = (value) =>{
+ const seen = new Set();
+ return (Array.isArray(value) ? value : value ? [value] : []).filter((file) =>{
+ if (!file) return false;
+ const identity = docFileIdentity(file);
+ if (!identity) return true;
+ if (seen.has(identity)) return false;
+ seen.add(identity);
+ return true;
+ });
+};
 
 export const docsForRow = (docs = {}, docPrefix = "", index = 0, docKey) =>{
+ if (Array.isArray(docKey)) return filesForDocValue(docKey.flatMap((key) =>filesForDocValue(docs?.[key])));
  if (docKey) return filesForDocValue(docs?.[docKey]);
  if (!docPrefix) return [];
  return filesForDocValue(docs?.[`${docPrefix}-${index}`]);
 };
 
 const docPrefixForSectionLabel = (label = "") =>{
- const text = normalizedText(label);
- if (text.includes("lectures")) return "lec";
- if (text.includes("innovative")) return "innov";
- if (text.includes("project") && text.includes("external")) return "externalProject";
- if (text.includes("project") && (text.includes("internal") || text.includes("b4(b)"))) return "project2";
- if (text.includes("a(iv)") || text.includes("project guidance") || text === "projects") return "proj";
- if (text.includes("qualification")) return "qual";
- if (text.includes("department")) return "dept";
- if (text.includes("university")) return "uni";
- if (text.includes("society")) return "soc";
- if (text.includes("industry connect")) return "ind";
- if (text.includes("journal")) return "jour";
- if (text.includes("book")) return "book";
- if (text.includes("ict")) return "ict";
- if (text.includes("research guidance")) return "res";
- if (text.includes("patent") || text.includes("ipr")) return "pat";
- if (text.includes("award")) return "awd";
- if (text.includes("conference")) return "conf";
- if (text.includes("proposal")) return "prop";
- if (text.includes("product")) return "prod";
- if (text.includes("fdp") || text.includes("workshop")) return "fdp";
- if (text.includes("industrial training")) return "train";
- return "";
+  const text = normalizedText(label);
+  
+  // Direct section code matches
+  if (text.includes("a(i)") || text.includes("a1")) return "lec";
+  if (text.includes("a(ii)") || text.includes("a2") || text.includes("course file") || text.includes("coursefile")) return "courseFile";
+  if (text.includes("a(iii)") || text.includes("a3") || text.includes("innovative")) return "innov";
+  if (text.includes("a5") || text.includes("learning outcome") || text.includes("obe")) return "obe";
+  if (text.includes("a6") || text.includes("project guidance") || text.includes("student project")) return "proj";
+  if (text.includes("a7") || text.includes("mentoring")) return "mentor";
+  if (text.includes("a8") || text.includes("qualification") || text.includes("professional development")) return "qual";
+  if (text.includes("c1") || text.includes("administration at university") || text.includes("university level")) return "uni";
+  if (text.includes("c2") || text.includes("administration at school") || text.includes("school level")) return "dept";
+  if (text.includes("c3") || text.includes("event organisation") || text.includes("event organization")) return "event";
+  if (text.includes("c4") || text.includes("society") || text.includes("outreach")) return "soc";
+  if (text.includes("c5") || text.includes("industry interaction") || text.includes("industry connect")) return "ind";
+  if (text.includes("c6") || text.includes("alumni")) return "alumni";
+  if (text.includes("c7") || text.includes("placement")) return "placement";
+  if (text.includes("b1") || text.includes("journal")) return "jour";
+  if (text.includes("b2") || text.includes("book")) return "book";
+  if (text.includes("b3") || text.includes("patent") || text.includes("ipr")) return "pat";
+  if (text.includes("b4") || text.includes("funded research project")) return "project2";
+  if (text.includes("b5") || text.includes("research guidance")) return "res";
+  if (text.includes("b6") || text.includes("consultancy")) return "prop";
+  if (text.includes("b7") || (text.includes("conference") && text.includes("organised"))) return "conf";
+  if (text.includes("b8") && text.includes("industrial training")) return "train";
+  if (text.includes("b8") || (text.includes("conference") && text.includes("attended"))) return "fdp";
+  if (text.includes("b9") || text.includes("award")) return "awd";
+  if (text.includes("b10") || text.includes("product")) return "prod";
+  if (text.includes("b11") || text.includes("ict")) return "ict";
+
+  // Fallbacks
+  if (text.includes("lectures")) return "lec";
+  if (text.includes("innovative")) return "innov";
+  if (text.includes("project") && text.includes("external")) return "externalProject";
+  if (text.includes("project") && (text.includes("internal") || text.includes("b4(b)"))) return "project2";
+  if (text.includes("a(iv)") || text === "projects") return "proj";
+  if (text.includes("qualification")) return "qual";
+  if (text.includes("department")) return "dept";
+  if (text.includes("university")) return "uni";
+  if (text.includes("society")) return "soc";
+  if (text.includes("industry connect")) return "ind";
+  if (text.includes("journal")) return "jour";
+  if (text.includes("book")) return "book";
+  if (text.includes("ict")) return "ict";
+  if (text.includes("research guidance")) return "res";
+  if (text.includes("patent") || text.includes("ipr")) return "pat";
+  if (text.includes("award")) return "awd";
+  if (text.includes("conference")) return "conf";
+  if (text.includes("proposal")) return "prop";
+  if (text.includes("product")) return "prod";
+  if (text.includes("fdp") || text.includes("workshop")) return "fdp";
+  if (text.includes("industrial training")) return "train";
+  return "";
 };
 
 const isAverageScoredSectionLabel = () => false;
@@ -548,7 +628,7 @@ const isAverageScoredSectionLabel = () => false;
 export const validateCompleteRows = (sections = [], defaultDocs) =>{
  const errors = [];
 
- sections.forEach(({ label, rows = [], fields = [], skip = false, rowMax, maxScore, scoreField = "score", docs = defaultDocs, docPrefix, docKey, requireAttachment, isRowActive, fieldsForRow }) =>{
+ sections.forEach(({ label, rows = [], fields = [], skip = false, rowMax, maxScore, scoreField = "score", docs = defaultDocs, docPrefix, docKey, requireAttachment, isRowActive, fieldsForRow, capSectionTotal = false }) =>{
  if (skip) return;
  const labelText = normalizedText(label);
  const isB8Section = /^b8(?:\(|\.)/.test(labelText);
@@ -586,7 +666,7 @@ export const validateCompleteRows = (sections = [], defaultDocs) =>{
  }
  });
 
- if (maxScore && rows.length && !isB8Section) {
+ if (maxScore && rows.length && !isB8Section && !capSectionTotal) {
  const total = isAverageScoredSectionLabel(labelText)
  ? averageSectionScore(rows, maxScore, scoreField)
  : rows.reduce((sum, row, index) =>{

@@ -1,3 +1,5 @@
+import { standardReviewSummary } from "../../../../utils/reviewSummaryTotals";
+
 const numberValue = (value) => parseFloat(value) || 0;
 
 export const isLegacyTwoPartAcademicYear = (academicYear = "") =>
@@ -21,5 +23,9 @@ export const legacySubmittedTotals = (...sources) => {
   const partB = legacyFirstNumber(sources, ["partBTotal", "partB", "part_b_total", "part_b_score", "facultyPartB", "faculty_part_b", "selfPartB", "self_part_b"]);
   const grand = legacyFirstNumber(sources, ["grandTotal", "grand_total", "totalScore", "total_score", "total", "facultyTotal", "faculty_total", "selfTotal", "self_total"]);
   if (partA === null && partB === null && grand === null) return null;
-  return { partA, partB, grand };
+  // Also carry forward each reviewing authority's own stored totals (hodPartA/hodTotal,
+  // directorPartA/directorTotal, deanPartA/deanTotal, vcPartA/vcTotal, ...) so the report's
+  // "Total score given by each authority" reflects what that authority actually recorded,
+  // instead of the previous-year normalizer silently falling back to re-summing row data.
+  return { partA, partB, grand, ...standardReviewSummary(...sources) };
 };

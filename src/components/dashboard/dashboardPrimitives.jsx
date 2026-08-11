@@ -20,6 +20,7 @@ export function ScoreBar({ score, max, color = "#6366f1" }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const uploadedDocCount = (docs = {}, item = {}) => {
   const countKeys = new Set([
     "doc_count",
@@ -71,10 +72,10 @@ export const uploadedDocCount = (docs = {}, item = {}) => {
     const hasFileName = fileNameKeys.some((key) => String(src?.[key] ?? "").trim() !== "");
     return hasLocator || fileNameKeys.some((key) => isFileReference(src?.[key])) || (hasFileName && hasFileMimeType(src));
   };
-  const ignoredFileMetaKeys = new Set([...fileLocatorKeys, ...fileNameKeys, "type", "file_type", "fileType", "mime_type", "mimeType", "size", "lastModified"]);
+  const ignoredFileMetaKeys = new Set([...fileLocatorKeys, ...fileNameKeys, "type", "file_type", "fileType", "mime_type", "mimeType", "size", "file_size", "fileSize", "lastModified"]);
 
   const countFromSource = (src) => {
-    if (typeof src === "number") return src;
+    if (typeof src === "number") return 0;
     if (typeof src === "string") return isFileReference(src) ? 1 : 0;
     if (Array.isArray(src)) return src.reduce((total, entry) => total + countFromSource(entry), 0);
     if (!src || typeof src !== "object") return 0;
@@ -118,8 +119,9 @@ export const uploadedDocCount = (docs = {}, item = {}) => {
   const c6 = countFromSource(item?.payload?.docs);
   const c7 = countFromSource(item?.payload?.documents);
   const c8 = countFromSource(item?.payload?.appraisal_documents);
+  const actual = Math.max(c1, c2, c3, c4, c5, c6, c7, c8);
 
-  return Math.max(c1, c2, c3, c4, c5, c6, c7, c8, explicit);
+  return actual > 0 ? actual : explicit;
 };
 
 const metricText = (value) => {
@@ -370,6 +372,19 @@ export function StatusBadge({ status = "Pending Review" }) {
 }
 
 export function LogoutConfirmModal({ onCancel, onConfirm, portalName = "the portal", confirmLabel = "Yes, Logout" }) {
+  const logoutConfirmButtonStyle = {
+    flex: 1,
+    minHeight: 44,
+    border: "1px solid #b91c1c",
+    borderRadius: 10,
+    background: "#dc2626",
+    color: "#ffffff",
+    padding: "10px",
+    fontWeight: 900,
+    cursor: "pointer",
+    fontFamily: "inherit",
+  };
+
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)", zIndex: 1000, display: "grid", placeItems: "center" }} onClick={onCancel}>
       <div style={{ width: "min(380px, 92vw)", background: "#fff", borderRadius: 12, padding: "26px 28px", boxShadow: "0 20px 60px rgba(0,0,0,0.25)", fontFamily: "inherit" }} onClick={(event) => event.stopPropagation()}>
@@ -377,7 +392,7 @@ export function LogoutConfirmModal({ onCancel, onConfirm, portalName = "the port
         <div style={{ color: "#64748b", fontSize: 12, lineHeight: 1.6, marginBottom: 18 }}>You are about to leave {portalName}. Any unsaved edits will be lost.</div>
         <div style={{ display: "flex", gap: 10 }}>
           <button type="button" onClick={onCancel} style={{ flex: 1, border: "none", borderRadius: 8, background: "#f1f5f9", color: "#475569", padding: "10px", fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
-          <button type="button" onClick={onConfirm} style={{ flex: 1, border: "none", borderRadius: 8, background: "#dc2626", color: "#fff", padding: "10px", fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}>{confirmLabel}</button>
+          <button type="button" onClick={onConfirm} style={logoutConfirmButtonStyle}>{confirmLabel}</button>
         </div>
       </div>
     </div>

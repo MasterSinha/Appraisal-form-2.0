@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { APP_INFO } from "../constants/formConfig";
+import { clearUserSession } from "../auth/session";
 import { resetPassword } from "../services/authService";
 import { passwordRequirements } from "../utils/validation";
 
@@ -48,7 +49,7 @@ export default function ResetPassword() {
 
     try {
       await resetPassword(token, password);
-      sessionStorage.clear();
+      clearUserSession();
       setMessage("Password updated successfully. Redirecting to login...");
       setTimeout(() => navigate("/login", { replace: true }), 1200);
     } catch (err) {

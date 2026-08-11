@@ -4,7 +4,7 @@ import {
   isNonTeachingRole,
   normalizeNonTeachingRole,
 } from "../constants/nonTeachingHierarchy";
-import { profileFromsessionStorage } from "../utils/hierarchy";
+import { profileFromsessionStorage, roleLabel } from "../utils/hierarchy";
 import { clampScore } from "../utils/appraisalFormUtils";
 import {
   WORKFLOW_STATUSES,
@@ -12,6 +12,7 @@ import {
   workflowSourceFrom,
 } from "../utils/workflow";
 import { api } from "./api";
+import { PRINT_REPORT_CSS, safeHtml, isFilledValue } from "../utils/fullFormReport";
 
 export const NON_TEACHING_STATUS = {
   DRAFT: "Draft",
@@ -809,9 +810,14 @@ export const loadNonTeachingAppraisal = async ({
       params: { academic_year: ay },
     });
     if (!data) return null;
+    const form = normalizeNonTeachingForm(
+      { ...(data.payload || {}), status: firstNonEmpty(data.status, data.payload?.status) },
+      { ...profile, ...data },
+      role,
+    );
     return {
       ...data,
-      form: normalizeNonTeachingForm(data.payload, { ...profile, ...data }, role),
+      form,
     };
   } catch {
     return null;
@@ -1108,16 +1114,17 @@ export const submitNonTeachingReview = async ({
   const staffEmail = emailKey(item?.email || finalForm.info.email);
   const ay = academicYear(item?.academicYear || finalForm.info.ay);
   const rejected = decision === "rejected";
+  const rejectedStatus = `${roleLabel(role)} Rejected`;
   const requestPayload = {
     academic_year: ay,
     total_score: calculateNonTeachingTotals(finalForm, authority).total,
-    payload: finalForm,
+    payload: rejected ? { ...finalForm, status: rejectedStatus } : finalForm,
     remarks,
     ...(rejected
       ? {
           decision: "rejected",
           action: "reject",
-          status: `${roleLabel(role)} Rejected`,
+          status: rejectedStatus,
           rejection_reason: remarks,
         }
       : {}),
@@ -1140,30 +1147,53 @@ export const submitNonTeachingReview = async ({
   });
 };
 
-const escapeHtml = (value) =>
-  clean(value)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-
 const ratingLabel = (value) => {
   const match = RATING_SCALE.find((rating) => rating.value === n(value));
   return match ? `${value} - ${match.label}` : value || "";
 };
 
-const summaryOtherInfoBlock = (value) =>
-  clean(value)
-    ? `<h2>Any other information not covered above</h2><div class="box">${escapeHtml(value)}</div>`
-    : "";
+const NON_TEACHING_PRINT_SCRIPT = `<script>
+window.addEventListener('load', function(){
+  const images = Array.from(document.images || []);
+  Promise.all(images.map(function(img){
+    if (img.complete) return Promise.resolve();
+    return new Promise(function(resolve){
+      img.onload = resolve;
+      img.onerror = resolve;
+      setTimeout(resolve, 800);
+    });
+  })).then(function(){
+    setTimeout(function(){ window.focus(); window.print(); }, 120);
+  });
+});
+</script>`;
 
-export const openNonTeachingReport = ({
+export const openNonTeachingReport = async ({
   item = {},
   form = item.form,
   generatedBy = localStorage.getItem("name") || "Authority",
   visibleRoles = ["self", "ro", "registrar", "vc"],
   includePartB = true,
 } = {}) => {
+  const reportWindow = window.open("", "_blank", "width=1000,height=800");
+  if (!reportWindow) {
+    alert("Please allow popups to generate the report.");
+    return;
+  }
+
+  let logoSrc = `${window.location.origin}/image.png`;
+  try {
+    const res = await fetch(logoSrc);
+    const blob = await res.blob();
+    logoSrc = await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    /* use URL fallback */
+  }
+
   const reportForm = normalizeNonTeachingForm(
     form || item.form,
     item,
@@ -1224,36 +1254,41 @@ export const openNonTeachingReport = ({
     (reportForm.docs?.[key] || [])
       .map(
         (file) =>
-          `<a href="${escapeHtml(file.url)}" target="_blank">${escapeHtml(file.name || file.url)}</a>`,
+          `<a href="${safeHtml(file.url)}" target="_blank" rel="noreferrer">${safeHtml(file.name || file.url)}</a>`,
       )
-      .join("<br>") || "";
+      .join("<br/>") || "&nbsp;";
 
   const partARows = SELF_ITEMS.map(
-    ({ key, label, max }) => `
+    ({ key, label, max }, index) => `
     <tr>
-      <td>${escapeHtml(label)}</td>
-      <td>${escapeHtml(reportForm[key]?.text)}</td>
+      <td class="c">${index + 1}</td>
+      <td>${safeHtml(label)}</td>
+      <td>${isFilledValue(reportForm[key]?.text) ? safeHtml(reportForm[key].text) : "&nbsp;"}</td>
       <td>${docsFor(key)}</td>
-      <td>${max}</td>
-      ${reportRoles.map((role) => `<td>${escapeHtml(reportColumns[role].partA(key))}</td>`).join("")}
+      <td class="c">${max}</td>
+      ${reportRoles.map((role) => `<td class="c">${isFilledValue(reportColumns[role].partA(key)) ? safeHtml(String(reportColumns[role].partA(key))) : "&nbsp;"}</td>`).join("")}
     </tr>
   `,
   ).join("");
 
   const partBRows = RATING_SECTIONS.map(
     (section) => `
-    <h3>${escapeHtml(section.title)} (Max ${section.max})</h3>
+    <h3>${safeHtml(section.title)} <span>(Max ${section.max})</span></h3>
     <table>
       <thead>
-        <tr><th>Parameter</th>${partBRoles.map((role) => `<th>${escapeHtml(reportColumns[role].label)}</th>`).join("")}</tr>
+        <tr><th>SN</th><th>Parameter</th>${partBRoles.map((role) => `<th>${safeHtml(reportColumns[role].label)}</th>`).join("")}</tr>
       </thead>
       <tbody>
         ${section.params
           .map((param, index) => {
             const row = reportForm.partB?.[section.key] || {};
             return `<tr>
-            <td>${escapeHtml(param)}</td>
-            ${partBRoles.map((role) => `<td>${escapeHtml(ratingLabel(reportColumns[role].partB(row, index)))}</td>`).join("")}
+            <td class="c">${index + 1}</td>
+            <td>${safeHtml(param)}</td>
+            ${partBRoles.map((role) => {
+              const value = reportColumns[role].partB(row, index);
+              return `<td class="c">${isFilledValue(value) ? safeHtml(ratingLabel(value)) : "&nbsp;"}</td>`;
+            }).join("")}
           </tr>`;
           })
           .join("")}
@@ -1262,87 +1297,157 @@ export const openNonTeachingReport = ({
   `,
   ).join("");
 
-  const reportWindow = window.open("", "_blank", "width=1100,height=800");
-  if (!reportWindow) return;
+  const academicYear = reportForm.info?.ay || item.academicYear || "";
+  const summaryTable = `
+    <h3 style="text-align:center;font-size:13px">SUMMARY${academicYear ? ` - AY ${safeHtml(academicYear)}` : ""}</h3>
+    <table class="st">
+      <thead>
+        <tr>
+          <th>Section</th>
+          <th style="width:14%">Maximum</th>
+          ${reportRoles.map((role) => `<th>${safeHtml(reportColumns[role].label)} Score</th>`).join("")}
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Part A - Self Appraisal</td>
+          <td class="c">${NON_TEACHING_MAX.partA}</td>
+          ${reportRoles.map((role) => `<td class="c">${role === "self" ? totals.self.partA.toFixed(1) : totals[role].partA.toFixed(1)}</td>`).join("")}
+        </tr>
+        ${includePartB && partBRoles.length ? `
+        <tr>
+          <td>Part B - Authority Ratings</td>
+          <td class="c">${NON_TEACHING_MAX.partB}</td>
+          ${reportRoles.map((role) => `<td class="c">${role === "self" ? "&nbsp;" : totals[role].partB.toFixed(1)}</td>`).join("")}
+        </tr>` : ""}
+        <tr class="tr">
+          <td>Grand Total</td>
+          <td class="c">&nbsp;</td>
+          ${reportRoles.map((role) => `<td class="c">${reportColumns[role].total.toFixed(1)} / ${maxForRole(role)}</td>`).join("")}
+        </tr>
+        <tr><td class="c">Status</td><td colspan="${1 + reportRoles.length}">${safeHtml(reportForm.status || item.status)}</td></tr>
+      </tbody>
+    </table>`;
 
-  reportWindow.document.write(`
-    <html>
-      <head>
-        <title>Non-Teaching Appraisal Report</title>
-        <style>
-          body { font-family: Georgia, serif; color: #0f172a; padding: 28px; }
-          h1 { margin: 0 0 4px; font-size: 24px; }
-          h2 { margin: 22px 0 8px; font-size: 16px; color: #1d4ed8; }
-          h3 { margin: 18px 0 8px; font-size: 14px; color: #155e75; }
-          .muted { color: #64748b; font-size: 12px; }
-          .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px 18px; margin: 18px 0; }
-          .box { border: 1px solid #e2e8f0; padding: 8px 10px; border-radius: 6px; }
-          .label { color: #64748b; font-size: 10px; text-transform: uppercase; font-weight: 700; }
-          table { width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 12px; }
-          th, td { border: 1px solid #cbd5e1; padding: 6px 8px; vertical-align: top; }
-          th { background: #0f172a; color: #e2e8f0; text-align: left; }
-          .totals { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 14px 0; }
-          .total { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; }
-          .score { font-size: 18px; font-weight: 800; color: #1d4ed8; }
-          .report-header { position: relative; }
-          .report-logo { position: absolute; top: 0; right: 0; width: 64px; max-height: 52px; object-fit: contain; }
-          .print-action { position: fixed; top: 12px; left: 12px; padding: 8px 14px; }
-          @media print { button { display: none; } body { padding: 10px; } }
-        </style>
-      </head>
-      <body>
-        <button class="print-action" onclick="window.print()">Print</button>
-        <header class="report-header">
-          <img class="report-logo" src="${window.location.origin}/dypiu.jpeg" alt="DYPIU Logo" />
-          <h1>Non-Teaching Staff Appraisal Report</h1>
-          <div class="muted">${escapeHtml(APP_INFO.UNIVERSITY_NAME)} | Academic Year ${escapeHtml(reportForm.info?.ay || item.academicYear)}</div>
-        </header>
+  const remarksBlock = reportRoles
+    .map((role) => `
+      <h3>${safeHtml(reportColumns[role].remarksLabel)}</h3>
+      <div class="remarks">${isFilledValue(reportColumns[role].remarks) ? safeHtml(reportColumns[role].remarks) : "No remarks provided."}</div>
+    `)
+    .join("");
 
-        <div class="grid">
-          ${[
-            ["Name", reportForm.info?.name || item.name],
-            ["Employee ID", reportForm.info?.employeeId || item.employeeId],
-            [
-              "Role",
-              nonTeachingRoleLabel(
-                item.appraisalRole || reportForm.submittedByRole,
-              ),
-            ],
-            ["Designation", reportForm.info?.designation || item.designation],
-            ["Department", reportForm.info?.department || item.department],
-            ["Status", reportForm.status || item.status],
-          ]
-            .map(
-              ([label, value]) =>
-                `<div class="box"><div class="label">${label}</div><div>${escapeHtml(value)}</div></div>`,
-            )
-            .join("")}
-        </div>
+  const summaryOtherInfoBlock = `
+    <h3>Any other information not covered above</h3>
+    <div class="remarks">${isFilledValue(reportForm.summaryOtherInfo) ? safeHtml(reportForm.summaryOtherInfo) : "No additional information provided."}</div>
+  `;
 
-        <div class="totals" style="grid-template-columns: repeat(${reportRoles.length}, 1fr);">
-          ${reportRoles.map((role) => `<div class="total"><div class="label">${escapeHtml(reportColumns[role].label)}</div><div class="score">${reportColumns[role].total.toFixed(1)} / ${maxForRole(role)}</div></div>`).join("")}
-        </div>
+  const declarationName = reportForm.info?.name || item.name || "";
+  const submissionDate = item.submittedOn
+    ? safeHtml(item.submittedOn)
+    : "&nbsp;";
+  const reviewerRows = partBRoles
+    .map(
+      (role) => `
+    <tr>
+      <td style="width:30%"><strong>${safeHtml(reportColumns[role].label)}</strong></td>
+      <td style="width:40%;border-bottom:1px solid #000">&nbsp;</td>
+      <td style="width:15%;border-bottom:1px solid #000">&nbsp;</td>
+      <td style="width:15%;border-bottom:1px solid #000">&nbsp;</td>
+    </tr>`,
+    )
+    .join("");
+  const declarationBlock = `
+    <h3 style="text-align:center;font-size:16px;background:#d9d9d9;padding:8px;margin-top:18px">DECLARATION BY STAFF</h3>
+    <table class="declaration-table" style="border:none;margin-bottom:14px">
+      <tr>
+        <td style="border:none;vertical-align:top;width:36px;font-size:22px">&#10003;</td>
+        <td style="border:none;line-height:1.75;font-size:13px">
+          I, <strong>${safeHtml(declarationName) || "________________________"}</strong>, hereby declare that all the
+          information furnished in this Self-Appraisal Report is true, complete, and correct to the best of my
+          knowledge and belief. I understand that in the event of any information being found false or incorrect,
+          I shall be solely responsible for the consequences thereof and shall be liable for any disciplinary
+          action as deemed fit by the University authorities.
+        </td>
+      </tr>
+    </table>
+    <table class="declaration-table" style="border:none;margin-bottom:20px">
+      <tr>
+        <td style="border:none;width:50%;font-size:12px;line-height:1.45">
+          <div style="border-bottom:1px solid #000;min-height:36px;margin-bottom:4px">&nbsp;</div>
+          <div><strong>Signature of Staff</strong></div>
+          <div style="margin-top:6px"><strong>Name:</strong> ${safeHtml(declarationName) || "&nbsp;"}</div>
+          <div style="margin-top:4px"><strong>Date of Submission:</strong> ${submissionDate}</div>
+        </td>
+        <td style="border:none;width:50%">&nbsp;</td>
+      </tr>
+    </table>
+    ${partBRoles.length ? `
+    <h3 style="text-align:center;font-size:13px;background:#d9d9d9;padding:4px">REVIEWERS' ACKNOWLEDGEMENT</h3>
+    <p style="font-size:10px;margin:4px 0 10px">The following authorities acknowledge that they have reviewed the details submitted and confirm the accuracy of scores assigned.</p>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:30%">Reviewer Role</th>
+          <th style="width:40%">Name &amp; Signature</th>
+          <th style="width:15%">Date</th>
+          <th style="width:15%">Stamp</th>
+        </tr>
+      </thead>
+      <tbody>${reviewerRows}</tbody>
+    </table>` : ""}`;
 
-        <h2>Part A - Self Appraisal</h2>
-        <table>
-          <thead>
-            <tr><th>Particular</th><th>Description</th><th>Documents</th><th>Max</th>${reportRoles.map((role) => `<th>${escapeHtml(reportColumns[role].label)}</th>`).join("")}</tr>
-          </thead>
-          <tbody>${partARows}</tbody>
-        </table>
+  const html = `<!doctype html>
+<html>
+<head>
+  <title>Non-Teaching Staff Appraisal Report</title>
+  <style>
+${PRINT_REPORT_CSS}
+  </style>
+</head>
+<body>
+  <table class="ht"><tr>
+    <td style="width:20%;text-align:left"><img class="logo" src="${logoSrc}" alt="DYPIU"/></td>
+    <td style="text-align:center">
+      <h1>${safeHtml(APP_INFO.UNIVERSITY_NAME)}</h1>
+      <h2>Non-Teaching Staff Appraisal Report</h2>
+      ${academicYear ? `<h2>Academic Year ${safeHtml(academicYear)}</h2>` : ""}
+    </td>
+    <td style="width:20%"></td>
+  </tr></table>
 
-        ${includePartB && partBRoles.length ? `<h2>Part B - Authority Ratings</h2>${partBRows}` : ""}
+  <table>
+    <tr><td class="b" style="width:35%">Name</td><td>${safeHtml(reportForm.info?.name || item.name)}</td></tr>
+    <tr><td class="b">Employee ID</td><td>${safeHtml(reportForm.info?.employeeId || item.employeeId)}</td></tr>
+    <tr><td class="b">Designation</td><td>${safeHtml(reportForm.info?.designation || item.designation)}</td></tr>
+    <tr><td class="b">Department / Office</td><td>${safeHtml(reportForm.info?.department || item.department)}</td></tr>
+    <tr><td class="b">Role</td><td>${safeHtml(nonTeachingRoleLabel(item.appraisalRole || reportForm.submittedByRole))}</td></tr>
+    <tr><td class="b">Academic Year</td><td>${safeHtml(academicYear)}</td></tr>
+    <tr><td class="b">Generated On</td><td>${safeHtml(new Date().toLocaleString())}</td></tr>
+    <tr><td class="b">Generated By</td><td>${safeHtml(generatedBy)}</td></tr>
+  </table>
 
-        ${summaryOtherInfoBlock(reportForm.summaryOtherInfo)}
-        <h2>Remarks</h2>
-        <table>
-          <tbody>
-            ${reportRoles.map((role) => `<tr><th>${escapeHtml(reportColumns[role].remarksLabel)}</th><td>${escapeHtml(reportColumns[role].remarks)}</td></tr>`).join("")}
-          </tbody>
-        </table>
-        <div class="muted">Generated by ${escapeHtml(generatedBy)} on ${new Date().toLocaleString()}</div>
-      </body>
-    </html>
-  `);
+  <h3 style="background:#d9d9d9;padding:4px;text-align:center;font-size:13px">PART A - SELF APPRAISAL DETAILS</h3>
+  <table>
+    <thead>
+      <tr><th>SN</th><th>Particular</th><th>Description</th><th>Documents</th><th>Max</th>${reportRoles.map((role) => `<th>${safeHtml(reportColumns[role].label)}</th>`).join("")}</tr>
+    </thead>
+    <tbody>${partARows}</tbody>
+  </table>
+
+  ${includePartB && partBRoles.length ? `
+  <div class="page-break"></div>
+  <h3 style="background:#d9d9d9;padding:4px;text-align:center;font-size:13px">PART B - AUTHORITY RATINGS</h3>
+  ${partBRows}` : ""}
+
+  <div class="page-break"></div>
+  ${summaryTable}
+  ${remarksBlock ? `<h3 style="background:#d9d9d9;padding:4px;text-align:center;font-size:13px">REMARKS</h3>${remarksBlock}` : ""}
+  ${summaryOtherInfoBlock}
+  ${declarationBlock}
+${NON_TEACHING_PRINT_SCRIPT}
+</body>
+</html>`;
+
+  reportWindow.document.write(html);
   reportWindow.document.close();
 };

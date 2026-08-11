@@ -12,6 +12,43 @@ const numericFrom = (sources, keys, fallback = 0) => {
   return value === undefined ? n(fallback) : n(value);
 };
 
+const clampScore = (value, maxScore) => {
+  const max = n(maxScore);
+  const score = Math.max(0, n(value));
+  return max > 0 ? Math.min(score, max) : score;
+};
+
+const arrayValueFrom = (source = {}, keys = []) => {
+  for (const key of keys) {
+    const value = parseMaybeJson(source?.[key]);
+    if (Array.isArray(value)) return value;
+  }
+  return null;
+};
+
+const rowScoreValue = (row = {}) =>
+  firstPresent(
+    row.score,
+    row.selfScore,
+    row.self_score,
+    row.facultyScore,
+    row.faculty_score,
+  );
+
+const rowMaxValue = (row = {}, fallbackMax = 0) =>
+  n(firstPresent(row.max, row.maxScore, row.max_score, row.maximum, row.maximum_score)) || fallbackMax;
+
+const scoreRowsFromSources = (sources, keys, sectionMax, rowMax = sectionMax) =>
+  sources.reduce((bestScore, source) => {
+    const rows = arrayValueFrom(source, keys);
+    if (!rows) return bestScore;
+    const sectionScore = clampScore(
+      rows.reduce((total, row) => total + clampScore(rowScoreValue(row), rowMaxValue(row, rowMax)), 0),
+      sectionMax,
+    );
+    return Math.max(bestScore, sectionScore);
+  }, 0);
+
 const effectiveMaxFromApplicability = (baseMax) => n(baseMax);
 const CURRENT_FORM_MAX = {
   partA: 150,
@@ -31,6 +68,18 @@ const parseMaybeJson = (value) => {
     return value;
   }
 };
+
+const partCScoreFromRows = (sources, partCMax) =>
+  clampScore(
+    scoreRowsFromSources(sources, ["uniActs", "university_activities", "universityActivities", "uni_acts"], 50) +
+    scoreRowsFromSources(sources, ["deptActs", "departmental_activities", "departmentalActivities", "department_activities", "departmentActivities", "dept_acts"], 30) +
+    scoreRowsFromSources(sources, ["eventRows", "events", "event_rows", "eventOrganisation", "event_organisation"], 20) +
+    scoreRowsFromSources(sources, ["society", "social_contributions", "socialContributions", "contribution_to_society", "contributionToSociety"], 20, 5) +
+    scoreRowsFromSources(sources, ["industry", "industry_connect", "industryConnect"], 8) +
+    scoreRowsFromSources(sources, ["alumniRows", "alumni", "alumni_rows"], 10) +
+    scoreRowsFromSources(sources, ["placementRows", "placements", "placement_rows"], 20),
+    partCMax,
+  );
 
 const normalizeReviewRole = (value) => {
   const role = clean(value).toLowerCase().replace(/[-\s]+/g, "_");
@@ -215,6 +264,14 @@ export const standardSubmittedScoreSummary = (subject = {}, fallback = {}) => {
   const inferredPartDMax = n(fallback.partDMax ?? fallback.effectivePartDMax) ||
     effectiveMaxFromApplicability(CURRENT_FORM_MAX.partD);
 
+  const getSessionRole = () => {
+    if (typeof sessionStorage !== "undefined" && sessionStorage) {
+      return sessionStorage.getItem("role");
+    }
+    return null;
+  };
+  const isFacultyUser = getSessionRole() === "faculty";
+
   const storedPartAMax = numericFrom(sources, [
     "partAMax", "part_a_max", "effectivePartAMax", "effective_part_a_max", "maxPartA", "faculty_part_a_max",
   ], inferredPartAMax);
@@ -230,11 +287,13 @@ export const standardSubmittedScoreSummary = (subject = {}, fallback = {}) => {
   const partDMax = numericFrom(sources, [
     "partDMax", "part_d_max", "effectivePartDMax", "effective_part_d_max", "maxPartD", "faculty_part_d_max",
   ], inferredPartDMax);
-  const cappedPartDMax = Math.min(partDMax || inferredPartDMax, CURRENT_FORM_MAX.partD);
+  const cappedPartDMax = isFacultyUser ? 0 : Math.min(partDMax || inferredPartDMax, CURRENT_FORM_MAX.partD);
   const grandMax = numericFrom(sources, [
     "grandMax", "grand_max", "effectiveGrandMax", "effective_grand_max", "maxGrand", "totalMax", "faculty_total_max",
   ], partAMax + cappedPartBMax + cappedPartCMax + cappedPartDMax);
-  const cappedGrandMax = Math.min(grandMax || CURRENT_FORM_MAX.grand, CURRENT_FORM_MAX.grand);
+  const cappedGrandMax = isFacultyUser
+    ? (partAMax + cappedPartBMax + cappedPartCMax)
+    : Math.min(grandMax || CURRENT_FORM_MAX.grand, CURRENT_FORM_MAX.grand);
 
   const rawPartA = numericFrom(sources, [
     "partATotal", "partA", "part_a_total", "part_a_score", "selfPartA", "self_part_a",
@@ -250,17 +309,19 @@ export const standardSubmittedScoreSummary = (subject = {}, fallback = {}) => {
     "partCTotal", "partC", "part_c_total", "part_c_score", "selfPartC", "self_part_c",
     "facultyPartC", "faculty_part_c", "facultyPartCScore", "faculty_part_c_score",
   ], fallback.partC);
-  const partC = Math.min(rawPartC, cappedPartCMax);
+  const inferredPartCFromRows = partCScoreFromRows(sources, cappedPartCMax);
+  const partC = Math.min(Math.max(rawPartC, inferredPartCFromRows), cappedPartCMax);
   const rawPartD = numericFrom(sources, [
     "partDTotal", "partD", "part_d_total", "part_d_score", "selfPartD", "self_part_d",
     "facultyPartD", "faculty_part_d", "facultyPartDScore", "faculty_part_d_score",
   ], fallback.partD);
-  const partD = Math.min(rawPartD, cappedPartDMax);
+  const partD = isFacultyUser ? 0 : Math.min(rawPartD, cappedPartDMax);
+  const computedTotal = partA + partB + partC + partD;
   const rawTotal = numericFrom(sources, [
     "grandTotal", "grand_total", "totalScore", "total_score", "total", "selfTotal",
     "self_total", "facultyTotal", "faculty_total", "facultyScore", "faculty_score",
-  ], fallback.total ?? partA + partB + partC + partD);
-  const total = Math.min(rawTotal, partA + partB + partC + partD, cappedGrandMax);
+  ], fallback.total ?? computedTotal);
+  const total = Math.min(computedTotal > 0 ? computedTotal : rawTotal, cappedGrandMax);
 
   return { partA, partB, partC, partD, total, partAMax, partBMax: cappedPartBMax, partCMax: cappedPartCMax, partDMax: cappedPartDMax, grandMax: cappedGrandMax };
 };

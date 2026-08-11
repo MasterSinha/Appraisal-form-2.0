@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState, useEffect } from "react";
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import ProtectedRoute from "./auth/ProtectedRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { getActiveAcademicYear, getSessionItem, normalizeRole, setActiveAcademicYear, storeUserSession } from "./auth/session";
@@ -221,55 +221,53 @@ export default function App() {
   }, []);
 
   return (
-    <BrowserRouter>
-      <ErrorBoundary>
-        <Suspense fallback={<PageLoader />}>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
+    <ErrorBoundary>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
 
-            <Route
-              path="/profile"
-              element={
-                <ProtectedRoute>
-                  <ProfileLoader />
-                </ProtectedRoute>
-              }
-            />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <ProfileLoader />
+              </ProtectedRoute>
+            }
+          />
 
-            <Route
-              path="/edit-profile"
-              element={
-                <ProtectedRoute>
-                  <EditProfile />
-                </ProtectedRoute>
-              }
-            />
+          <Route
+            path="/edit-profile"
+            element={
+              <ProtectedRoute>
+                <EditProfile />
+              </ProtectedRoute>
+            }
+          />
 
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <RoleDashboard />
-                </ProtectedRoute>
-              }
-            />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <RoleDashboard />
+              </ProtectedRoute>
+            }
+          />
 
-            <Route path="/hod-dashboard" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/dean-dashboard" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/director-dashboard" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/vc-dashboard" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/hoddashboard" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/deandashboard" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/directordashboard" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/vcdashboard" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/hod-dashboard" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/dean-dashboard" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/director-dashboard" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/vc-dashboard" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/hoddashboard" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/deandashboard" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/directordashboard" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/vcdashboard" element={<Navigate to="/dashboard" replace />} />
 
-            <Route path="/" element={<Navigate to="/login" />} />
-            <Route path="*" element={<Navigate to="/login" />} />
-          </Routes>
-        </Suspense>
-      </ErrorBoundary>
-    </BrowserRouter>
+          <Route path="/" element={<Navigate to="/login" />} />
+          <Route path="*" element={<Navigate to="/login" />} />
+        </Routes>
+      </Suspense>
+    </ErrorBoundary>
   );
 }

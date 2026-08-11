@@ -122,7 +122,10 @@ const rowHasData = (row = {}, section = {}) => {
 };
 
 const normalizeSection = (form, section) => {
-  const rows = sectionRows(form, section).filter((row) => rowHasData(row, section));
+  const rows = sectionRows(form, section)
+    .map((row, originalIndex) => ({ row, originalIndex }))
+    .filter(({ row }) => rowHasData(row, section))
+    .map(({ row, originalIndex }) => ({ ...row, __rowNo: originalIndex + 1 }));
   const scoreTotal = rows.reduce((total, row) => total + previousYearNumber(previousYearScore(row, "faculty")), 0);
   return {
     ...section,
@@ -160,6 +163,14 @@ const readTotal = (totals = {}, aliases = []) => {
   return String(value ?? "").trim() === "" ? null : previousYearNumber(value);
 };
 
+const readTotalFromSources = (sources = [], aliases = []) => {
+  for (const source of sources) {
+    const value = readTotal(source, aliases);
+    if (value !== null) return value;
+  }
+  return null;
+};
+
 const normalizeDocFile = (file) => {
   if (!file) return null;
   if (typeof file === "string") return { fileName: file.split("/").pop() || "Document", fileUrl: getFileUrl(file), fileType: "", academicYear: "" };
@@ -172,6 +183,17 @@ const normalizeDocFile = (file) => {
     itemTitle: firstPresent(file.itemTitle, file.item_title, file.title, file.row_title),
   };
 };
+
+// 2025-2026 (and its equivalent spellings) used a two-part appraisal structure (Part A + Part
+// B only, no Part C/D) that no longer exists in the live app. For those years the section/max
+// configuration below is a best-effort reconstruction, so the reviewing authority's own
+// submitted total is the authoritative record of what was actually approved that year -
+// prefer it over a row-by-row recomputation, matching how reviewer totals (hod/director/dean/
+// vc) are already preferred from stored values in reviewerTotals() below.
+const isLegacyTwoPartAcademicYear = (academicYear = "") =>
+  String(academicYear).replace(/\s+/g, "") === "2025-2026" ||
+  String(academicYear).replace(/\s+/g, "") === "2025-26" ||
+  String(academicYear).replace(/\s+/g, "") === "25-26";
 
 const escapeRegExp = (value = "") => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -226,36 +248,81 @@ export const normalizePreviousYearReport = ({
   const fetchedForm = responseForm(response);
   const form = formHasOldRows(fetchedForm) ? fetchedForm : formOverride || fetchedForm;
   const totals = responseTotals(response);
+  const unwrappedResponse = unwrapResponse(response);
+  const totalSources = [
+    totals,
+    form?.totals,
+    form?.summary,
+    form,
+    unwrappedResponse?.payload?.totals,
+    unwrappedResponse?.payload?.summary,
+    unwrappedResponse?.payload,
+    unwrappedResponse?.data?.payload?.totals,
+    unwrappedResponse?.data?.payload?.summary,
+    unwrappedResponse?.data?.payload,
+    unwrappedResponse?.data,
+    unwrappedResponse,
+  ].filter((source) => source && typeof source === "object");
   const profile = mergeProfiles(profileOverride, form?.info, responseProfile(response, form));
   const docs = responseDocs(response, docsOverride);
-  const resolvedAcademicYear = academicYear || form?.info?.ay || unwrapResponse(response)?.academic_year || unwrapResponse(response)?.academicYear || "";
+  const resolvedAcademicYear = academicYear || form?.info?.ay || unwrappedResponse?.academic_year || unwrappedResponse?.academicYear || "";
+  const effectivePartAMax = readTotalFromSources(totalSources, ["effectivePartAMax", "effective_part_a_max", "partAMax", "part_a_max", "maxPartA", "max_part_a", "facultyPartAMax", "faculty_part_a_max", "totalPartAMax", "total_part_a_max"]) ?? partAMax;
+  const effectivePartBMax = readTotalFromSources(totalSources, ["effectivePartBMax", "effective_part_b_max", "partBMax", "part_b_max", "maxPartB", "max_part_b", "facultyPartBMax", "faculty_part_b_max", "totalPartBMax", "total_part_b_max"]) ?? partBMax;
+  const effectiveGrandMax = readTotalFromSources(totalSources, ["effectiveGrandMax", "effective_grand_max", "grandMax", "grand_max", "maxGrand", "max_grand", "totalMax", "total_max", "facultyTotalMax", "faculty_total_max", "grandTotalMax", "grand_total_max"]) ?? grandMax;
   const normalizedPartA = attachSectionDocs(partASections.map((section) => normalizeSection(form, section)), docs, resolvedAcademicYear, "A", formType);
   const normalizedPartB = attachSectionDocs(partBSections.map((section) => normalizeSection(form, section)), docs, resolvedAcademicYear, "B", formType);
-  const partAFaculty = groupedTotal(normalizedPartA, "faculty", partAMax);
-  const partBFaculty = groupedTotal(normalizedPartB, "faculty", partBMax);
-  const storedGrand = readTotal(totals, ["grandTotal", "grand_total", "totalScore", "total_score", "total"]);
-  const storedGrandMax = readTotal(totals, ["effectiveGrandMax", "effective_grand_max", "grandMax", "grand_max", "max"]);
-  const displayPartA = readTotal(totals, ["partATotal", "part_a_total", "partA", "part_a_score"]) ?? partAFaculty;
-  const displayPartB = readTotal(totals, ["partBTotal", "part_b_total", "partB", "part_b_score"]) ?? partBFaculty;
+  const partAFaculty = groupedTotal(normalizedPartA, "faculty", effectivePartAMax);
+  const partBFaculty = groupedTotal(normalizedPartB, "faculty", effectivePartBMax);
+  const partAHasFacultyScores = normalizedPartA.some((section) =>
+    section.rows.some((row) => String(previousYearScore(row, "faculty")).trim() !== "")
+  );
+  const partBHasFacultyScores = normalizedPartB.some((section) =>
+    section.rows.some((row) => String(previousYearScore(row, "faculty")).trim() !== "")
+  );
+  const storedGrand = readTotalFromSources(totalSources, ["grandTotal", "grand_total", "totalScore", "total_score", "total", "facultyTotal", "faculty_total"]);
+  const storedPartA = readTotalFromSources(totalSources, ["partATotal", "part_a_total", "totalPartA", "total_part_a", "partA", "part_a_score", "facultyPartA", "faculty_part_a", "faculty_part_a_total"]);
+  const storedPartB = readTotalFromSources(totalSources, ["partBTotal", "part_b_total", "totalPartB", "total_part_b", "partB", "part_b_score", "facultyPartB", "faculty_part_b", "faculty_part_b_total"]);
+  // Prefer the total freshly computed from this report's own rows over a stored total whenever
+  // there's actual row data to compute from — a stored generic total may have been calculated
+  // against a different (e.g. current-year) section/max configuration and can be stale or wrong.
+  // Exception: confirmed legacy two-part years (see isLegacyTwoPartAcademicYear above) — there
+  // the stored total is the authoritative one, so it takes priority instead.
+  const isLegacyYear = isLegacyTwoPartAcademicYear(resolvedAcademicYear);
+  const displayPartA = isLegacyYear
+    ? (storedPartA ?? partAFaculty)
+    : (partAHasFacultyScores ? partAFaculty : (storedPartA ?? partAFaculty));
+  const displayPartB = isLegacyYear
+    ? (storedPartB ?? partBFaculty)
+    : (partBHasFacultyScores ? partBFaculty : (storedPartB ?? partBFaculty));
+  const displayGrand = isLegacyYear
+    ? (storedGrand ?? clampScore(displayPartA + displayPartB, effectiveGrandMax))
+    : ((partAHasFacultyScores || partBHasFacultyScores)
+      ? clampScore(displayPartA + displayPartB, effectiveGrandMax)
+      : (storedGrand ?? clampScore(displayPartA + displayPartB, effectiveGrandMax)));
   const reviewerTotals = (role, prefix) => {
-    const partA = readTotal(totals, [`${prefix}PartA`, `${prefix}_part_a`, `${prefix}_part_a_total`]) ?? groupedTotal(normalizedPartA, role, partAMax);
-    const partB = readTotal(totals, [`${prefix}PartB`, `${prefix}_part_b`, `${prefix}_part_b_total`]) ?? groupedTotal(normalizedPartB, role, partBMax);
-    const grand = readTotal(totals, [`${prefix}Total`, `${prefix}_total`, `${prefix}Grand`, `${prefix}_grand`]) ?? clampScore(partA + partB, storedGrandMax || grandMax);
-    return { partA, partB, grand };
+    const rolePartAMax = readTotalFromSources(totalSources, [`${prefix}PartAMax`, `${prefix}_part_a_max`, `${prefix}MaxPartA`, `${prefix}_max_part_a`]) ?? effectivePartAMax;
+    const rolePartBMax = readTotalFromSources(totalSources, [`${prefix}PartBMax`, `${prefix}_part_b_max`, `${prefix}MaxPartB`, `${prefix}_max_part_b`]) ?? effectivePartBMax;
+    const roleGrandMax = readTotalFromSources(totalSources, [`${prefix}TotalMax`, `${prefix}_total_max`, `${prefix}GrandMax`, `${prefix}_grand_max`]) ?? effectiveGrandMax;
+    const partA = readTotalFromSources(totalSources, [`${prefix}PartA`, `${prefix}_part_a`, `${prefix}_part_a_total`]) ?? groupedTotal(normalizedPartA, role, rolePartAMax);
+    const partB = readTotalFromSources(totalSources, [`${prefix}PartB`, `${prefix}_part_b`, `${prefix}_part_b_total`]) ?? groupedTotal(normalizedPartB, role, rolePartBMax);
+    const grand = readTotalFromSources(totalSources, [`${prefix}Total`, `${prefix}_total`, `${prefix}Grand`, `${prefix}_grand`]) ?? clampScore(partA + partB, roleGrandMax);
+    return { partA, partB, grand, partAMax: rolePartAMax, partBMax: rolePartBMax, max: roleGrandMax };
   };
 
   return {
     formType,
     academicYear: resolvedAcademicYear,
     profile,
-    partA: { max: partAMax, sections: normalizedPartA },
-    partB: { max: partBMax, sections: normalizedPartB },
+    partA: { max: effectivePartAMax, sections: normalizedPartA },
+    partB: { max: effectivePartBMax, sections: normalizedPartB },
     totals: {
       faculty: {
         partA: displayPartA,
         partB: displayPartB,
-        grand: storedGrand ?? clampScore(displayPartA + displayPartB, grandMax),
-        max: storedGrandMax || grandMax,
+        grand: displayGrand,
+        partAMax: effectivePartAMax,
+        partBMax: effectivePartBMax,
+        max: effectiveGrandMax,
       },
       hod: reviewerTotals("hod", "hod"),
       director: reviewerTotals("director", "director"),

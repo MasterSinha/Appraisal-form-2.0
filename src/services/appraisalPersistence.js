@@ -62,17 +62,26 @@ const snapshotFormFromPayload = (payload) =>{
  return null;
 };
 
+// Resolve a form field's React setter name. SNAPSHOT_SETTERS is consulted first so any
+// deliberate override keeps working unchanged; otherwise the setter name is derived from
+// the field name itself (set + Capitalized-first-letter), the same convention every form
+// engine already uses for its own state. This means a section whose field name isn't in
+// SNAPSHOT_SETTERS (e.g. an engine that names it differently than the table's original
+// author expected) still resolves correctly instead of being silently skipped, and any
+// future section works without needing a new table entry.
+const resolveSnapshotSetterKey = (formKey) =>
+ SNAPSHOT_SETTERS[formKey] || `set${formKey.charAt(0).toUpperCase()}${formKey.slice(1)}`;
+
 const applySnapshotToSetters = (snapshotPayload, setters) =>{
  const snapshotForm = normalizeFetchedForm(snapshotFormFromPayload(snapshotPayload));
  if (!snapshotForm || !setters) return;
 
- Object.entries(SNAPSHOT_SETTERS).forEach(([formKey, setterKey]) =>{
- if (Object.prototype.hasOwnProperty.call(snapshotForm, formKey)) {
+ Object.keys(snapshotForm).forEach((formKey) =>{
+ const setterKey = resolveSnapshotSetterKey(formKey);
  if (formKey === "info") {
  setters[setterKey]?.((current = {}) =>normalizeInfo(snapshotForm[formKey], current, snapshotForm, snapshotPayload));
  } else {
  setters[setterKey]?.(snapshotForm[formKey]);
- }
  }
  });
 
@@ -164,13 +173,12 @@ const applySubmittedAppraisalToSetters = (submittedAppraisal, setters, scope = {
  const submittedForm = normalizeFetchedForm(submittedFormFromResponse(submittedAppraisal));
  if (!submittedForm) return false;
 
- Object.entries(SNAPSHOT_SETTERS).forEach(([formKey, setterKey]) =>{
- if (Object.prototype.hasOwnProperty.call(submittedForm, formKey)) {
+ Object.keys(submittedForm).forEach((formKey) =>{
+ const setterKey = resolveSnapshotSetterKey(formKey);
  if (formKey === "info") {
  setters[setterKey]?.((current = {}) =>normalizeInfo(submittedForm[formKey], current, submittedForm, submittedAppraisal));
  } else {
  setters[setterKey]?.(submittedForm[formKey]);
- }
  }
  });
 
@@ -186,6 +194,80 @@ const applySubmittedAppraisalToSetters = (submittedAppraisal, setters, scope = {
 
 const docsHaveFiles = (docs = {}) =>
  Object.values(docs || {}).some((files) =>filesForDocValue(files).length >0);
+
+const hasRows = (value) =>Array.isArray(value) && value.length >0;
+
+const rowHasMeaningfulApplicantData = (row = {}) =>
+ Object.entries(row || {}).some(([key, value]) =>
+ ![
+ "_id",
+ "id",
+ "max",
+ "sectionMax",
+ "section_max",
+ "hod",
+ "director",
+ "dean",
+ "vc",
+ "hod_score",
+ "director_score",
+ "dean_score",
+ "vc_score",
+ ].includes(key) &&
+ String(value ?? "").trim() !== ""
+ );
+
+const hasMeaningfulRows = (rows) =>
+ Array.isArray(rows) && rows.some(rowHasMeaningfulApplicantData);
+
+const B6_B10_SECTION_KEYS = [
+ "consultancy",
+ "consultancyRows",
+ "creativeCommissions",
+ "proposals",
+ "training",
+ "innovation",
+ "startupRows",
+ "products",
+];
+
+const mergeMissingSubmittedFormData = (submittedForm = {}, snapshotPayload = null) =>{
+ const snapshotForm = normalizeFetchedForm(snapshotFormFromPayload(snapshotPayload));
+ if (!snapshotForm || typeof snapshotForm !== "object") return submittedForm;
+
+ const merged = { ...snapshotForm, ...submittedForm };
+ merged.info = {
+ ...(snapshotForm.info || {}),
+ ...(submittedForm.info || {}),
+ };
+
+ FORM_SECTION_KEYS.forEach((key) =>{
+ if (!hasRows(submittedForm[key]) && hasRows(snapshotForm[key])) {
+ merged[key] = snapshotForm[key];
+ }
+ });
+
+ B6_B10_SECTION_KEYS.forEach((key) =>{
+ if (!hasMeaningfulRows(submittedForm[key]) && hasMeaningfulRows(snapshotForm[key])) {
+ merged[key] = snapshotForm[key];
+ }
+ });
+
+ ["innovDetails", "innovScore", "innovHod", "innovDirector", "innovDean", "innovVc", "summaryOtherInfo", "sectionSaveStatus"].forEach((key) =>{
+ if ((submittedForm[key] === undefined || submittedForm[key] === null || submittedForm[key] === "") && snapshotForm[key] !== undefined) {
+ merged[key] = snapshotForm[key];
+ }
+ });
+
+ if (submittedForm.innovativeTeaching && snapshotForm.innovativeTeaching) {
+ merged.innovativeTeaching = {
+ ...snapshotForm.innovativeTeaching,
+ ...submittedForm.innovativeTeaching,
+ };
+ }
+
+ return merged;
+};
 
 const normalizeTotalsForSubmit = (totals = {}) =>({
  ...totals,
@@ -221,8 +303,6 @@ const legacyFormForSubmit = (form = {}) => {
  "acr",
  "exhibitions",
  "popularWritings",
- "consultancyRows",
- "startupRows",
  ].forEach((key) => {
  delete legacyForm[key];
  });
@@ -375,7 +455,10 @@ export const loadAppraisalDocuments = async ({ facultyEmail, academicYear, setDo
  params: { academic_year: academicYear, faculty_email: facultyEmail },
  });
 
- setDocs(docsRowsToMap(data, { facultyEmail, academicYear }));
+ const fetchedDocs = docsRowsToMap(data, { facultyEmail, academicYear });
+ if (docsHaveFiles(fetchedDocs)) {
+ setDocs((currentDocs = {}) =>mergeDocsMaps(currentDocs, fetchedDocs));
+ }
  } catch {
  // non-fatal
  }
@@ -393,12 +476,37 @@ const fetchSubmittedDocsMap = async ({ facultyEmail, academicYear }) =>{
  }
 };
 
-export const loadSavedAppraisal = async ({ facultyEmail, academicYear, setters }) =>{
+const isCurrentSessionUser = (email) =>{
+ const target = String(email || "").trim().toLowerCase();
+ if (!target || typeof window === "undefined") return false;
+ return [
+ sessionStorage.getItem("username"),
+ sessionStorage.getItem("email"),
+ localStorage.getItem("username"),
+ localStorage.getItem("email"),
+ ].some((value) =>String(value || "").trim().toLowerCase() === target);
+};
+
+export const loadSavedAppraisal = async ({ facultyEmail, academicYear, setters, preferSubmitted = false }) =>{
  if (!facultyEmail || !academicYear || !setters) return;
 
- const snapshotPayload = await loadAppraisalSnapshot({ facultyEmail, academicYear });
+ if (preferSubmitted) {
+ try {
+ const submittedAppraisal = await fetchSavedAppraisal({ facultyEmail, academicYear });
+ if (applySubmittedAppraisalToSetters(submittedAppraisal, setters, { facultyEmail, academicYear })) {
+ return submittedAppraisal;
+ }
+ } catch (err) {
+ console.warn("Could not load submitted rejected appraisal; falling back to snapshot:", err);
+ }
+ }
+
+ const snapshotPayload = isCurrentSessionUser(facultyEmail)
+ ? await loadAppraisalSnapshot({ facultyEmail, academicYear })
+ : null;
  if (snapshotPayload) {
  applySnapshotToSetters(snapshotPayload, setters);
+ return snapshotPayload;
  } else {
  resetSnapshotSetters(academicYear, setters);
  }
@@ -460,7 +568,10 @@ const readSubmittedAppraisalResponse = async (data, facultyEmail, academicYear) 
  if (!data) {
  throw new Error(`No saved appraisal snapshot was found for ${facultyEmail} in academic year ${academicYear}. Check that the academic year matches the submitted record.`);
  }
- const normalized = normalizeFetchedAppraisal(data, { facultyEmail, academicYear });
+ const snapshotPayload = isCurrentSessionUser(facultyEmail)
+ ? await loadAppraisalSnapshot({ facultyEmail, academicYear })
+ : null;
+ const normalized = normalizeFetchedAppraisal(data, { facultyEmail, academicYear, snapshotPayload });
  const form = normalized.payload?.form || normalized.form;
  if (!hasSubmittedFormData(form)) {
  throw new Error(`The saved appraisal snapshot for ${facultyEmail} does not contain submitted form section data. The user may need to resubmit the appraisal for academic year ${academicYear}.`);
@@ -511,7 +622,7 @@ const FORM_SECTION_KEYS = [
  "lectures", "courseFile", "obeRows", "projects", "mentoringRows", "quals", "feedback", "deptActs", "uniActs",
  "eventRows", "events", "society", "industry", "alumniRows", "alumni", "placementRows", "placements", "acr", "journals", "books", "ict", "research", "projects2",
  "internalProjects", "externalProjects", "ipr", "patents", "awards", "confs",
- "proposals", "products", "innovation", "consultancy", "fdps", "training", "popularWritings",
+ "proposals", "products", "innovation", "consultancy", "fdps", "training", "popularWritings", "exhibitions",
 ];
 
 const REVIEW_FIELD_BY_ROLE = {
@@ -818,6 +929,9 @@ const REVIEW_SECTION_KEY_ALIASES = {
  selfDevelopment: "fdps",
  industrial_training: "training",
  industrialTraining: "training",
+ exhibitions: "exhibitions",
+ exhibition_records: "exhibitions",
+ exhibitionRecords: "exhibitions",
 };
 
 const normalizeReviewSectionScores = (scores = {}) =>{
@@ -878,13 +992,21 @@ const applyReviewToForm = (form = {}, review = {}) =>{
 const mergeReviewScoresIntoForm = (form = {}, reviews = []) =>
  (reviews || []).reduce((current, review) =>applyReviewToForm(current, review), form);
 
+// Each mapping entry declares two (or more) field names that hold the same logical value
+// across form engines (e.g. Standard's row.label vs Creative School's row.activity). Sync
+// is bidirectional: whichever of "from"/"targets" already has the row's real data backfills
+// every other empty name in the group, so the value shows up regardless of which field name
+// it happened to be stored/returned under. Purely additive versus a one-way copy - never
+// overwrites a field that already has data.
 const aliasKeys = (rows, mapping) =>
  (rows || []).map((row) =>{
  const out = { ...row };
  Object.entries(mapping).forEach(([from, to]) =>{
- const targets = Array.isArray(to) ? to : [to];
- targets.forEach((target) =>{
- if (out[target] == null && out[from] != null) out[target] = out[from];
+ const group = [from, ...(Array.isArray(to) ? to : [to])];
+ const sourceKey = group.find((key) =>out[key] != null);
+ if (sourceKey === undefined) return;
+ group.forEach((key) =>{
+ if (out[key] == null) out[key] = out[sourceKey];
  });
  });
  return out;
@@ -1573,24 +1695,25 @@ const normalizeFetchedAppraisal = (data = {}, scope = {}) =>{
  const reviews = reviewsFromAppraisalResponse(data);
  const payload = data.payload ? { ...data.payload } : null;
  const declaration = data.declaration || payload?.declaration || null;
- const docs = normalizeDocsMap(submittedDocsFromResponse(data, scope) || {});
+ const snapshotPayload = scope?.snapshotPayload || null;
+ const docs = mergeDocsMaps(snapshotPayload?.docs, snapshotPayload?.form?.docs, submittedDocsFromResponse(data, scope) || {});
  const withResponseInfo = (form = {}, ...sources) =>({
  ...form,
  info: normalizeInfo(form.info || {}, form, ...sources),
  });
  const payloadForm = payload?.form ? attachSubmittedScoreSummary(
- mergeReviewScoresIntoForm(withResponseInfo(normalizeFetchedForm(payload.form), payload, data), reviews),
+ mergeReviewScoresIntoForm(withResponseInfo(mergeMissingSubmittedFormData(normalizeFetchedForm(payload.form), snapshotPayload), payload, data), reviews),
  data,
  payload,
  payload.totals,
  ) : null;
  const directForm = data.form ? attachSubmittedScoreSummary(
- mergeReviewScoresIntoForm(withResponseInfo(normalizeFetchedForm(data.form), data, payload), reviews),
+ mergeReviewScoresIntoForm(withResponseInfo(mergeMissingSubmittedFormData(normalizeFetchedForm(data.form), snapshotPayload), data, payload), reviews),
  data,
  data.totals,
  ) : null;
  const directData = attachSubmittedScoreSummary(
- mergeReviewScoresIntoForm(withResponseInfo(normalizeFetchedForm(data), data, payload), reviews),
+ mergeReviewScoresIntoForm(withResponseInfo(mergeMissingSubmittedFormData(normalizeFetchedForm(data), snapshotPayload), data, payload), reviews),
  data,
  data.totals,
  payload,
@@ -1706,12 +1829,11 @@ export const submitAppraisal = async ({
  });
 
  const submitWithWorkflow = {
- ...basePayload,
- form: legacyFormForSubmit(basePayload.form),
- totals: legacyTotalsForSubmit(totals),
- status: workflowStatus,
- workflow_status: workflowStatus,
- next_reviewer: nextReviewer,
+  ...basePayload,
+  totals: legacyTotalsForSubmit(totals),
+  status: workflowStatus,
+  workflow_status: workflowStatus,
+  next_reviewer: nextReviewer,
  next_reviewer_role: nextReviewer,
  review_chain: reviewChain,
  };

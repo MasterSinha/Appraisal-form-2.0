@@ -33,7 +33,7 @@ export const normalizeRoleForWorkflow = (role) => {
   if (value === "vice chancellor" || value === "vice chancelor" || value === "vc") return "vc";
   const nonTeachingRole = normalizeNonTeachingRole(value, "");
   if (nonTeachingRole) return nonTeachingRole;
-  if (value === "center head" || value === "centre head" || value.includes("cisr center head") || value.includes("cisr centre head")) return "center_head";
+  if (value === "center head" || value === "centre head" || value === "center_head" || value === "centre_head" || value === "centerhead" || value === "centrehead" || value.includes("cisr center head") || value.includes("cisr centre head") || value.includes("cisr_center_head") || value.includes("cisrcenterhead") || value.includes("cisrcentrehead")) return "center_head";
   if (value.includes("dean")) return "dean";
   if (value.includes("director")) return "director";
   if (value === "hod" || value.includes("head of department")) return "hod";
@@ -198,14 +198,11 @@ export const reviewStatusForDecision = (role, decision = "approved") =>
 export const canReviewerRejectProfile = (reviewerRole, subjectProfile = {}) => {
   const role = normalizeRoleForWorkflow(reviewerRole);
   if (!role || role === "faculty") return false;
-  const chain = getReviewChain(subjectProfile);
-  if (chain.includes(role)) return true;
 
-  const subjectRole = normalizeRoleForWorkflow(subjectProfile.appraisal_role || subjectProfile.appraisalRole || subjectProfile.role);
-  if (subjectRole === "faculty") return ["hod", "center_head", "director", "dean", "vc"].includes(role);
-  if (subjectRole === "hod") return ["director", "dean", "vc"].includes(role);
-  if (subjectRole === "director") return ["dean", "vc"].includes(role);
-  if (subjectRole === "dean") return role === "vc";
+  const chain = getReviewChain(subjectProfile);
+  if (chain.length > 0) {
+    return role === chain[0];
+  }
   return false;
 };
 

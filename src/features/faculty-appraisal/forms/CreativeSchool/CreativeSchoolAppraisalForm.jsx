@@ -1,5 +1,5 @@
 /* @refresh skip */
-/* eslint-disable no-unused-vars, react-hooks/preserve-manual-memoization, react-refresh/only-export-components */
+/* eslint-disable no-unused-vars, react-refresh/only-export-components */
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Avatar, LogoutConfirmModal, ScoreBar, ScoreCard, StatusBadge } from "../../../../components/dashboard/dashboardPrimitives";
@@ -39,7 +39,6 @@ import {
   normalizeAutoScores,
   projectGuidanceRowMax,
   researchGuidanceRowMax,
-  researchGuidanceScore,
   clampReviewScore,
   reviewRowMaxForSection,
   reviewSectionScore,
@@ -58,16 +57,18 @@ import {
   RejectionNotice,
   DocCell,
   ViewCell,
+  ViewDocsCell,
   SectionSaveFooter,
   RowButtons as RowBtns,
   SectionCard as SC,
 } from "../../index";
-import { canReviewerRejectProfile, getReviewChain, pendingStatusFor, profileFromsessionStorage, reviewedStatusFor, roleLabel, visiblePreviousReviewRoles, workflowValidationError, isAppraisalFinalisedByVc, isRejectedStatus, isPendingReviewStatusFor, hasActiveRejection, reviewListFrom } from "../../../../utils/hierarchy";
+import { canReviewerRejectProfile, getDeanTrack, getReviewChain, pendingStatusFor, profileFromsessionStorage, reviewedStatusFor, roleLabel, visiblePreviousReviewRoles, workflowValidationError, isAppraisalFinalisedByVc, isRejectedStatus, isPendingReviewStatusFor, hasActiveRejection, reviewListFrom } from "../../../../utils/hierarchy";
 import { n, pct, RO, TI } from "../../shared";
 import SectionShell from "./common/SectionShell";
 import { tableStyle, thStyle, tdStyle, tdCenter } from "./common/TableStyles";
 import FacultyInfoSection from "../../../../components/appraisal/common/FacultyInfoSection";
 import { ALL_ARRAY_KEYS } from "./arrayKeys";
+import { FacultyRecordHeader, ScoreTable, VCFinalRemarks, FinalSubmitButton, FACULTY_RECORD_THEME } from "../../../../components/dashboard/FacultyAppraisalRecord";
 
 export const ACCENT = "#4f46e5";
 export const ACCENT2 = "#4338ca";
@@ -365,7 +366,7 @@ const scoreKeyForInnov = (role) => ({
 
 export const calculateCreativeSchoolTotals = (form, scoreKey = "score") => {
   const maxScores = getCreativeSchoolEffectiveMaxScores(form, { self: scoreKey === "score" });
-  const rowSum = (key, max) => scoreSectionRows(key, form[key] || [], max, scoreKey);
+  const rowSum = (key, max) => scoreSectionRows(key, form[key] || [], max, scoreKey, key === "research" ? { autoFillResearchScore: false } : undefined);
   const lecturesScore = scoreSectionRows("lectures", form.lectures || [], 40, scoreKey);
   const courseFileScore = scoreSectionRows("courseFile", form.courseFile || [], 20, scoreKey);
   const innovativeScore = scoreKey === "score" && Array.isArray(form.innovRows)
@@ -403,6 +404,16 @@ export const calculateDesignArtsTotals = calculateCreativeSchoolTotals;
 export const calculateMediaTotals = calculateCreativeSchoolTotals;
 
 export const getCreativeSchoolEffectiveMaxScores = (form = {}, { self = false } = {}) => {
+  const getSessionRole = () => {
+    if (typeof sessionStorage !== "undefined" && sessionStorage) {
+      return sessionStorage.getItem("role");
+    }
+    return null;
+  };
+  const isFacultyUser = self || getSessionRole() === "faculty";
+  if (isFacultyUser) {
+    return { partA: PART_A_MAX, partB: PART_B_MAX, partC: PART_C_MAX, partD: 0, grand: 650 };
+  }
   return { partA: PART_A_MAX, partB: PART_B_MAX, partC: PART_C_MAX, partD: PART_D_MAX, grand: GRAND_MAX };
 };
 
@@ -424,20 +435,26 @@ const firstPresent = (row, keys = []) => {
   return "";
 };
 
+const rowHasSubmittedValue = (row = {}) =>
+  Object.entries(row || {}).some(([key, value]) =>
+    !["_id", "id", "max", "sectionMax", "section_max"].includes(key) &&
+    String(value ?? "").trim() !== ""
+  );
+
 const sourceRowsForKey = (source = {}, key) => {
-  if (Array.isArray(source[key]) && source[key].length > 0) return source[key];
   const aliases = {
     events: ["eventRows"],
     alumni: ["alumniRows"],
     placements: ["placementRows"],
     popularWritings: ["popularWritingRows"],
-    externalProjects: ["fundedProjects"],
+    ipr: ["patents"],
+    externalProjects: ["fundedProjects", "projects2"],
     confs: ["conferenceRows"],
-    consultancy: ["consultancyRows", "creativeCommissions"],
+    consultancy: ["consultancyRows", "creativeCommissions", "proposals"],
     innovation: ["products", "startupRows", "innovationRows"],
   }[key] || [];
-  for (const alias of aliases) {
-    if (Array.isArray(source[alias]) && source[alias].length > 0) return source[alias];
+  for (const sourceKey of [key, ...aliases]) {
+    if (Array.isArray(source[sourceKey]) && source[sourceKey].some(rowHasSubmittedValue)) return source[sourceKey];
   }
   return [];
 };
@@ -446,6 +463,169 @@ const withFallbackValue = (next, source, target, aliases) => {
   if (String(next[target] ?? "").trim() !== "") return next;
   const value = firstPresent(source, aliases);
   return String(value ?? "").trim() !== "" ? { ...next, [target]: value } : next;
+};
+
+const DOC_KEY_ALIASES = {
+  courseFile: ["courseFile"],
+  events: ["event"],
+  alumni: ["alumni"],
+  placements: ["placement"],
+  ipr: ["pat"],
+  externalProjects: ["project2", "externalProject"],
+  consultancy: ["prop", "con"],
+  innovation: ["prod"],
+};
+
+const docKeysForSectionRow = (section, index) => {
+  if (!section?.doc || section.key === "acr") return [];
+  return [
+    `${section.doc}-${index}`,
+    ...(DOC_KEY_ALIASES[section.key] || []).map((prefix) => `${prefix}-${index}`),
+  ];
+};
+
+const dummyPdfFor = (key) => [{
+  name: `${key}-dummy.pdf`,
+  type: "application/pdf",
+  size: 1024,
+  url: "data:application/pdf;base64,JVBERi0xLjQKJcTl8uXrp/Og0MTGCjEgMCBvYmoKPDwvVHlwZSAvQ2F0YWxvZy9QYWdlcyAyIDAgUj4+CmVuZG9iago=",
+}];
+
+const dummyValueForCreativeField = (sectionKey, fieldKey, rowIndex = 0) => {
+  const date = `${String(rowIndex + 1).padStart(2, "0")}/08/2026`;
+  const values = {
+    sem: rowIndex % 2 === 0 ? "Sem-I" : "Sem-II",
+    code: `CR-${rowIndex + 101}`,
+    planned: String(36 + rowIndex * 2),
+    conducted: String(34 + rowIndex * 2),
+    pctConducted: `${(((34 + rowIndex * 2) / (36 + rowIndex * 2)) * 100).toFixed(1)}%`,
+    course: `Creative Studies ${rowIndex + 1}`,
+    details: "Documented with verified evidence",
+    title: `${sectionKey} dummy title ${rowIndex + 1}`,
+    fb1: "86",
+    fb2: "90",
+    label: "UG Design / Media Capstone",
+    body: "DYPIU",
+    date,
+    journal: "Journal of Creative Practice",
+    doi: "10.0000/dypiu.test",
+    index: "Q2",
+    impact: "2.5",
+    coAuthors: "One co-author",
+    firstAuthor: "Yes",
+    publisher: "DYPIU Press, ISBN 9780000000000",
+    type: rowIndex % 2 === 0 ? "National" : "International",
+    level: rowIndex % 2 === 0 ? "National" : "International",
+    scope: "National",
+    status: "Completed",
+    fileNo: `DYPIU-IP-${rowIndex + 1}`,
+    agency: "DYPIU Innovation Cell",
+    amount: String(50000 + rowIndex * 25000),
+    role: rowIndex % 2 === 0 ? "PI" : "Co-PI",
+    degree: rowIndex % 2 === 0 ? "PhD" : "PG",
+    name: `Student ${rowIndex + 1}`,
+    client: "Creative Industry Partner",
+    nature: "Consultancy",
+    org: "DYPIU",
+    program: "Faculty Development Programme",
+    platform: "SWAYAM",
+    reach: "1200 views",
+    event: "Creative outreach event",
+    activity: "Institutional contribution activity",
+    duration: rowIndex % 2 === 0 ? "5 days" : "2 weeks",
+    durationCat: rowIndex % 2 === 0 ? "More than 6 months" : "3 to 6 months",
+    period: rowIndex % 2 === 0 ? "Aug 2026 - Dec 2026" : "Jan 2027 - Apr 2027",
+    partner: "Industry Partner",
+    venueLevel: "National",
+  };
+  if (sectionKey === "courseFile" && fieldKey === "details") return "1.Available";
+  if (sectionKey === "feedback" && fieldKey === "code") return `FB-${rowIndex + 101}`;
+  if (sectionKey === "feedback" && fieldKey === "fb1") return rowIndex % 2 === 0 ? "86" : "88";
+  if (sectionKey === "feedback" && fieldKey === "fb2") return rowIndex % 2 === 0 ? "90" : "92";
+  if (sectionKey === "placements" && fieldKey === "type") return "Portfolio Review";
+  return values[fieldKey] ?? `Dummy ${fieldKey} ${rowIndex + 1}`;
+};
+
+const dummyRowCountForSection = (sectionKey) => {
+  if (sectionKey === "lectures") return 4;
+  if (sectionKey === "courseFile" || sectionKey === "feedback") return 2;
+  return 2;
+};
+
+const dummyScoreForSection = (section = {}, row = {}, rowIndex = 0, rowCount = 1) => {
+  if (section.key === "courseFile") return "4";
+  if (section.key === "feedback") return String(Math.max(1, Math.floor((section.max || 10) / rowCount)));
+  const max = section.rowMax
+    ? (typeof section.rowMax === "function" ? section.rowMax(row) : section.rowMax)
+    : section.max;
+  const rowCap = n(max) || 2;
+  const sectionSafeScore = Math.max(1, Math.floor((section.max || rowCap) / rowCount));
+  return String(Math.min(rowCap, sectionSafeScore, section.key === "lectures" ? 10 : 5));
+};
+
+const buildDummyRowsForSection = (section, count = dummyRowCountForSection(section?.key)) =>
+  Array.from({ length: count }, (_, rowIndex) => {
+    const row = Object.fromEntries(section.fields.map(([fieldKey]) => [
+      fieldKey,
+      dummyValueForCreativeField(section.key, fieldKey, rowIndex),
+    ]));
+    return {
+      ...row,
+      score: dummyScoreForSection(section, row, rowIndex, count),
+      _id: uid(),
+    };
+  });
+
+const buildDummyCreativeDocs = (currentForm = {}) => {
+  const docs = {};
+  const addDocKeys = (section, count = 1) => {
+    Array.from({ length: count }, (_, index) => {
+      docKeysForSectionRow(section, index).forEach((key) => {
+        docs[key] = dummyPdfFor(key);
+      });
+      return null;
+    });
+  };
+  [...PART_A_SECTIONS, ...getPartBSectionsForSchool(currentForm?.info?.school || currentForm), ...PART_C_SECTIONS].forEach((section) => addDocKeys(section, dummyRowCountForSection(section.key)));
+  ["innov", "obe", "mentor"].forEach((prefix) => {
+    const count = prefix === "innov" ? 4 : 3;
+    Array.from({ length: count }, (_, index) => {
+      const key = `${prefix}-${index}`;
+      docs[key] = dummyPdfFor(key);
+      return null;
+    });
+  });
+  return docs;
+};
+
+const buildDummyCreativeForm = (currentForm = {}) => {
+  const applicablePartBSections = getPartBSectionsForSchool(currentForm?.info?.school || currentForm);
+  const applicablePartBKeys = new Set(applicablePartBSections.map((section) => section.key));
+  return {
+    ...currentForm,
+    lectures: buildDummyRowsForSection(PART_A_SECTIONS.find((section) => section.key === "lectures")),
+    courseFile: buildDummyRowsForSection(PART_A_SECTIONS.find((section) => section.key === "courseFile")),
+    innovDetails: "Flipped classroom, studio critique, peer learning",
+    innovScore: "8",
+    innovRows: [
+      { method: "Flipped Classroom", details: "Recorded material and in-class problem solving used.", score: "2", max: CREATIVE_INNOVATIVE_ROW_MAX, sectionMax: CREATIVE_INNOVATIVE_SECTION_MAX, _id: uid() },
+      { method: "Peer Learning", details: "Peer critique and reflective documentation completed.", score: "2", max: CREATIVE_INNOVATIVE_ROW_MAX, sectionMax: CREATIVE_INNOVATIVE_SECTION_MAX, _id: uid() },
+      { method: "Studio Critique", details: "Rubric-based critique and improvement cycle completed.", score: "2", max: CREATIVE_INNOVATIVE_ROW_MAX, sectionMax: CREATIVE_INNOVATIVE_SECTION_MAX, _id: uid() },
+      { method: "Field-based Learning", details: "Industry/studio observation converted into class activity.", score: "2", max: CREATIVE_INNOVATIVE_ROW_MAX, sectionMax: CREATIVE_INNOVATIVE_SECTION_MAX, _id: uid() },
+    ],
+    obeRows: defaultObeRows().map((row) => ({ ...row, evidence: "Outcome report attached", score: String(Math.min(row.max || 1, 4)), _id: uid() })),
+    mentoringRows: defaultMentoringRows().map((row) => ({ ...row, evidence: "Mentoring record attached", score: String(Math.min(row.max || 1, 3)), _id: uid() })),
+    projects: buildDummyRowsForSection(PART_A_SECTIONS.find((section) => section.key === "projects")),
+    quals: buildDummyRowsForSection(PART_A_SECTIONS.find((section) => section.key === "quals")),
+    feedback: buildDummyRowsForSection(PART_A_SECTIONS.find((section) => section.key === "feedback")),
+    ...Object.fromEntries(PART_B_SECTIONS.map((section) => [
+      section.key,
+      applicablePartBKeys.has(section.key) ? buildDummyRowsForSection(section) : [],
+    ])),
+    ...Object.fromEntries(PART_C_SECTIONS.map((section) => [section.key, buildDummyRowsForSection(section)])),
+    acr: createAcrRows(currentForm.acr),
+    summaryOtherInfo: "Dummy data generated for validation, report, upload, save, and review flow testing.",
+  };
 };
 
 const normalizeCreativeRow = (key, row = {}, index = 0) => {
@@ -478,6 +658,17 @@ const normalizeCreativeRow = (key, row = {}, index = 0) => {
   }
 
   const fieldAliases = {
+    journals: {
+      doi: ["doi", "issn", "eissn", "e_issn"],
+      impact: ["impact", "impactFactor", "impact_factor"],
+      coAuthors: ["coAuthors", "coauthors", "co_authors", "authorPosition", "author_position", "position"],
+      firstAuthor: ["firstAuthor", "first_author", "first", "authorPosition", "author_position", "position"],
+    },
+    books: {
+      publisher: ["publisher", "pub", "book", "isbn", "issn"],
+      coAuthors: ["coAuthors", "coauthors", "co_authors", "coauth"],
+      first: ["first", "firstAuthor", "first_author"],
+    },
     quals: {
       title: ["title", "label", "qualification", "qualificationTitle", "certification", "certificationTitle", "name"],
       body: ["body", "details", "awardingBody", "awarding_body", "agency", "institution", "institute", "university"],
@@ -502,6 +693,8 @@ const normalizeCreativeRow = (key, row = {}, index = 0) => {
     },
     externalProjects: {
       date: ["date", "sanctionDate", "sanction_date", "projectDate", "project_date"],
+      amount: ["amount", "grantAmount", "grant_amount", "sanctionedAmount", "sanctioned_amount"],
+      role: ["role", "position", "responsibility"],
       status: ["status", "projectStatus", "project_status"],
     },
     confs: {
@@ -514,6 +707,12 @@ const normalizeCreativeRow = (key, row = {}, index = 0) => {
       role: ["role", "responsibility"],
       date: ["date", "period"],
       level: ["level", "scope"],
+    },
+    uniActs: {
+      durationCat: ["durationCat", "duration_cat", "nature", "duration"],
+    },
+    deptActs: {
+      durationCat: ["durationCat", "duration_cat", "nature", "duration"],
     },
     alumni: {
       activity: ["activity", "event", "title", "type"],
@@ -530,6 +729,7 @@ const normalizeCreativeRow = (key, row = {}, index = 0) => {
       reach: ["reach", "quad", "quadrant", "views"],
     },
     innovation: {
+      title: ["title", "details", "name"],
       role: ["role", "details", "nature"],
       status: ["status", "impact", "usage", "used"],
     },
@@ -588,9 +788,16 @@ export const validateCreativeSchoolBeforeSubmit = (form, docs = {}, sectionView 
       ...section.fields.filter(([, , readOnly]) => !readOnly).map(([key]) => key),
       ...(section.selfReadOnlyScore || section.autoScore || section.key === "feedback" ? [] : ["score"]),
     ],
-    rowMax: section.rowMax,
+    // Explicit 0 (not undefined) when a section defines no per-row cap, so the shared
+    // validator's title-text fallback (e.g. matching "FDP" inside B7's title) never
+    // invents a row cap the UI never enforced in the first place.
+    rowMax: section.rowMax || 0,
     maxScore: section.key === "feedback" ? undefined : section.max,
     docPrefix: section.key !== "acr" ? section.doc : "",
+    docKey: section.key !== "acr" && DOC_KEY_ALIASES[section.key]?.length
+      ? (_row, index) => docKeysForSectionRow(section, index)
+      : undefined,
+    capSectionTotal: true,
   }));
   const errors = validateCompleteRows(rowSections, docs);
 
@@ -613,6 +820,7 @@ export const validateCreativeSchoolBeforeSubmit = (form, docs = {}, sectionView 
       docPrefix: "innov",
       rowMax: CREATIVE_INNOVATIVE_ROW_MAX,
       maxScore: CREATIVE_INNOVATIVE_SECTION_MAX,
+      capSectionTotal: true,
     }], docs));
   }
 
@@ -780,9 +988,9 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
   const showingReviewColumns = mode === "review" && currentRole;
   const reviewColumnCount = showingReviewColumns ? previousRoles.length + 1 : 0;
   const selfLocked = mode === "self" && section.key === "acr";
-  const earned = scoreSectionRows(section.key, rows, section.max);
+  const earned = scoreSectionRows(section.key, rows, section.max, "score", section.key === "research" ? { autoFillResearchScore: false } : undefined);
   const docPrefix = section.doc || section.key;
-  const hideIndividualB8Summary = section.key === "fdps" || section.key === "training";
+  const docKeysForRow = (index) => docKeysForSectionRow({ ...section, doc: docPrefix }, index);
   const totalLabel = section.key === "feedback"
     ? `Faculty Score (Max ${section.max})`
     : `Total Score (Max ${section.max})`;
@@ -885,7 +1093,7 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
   const rowSelfScore = (row) => {
     if (section.key === "feedback") return clampScore(row.score, section.max);
     if (section.key === "courseFile") return courseFileRowScore(row);
-    if (section.key === "research") return String(row.score ?? "").trim() !== "" ? clampScore(row.score, researchGuidanceRowMax(row)) : researchGuidanceScore(row);
+    if (section.key === "research") return clampScore(row.score, researchGuidanceRowMax(row));
     if (section.key === "society") return societyRowScore(row);
     return clampScore(row.score, section.rowMax ? (typeof section.rowMax === "function" ? section.rowMax(row) : section.rowMax) : section.max);
   };
@@ -908,7 +1116,6 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
             nextRow.pctConducted = "";
           }
         }
-        if (section.key === "research" && ["degree", "name", "thesis"].includes(key)) return { ...nextRow, score: researchGuidanceScore(nextRow) ? String(researchGuidanceScore(nextRow)) : "" };
         return nextRow;
       }),
     }));
@@ -987,7 +1194,8 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
             <tbody>
               {rows.map((row, index) => {
                 const socRowLocked = section.key === "society" && societyRowLocked(row);
-                const rowReviewable = rowHasReviewableData(section.key, row, docs, `${docPrefix}-${index}`);
+                const rowReviewable = rowHasReviewableData(section.key, row, docs, `${docPrefix}-${index}`) ||
+                  docKeysForRow(index).some((docKey) => rowHasReviewableData(section.key, row, docs, docKey));
                 const reviewerCanScoreRow = rowReviewable;
                 const currentRowMax = reviewRowMaxForSection(section.key, row, section.max);
                 const displayScore = (value) => String(value ?? "").trim() ? clampScore(value, currentRowMax) : "";
@@ -1076,7 +1284,7 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
                     ))}
                     {section.key === "feedback" && <td style={tdCenter}>{row.fb1 || row.fb2 ? feedbackAverage(row).toFixed(2) : ""}</td>}
                     <td style={tdStyle}><DocCell id={`${section.doc}-${index}`} docs={docs} setDocs={setDocs} readOnly={!editableSelf || selfLocked || socRowLocked} /></td>
-                    <td style={tdStyle}><ViewCell id={`${section.doc}-${index}`} docs={docs} /></td>
+                    <td style={tdStyle}><ViewDocsCell docKey={docKeysForRow(index)} docs={docs} emptyText="" compact /></td>
                     <td style={tdCenter}>
                       {mode === "self"
                         ? section.autoScore
@@ -1093,22 +1301,20 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
                   </tr>
                 );
               })}
-              {!hideIndividualB8Summary && (
-                <tr className="appraisal-total-row" style={{ background: "#f0f3ff", borderTop: "1px solid #c7d2fe", height: "auto" }}>
-                  <td style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center", background: "#f0f3ff" }} colSpan={totalLabelColSpan}>{totalLabel}</td>
-                  <td style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center", background: "#f0f3ff" }}>{earned.toFixed(1)}</td>
-                  {mode === "review" && previousRoles.map((role) => (
-                    <td key={role} style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center", background: "#f0f3ff" }}>
-                      {sectionTotalScore(rows, role).toFixed(1)}
-                    </td>
-                  ))}
-                  {mode === "review" && (
-                    <td style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center", background: "#f0f3ff" }}>
-                      {sectionTotalScore(reviewRows.length ? reviewRows : rows, currentRole).toFixed(1)}
-                    </td>
-                  )}
-                </tr>
-              )}
+              <tr className="appraisal-total-row" style={{ background: "#f0f3ff", borderTop: "1px solid #c7d2fe", height: "auto" }}>
+                <td style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center", background: "#f0f3ff" }} colSpan={totalLabelColSpan}>{totalLabel}</td>
+                <td style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center", background: "#f0f3ff" }}>{earned.toFixed(1)}</td>
+                {mode === "review" && previousRoles.map((role) => (
+                  <td key={role} style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center", background: "#f0f3ff" }}>
+                    {sectionTotalScore(rows, role).toFixed(1)}
+                  </td>
+                ))}
+                {mode === "review" && (
+                  <td style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, padding: "12px 14px", textAlign: "center", background: "#f0f3ff" }}>
+                    {sectionTotalScore(reviewRows.length ? reviewRows : rows, currentRole).toFixed(1)}
+                  </td>
+                )}
+              </tr>
             </tbody>
           </table>
         </div>
@@ -1794,8 +2000,29 @@ export function PartDRubricInfoCard() {
 export function CreativeSchoolForm({ form, setForm, docs, setDocs, mode = "self", locked = false, reviewerRole = "", reviewData = {}, setReviewData = () => {}, previousRoles = [], sectionView = "partA" }) {
   const sectionTableProps = { form, setForm, docs, setDocs, mode, locked, reviewerRole, reviewData, setReviewData, previousRoles };
   const partBSections = getPartBSectionsForSchool(form?.info?.school || form);
+  const canFillDummyData = mode === "self" && !locked;
+  const fillDummyData = () => {
+    if (!canFillDummyData) return;
+    const nextForm = buildDummyCreativeForm(form);
+    setForm(nextForm);
+    setDocs((prevDocs) => ({
+      ...prevDocs,
+      ...buildDummyCreativeDocs(nextForm),
+    }));
+  };
   return (
     <>
+      {canFillDummyData && (
+        <div style={{ display: "flex", justifyContent: "flex-end", margin: "0 0 12px" }}>
+          <button
+            type="button"
+            onClick={fillDummyData}
+            style={{ padding: "8px 14px", background: "#0f766e", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 800, fontSize: 12, fontFamily: "inherit", boxShadow: "0 8px 18px rgba(15,118,110,0.18)" }}
+          >
+            Fill Dummy Test Data
+          </button>
+        </div>
+      )}
       {(sectionView === "partA" || sectionView === "all") && (
         <PartA sections={PART_A_SECTIONS} SectionTable={SectionTable} InnovativeSection={InnovativeSection} ObeSection={ObeSection} MentoringSection={MentoringSection} sectionTableProps={sectionTableProps} />
       )}
@@ -1829,9 +2056,9 @@ export function SummaryBox({ totals, roleScoreLabel = "Score", maxScores = { par
     ["Part A", totals.partA, maxScores.partA, "#4f46e5"],
     ["Part B", totals.partB, maxScores.partB, "#4338ca"],
     ["Part C", totals.partC, maxScores.partC, "#6366f1"],
-    ["Part D", totals.partD, maxScores.partD, "#3730a3"],
+    maxScores.partD > 0 && ["Part D", totals.partD, maxScores.partD, "#3730a3"],
     ["Grand Total", totals.total, maxScores.grand, "#4338ca"],
-  ];
+  ].filter(Boolean);
   return (
     <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: 16, display: "grid", gap: 12 }}>
       {rows.map(([label, value, max, color]) => (
@@ -1852,9 +2079,9 @@ export function CompactAuthoritySummaryCard({ title, subtitle, totals, maxScores
     ["Part A", totals.partA, maxScores.partA, "#4f46e5"],
     ["Part B", totals.partB, maxScores.partB, "#4338ca"],
     ["Part C", totals.partC, maxScores.partC, "#6366f1"],
-    ["Part D", totals.partD, maxScores.partD, "#3730a3"],
+    maxScores.partD > 0 && ["Part D", totals.partD, maxScores.partD, "#3730a3"],
     ["Total", totals.total, maxScores.grand, "#4338ca"],
-  ];
+  ].filter(Boolean);
   const hasRemarks = Boolean(remarksContent);
   return (
     <div style={{ background: "#fff", border: "1px solid #dbe3ef", borderRadius: 8, padding: 12, display: "grid", gridTemplateColumns: hasRemarks ? "minmax(300px, 0.95fr) minmax(280px, 1.05fr)" : "1fr", gap: 12, alignItems: "stretch", boxShadow: "0 1px 2px rgba(15,23,42,0.04)" }}>
@@ -2088,7 +2315,7 @@ function buildCreativeSchoolSectionScores(person, reviewData, reviewerRole) {
   return payload;
 }
 
-export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBack, onSubmit, readOnly = false, showReport = false }) {
+export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBack, onSubmit, readOnly = false, showReport = true }) {
   const [sectionView, setSectionView] = useState("partA");
   const [reviewData, setReviewData] = useState({});
   const [remarks, setRemarks] = useState(person?.[`${reviewerRole}Remarks`] || "");
@@ -2210,12 +2437,9 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
       remarks: person?.[`${prefix}Remarks`],
     };
   });
-  const averageSourceTotals = [
-    facultyTotals,
-    ...previousSummaryCards
-      .filter((item) => item.role !== subjectRole && item.totals.hasTotal)
-      .map((item) => item.totals),
-  ];
+  const averageSourceTotals = previousSummaryCards
+    .filter((item) => item.role !== subjectRole && item.totals.hasTotal)
+    .map((item) => item.totals);
   const averageSummaryTotals = averageSourceTotals.length ? {
     partA: averageSourceTotals.reduce((sum, item) => sum + n(item.partA), 0) / averageSourceTotals.length,
     partB: averageSourceTotals.reduce((sum, item) => sum + n(item.partB), 0) / averageSourceTotals.length,
@@ -2224,6 +2448,10 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
     total: averageSourceTotals.reduce((sum, item) => sum + n(item.total), 0) / averageSourceTotals.length,
     maxScores: totals.maxScores,
   } : { partA: 0, partB: 0, partC: 0, partD: 0, total: 0, maxScores: totals.maxScores };
+  const partDReportRoles = Array.from(new Set([
+    ...(reviewerRole === "vc" ? visiblePreviousRoles : authorityPreviousRoles),
+    reviewerRole,
+  ])).filter((role) => role && role !== "faculty" && role !== "score");
   const showAverageColumn = !(reviewerRole === "vc" && normalizedSubjectRole === "dean");
   const comparisonColumns = [
     { key: "self", label: "Self", totals: facultyTotals, maxScores: facultyTotals.maxScores },
@@ -2287,7 +2515,7 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
             <div style={{ color: "#6d28d9", fontSize: 12, fontWeight: 900, textTransform: "uppercase", letterSpacing: 0.5 }}>Vice Chancellor Remarks</div>
             <div style={{ color: "#5b21b6", fontSize: 11, fontWeight: 700, marginTop: 3 }}>Enter your assessment remarks and confirm before submitting</div>
           </div>
-          <textarea value={remarks} readOnly={panelReadOnly} onChange={(event) => setRemarks(event.target.value)} rows={7} placeholder="Write your assessment remarks here..." style={{ width: "100%", height: 235, minHeight: 235, boxSizing: "border-box", border: "1px solid #c4b5fd", borderRadius: 10, padding: "10px 11px", fontFamily: "inherit", fontSize: 12, color: "#334155", resize: "none", background: panelReadOnly ? "#f8fafc" : "#fff", outline: "none", lineHeight: 1.5 }} />
+          <textarea value={remarks} readOnly={panelReadOnly} onChange={(event) => setRemarks(event.target.value)} rows={7} placeholder="Enter your remarks here..." style={{ width: "100%", height: 235, minHeight: 235, boxSizing: "border-box", border: "1px solid #c4b5fd", borderRadius: 10, padding: "10px 11px", fontFamily: "inherit", fontSize: 12, color: "#334155", resize: "none", background: panelReadOnly ? "#f8fafc" : "#fff", outline: "none", lineHeight: 1.5 }} />
         </div>
       ),
     },
@@ -2309,14 +2537,14 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
     <div style={{ background: "#eff6ff", border: "2px solid #93c5fd", borderRadius: 10, padding: "14px 15px", display: "flex", flexDirection: "column", minWidth: 0, boxShadow: "0 0 0 4px rgba(147,197,253,0.16), 0 14px 28px rgba(37,99,235,0.08)" }}>
       <div style={{ fontSize: 11, fontWeight: 900, color: "#1d4ed8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 5 }}>Dean Remarks Required</div>
       <div style={{ color: "#1e40af", fontSize: 11, fontWeight: 700, marginBottom: 10 }}>Please enter remarks before submitting the review.</div>
-      <textarea value={remarks} readOnly={panelReadOnly} onChange={(event) => setRemarks(event.target.value)} rows={7} placeholder="Enter dean remarks, observations, and recommendations..." style={{ width: "100%", height: 235, minHeight: 235, boxSizing: "border-box", border: "1px solid #bfdbfe", borderRadius: 8, padding: "10px 11px", fontFamily: "inherit", fontSize: 12, color: "#334155", resize: "none", background: "#fff", outline: "none", lineHeight: 1.5 }} />
+      <textarea value={remarks} readOnly={panelReadOnly} onChange={(event) => setRemarks(event.target.value)} rows={7} placeholder="Enter your remarks here..." style={{ width: "100%", height: 235, minHeight: 235, boxSizing: "border-box", border: "1px solid #bfdbfe", borderRadius: 8, padding: "10px 11px", fontFamily: "inherit", fontSize: 12, color: "#334155", resize: "none", background: "#fff", outline: "none", lineHeight: 1.5 }} />
     </div>
   );
   const directorRemarksSideContent = (
     <div style={{ background: "#eff6ff", border: "2px solid #93c5fd", borderRadius: 10, padding: "14px 15px", display: "flex", flexDirection: "column", minWidth: 0, boxShadow: "0 0 0 4px rgba(147,197,253,0.16), 0 14px 28px rgba(37,99,235,0.08)" }}>
       <div style={{ fontSize: 11, fontWeight: 900, color: "#1d4ed8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 5 }}>Director Remarks Required</div>
       <div style={{ color: "#1e40af", fontSize: 11, fontWeight: 700, marginBottom: 10 }}>Please enter remarks before submitting the review.</div>
-      <textarea value={remarks} readOnly={panelReadOnly} onChange={(event) => setRemarks(event.target.value)} rows={7} placeholder="Enter director remarks, observations, and recommendations..." style={{ width: "100%", height: 235, minHeight: 235, boxSizing: "border-box", border: "1px solid #bfdbfe", borderRadius: 8, padding: "10px 11px", fontFamily: "inherit", fontSize: 12, color: "#334155", resize: "none", background: "#fff", outline: "none", lineHeight: 1.5 }} />
+      <textarea value={remarks} readOnly={panelReadOnly} onChange={(event) => setRemarks(event.target.value)} rows={7} placeholder="Enter your remarks here..." style={{ width: "100%", height: 235, minHeight: 235, boxSizing: "border-box", border: "1px solid #bfdbfe", borderRadius: 8, padding: "10px 11px", fontFamily: "inherit", fontSize: 12, color: "#334155", resize: "none", background: "#fff", outline: "none", lineHeight: 1.5 }} />
     </div>
   );
   const authoritySummaryCards = [
@@ -2377,6 +2605,18 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
   const authorityDirectorReviewCards = splitAuthorityDeanDirectorRows
     ? authoritySummaryCards.filter((card) => card.key === reviewerRole)
     : [];
+  const useAuthorityRecordCard = reviewerRole === "dean" || reviewerRole === "director" || reviewerRole === "vc";
+  const authorityRecordSchoolTrack = useAuthorityRecordCard ? getDeanTrack({ school: person?.school || form.info?.school, department: person?.department, designation: person?.designation }) : "";
+  const authorityRecordSchoolGroupLabel = { engineering: "Engineering", non_engineering: "Non-Engineering", direct_vc: "CISR" }[authorityRecordSchoolTrack] || person?.school || form.info?.school || APP_INFO.UNIVERSITY_NAME;
+  const authorityRecordPreviousCards = reviewerRole === "vc" ? previousSummaryCards : authorityPreviousSummaryCards;
+  const authorityRecordReviewerLabel = reviewerRole === "vc" ? "Vice Chancellor" : roleLabel(reviewerRole);
+  const authorityRecordReviewerIcon = reviewerRole === "vc" ? "crown" : "briefcase";
+  const authorityRecordScoreRows = useAuthorityRecordCard ? [
+    { key: "self", label: "Self", icon: "user", values: facultyTotals, note: summaryOtherInfoValueFrom(person) },
+    ...authorityRecordPreviousCards.map((card) => ({ key: card.role, label: card.label, icon: "briefcase", values: card.totals, note: card.remarks })),
+    ...(reviewerRole === "vc" && showAverageColumn ? [{ key: "average", label: "Average", icon: "chart", values: averageSummaryTotals }] : []),
+    { key: reviewerRole, label: authorityRecordReviewerLabel, icon: authorityRecordReviewerIcon, values: reviewerSummaryTotals, accent: true },
+  ] : [];
   useEffect(() => {
     let active = true;
     if (panelReadOnly || !subjectEmail) return undefined;
@@ -2492,7 +2732,7 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
   const generateReviewReport = () => {
     if (!reviewCompleted) return;
     const applicability = {};
-    const rowSum = (key, max) => scoreSectionRows(key, reviewerForm[key] || [], max, "score");
+    const rowSum = (key, max) => scoreSectionRows(key, reviewerForm[key] || [], max, "score", key === "research" ? { autoFillResearchScore: false } : undefined);
     const lecScore = scoreSectionRows("lectures", reviewerForm.lectures || [], 40, "score");
     const cfScore = scoreSectionRows("courseFile", reviewerForm.courseFile || [], 20, "score");
     const innovScore = clampScore(
@@ -2517,6 +2757,8 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
       partBSections: getPartBSectionsForSchool(reviewerForm?.info?.school || person),
       partCSections: PART_C_SECTIONS,
       partDSections: PART_D_SECTIONS,
+      partDScoreRoles: partDReportRoles,
+      roleLabel,
       totals: { partA: partATotal, partB: partBTotal, partC: partCTotal, partD: partDTotal, total: grandTotal },
       maxScores,
       generatedBy: sessionStorage.getItem("name") || roleLabel(reviewerRole),
@@ -2564,8 +2806,8 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
         ...summaryRow(applicability, "placements", { id: "C7", label: "Placement & Internship Support", max: 20, score: rowSum("placements", 20) }),
         { isTotal: true, label: "Part C Total", max: maxScores.partC, score: totals.partC },
         { isHeader: true, label: "Part D - Annual Confidential Report (ACR)" },
-        ...summaryRow(applicability, "acr", { id: "D1", label: "Annual Confidential Report", max: 50, score: rowSum("acr", 50) }),
-        { isTotal: true, label: "Part D Total", max: maxScores.partD, score: totals.partD },
+        ...summaryRow(applicability, "acr", { id: "D1", label: "Annual Confidential Report", max: 50, score: partDTotal }),
+        { isTotal: true, label: "Part D Total", max: maxScores.partD, score: partDTotal },
         { isGrandTotal: true, label: "Grand Total", max: maxScores.grand, score: grandTotal },
       ],
     });
@@ -2628,7 +2870,81 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
           </button>
         </div>
       )}
-      {sectionView === "summary" && (
+      {sectionView === "summary" && useAuthorityRecordCard && (
+        <div className="far-wrap" style={{ width: "100%" }}>
+          <div className="far-card" style={{ width: "100%", boxSizing: "border-box", background: FACULTY_RECORD_THEME.card, border: `1px solid ${FACULTY_RECORD_THEME.borderStrong}`, borderRadius: 16, padding: "22px 24px", display: "grid", gap: 18, boxShadow: "0 10px 30px rgba(15,23,42,0.08)" }}>
+            <FacultyRecordHeader
+              title="Faculty appraisal record"
+              subtitle={`${APP_INFO.UNIVERSITY_NAME} · ${authorityRecordSchoolGroupLabel} · AY ${academicYear}`}
+              referenceNumber={person?.employeeId}
+            />
+            <ScoreTable
+              columns={[
+                { key: "partA", label: "Part A", max: PART_A_MAX },
+                { key: "partB", label: "Part B", max: PART_B_MAX },
+                { key: "partC", label: "Part C", max: PART_C_MAX },
+                { key: "partD", label: "Part D", max: PART_D_MAX },
+                { key: "total", label: "Total", max: GRAND_MAX },
+              ]}
+              rows={authorityRecordScoreRows}
+            />
+            <VCFinalRemarks
+              title={`${authorityRecordReviewerLabel} final remarks`}
+              icon={authorityRecordReviewerIcon}
+              value={remarks}
+              onChange={setRemarks}
+              readOnly={panelReadOnly}
+              description="This statement is entered against the official appraisal record before final submission."
+            />
+            {!panelReadOnly && (
+              <label style={{ display: "flex", alignItems: "flex-start", gap: 9, color: FACULTY_RECORD_THEME.textMuted, fontSize: 11, lineHeight: 1.5, cursor: "pointer" }}>
+                <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} style={{ marginTop: 2, accentColor: FACULTY_RECORD_THEME.accent, flexShrink: 0 }} />
+                <span>{VERIFY_TEXT}</span>
+              </label>
+            )}
+            {!panelReadOnly && (
+              <FinalSubmitButton
+                disabled={!confirmed || !remarks.trim()}
+                onClick={() => onSubmit(person.id, { partA: totals.partA, partB: totals.partB, partC: totals.partC, partD: totals.partD, total: totals.total }, remarks, buildCreativeSchoolSectionScores(form, reviewData, reviewerRole), confirmed)}
+              >
+                Confirm and submit final score
+              </FinalSubmitButton>
+            )}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap", borderTop: `1px solid ${FACULTY_RECORD_THEME.border}`, paddingTop: 14 }}>
+              <span style={{ color: FACULTY_RECORD_THEME.textFaint, fontSize: 10.5, fontStyle: "italic" }}>{draftStatus}</span>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginLeft: "auto" }}>
+                <button onClick={onBack} style={{ padding: "8px 14px", background: "transparent", color: FACULTY_RECORD_THEME.textMuted, border: `1px solid ${FACULTY_RECORD_THEME.border}`, borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: 11.5, fontFamily: "inherit" }}>Close</button>
+                {showReport && (
+                  <button onClick={generateReviewReport} disabled={!reviewCompleted} style={{ padding: "8px 14px", background: "transparent", color: reviewCompleted ? FACULTY_RECORD_THEME.accentSoft : FACULTY_RECORD_THEME.textFaint, border: `1px solid ${reviewCompleted ? "rgba(124,58,237,0.35)" : FACULTY_RECORD_THEME.border}`, borderRadius: 8, cursor: reviewCompleted ? "pointer" : "not-allowed", fontWeight: 700, fontSize: 11.5, fontFamily: "inherit" }}>
+                    Generate Report
+                  </button>
+                )}
+                {!panelReadOnly && (
+                  <>
+                    <button onClick={handleSaveDraft} disabled={savingDraft} style={{ padding: "8px 14px", background: "transparent", color: savingDraft ? FACULTY_RECORD_THEME.textFaint : "#2563eb", border: `1px solid ${savingDraft ? FACULTY_RECORD_THEME.border : "#bfdbfe"}`, borderRadius: 8, cursor: savingDraft ? "not-allowed" : "pointer", fontWeight: 700, fontSize: 11.5, fontFamily: "inherit" }}>
+                      {savingDraft ? "Saving..." : "Save Draft"}
+                    </button>
+                    {canReject && (
+                      <button
+                        onClick={() => {
+                          if (window.confirm("Reject this appraisal and send it back to the user for editing?")) {
+                            onSubmit(person.id, { partA: totals.partA, partB: totals.partB, partC: totals.partC, partD: totals.partD, total: totals.total }, remarks, buildCreativeSchoolSectionScores(form, reviewData, reviewerRole), confirmed, "rejected");
+                          }
+                        }}
+                        disabled={!confirmed || !remarks.trim()}
+                        style={{ padding: "8px 14px", background: "transparent", color: (confirmed && remarks.trim()) ? "#dc2626" : FACULTY_RECORD_THEME.textFaint, border: `1px solid ${(confirmed && remarks.trim()) ? "#fecaca" : FACULTY_RECORD_THEME.border}`, borderRadius: 8, cursor: (confirmed && remarks.trim()) ? "pointer" : "not-allowed", fontWeight: 700, fontSize: 11.5, fontFamily: "inherit" }}
+                      >
+                        Reject Form
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {sectionView === "summary" && !useAuthorityRecordCard && (
         <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 14, display: "grid", gap: 10 }}>
           {reviewerRole === "vc" ? (
             <>

@@ -4,9 +4,11 @@ import {
   reviewSectionScore,
   rowMaxForSection,
   societyRowScore,
+  sumSectionScore,
   SCORE_LIMITS,
   projectGuidanceRowMax,
 } from "./appraisalFormUtils";
+import { createAcrRows } from "../constants/formConfig";
 
 const n = (value) => parseFloat(value) || 0;
 const percentOf = (score, max) => {
@@ -246,6 +248,75 @@ const renderSummaryOtherInfo = (value) =>
     ? `<h3>Any other information not covered above</h3><div class="remarks">${safeHtml(value)}</div>`
     : "";
 
+const summaryScoreText = (value) =>
+  isFilledValue(value) && n(value) > 0 ? n(value).toFixed(1) : "&nbsp;";
+
+const summaryMaxText = (value) =>
+  isFilledValue(value) || value === 0 ? safeHtml(String(value)) : "&nbsp;";
+
+const summaryPercentText = (score, max) =>
+  isFilledValue(score) && n(score) > 0 && n(max) > 0
+    ? `${percentOf(score, max)}%`
+    : "&nbsp;";
+
+export const renderReportSummary = ({
+  academicYear = "",
+  rows = null,
+  totals = {},
+  maxScores = {},
+  scoreLabel = "Score",
+  status = "",
+} = {}) => {
+  const baseRows = Array.isArray(rows) && rows.length
+    ? rows
+    : [
+        { id: "A", label: "Part A", max: maxScores.partA, score: totals.partA, isTotal: true },
+        { id: "B", label: "Part B", max: maxScores.partB, score: totals.partB, isTotal: true },
+        { id: "C", label: "Part C", max: maxScores.partC, score: totals.partC, isTotal: true },
+        { id: "D", label: "Part D", max: maxScores.partD, score: totals.partD, isTotal: true },
+        { id: "GT", label: "Grand Total", max: maxScores.grand, score: totals.total, isGrandTotal: true },
+      ];
+
+  const hasGrandTotal = baseRows.some((row) => row?.isGrandTotal || /^grand total/i.test(String(row?.label || "")));
+  const displayRows = hasGrandTotal
+    ? baseRows
+    : [
+        ...baseRows,
+        { id: "GT", label: "Grand Total", max: maxScores.grand, score: totals.total, isGrandTotal: true },
+      ];
+
+  return `
+  <h3 style="text-align:center;font-size:13px">SUMMARY${academicYear ? ` - AY ${safeHtml(academicYear)}` : ""}</h3>
+  <table class="st">
+    <thead>
+      <tr>
+        <th style="width:12%">Sr.No.</th>
+        <th>Section</th>
+        <th style="width:17%">Maximum</th>
+        <th style="width:17%">${safeHtml(scoreLabel)}</th>
+        <th style="width:20%">Marks Obtained (%)</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${displayRows.map((row, index) => {
+        if (row?.isHeader) {
+          return `<tr><td colspan="5" class="b" style="background:#d9d9d9;text-align:center">${safeHtml(row.label)}</td></tr>`;
+        }
+        const isGrand = row?.isGrandTotal || /^grand total/i.test(String(row?.label || ""));
+        const rowClass = row?.isTotal || isGrand ? ` class="tr"` : "";
+        return `<tr${rowClass}>
+          <td class="c">${safeHtml(row.id || String(index + 1))}</td>
+          <td>${safeHtml(row.label || "")}</td>
+          <td class="c">${summaryMaxText(row.max)}</td>
+          <td class="c">${summaryScoreText(row.score)}</td>
+          <td class="c">${summaryPercentText(row.score, row.max)}</td>
+        </tr>`;
+      }).join("")}
+      ${status ? `<tr><td class="c">Status</td><td colspan="4">${safeHtml(status)}</td></tr>` : ""}
+    </tbody>
+  </table>`;
+};
+
 const docsFor = (docs, key) => {
   const files = docs?.[key] || [];
   if (!files.length) return "&nbsp;";
@@ -262,8 +333,12 @@ const docsFor = (docs, key) => {
 const roleColumnLabel = (role, roleLabel = (value) => value) =>
   role === "score" ? "Faculty Score" : `${safeHtml(roleLabel(role))} Score`;
 
+const rowScoreFieldForRole = (role) =>
+  role === "center_head" ? "hod" : role;
+
 const displaySectionScore = (section, row, role) => {
-  const val = row?.[role];
+  const field = rowScoreFieldForRole(role);
+  const val = row?.[field];
   if (!isFilledValue(val)) return "";
   if (section.key === "research" && role === "score") {
     const rgs = researchGuidanceScore(row);
@@ -278,7 +353,8 @@ const displaySectionScore = (section, row, role) => {
 
 const sectionTotalScore = (section, rows, role) => {
   if (!rows || !rows.length) return "";
-  const hasAnyScore = rows.some((row) => isFilledValue(row?.[role]));
+  const field = rowScoreFieldForRole(role);
+  const hasAnyScore = rows.some((row) => isFilledValue(row?.[field]));
   if (!hasAnyScore) return "";
   if (
     section.key === "lectures" ||
@@ -296,6 +372,16 @@ const sectionTotalScore = (section, rows, role) => {
   return isFilledValue(total) || total === 0 ? total.toFixed(1) : "";
 };
 
+const fieldValue = (section, row, key) => {
+  if (key === "pctConducted") {
+    if (isFilledValue(row?.pctConducted)) return row.pctConducted;
+    const planned = Number(row?.planned);
+    const conducted = Number(row?.conducted);
+    return planned > 0 && conducted >= 0 ? `${((conducted / planned) * 100).toFixed(1)}%` : "";
+  }
+  return row?.[key];
+};
+
 const renderSection = ({
   section,
   rows = [],
@@ -306,6 +392,7 @@ const renderSection = ({
 }) => {
   const showDocuments = Boolean(section.doc) && section.key !== "acr" && section.showDocuments !== false;
   const totalColSpan = section.fields.length + 1 + (showDocuments ? 1 : 0);
+  const displayRows = section.key === "acr" ? createAcrRows(rows) : rows;
 
   return `
   <h3>${safeHtml(section.title)} <span>(Max ${safeHtml(section.max)})</span></h3>
@@ -319,12 +406,12 @@ const renderSection = ({
       </tr>
     </thead>
     <tbody>
-      ${(rows.length ? rows : [{}])
+      ${(displayRows.length ? displayRows : [{}])
         .map(
           (row, index) => `
         <tr>
           <td class="center">${index + 1}</td>
-          ${section.fields.map(([key]) => `<td>${displayValue(row?.[key])}</td>`).join("")}
+          ${section.fields.map(([key]) => `<td>${displayValue(fieldValue(section, row, key))}</td>`).join("")}
           ${showDocuments ? `<td>${docsFor(docs, `${section.doc}-${index}`)}</td>` : ""}
           ${scoreRoles.map((role) => `<td class="center">${displayValue(displaySectionScore(section, row, role))}</td>`).join("")}
         </tr>
@@ -491,6 +578,8 @@ export const openFullFormReport = async ({
   docs = {},
   partASections = [],
   partBSections = [],
+  partCSections = null,
+  partDSections = null,
   totals = {},
   maxScores = {},
   scoreRoles = ["score"],
@@ -624,7 +713,7 @@ ${PRINT_REPORT_CSS}
 
   <div class="page-break"></div>
   <h3 style="background:#d9d9d9;padding:4px;text-align:center;font-size:13px">PART C - Administrative Role &amp; University Development Contribution</h3>
-  ${[
+  ${(partCSections && partCSections.length ? partCSections : [
     { key: "uniActs", title: "C1. Administration at University Level", max: 50, fields: [["activity", "Activity / Responsibility"], ["durationCat", "Duration Category"], ["period", "Period"]] },
     { key: "deptActs", title: "C2. Administration at School Level", max: 30, fields: [["activity", "Activity / Responsibility"], ["durationCat", "Duration Category"], ["period", "Period"]] },
     { key: "events", title: "C3. Event Organisation & Institutional Visibility", max: 20, fields: [["event", "Event / Contribution"], ["role", "Role"], ["date", "Date"], ["level", "Level"]] },
@@ -632,7 +721,7 @@ ${PRINT_REPORT_CSS}
     { key: "industry", title: "C5. Industry Connect", max: 10, fields: [["name", "Company / Industry Partner"], ["details", "Details of Engagement"]] },
     { key: "alumni", title: "C6. Alumni Engagement", max: 10, fields: [["activity", "Alumni Activity / Initiative"], ["details", "Details & Outcomes"]] },
     { key: "placements", title: "C7. Placement Mentoring & Internship Support", max: 20, fields: [["activity", "Activity / Student Mentoring"], ["details", "Outcomes / Placements Achieved"]] }
-  ]
+  ])
     .filter((section) => isSectionReportable(form, section))
     .map((section) =>
       renderSection({
@@ -649,14 +738,14 @@ ${PRINT_REPORT_CSS}
   ${!hideAcr ? `
   <div class="page-break"></div>
   <h3 style="background:#d9d9d9;padding:4px;text-align:center;font-size:13px">PART D - Annual Confidential Report (ACR)</h3>
-  ${[{ key: "acr", title: "Part D - Annual Confidential Report (ACR)", max: 50, fields: [["label", "Attribute"]] }]
+  ${(partDSections && partDSections.length ? partDSections : [{ key: "acr", title: "Part D - Annual Confidential Report (ACR)", max: 50, fields: [["label", "Attribute"]] }])
     .filter((section) => isSectionReportable(form, section))
     .map((section) =>
       renderSection({
         section,
         rows: form[section.key] || form.acr,
         docs,
-        scoreRoles,
+        scoreRoles: scoreRoles.filter((role) => role !== "score"),
         roleLabel,
         showTotal,
       }),
@@ -710,6 +799,9 @@ export const generateMediaCommReport = async ({
   reviewChain = [],
   remarksSections = [],
   hideAcr = false,
+  scoreRoles = ["score"],
+  partDScoreRoles = null,
+  roleLabel,
 }) => {
   const win = window.open("", "_blank", "width=1000,height=800");
   if (!win) {
@@ -730,7 +822,9 @@ export const generateMediaCommReport = async ({
   }
 
   const info = form.info || {};
-  const scoreRoles = ["score"];
+  const resolvedPartDScoreRoles = Array.isArray(partDScoreRoles)
+    ? partDScoreRoles.filter((role) => role !== "score")
+    : scoreRoles.filter((role) => role !== "score");
   const displayPartA = n(totals.partA);
   const displayPartAMax = n(maxScores.partA || 0);
   const displayPartB = n(totals.partB);
@@ -742,7 +836,7 @@ export const generateMediaCommReport = async ({
   const rowsToRender = collapsePartBSummaryRows(
     hideAcr && Array.isArray(detailedSummaryRows)
       ? detailedSummaryRows.filter(
-          (r) => !/annual confidential report|acr/i.test(r.label || ""),
+          (r) => !/annual confidential report|acr|^part d\b/i.test(r.label || ""),
         )
       : detailedSummaryRows,
   );
@@ -781,14 +875,14 @@ ${PRINT_REPORT_CSS}
     .filter((s) => isSectionReportable(form, s))
     .map((s) => {
       if (s.key === "innovative" || s.key === "innovRows" || s.key === "innovativeTeaching") {
-        return renderInnovativeSection({ form, docs, scoreRoles, roleLabel: undefined, showTotal: true });
+        return renderInnovativeSection({ form, docs, scoreRoles, roleLabel, showTotal: true });
       }
       return renderSection({
         section: s,
         rows: form[s.key],
         docs,
         scoreRoles,
-        roleLabel: undefined,
+        roleLabel,
         showTotal: true,
       });
     })
@@ -804,7 +898,7 @@ ${PRINT_REPORT_CSS}
         rows: form[s.key],
         docs,
         scoreRoles,
-        roleLabel: undefined,
+        roleLabel,
         showTotal: true,
       }),
     )
@@ -828,7 +922,7 @@ ${PRINT_REPORT_CSS}
         rows: form[s.key],
         docs,
         scoreRoles,
-        roleLabel: undefined,
+        roleLabel,
         showTotal: true,
       }),
     )
@@ -844,8 +938,8 @@ ${PRINT_REPORT_CSS}
         section: s,
         rows: form[s.key] || form.acr,
         docs,
-        scoreRoles,
-        roleLabel: undefined,
+        scoreRoles: resolvedPartDScoreRoles,
+        roleLabel,
         showTotal: true,
       }),
     )
@@ -1025,8 +1119,8 @@ ${PRINT_REPORT_CSS}
   }
   <h3>(v) Qualification Enhancement (Max 10)</h3>
   <table><tr><th>SN</th><th>Qualification / Category</th><th>Self Score</th></tr>
-  ${quals.map((q, i) => `<tr><td class="c">${i + 1}</td><td>${displayValue(q.label)}</td><td class="c">${displayValue(q.score)}</td></tr>`).join("")}
-  <tr class="tr"><td colspan="2" class="c b">Total Score (Max 10)</td><td class="c">${quals.reduce((a, q) => a + n(q.score), 0) > 0 ? quals.reduce((a, q) => a + n(q.score), 0).toFixed(1) : "&nbsp;"}</td></tr></table>
+  ${quals.map((q, i) => `<tr><td class="c">${i + 1}</td><td>${displayValue(q.label)}</td><td class="c">${displayValue(String(q.score ?? "").trim() ? clampScore(q.score, SCORE_LIMITS.qualificationRow) : "")}</td></tr>`).join("")}
+  <tr class="tr"><td colspan="2" class="c b">Total Score (Max 10)</td><td class="c">${sumSectionScore(quals, 10, "score", SCORE_LIMITS.qualificationRow) > 0 ? sumSectionScore(quals, 10, "score", SCORE_LIMITS.qualificationRow).toFixed(1) : "&nbsp;"}</td></tr></table>
   <h3>B. Students' Feedback (Max 10)</h3>
   <table><tr><th>SN</th><th>Course Code/Name</th><th>First Feedback(%)</th><th>Second Feedback(%)</th><th>Average</th><th>Self Score</th></tr>
   ${feedback.map((f, i) => `<tr><td class="c">${i + 1}</td><td>${displayValue(f.code)}</td><td class="c">${displayValue(f.fb1)}</td><td class="c">${displayValue(f.fb2)}</td><td class="c">${isFilledValue(f.fb1) || isFilledValue(f.fb2) ? ((n(f.fb1) + n(f.fb2)) / ((isFilledValue(f.fb1) ? 1 : 0) + (isFilledValue(f.fb2) ? 1 : 0) || 1)).toFixed(2) : "&nbsp;"}</td><td class="c">${displayValue(f.score)}</td></tr>`).join("")}

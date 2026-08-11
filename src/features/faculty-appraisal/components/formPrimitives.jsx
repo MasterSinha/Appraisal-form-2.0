@@ -1,7 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import { useRef, useState } from "react";
 import { api } from "../../../services/api";
-import { stripMaxMarksFromTitle } from "../../../utils/appraisalFormUtils";
+import { filesForDocValue, stripMaxMarksFromTitle } from "../../../utils/appraisalFormUtils";
 
 const documentRawUrl = (file) =>
   typeof file === "string" ? file : file?.url || file?.file_url || file?.fileUrl || file?.document_url || file?.documentUrl || file?.path || file?.location;
@@ -199,7 +199,7 @@ export const SECTION_GUIDELINES = {
     ]
   },
   B3: {
-    title: "B3. Patents, Copyrights, IP & Creative Product Development (Max: 40) [For School of Design and School of Applied Arts]",
+    title: "B3. Patents, Copyrights, IP & Creative Product Development (Max: 40)",
     rules: [
       "Patent Granted — National: 30, International: 20.",
       "Patent Published — National: 8, International: 5.",
@@ -596,10 +596,10 @@ export function SectionCard({ title, subtitle, accent = "#4f46e5", scoreBadge, c
   );
 }
 
-export function RowButtons({ onAdd, onDel, canDel = true, addLabel = "+ Add Row", deleteLabel = "- Delete Last" }) {
+export function RowButtons({ onAdd, onDel, canDel = true, canAdd = true, addLabel = "+ Add Row", deleteLabel = "- Delete Last" }) {
   return (
     <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
-      <button type="button" className="appraisal-add-row-button" style={{ minHeight: 38, padding: "8px 18px", background: "#fff", color: "#4f46e5", border: "1.5px solid #6366f1", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 6, boxShadow: "none" }} onClick={onAdd}>{addLabel}</button>
+      <button type="button" className="appraisal-add-row-button" disabled={!canAdd} title={canAdd ? undefined : "Maximum rows reached"} style={{ minHeight: 38, padding: "8px 18px", background: canAdd ? "#fff" : "#f1f5f9", color: canAdd ? "#4f46e5" : "#94a3b8", border: canAdd ? "1.5px solid #6366f1" : "1.5px solid #cbd5e1", borderRadius: 8, cursor: canAdd ? "pointer" : "not-allowed", fontSize: 13, fontWeight: 700, fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 6, boxShadow: "none" }} onClick={onAdd}>{addLabel}</button>
       {canDel && <button type="button" className="appraisal-danger-button" style={{ minHeight: 38, padding: "8px 18px", background: "#fff", color: "#ef4444", border: "1.5px solid #fecaca", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 6 }} onClick={onDel}>{deleteLabel}</button>}
     </div>
   );
@@ -642,7 +642,7 @@ export function DocCell({ id, docs, setDocs, readOnly = false }) {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
 
-  const files = Array.isArray(docs?.[id]) ? docs[id] : docs?.[id] ? [docs[id]] : [];
+  const files = filesForDocValue(docs?.[id]);
 
   const handleFiles = async (fileList) => {
     if (readOnly) return;
@@ -688,7 +688,7 @@ export function DocCell({ id, docs, setDocs, readOnly = false }) {
 
       setDocs((prev) => ({
         ...prev,
-        [id]: [...(Array.isArray(prev[id]) ? prev[id] : prev[id] ? [prev[id]] : []), ...uploadedFiles],
+        [id]: filesForDocValue([...filesForDocValue(prev[id]), ...uploadedFiles]),
       }));
     } catch (err) {
       console.error("Upload error:", err);
@@ -701,7 +701,7 @@ export function DocCell({ id, docs, setDocs, readOnly = false }) {
 
   const removeFile = (idx) => {
     setDocs((prev) => {
-      const updated = [...(Array.isArray(prev[id]) ? prev[id] : prev[id] ? [prev[id]] : [])];
+      const updated = [...filesForDocValue(prev[id])];
       updated.splice(idx, 1);
       return { ...prev, [id]: updated };
     });
@@ -730,7 +730,7 @@ export function ViewCell({ id, docs }) {
 
 export function ViewDocsCell({ docKey, docs, emptyText = "No docs", compact = false }) {
   const docKeys = Array.isArray(docKey) ? docKey : [docKey];
-  const files = docKeys.flatMap((key) => Array.isArray(docs?.[key]) ? docs[key] : docs?.[key] ? [docs[key]] : []);
+  const files = filesForDocValue(docKeys.flatMap((key) => filesForDocValue(docs?.[key])));
 
   if (!files.length) {
     return emptyText ? <span style={{ color: "#cbd5e1", fontSize: 10 }}>{emptyText}</span> : null;

@@ -34,6 +34,7 @@ import {
   maskDateDDMMYYYY,
   normalizeAutoScores,
   projectGuidanceRowMax,
+  researchGuidanceRowMax,
   researchGuidanceScore,
   selfEffectivePartAMax,
   societyRowLocked,
@@ -115,6 +116,15 @@ const sanitizeInnovativeRows = (rows) => {
   const normalizedRows = cleaned.map((row) => ({ ...row, max: row.max || A3_INNOVATIVE_ROW_MAX }));
   return normalizedRows.length ? normalizedRows : [blankInnovativeRow()];
 };
+
+// Row-wise scores may legitimately sum above a section's max (e.g. multiple qualifying
+// entries) - the actual stored/displayed total is already capped at the section max
+// elsewhere via clampScore-based aggregation, so validation must not also block submission
+// for that. `rowMax: section.rowMax || 0` additionally stops validateCompleteRows' own
+// title-text fallback (matching "FDP"/"industrial training" in a label) from inventing a
+// row cap for sections that never defined one.
+const withRelaxedSectionCap = (sections) =>
+  sections.map((section) => ({ ...section, rowMax: section.rowMax || 0, capSectionTotal: true }));
 
 const textEncoder = new TextEncoder();
 const crcTable = (() => {
@@ -256,7 +266,7 @@ const fetchAttachmentBlob = async (file) => {
   const finalUrl = rawUrl ? api.getFileUrl(rawUrl) : "";
   if (!finalUrl) throw new Error("Attachment URL is missing.");
   if (finalUrl.startsWith("data:")) return dataUrlToBlob(finalUrl);
-  const token = sessionStorage.getItem("accessToken") || sessionStorage.getItem("token") || localStorage.getItem("accessToken") || localStorage.getItem("token");
+  const token = sessionStorage.getItem("accessToken") || sessionStorage.getItem("token");
   const response = await fetch(finalUrl, {
     credentials: "include",
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
@@ -284,6 +294,7 @@ const A1_COURSE_DELIVERY_MAX = 40;
 const A2_COURSE_FILE_MAX = 20;
 const A3_INNOVATIVE_MAX = 20;
 const A3_INNOVATIVE_ROW_MAX = 4;
+const A3_METHODS_ROW_LIMIT = 5;
 const A4_FEEDBACK_MAX = 10;
 const A5_OBE_MAX = 20;
 const A6_PROJECT_GUIDANCE_MAX = 20;
@@ -292,13 +303,14 @@ const A8_QUALIFICATION_MAX = 10;
 const C1_UNIVERSITY_ADMIN_MAX = 50;
 const C2_SCHOOL_ADMIN_MAX = 30;
 const C3_EVENT_MAX = 20;
-const C4_OUTREACH_MAX = 20;
-const C5_INDUSTRY_MAX = 8;
+const C4_OUTREACH_MAX = 10;
+const C5_INDUSTRY_MAX = 10;
 const C6_ALUMNI_MAX = 10;
 const C7_PLACEMENT_MAX = 20;
 const B1_JOURNAL_MAX = 100;
 const B2_BOOK_MAX = 30;
-const B3_ICT_MAX = 15;
+const B3_ICT_MAX = 20;
+const B3_PATENT_MAX = 40;
 const B4_PROJECT_MAX = 40;
 const B5_RESEARCH_GUIDANCE_MAX = 20;
 const B6_CONSULTANCY_MAX = 20;
@@ -306,6 +318,7 @@ const B7_CONFERENCE_MAX = 20;
 const B8_ATTENDED_MAX = 20;
 const B9_AWARDS_MAX = 20;
 const B10_STARTUP_MAX = 20;
+const b5RowMax = (row) => researchGuidanceRowMax(row) || B5_RESEARCH_GUIDANCE_MAX;
 
 const defaultObeRows = () => [
   { component: "CO-PO mapping sheet", evidence: "", score: "", max: 5 },
@@ -318,6 +331,30 @@ const defaultMentoringRows = () => [
   { activity: "Mentoring register maintained", evidence: "", score: "", max: 3 },
   { activity: "Documented academic/career counselling outcomes", evidence: "", score: "", max: 3 },
 ];
+
+const standardDummyPdfFor = (key) => [{
+  name: `${key}-dummy.pdf`,
+  type: "application/pdf",
+  size: 1024,
+  url: "data:application/pdf;base64,JVBERi0xLjQKJcTl8uXrp/Og0MTGCjEgMCBvYmoKPDwvVHlwZSAvQ2F0YWxvZy9QYWdlcyAyIDAgUj4+CmVuZG9iago=",
+}];
+
+const addStandardDummyDocs = (docs, prefix, count) => {
+  for (let index = 0; index < count; index += 1) {
+    docs[`${prefix}-${index}`] = standardDummyPdfFor(`${prefix}-${index}`);
+  }
+};
+
+const buildStandardDummyDocs = () => {
+  const docs = {};
+  [
+    ["lec", 4], ["courseFile", 2], ["innov", 5], ["obe", 3], ["proj", 2], ["mentor", 3], ["qual", 2],
+    ["uni", 2], ["dept", 2], ["event", 2], ["soc", 2], ["ind", 2], ["alumni", 2], ["placement", 2],
+    ["jour", 2], ["book", 2], ["ict", 2], ["res", 2], ["project2", 2], ["externalProject", 2],
+    ["pat", 2], ["awd", 2], ["conf", 2], ["prop", 2], ["prod", 2], ["fdp", 2], ["train", 2],
+  ].forEach(([prefix, count]) => addStandardDummyDocs(docs, prefix, count));
+  return docs;
+};
 
 const evidenceClaimedOrScored = (row = {}) =>
   Boolean(String(row.score ?? "").trim()) || String(row.evidence ?? "").trim().toLowerCase() === "yes";
@@ -576,7 +613,7 @@ export default function StandardMyAppraisal({
   const [quals, setQuals] = useState([
     { label: "", score: "", hod: "", director: "" },
   ]);
-  const setQual = (i, k, v) => setQuals((p) => p.map((r, j) => j === i ? { ...r, [k]: v } : r));
+  const setQual = (i, k, v) => setQuals((p) => p.map((r, j) => j === i ? { ...r, [k]: k === "score" ? String(clampScore(v, A8_QUALIFICATION_MAX) || "") : v } : r));
 
   const [feedback, setFeedback] = useState([
     { code: "", fb1: "", fb2: "", score: "", hod: "", director: "" },
@@ -645,13 +682,7 @@ export default function StandardMyAppraisal({
   const [research, setResearch] = useState([
     { degree: "", name: "", thesis: "", score: "", hod: "", director: "" },
   ]);
-  const setRes = (i, k, v) => setResearch((p) => p.map((r, j) => {
-    if (j !== i) return r;
-    const next = { ...r, [k]: v };
-    return ["degree", "name", "thesis"].includes(k)
-      ? { ...next, score: next.name || next.thesis ? String(researchGuidanceScore(next)) : "" }
-      : next;
-  }));
+  const setRes = (i, k, v) => setResearch((p) => p.map((r, j) => (j === i ? { ...r, [k]: v } : r)));
 
   const [projects2, setProjects2] = useState([
     { title: "", agency: "", date: "", amount: "", role: "", status: "", score: "", hod: "", max: B4_PROJECT_MAX },
@@ -748,6 +779,129 @@ export default function StandardMyAppraisal({
     setSummaryOtherInfo, setSectionSaveStatus,
   };
 
+  const fillStandardDummyData = () => {
+    if (formLocked || submitting || showClosedReportOnly) return;
+    setLectures([
+      { sem: "2026-27 Sem-I", code: "CS101 - Programming Fundamentals", planned: "40", conducted: "39", pctConducted: "97.5%", score: "10", hod: "", director: "" },
+      { sem: "2026-27 Sem-I", code: "CS205 - Data Structures", planned: "42", conducted: "40", pctConducted: "95.2%", score: "10", hod: "", director: "" },
+      { sem: "2026-27 Sem-II", code: "CS302 - Database Systems", planned: "38", conducted: "36", pctConducted: "94.7%", score: "10", hod: "", director: "" },
+      { sem: "2026-27 Sem-II", code: "CS404 - Cloud Computing", planned: "36", conducted: "34", pctConducted: "94.4%", score: "10", hod: "", director: "" },
+    ]);
+    setCourseFile([
+      { course: "CS101 - Programming Fundamentals", title: "Course File Sem-I", details: "Yes", score: "4", hod: "", director: "" },
+      { course: "CS302 - Database Systems", title: "Course File Sem-II", details: "Yes", score: "4", hod: "", director: "" },
+    ]);
+    setInnovRows([
+      { method: "Blended learning", details: "Yes", score: "4", max: A3_INNOVATIVE_ROW_MAX },
+      { method: "Virtual Lab", details: "Yes", score: "4", max: A3_INNOVATIVE_ROW_MAX },
+      { method: "Project-Based Learning", details: "Yes", score: "4", max: A3_INNOVATIVE_ROW_MAX },
+      { method: "Quiz", details: "Yes", score: "4", max: A3_INNOVATIVE_ROW_MAX },
+      { method: "Flip classroom (with proof of material shared)", details: "Yes", score: "4", max: A3_INNOVATIVE_ROW_MAX },
+    ]);
+    setInnovDetails("Blended learning, virtual lab, project-based learning, quiz and flipped classroom used.");
+    setInnovScore("20");
+    setObeRows(defaultObeRows().map((row) => ({ ...row, evidence: "Yes", score: String(row.max) })));
+    setMentoringRows(defaultMentoringRows().map((row) => ({ ...row, evidence: "Yes", score: String(row.max) })));
+    setProjects([
+      { label: "B.Tech / UG Major Project", score: "5", hod: "", director: "" },
+      { label: "Mini Project / Internship", score: "5", hod: "", director: "" },
+    ]);
+    setQuals([
+      { label: "PhD / Higher qualification progress", title: "NPTEL Certification", body: "NPTEL", date: "01/08/2026", score: "5", hod: "", director: "" },
+      { label: "Certification / FDP qualification enhancement", title: "Cloud Certification", body: "AWS Academy", date: "02/08/2026", score: "5", hod: "", director: "" },
+    ]);
+    setFeedback([
+      { code: "CS101 - Programming Fundamentals", fb1: "88", fb2: "90", score: "5", hod: "", director: "" },
+      { code: "CS302 - Database Systems", fb1: "86", fb2: "89", score: "5", hod: "", director: "" },
+    ]);
+    setUniActs([
+      { activity: "University examination committee", nature: "Coordinator", period: "Aug 2026 - Dec 2026", score: "20", hod: "", director: "" },
+      { activity: "Academic council support", nature: "Member", period: "Jan 2027 - Apr 2027", score: "20", hod: "", director: "" },
+    ]);
+    setDeptActs([
+      { activity: "Department timetable coordination", nature: "Coordinator", period: "Aug 2026 - Dec 2026", score: "10", hod: "", director: "" },
+      { activity: "Lab development activity", nature: "Member", period: "Jan 2027 - Apr 2027", score: "10", hod: "", director: "" },
+    ]);
+    setEventRows([
+      { event: "Technical workshop", role: "Coordinator", date: "03/08/2026", level: "University", score: "10" },
+      { event: "Hackathon mentoring", role: "Mentor", date: "04/08/2026", level: "National", score: "10" },
+    ]);
+    setSociety([
+      { label: "NSS / outreach activity", details: "Community coding awareness session", date: "05/08/2026", score: "5", hod: "", director: "", max: C4_OUTREACH_MAX },
+      { label: "Extension activity", details: "Digital literacy camp", date: "06/08/2026", score: "5", hod: "", director: "", max: C4_OUTREACH_MAX },
+    ]);
+    setIndustry([
+      { activity: "Industry expert session", partner: "Tech Partner Pvt Ltd", date: "07/08/2026", name: "Tech Partner Pvt Ltd", details: "Session conducted", score: "2", hod: "", director: "" },
+      { activity: "MoU discussion", partner: "Innovation Labs", date: "08/08/2026", name: "Innovation Labs", details: "Collaboration meeting", score: "2", hod: "", director: "" },
+    ]);
+    setAlumniRows([
+      { activity: "Alumni talk", details: "Career guidance by alumnus", date: "09/08/2026", score: "5" },
+      { activity: "Alumni mentoring", details: "Project mentoring session", date: "10/08/2026", score: "5" },
+    ]);
+    setPlacementRows([
+      { activityType: "Resume review", name: "Student Batch A", date: "11/08/2026", score: "10" },
+      { activityType: "Mock interview", name: "Student Batch B", date: "12/08/2026", score: "10" },
+    ]);
+    setJournals([
+      { title: "AI Enabled Learning Analytics", journal: "International Journal of Computing", issn: "2456-0001", index: "Scopus", impactFactor: "2.1", authorPosition: "First Author", score: "30", hod: "", director: "" },
+      { title: "Secure IoT Framework", journal: "Journal of Engineering Systems", issn: "2456-0002", index: "Web of Science", impactFactor: "1.8", authorPosition: "Co-author", score: "30", hod: "", director: "" },
+    ]);
+    setBooks([
+      { title: "Applied Data Science Chapter", book: "DYPIU Press, ISBN 9780000000001", issn: "9780000000001", pub: "Chapter", level: "National", coauth: "No", first: "Yes", score: "10", hod: "", director: "" },
+      { title: "Cloud Computing Practices", book: "Tech Press, ISBN 9780000000002", issn: "9780000000002", pub: "Book", level: "National", coauth: "Yes", first: "No", score: "10", hod: "", director: "" },
+    ]);
+    setIct([
+      { title: "LMS module on DBMS", desc: "Recorded module", type: "Video", quad: "Q1", score: "5", hod: "", director: "" },
+      { title: "MOOC content unit", desc: "E-content uploaded", type: "MOOC", quad: "Q2", score: "5", hod: "", director: "" },
+    ]);
+    setResearch([
+      { degree: "PhD", name: "Research Scholar A", thesis: "AI in Education", status: "Ongoing", date: "13/08/2026", score: "5", hod: "", director: "" },
+      { degree: "PG", name: "PG Student B", thesis: "Cloud Security", status: "Completed", date: "14/08/2026", score: "5", hod: "", director: "" },
+    ]);
+    setProjects2([
+      { title: "Smart Campus Analytics", agency: "AICTE", date: "15/08/2026", amount: "100000", role: "PI", status: "Ongoing", score: "10", hod: "", max: B4_PROJECT_MAX },
+      { title: "IoT Lab Prototype", agency: "DYPIU", date: "16/08/2026", amount: "75000", role: "Co-PI", status: "Completed", score: "10", hod: "", max: B4_PROJECT_MAX },
+    ]);
+    setExternalProjects([
+      { title: "Industry Consultancy Proof", agency: "Tech Partner Pvt Ltd", date: "17/08/2026", amount: "50000", role: "PI", status: "Completed", score: "5", hod: "" },
+      { title: "Testing Project", agency: "Innovation Labs", date: "18/08/2026", amount: "35000", role: "Co-PI", status: "Ongoing", score: "5", hod: "" },
+    ]);
+    setPatents([
+      { title: "Smart Attendance Device", type: "National", date: "19/08/2026", status: "Published", fileNo: "PAT-001", score: "10", hod: "", director: "" },
+      { title: "Learning Analytics Method", type: "National", date: "20/08/2026", status: "Filed", fileNo: "PAT-002", score: "10", hod: "", director: "" },
+    ]);
+    setAwards([
+      { title: "Best Paper Award", date: "21/08/2026", agency: "IEEE Chapter", level: "National", score: "5", hod: "", director: "" },
+      { title: "Reviewer Recognition", date: "22/08/2026", agency: "Journal Board", level: "International", score: "5", hod: "", director: "" },
+    ]);
+    setConfs([
+      { title: "AI Workshop", type: "Workshop", role: "Coordinator", date: "23/08/2026", org: "DYPIU", level: "National", score: "5", hod: "", director: "" },
+      { title: "Cybersecurity Seminar", type: "Seminar", role: "Speaker", date: "24/08/2026", org: "DYPIU", level: "University", score: "5", hod: "", director: "" },
+    ]);
+    setProposals([
+      { title: "Consultancy Proposal", duration: "2 weeks", agency: "Tech Partner Pvt Ltd", amount: "50000", score: "5", hod: "", director: "" },
+      { title: "Testing Proposal", duration: "1 month", agency: "Innovation Labs", amount: "75000", score: "5", hod: "", director: "" },
+    ]);
+    setProducts([
+      { details: "Prototype for lab automation", role: "Lead", usage: "Used in lab demo", status: "Completed", score: "5", hod: "", director: "" },
+      { details: "Startup mentoring contribution", role: "Mentor", usage: "Student startup support", status: "Ongoing", score: "5", hod: "", director: "" },
+    ]);
+    setFdps([
+      { program: "Advanced Pedagogy FDP", duration: "5 days", org: "NITTTR", score: "5", hod: "", director: "" },
+      { program: "AI Tools FDP", duration: "1 week", org: "AICTE", score: "5", hod: "", director: "" },
+    ]);
+    setTraining([
+      { company: "Tech Partner Pvt Ltd", duration: "1 week", nature: "Industrial training", score: "5", hod: "", director: "" },
+      { company: "Cloud Academy", duration: "5 days", nature: "Hands-on training", score: "5", hod: "", director: "" },
+    ]);
+    setExhibitions([
+      { title: "Engineering Project Expo", type: "Group", venueLevel: "University", date: "25/08/2026", score: "5", hod: "", director: "" },
+      { title: "Innovation Showcase", type: "Curated", venueLevel: "National", date: "26/08/2026", score: "5", hod: "", director: "" },
+    ]);
+    setDocs((prev) => ({ ...prev, ...buildStandardDummyDocs() }));
+    setSummaryOtherInfo("Dummy Engineering appraisal data generated for multi-row validation, attachment, report, save, and review testing.");
+  };
+
   useEffect(() => {
     let active = true;
     setAppraisalWindowStatus(null);
@@ -775,7 +929,7 @@ export default function StandardMyAppraisal({
   }, [info.ay, isLegacyTwoPartYear]);
 
   useEffect(() => {
-    const userEmail = sessionStorage.getItem("username") || sessionStorage.getItem("email") || localStorage.getItem("username") || localStorage.getItem("email");
+    const userEmail = sessionStorage.getItem("username") || sessionStorage.getItem("email");
     if (!userEmail || !info.ay) return;
     const requestId = loadRequestRef.current + 1;
     loadRequestRef.current = requestId;
@@ -812,6 +966,12 @@ export default function StandardMyAppraisal({
           facultyEmail: userEmail,
           academicYear: requestedAcademicYear,
           setters: scopedAppraisalSetters,
+          // A legacy (previous-year) academic year is always a past, already-submitted
+          // cycle, never the one being actively drafted - so it must be read from the
+          // definitive submitted record for that exact email + academic year, not the
+          // generic draft snapshot (which reflects whatever is currently being typed for
+          // the active cycle and isn't reliably scoped by year).
+          preferSubmitted: isLegacyTwoPartAcademicYear(requestedAcademicYear) || (Boolean(declaration) && hasActiveRejection(declaration, loadedReviews)),
         });
         if (!isCurrentLoad()) return;
         setLegacyReportTotals(isLegacyTwoPartAcademicYear(requestedAcademicYear)
@@ -888,7 +1048,7 @@ export default function StandardMyAppraisal({
   const researchScore = clampScore(research.reduce((total, row) => total + researchGuidanceScore(row), 0), B5_RESEARCH_GUIDANCE_MAX);
   const projectBScore = sumSectionScore(projects2, B4_PROJECT_MAX);
   const externalProjectScore = 0;
-  const patentScore = sumSectionScore(patents, 40);
+  const patentScore = sumSectionScore(patents, B3_PATENT_MAX);
   const awardScore = sumSectionScore(awards, B9_AWARDS_MAX);
   const confScore = sumSectionScore(confs, B7_CONFERENCE_MAX);
   const proposalScore = sumSectionScore(proposals, B6_CONSULTANCY_MAX);
@@ -900,7 +1060,7 @@ export default function StandardMyAppraisal({
   const effectivePartBMax = PART_B_MAX;
   const partCTotal = clampScore(uniScore + deptScore + eventScore + societyScore + industryScore + alumniScore + placementScore, PART_C_MAX);
   const partDTotal = 0;
-  const effectiveGrandMax = effectivePartAMax + effectivePartBMax + PART_C_MAX + PART_D_MAX;
+  const effectiveGrandMax = effectivePartAMax + effectivePartBMax + PART_C_MAX;
   const partBTotal = clampScore(journalScore + bookScore + ictScore + researchScore + projectBScore + patentScore + awardScore + confScore + proposalScore + productScore + b8Score, effectivePartBMax);
   const grandTotal = clampScore(partATotal + partBTotal + partCTotal + partDTotal, effectiveGrandMax);
 
@@ -942,24 +1102,24 @@ export default function StandardMyAppraisal({
       { label: "C1. Administration at University Level", rows: uniActs, fields: ["activity", "nature", "period", "score"] },
       { label: "C2. Administration at School Level", rows: deptActs, fields: ["activity", "nature", "period", "score"] },
       { label: "C3. Event Organisation & Institutional Visibility", rows: eventRows, fields: ["event", "role", "date", "level", "score"] },
-      { label: "C4. Outreach, Extension & Social Responsibility", rows: society, fields: ["label", "details", "date", "score"] },
-      { label: "C5. Industry Interaction & Linkages", rows: industry, fields: ["activity", "partner", "date", "score"] },
+      { label: "C4. Outreach, Extension & Social Responsibility", rows: society, fields: ["label", "details", "date", "score"], rowMax: C4_OUTREACH_MAX, maxScore: C4_OUTREACH_MAX },
+      { label: "C5. Industry Interaction & Linkages", rows: industry, fields: ["activity", "partner", "date", "score"], rowMax: C5_INDUSTRY_MAX, maxScore: C5_INDUSTRY_MAX },
       { label: "C6. Alumni Engagement & Networking", rows: alumniRows, fields: ["activity", "details", "date", "score"] },
       { label: "C7. Student Placement Mentoring & Career Development", rows: placementRows, fields: ["activityType", "name", "date", "score"] },
-      { label: "B1. Journals", rows: journals, fields: ["title", "journal", "score"] },
-      { label: "B2. Books / Chapters", rows: books, fields: ["title", "book", "pub", "score"] },
-      { label: "B3. Patents, Copyrights & IP and Product Development", rows: patents, fields: ["title", "type", "status", "fileNo", "score"] },
+      { label: "B1. Journals", rows: journals, fields: ["title", "journal", "score"], rowMax: B1_JOURNAL_MAX, maxScore: B1_JOURNAL_MAX },
+      { label: "B2. Books / Chapters", rows: books, fields: ["title", "book", "pub", "score"], rowMax: B2_BOOK_MAX, maxScore: B2_BOOK_MAX },
+      { label: "B3. Patents, Copyrights & IP and Product Development", rows: patents, fields: ["title", "type", "status", "fileNo", "score"], rowMax: B3_PATENT_MAX, maxScore: B3_PATENT_MAX },
       { label: "B4. Funded Research Projects", rows: projects2, fields: ["title", "agency", "date", "amount", "role", "status", "score"] },
-      { label: "B5. Research Guidance", rows: research, fields: ["degree", "name", "status", "date", "score"] },
-      { label: "B6. Consultancy, Testing & Training", rows: proposals, fields: ["agency", "duration", "amount", "score"] },
-      { label: "B7. Conference / FDP Contributions - Organised", rows: confs, fields: ["title", "role", "date", "level", "score"] },
+      { label: "B5. Research Guidance", rows: research, fields: ["degree", "name", "status", "date", "score"], rowMax: b5RowMax },
+      { label: "B6. Consultancy, Testing & Training", rows: proposals, fields: ["agency", "duration", "amount", "score"], rowMax: B6_CONSULTANCY_MAX, maxScore: B6_CONSULTANCY_MAX },
+      { label: "B7. Conference / FDP Contributions - Organised", rows: confs, fields: ["title", "role", "date", "level", "score"], rowMax: B7_CONFERENCE_MAX, maxScore: B7_CONFERENCE_MAX },
       { label: "B8. Conference / FDP / Industry Training Attended", rows: fdps, fields: ["program", "duration", "org", "score"], rowMax: B8_ATTENDED_MAX, maxScore: B8_ATTENDED_MAX },
       { label: "B8. Industrial Training", rows: training, fields: ["company", "duration", "nature", "score"], rowMax: B8_ATTENDED_MAX, maxScore: B8_ATTENDED_MAX },
-      { label: "B9. Research Awards, Fellowships & Citations", rows: awards, fields: ["title", "date", "agency", "level", "score"] },
-      { label: "B10. Innovation, Start-ups & Technology Transfer", rows: products, fields: ["details", "role", "status", "score"] },
-      { label: "B11. ICT Content, MOOCs & E-Learning", rows: ict, fields: ["title", "type", "quad", "score"] },
+      { label: "B9. Research Awards, Fellowships & Citations", rows: awards, fields: ["title", "date", "agency", "level", "score"], rowMax: B9_AWARDS_MAX, maxScore: B9_AWARDS_MAX },
+      { label: "B10. Innovation, Start-ups & Technology Transfer", rows: products, fields: ["details", "role", "status", "score"], rowMax: B10_STARTUP_MAX, maxScore: B10_STARTUP_MAX },
+      { label: "B11. ICT Content, MOOCs & E-Learning", rows: ict, fields: ["title", "type", "quad", "score"], rowMax: B3_ICT_MAX, maxScore: B3_ICT_MAX },
     ];
-    const errors = validateCompleteRows(sections, docs);
+    const errors = validateCompleteRows(withRelaxedSectionCap(sections), docs);
     [...projects2, ...externalProjects].forEach((row, index) => {
       if (row.date && !isValidDDMMYYYY(row.date)) errors.push(`B4 project row ${index + 1}: date must be DD/MM/YYYY.`);
     });
@@ -982,27 +1142,27 @@ export default function StandardMyAppraisal({
       { label: "C1. Administration at University Level", rows: uniActs, fields: ["activity", "nature", "period", "score"] },
       { label: "C2. Administration at School Level", rows: deptActs, fields: ["activity", "nature", "period", "score"] },
       { label: "C3. Event Organisation & Institutional Visibility", rows: eventRows, fields: ["event", "role", "date", "level", "score"] },
-      { label: "C4. Outreach, Extension & Social Responsibility", rows: society, fields: ["label", "details", "date", "score"] },
-      { label: "C5. Industry Interaction & Linkages", rows: industry, fields: ["activity", "partner", "date", "score"] },
+      { label: "C4. Outreach, Extension & Social Responsibility", rows: society, fields: ["label", "details", "date", "score"], rowMax: C4_OUTREACH_MAX, maxScore: C4_OUTREACH_MAX },
+      { label: "C5. Industry Interaction & Linkages", rows: industry, fields: ["activity", "partner", "date", "score"], rowMax: C5_INDUSTRY_MAX, maxScore: C5_INDUSTRY_MAX },
       { label: "C6. Alumni Engagement & Networking", rows: alumniRows, fields: ["activity", "details", "date", "score"] },
       { label: "C7. Student Placement Mentoring & Career Development", rows: placementRows, fields: ["activityType", "name", "date", "score"] },
     ];
     const partBSections = [
-      { label: "B1. Journals", rows: journals, fields: ["title", "journal", "issn", "index", "score"] },
-      { label: "B2. Books / Chapters", rows: books, fields: ["title", "book", "issn", "pub", "coauth", "first", "score"] },
-      { label: "B3. Patents, Copyrights & IP and Product Development", rows: patents, fields: ["title", "type", "status", "fileNo", "score"] },
+      { label: "B1. Journals", rows: journals, fields: ["title", "journal", "issn", "index", "score"], rowMax: B1_JOURNAL_MAX, maxScore: B1_JOURNAL_MAX },
+      { label: "B2. Books / Chapters", rows: books, fields: ["title", "book", "issn", "pub", "coauth", "first", "score"], rowMax: B2_BOOK_MAX, maxScore: B2_BOOK_MAX },
+      { label: "B3. Patents, Copyrights & IP and Product Development", rows: patents, fields: ["title", "type", "status", "fileNo", "score"], rowMax: B3_PATENT_MAX, maxScore: B3_PATENT_MAX },
       { label: "B4. Funded Research Projects", rows: projects2, fields: ["title", "agency", "date", "amount", "role", "status", "score"] },
-      { label: "B5. Research Guidance", rows: research, fields: ["degree", "name", "status", "date", "score"] },
-      { label: "B6. Consultancy, Testing & Training", rows: proposals, fields: ["agency", "duration", "amount", "score"] },
-      { label: "B7. Conference / FDP Contributions - Organised", rows: confs, fields: ["title", "role", "date", "level", "score"] },
+      { label: "B5. Research Guidance", rows: research, fields: ["degree", "name", "status", "date", "score"], rowMax: b5RowMax },
+      { label: "B6. Consultancy, Testing & Training", rows: proposals, fields: ["agency", "duration", "amount", "score"], rowMax: B6_CONSULTANCY_MAX, maxScore: B6_CONSULTANCY_MAX },
+      { label: "B7. Conference / FDP Contributions - Organised", rows: confs, fields: ["title", "role", "date", "level", "score"], rowMax: B7_CONFERENCE_MAX, maxScore: B7_CONFERENCE_MAX },
       { label: "B8. Conference / FDP / Industry Training Attended", rows: fdps, fields: ["program", "duration", "org", "score"], rowMax: B8_ATTENDED_MAX, maxScore: B8_ATTENDED_MAX },
       { label: "B8. Industrial Training", rows: training, fields: ["company", "duration", "nature", "score"], rowMax: B8_ATTENDED_MAX, maxScore: B8_ATTENDED_MAX },
-      { label: "B9. Research Awards, Fellowships & Citations", rows: awards, fields: ["title", "date", "agency", "level", "score"] },
-      { label: "B10. Innovation, Start-ups & Technology Transfer", rows: products, fields: ["details", "role", "status", "score"] },
-      { label: "B11. ICT Content, MOOCs & E-Learning", rows: ict, fields: ["title", "type", "quad", "score"] },
+      { label: "B9. Research Awards, Fellowships & Citations", rows: awards, fields: ["title", "date", "agency", "level", "score"], rowMax: B9_AWARDS_MAX, maxScore: B9_AWARDS_MAX },
+      { label: "B10. Innovation, Start-ups & Technology Transfer", rows: products, fields: ["details", "role", "status", "score"], rowMax: B10_STARTUP_MAX, maxScore: B10_STARTUP_MAX },
+      { label: "B11. ICT Content, MOOCs & E-Learning", rows: ict, fields: ["title", "type", "quad", "score"], rowMax: B3_ICT_MAX, maxScore: B3_ICT_MAX },
     ];
     const sectionMap = { partA: partASections, partB: partBSections, partC: partCSections, partD: [] };
-    const errors = validateCompleteRows(sectionMap[section] || partASections, docs);
+    const errors = validateCompleteRows(withRelaxedSectionCap(sectionMap[section] || partASections), docs);
     if (section === "partB") {
       [...projects2, ...externalProjects].forEach((row, index) => {
         if (row.date && !isValidDDMMYYYY(row.date)) errors.push(`B4 project row ${index + 1}: date must be DD/MM/YYYY.`);
@@ -1037,7 +1197,7 @@ export default function StandardMyAppraisal({
   const lastAutoSavedFingerprintRef = useRef("");
 
   useEffect(() => {
-    const userEmail = sessionStorage.getItem("username") || sessionStorage.getItem("email") || localStorage.getItem("username") || localStorage.getItem("email");
+    const userEmail = sessionStorage.getItem("username") || sessionStorage.getItem("email");
     if (!autoSaveReadyRef.current) {
       autoSaveReadyRef.current = true;
       return undefined;
@@ -1094,7 +1254,7 @@ export default function StandardMyAppraisal({
 
   const handleSaveCurrentSection = async (section, navigateNext = true) => {
     if (formLocked) return;
-    const userEmail = sessionStorage.getItem("username") || sessionStorage.getItem("email") || localStorage.getItem("username") || localStorage.getItem("email");
+    const userEmail = sessionStorage.getItem("username") || sessionStorage.getItem("email");
     if (!userEmail) {
       alert("Please login again before saving. Your session email was not found.");
       navigate("/login", { replace: true });
@@ -1189,7 +1349,7 @@ export default function StandardMyAppraisal({
       return;
     }
 
-    const userEmail = sessionStorage.getItem("username") || sessionStorage.getItem("email") || localStorage.getItem("username") || localStorage.getItem("email");
+    const userEmail = sessionStorage.getItem("username") || sessionStorage.getItem("email");
     if (!userEmail) {
       alert("Please login again before submitting. Your email was not found in this session.");
       navigate("/login", { replace: true });
@@ -1363,7 +1523,7 @@ export default function StandardMyAppraisal({
     <h3>A8. Professional Development &amp; Qualification Enhancement &nbsp;(Max 10)</h3>
     <table>
       <tr><th>SN</th><th>Qualification / Category</th><th>Self Score</th></tr>
-      ${quals.map((q, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(q.label)}</td><td class="c">${reportTextValue(q.score)}</td></tr>`).join('')}
+      ${quals.map((q, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(q.label)}</td><td class="c">${reportTextValue(String(q.score ?? "").trim() ? clampScore(q.score, A8_QUALIFICATION_MAX) : "")}</td></tr>`).join('')}
       <tr class="tr"><td colspan="2" class="c b">Total Score (Max 10)</td><td class="c">${qualTotal > 0 ? qualTotal.toFixed(1) : "&nbsp;"}</td></tr>
     </table>
 
@@ -1455,7 +1615,7 @@ export default function StandardMyAppraisal({
       <tr class="tr"><td colspan="3" class="c b">Total (Max 20)</td><td class="c">${productScore > 0 ? productScore.toFixed(1) : "&nbsp;"}</td></tr>
     </table>
 
-    <h3>B11. ICT Content, MOOCs &amp; E-Learning &nbsp;(Max 15)</h3>
+    <h3>B11. ICT Content, MOOCs &amp; E-Learning &nbsp;(Max 20)</h3>
     <table>
       <tr><th>SN</th><th>Title</th><th>Short Description</th><th>Type / Link</th><th>Quadrants</th><th>Self Score</th></tr>
       ${ict.map((r, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(r.title)}</td><td>${reportTextValue(r.desc)}</td><td>${reportTextValue(r.type)}</td><td class="c">${reportTextValue(r.quad)}</td><td class="c">${reportTextValue(r.score)}</td></tr>`).join('')}
@@ -1493,11 +1653,11 @@ export default function StandardMyAppraisal({
       <tr class="tr"><td colspan="4" class="c b">Total (Max 20)</td><td class="c">${societyScore > 0 ? societyScore.toFixed(1) : "&nbsp;"}</td></tr>
     </table>`}
 
-    <h3>C5. Industry Interaction &amp; Linkages &nbsp;(Max 8)</h3>
+    <h3>C5. Industry Interaction &amp; Linkages &nbsp;(Max 10)</h3>
     <table>
       <tr><th>SN</th><th>Activity</th><th>Industry Partner</th><th>Date</th><th>Self Score</th></tr>
       ${industry.map((ind, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(ind.activity || ind.name)}</td><td>${reportTextValue(ind.partner || ind.details)}</td><td class="c">${reportTextValue(ind.date)}</td><td class="c">${reportTextValue(ind.score)}</td></tr>`).join('')}
-      <tr class="tr"><td colspan="4" class="c b">Total (Max 8)</td><td class="c">${industryScore > 0 ? industryScore.toFixed(1) : "&nbsp;"}</td></tr>
+      <tr class="tr"><td colspan="4" class="c b">Total (Max 10)</td><td class="c">${industryScore > 0 ? industryScore.toFixed(1) : "&nbsp;"}</td></tr>
     </table>
 
     <h3>C6. Alumni Engagement &amp; Networking &nbsp;(Max 10)</h3>
@@ -1515,15 +1675,6 @@ export default function StandardMyAppraisal({
     </table>
 
     <div class="pb"></div>
-    <h3 style="background:#d9d9d9;padding:4px;text-align:center;font-size:13px">PART D - Annual Confidential Report</h3>
-    <h3>Part D. Annual Confidential Report &nbsp;(Max 50, Evaluator only)</h3>
-    <table>
-      <tr><th>SN</th><th>Parameter</th><th>Description / Indicators</th><th>Max Marks</th></tr>
-      ${partDParameters.map((row, i) => `<tr><td class="c">D${i + 1}</td><td>${reportTextValue(row.parameter)}</td><td>${reportTextValue(row.description)}</td><td class="c">${reportTextValue(row.max)}</td></tr>`).join('')}
-      <tr class="tr"><td colspan="3" class="c b">Part D Total (Max: 50)</td><td class="c">${PART_D_MAX}</td></tr>
-    </table>
-
-    <div class="pb"></div>
     <h3 style="text-align:center;font-size:13px">SUMMARY OF SELF SCORES - AY ${reportTextValue(info.ay)}</h3>
     <table class="st">
       <tr><th>Sr.No.</th><th>Criteria</th><th>Max Score</th><th>Faculty Score</th></tr>
@@ -1537,8 +1688,6 @@ export default function StandardMyAppraisal({
       <tr class="tr"><td colspan="2" class="c b">Part B Marks Obtained (%)</td><td colspan="2" class="c b">${partBTotal > 0 ? `${partBMarksPercentage}%` : "&nbsp;"}</td></tr>
       <tr><td colspan="4" class="b" style="background:#d9d9d9;text-align:center">Part C - Administrative Role &amp; University Development Contribution</td></tr>
       <tr><td class="c">C</td><td>Administrative Contribution</td><td class="c">${PART_C_MAX}</td><td class="c">${partCTotal > 0 ? partCTotal.toFixed(1) : "&nbsp;"}</td></tr>
-      <tr><td colspan="4" class="b" style="background:#d9d9d9;text-align:center">Part D - Annual Confidential Report</td></tr>
-      <tr><td class="c">D</td><td>Annual Confidential Report (Evaluator only)</td><td class="c">${PART_D_MAX}</td><td class="c">&nbsp;</td></tr>
       <tr style="background:#bfbfbf;font-weight:bold;font-size:13px"><td colspan="2" class="c">Grand Total (Part A + Part B + Part C + Part D)</td><td class="c">${effectiveGrandMax}</td><td class="c">${grandTotal > 0 ? grandTotal.toFixed(1) : "&nbsp;"}</td></tr>
       <tr style="background:#bfbfbf;font-weight:bold;font-size:13px"><td colspan="2" class="c">Marks Obtained (%)</td><td colspan="2" class="c">${grandTotal > 0 ? `${totalMarksPercentage}%` : "&nbsp;"}</td></tr>
     </table>
@@ -1677,7 +1826,9 @@ export default function StandardMyAppraisal({
       )}
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <div className="appraisal-page-header" style={{ background: "#fff", borderRadius: 14, padding: "16px 24px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 18, flexWrap: "wrap" }}>
-              <div style={{ minWidth: 260 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 16, minWidth: 260 }}>
+              <AppraisalHeaderImage logo="dypiu" height={78} />
+              <div>
                 <h2 style={{ margin: 0, fontSize: 26, fontWeight: 900, color: "#111827", letterSpacing: 0, lineHeight: 1.05 }}>My Appraisal Form</h2>
                 {headerSchoolName && (
                   <div style={{ marginTop: 6, color: "#4b5563", fontSize: 13, fontWeight: 800, lineHeight: 1.25 }}>{headerSchoolName}</div>
@@ -1705,7 +1856,8 @@ export default function StandardMyAppraisal({
                   </select>
                 </div>
               </div>
-              <AppraisalHeaderImage height={78} />
+              </div>
+              <AppraisalHeaderImage logo="iqas" height={78} />
             </div>
             <div className="appraisal-status-grid" style={{ display: "grid", gridTemplateColumns: isSelectedCycleClosed || isLegacyTwoPartYear ? "1fr" : "minmax(0, 1fr) 316px", gap: 12, alignItems: "stretch" }}>
               <WorkflowStatusTracker
@@ -1744,7 +1896,7 @@ export default function StandardMyAppraisal({
               declaration={workflowDeclaration}
               reviews={workflowReviews}
               status={workflowDeclaration?.status}
-              alertOnceKey={`${sessionStorage.getItem("username") || localStorage.getItem("username") || ""}:${info.ay || ""}:${workflowDeclaration?.status || ""}`}
+              alertOnceKey={`${sessionStorage.getItem("username") || ""}:${info.ay || ""}:${workflowDeclaration?.status || ""}`}
             />
             {formLocked && (
               <div style={{ background: appraisalWindowLockMessage || isSelectedCycleClosed ? "#fffbeb" : workflowRejected ? "#fef2f2" : "#ecfdf5", border: `1px solid ${appraisalWindowLockMessage || isSelectedCycleClosed ? "#fde68a" : workflowRejected ? "#fecaca" : "#bbf7d0"}`, color: appraisalWindowLockMessage || isSelectedCycleClosed ? "#92400e" : workflowRejected ? "#991b1b" : "#166534", borderRadius: 9, padding: "11px 14px", fontSize: 12, fontWeight: 750, display: "flex", alignItems: "center", gap: 10 }}>
@@ -1843,6 +1995,17 @@ export default function StandardMyAppraisal({
               />
             ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {!formLocked && !submitting && (
+                <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                  <button
+                    type="button"
+                    onClick={fillStandardDummyData}
+                    style={{ padding: "8px 14px", background: "#0f766e", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 800, fontSize: 12, fontFamily: "inherit", boxShadow: "0 8px 18px rgba(15,118,110,0.18)" }}
+                  >
+                    Fill Dummy Test Data
+                  </button>
+                </div>
+              )}
               <fieldset disabled={formLocked && hodAppraisalTab !== "summary"} style={{ flex: 1, minWidth: 0, border: 0, padding: 0, margin: 0, opacity: formLocked && hodAppraisalTab !== "summary" ? 0.86 : 1 }}>
 
                 {/* Part A Tab */}
@@ -1999,7 +2162,10 @@ export default function StandardMyAppraisal({
                           </tr>
                         </tbody>
                       </table>
-                      <RowBtns onAdd={() => setInnovRows((p) => [...p, blankInnovativeRow()])} onDel={() => setInnovRows((p) => p.length > 1 ? p.slice(0, -1) : p)} canDel={innovRows.length > 1} />
+                      <RowBtns onAdd={() => setInnovRows((p) => p.length < A3_METHODS_ROW_LIMIT ? [...p, blankInnovativeRow()] : p)} onDel={() => setInnovRows((p) => p.length > 1 ? p.slice(0, -1) : p)} canDel={innovRows.length > 1} canAdd={innovRows.length < A3_METHODS_ROW_LIMIT} />
+                      {innovRows.length >= A3_METHODS_ROW_LIMIT && (
+                        <div style={{ fontSize: 11, color: "#ef4444", marginTop: 4 }}>Maximum {A3_METHODS_ROW_LIMIT} methods can be claimed.</div>
+                      )}
                     </div>
 
                     {/* A4. Student Feedback */}
@@ -2117,7 +2283,7 @@ export default function StandardMyAppraisal({
                                     placeholder="Project Title / Batch" 
                                   />
                                 </td>
-                                <td style={TDC}><TI val={r.studentsCount} onChange={(v) => setProj(i, "studentsCount", v)} center placeholder="No." /></td>
+                                <td style={TDC}><TI val={r.studentsCount} onChange={(v) => setProj(i, "studentsCount", v)} center numeric integer placeholder="No." /></td>
                                 <td style={TDC}>
                                   <select value={r.industryCollab || ""} onChange={(e) => setProj(i, "industryCollab", e.target.value)} style={{ width: "100%", height: 28, border: "1px solid #cbd5e1", borderRadius: 4, fontSize: 11 }}>
                                     <option value="">Select</option>
@@ -2228,7 +2394,7 @@ export default function StandardMyAppraisal({
                               <td style={TDC}><TI val={r.date} onChange={(v) => setQual(i, "date", maskDateDDMMYYYY(v))} placeholder="DD/MM/YYYY" /></td>
                               <td style={TD}><DocCell id={`qual-${i}`} docs={docs} setDocs={setDocs} /></td>
                               <td style={TD}><ViewCell id={`qual-${i}`} docs={docs} /></td>
-                              <td style={TDS}><TI val={r.score} onChange={(v) => setQual(i, "score", v)} center numeric max={SCORE_LIMITS.qualificationRow} /></td>
+                              <td style={TDS}><TI val={String(r.score ?? "").trim() ? clampScore(r.score, A8_QUALIFICATION_MAX) : ""} onChange={(v) => setQual(i, "score", v)} center numeric max={A8_QUALIFICATION_MAX} /></td>
                             </tr>
                           ))}
                           <tr style={{ background: "#eff6ff" }}>
@@ -2362,7 +2528,7 @@ export default function StandardMyAppraisal({
                     </div>
 
                     <div style={{ marginBottom: 16 }}>
-                      <SubsectionTitle icon="outreach">C4. Outreach, Extension & Social Responsibility - Max 20 marks</SubsectionTitle>
+                      <SubsectionTitle icon="outreach">C4. Outreach, Extension & Social Responsibility - Max 10 marks</SubsectionTitle>
                       <>
                         <table style={T}>
                           <thead><tr>
@@ -2390,7 +2556,7 @@ export default function StandardMyAppraisal({
                               );
                             })}
                             <tr style={{ background: "#ccfbf1" }}>
-                              <td style={{ ...TDC, fontWeight: "bold" }} colSpan={6}>Total (Max 20)</td>
+                              <td style={{ ...TDC, fontWeight: "bold" }} colSpan={6}>Total (Max 10)</td>
                               <td style={{ ...TDS, fontWeight: "bold" }}>{societyScore.toFixed(1)}</td>
                             </tr>
                           </tbody>
@@ -2400,7 +2566,7 @@ export default function StandardMyAppraisal({
                     </div>
 
                     <div style={{ marginBottom: 16 }}>
-                      <SubsectionTitle icon="industry">C5. Industry Interaction & Linkages - Max 8 marks</SubsectionTitle>
+                      <SubsectionTitle icon="industry">C5. Industry Interaction & Linkages - Max 10 marks</SubsectionTitle>
                       <table style={T}>
                         <thead><tr>
                           <th style={{ ...TH, width: 30 }}>Sr. No.</th>
@@ -2424,7 +2590,7 @@ export default function StandardMyAppraisal({
                             </tr>
                           ))}
                           <tr style={{ background: "#ccfbf1" }}>
-                            <td style={{ ...TDC, fontWeight: "bold" }} colSpan={6}>Total (Max 8)</td>
+                            <td style={{ ...TDC, fontWeight: "bold" }} colSpan={6}>Total (Max 10)</td>
                             <td style={{ ...TDS, fontWeight: "bold" }}>{industryScore.toFixed(1)}</td>
                           </tr>
                         </tbody>
@@ -2567,7 +2733,7 @@ export default function StandardMyAppraisal({
                               <td style={TD}><TI val={r.authorPosition || r.position} onChange={(v) => setJour(i, "authorPosition", v)} placeholder="1st / Corresponding / Co-Author" /></td>
                               <td style={TD}><DocCell id={`jour-${i}`} docs={docs} setDocs={setDocs} /></td>
                               <td style={TD}><ViewCell id={`jour-${i}`} docs={docs} /></td>
-                              <td style={TDS}><TI val={r.score} onChange={(v) => setJour(i, "score", v)} center numeric /></td>
+                              <td style={TDS}><TI val={r.score} onChange={(v) => setJour(i, "score", v)} center numeric max={B1_JOURNAL_MAX} /></td>
                             </tr>
                           ))}
                           <tr style={{ background: "#f3e8ff" }}>
@@ -2629,7 +2795,7 @@ export default function StandardMyAppraisal({
                               <td style={TD}><TI val={r.coauth} onChange={(v) => setBook(i, "coauth", v)} placeholder="Co-authors from DYPIU" /></td>
                               <td style={TD}><DocCell id={`book-${i}`} docs={docs} setDocs={setDocs} /></td>
                               <td style={TD}><ViewCell id={`book-${i}`} docs={docs} /></td>
-                              <td style={TDS}><TI val={r.score} onChange={(v) => setBook(i, "score", v)} center numeric /></td>
+                              <td style={TDS}><TI val={r.score} onChange={(v) => setBook(i, "score", v)} center numeric max={B2_BOOK_MAX} /></td>
                             </tr>
                           ))}
                           <tr style={{ background: "#f3e8ff" }}>
@@ -2665,7 +2831,7 @@ export default function StandardMyAppraisal({
                               <td style={TD}><TI val={r.quad || r.reach} onChange={(v) => setIctRow(i, "quad", v)} placeholder="Reach / Views" /></td>
                               <td style={TD}><DocCell id={`ict-${i}`} docs={docs} setDocs={setDocs} /></td>
                               <td style={TD}><ViewCell id={`ict-${i}`} docs={docs} /></td>
-                              <td style={TDS}><TI val={r.score} onChange={(v) => setIctRow(i, "score", v)} center numeric /></td>
+                              <td style={TDS}><TI val={r.score} onChange={(v) => setIctRow(i, "score", v)} center numeric max={B3_ICT_MAX} /></td>
                             </tr>
                           ))}
                           <tr style={{ background: "#f3e8ff" }}>
@@ -2724,7 +2890,7 @@ export default function StandardMyAppraisal({
                                 <td style={TD}><TI val={r.date} onChange={(v) => setRes(i, "date", maskDateDDMMYYYY(v))} placeholder="DD/MM/YYYY" /></td>
                                 <td style={TD}><DocCell id={`res-${i}`} docs={docs} setDocs={setDocs} /></td>
                                 <td style={TD}><ViewCell id={`res-${i}`} docs={docs} /></td>
-                                <td style={TDS}><TI val={r.score} onChange={(v) => setRes(i, "score", v)} center numeric /></td>
+                                <td style={TDS}><TI val={r.score} onChange={(v) => setRes(i, "score", v)} center numeric max={b5RowMax(r)} /></td>
                               </tr>
                             ))}
                             <tr style={{ background: "#f3e8ff" }}>
@@ -2891,7 +3057,7 @@ export default function StandardMyAppraisal({
                               <td style={TD}><TI val={r.fileNo || r.date} onChange={(v) => setPat(i, "fileNo", v)} placeholder="Filing / grant no. and date" /></td>
                               <td style={TD}><DocCell id={`pat-${i}`} docs={docs} setDocs={setDocs} /></td>
                               <td style={TD}><ViewCell id={`pat-${i}`} docs={docs} /></td>
-                              <td style={TDS}><TI val={r.score} onChange={(v) => setPat(i, "score", v)} center numeric /></td>
+                              <td style={TDS}><TI val={r.score} onChange={(v) => setPat(i, "score", v)} center numeric max={B3_PATENT_MAX} /></td>
                             </tr>
                           ))}
                           <tr style={{ background: "#f3e8ff" }}>
@@ -2929,7 +3095,7 @@ export default function StandardMyAppraisal({
                               <td style={TD}><TI val={r.date} onChange={(v) => setAwd(i, "date", maskDateDDMMYYYY(v))} placeholder="DD/MM/YYYY" /></td>
                               <td style={TD}><DocCell id={`awd-${i}`} docs={docs} setDocs={setDocs} /></td>
                               <td style={TD}><ViewCell id={`awd-${i}`} docs={docs} /></td>
-                              <td style={TDS}><TI val={r.score} onChange={(v) => setAwd(i, "score", v)} center numeric /></td>
+                              <td style={TDS}><TI val={r.score} onChange={(v) => setAwd(i, "score", v)} center numeric max={B9_AWARDS_MAX} /></td>
                             </tr>
                           ))}
                           <tr style={{ background: "#f3e8ff" }}>
@@ -2967,7 +3133,7 @@ export default function StandardMyAppraisal({
                               <td style={TD}><TI val={r.level || r.org} onChange={(v) => setConf(i, "level", v)} placeholder="Intl. / National" /></td>
                               <td style={TD}><DocCell id={`conf-${i}`} docs={docs} setDocs={setDocs} /></td>
                               <td style={TD}><ViewCell id={`conf-${i}`} docs={docs} /></td>
-                              <td style={TDS}><TI val={r.score} onChange={(v) => setConf(i, "score", v)} center numeric /></td>
+                              <td style={TDS}><TI val={r.score} onChange={(v) => setConf(i, "score", v)} center numeric max={B7_CONFERENCE_MAX} /></td>
                             </tr>
                           ))}
                           <tr style={{ background: "#f3e8ff" }}>
@@ -3003,7 +3169,7 @@ export default function StandardMyAppraisal({
                               <td style={TD}><TI val={r.amount || r.revenue} onChange={(v) => setProp(i, "amount", v)} numeric placeholder="Revenue (₹)" /></td>
                               <td style={TD}><DocCell id={`prop-${i}`} docs={docs} setDocs={setDocs} /></td>
                               <td style={TD}><ViewCell id={`prop-${i}`} docs={docs} /></td>
-                              <td style={TDS}><TI val={r.score} onChange={(v) => setProp(i, "score", v)} center numeric /></td>
+                              <td style={TDS}><TI val={r.score} onChange={(v) => setProp(i, "score", v)} center numeric max={B6_CONSULTANCY_MAX} /></td>
                             </tr>
                           ))}
                           <tr style={{ background: "#f3e8ff" }}>
@@ -3039,7 +3205,7 @@ export default function StandardMyAppraisal({
                               <td style={TD}><TI val={r.status} onChange={(v) => setProd(i, "status", v)} placeholder="Prototype / registered / commercialized" /></td>
                               <td style={TD}><DocCell id={`prod-${i}`} docs={docs} setDocs={setDocs} /></td>
                               <td style={TD}><ViewCell id={`prod-${i}`} docs={docs} /></td>
-                              <td style={TDS}><TI val={r.score} onChange={(v) => setProd(i, "score", v)} center numeric /></td>
+                              <td style={TDS}><TI val={r.score} onChange={(v) => setProd(i, "score", v)} center numeric max={B10_STARTUP_MAX} /></td>
                             </tr>
                           ))}
                           <tr style={{ background: "#f3e8ff" }}>
@@ -3140,7 +3306,6 @@ export default function StandardMyAppraisal({
                         <SummaryRow label="Part A - Teaching & Learning" score={partATotal} max={effectivePartAMax} color="#4f46e5" tone="#eef2ff" iconTone="#eef2ff" icon="book" />
                         <SummaryRow label="Part B - Research & Innovation" score={partBTotal} max={effectivePartBMax} color="#7c3aed" tone="#f3e8ff" iconTone="#f5f3ff" icon="flask" />
                         <SummaryRow label="Part C - Administrative Contribution" score={partCTotal} max={PART_C_MAX} color="#0f766e" tone="#ccfbf1" iconTone="#ccfbf1" icon="building" />
-                        <SummaryRow label="Part D - Annual Confidential Report" score={partDTotal} max={PART_D_MAX} color="#c2410c" tone="#ffedd5" iconTone="#ffedd5" icon="document" />
                         <SummaryRow label="Grand Total" score={grandTotal} max={effectiveGrandMax} color={g.color} tone="#ffe4e6" iconTone="#f1f5f9" icon="sigma" />
                       </tbody>
                     </table>
