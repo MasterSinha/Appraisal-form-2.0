@@ -43,7 +43,7 @@ export default function ResearchGuidance({ ctx }) {
 <td style={TDC}><RO val={r.degree} center /></td>
 <td style={TD}><RO val={r.name} /></td>
 <td style={TD}><RO val={r.status || r.thesis} /></td>
-<td style={TDC}><RO val={r.date} center /></td>
+<td style={TDC}><RO val={(r.status || r.thesis) === "Ongoing" ? "NA" : r.date} center /></td>
 <td style={TDV}><ViewDocsCell docKey={`res-${i}`} docs={docs} /></td>
 <td style={TDS}><RO val={r.score} center /></td>
 <td style={TDS_HOD}><HodInput val={get("research", i, "hod")} max={researchGuidanceRowMax(r)} disabled={!rowHasReviewableData("research", r, docs, `res-${i}`)} onChange={v =>set("research", i, "hod", v)} /></td>

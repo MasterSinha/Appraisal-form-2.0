@@ -253,7 +253,7 @@ export const emptyCreativeSchoolForm = (defaultSchool = "SoD - School of Design"
   research: [{ degree: "", name: "", thesis: "", score: "" }],
   consultancy: [{ title: "", agency: "", date: "", amount: "", role: "", status: "", score: "" }],
   confs: [{ title: "", type: "", org: "", level: "", score: "" }],
-  fdps: [{ program: "", duration: "", org: "", score: "" }],
+  fdps: [{ program: "", fromDate: "", toDate: "", org: "", score: "" }],
   awards: [{ title: "", date: "", agency: "", level: "", score: "" }],
   innovation: [{ title: "", details: "", impact: "", score: "" }],
   products: [{ title: "", details: "", used: "", status: "", score: "" }],
@@ -280,7 +280,7 @@ export const SECTION_OPTIONS = [
 
 export const PART_A_SECTIONS = [
   { key: "lectures", title: "A1. Course Delivery & Classroom Engagement", max: 40, rowMax: 10, doc: "lec", fields: [["sem", "Semester"], ["code", "Course Code / Name"], ["planned", "Classes (as per course structure)"], ["conducted", "Classes Actually Conducted"], ["pctConducted", "% Conducted"]] },
-  { key: "courseFile", title: "A2. Course File & Curriculum Documentation", max: 20, doc: "cf", rowMax: SCORE_LIMITS.courseFileRow, fields: [["course", "Course / Paper"], ["title", "Title"], ["details", "IQAC Index Compliance (Yes/No, with proof)"]] },
+  { key: "courseFile", title: "A2. Course File & Curriculum Documentation", max: 20, doc: "cf", rowMax: SCORE_LIMITS.courseFileRow, fields: [["course", "Course / Paper"], ["title", "Program & Semester"], ["details", "IQAC Index Compliance (Yes/No, with proof)"]] },
   { key: "feedback", title: "A4. Student Feedback Score", max: 10, doc: "fb", fields: [["code", "Course Code / Name"], ["fb1", "First Feedback(%)"], ["fb2", "Second Feedback(%)"]] },
   { key: "projects", title: "A6. Student Project Guidance", max: 20, doc: "proj", rowMax: projectGuidanceRowMax, fields: [["label", "Project Category"]] },
   { key: "quals", title: "A8. Qualification Enhancement", max: 10, doc: "qual", rowMax: SCORE_LIMITS.qualificationRow, fields: [["title", "Qualification / Certification Title"], ["body", "Awarding Body"], ["date", "Date"]] },
@@ -295,7 +295,7 @@ export const PART_B_SECTIONS = [
   { key: "research", title: "B5. Research / Creative Guidance", max: 20, doc: "res", rowMax: researchGuidanceRowMax, fields: [["degree", "Degree (PhD/PG)"], ["name", "Name of Student / Scholar"], ["status", "Status (Ongoing/Awarded)"], ["date", "Date"]] },
   { key: "consultancy", title: "B6. Consultancy, Training & Creative Commissions", max: 30, doc: "con", fields: [["client", "Client / Organisation"], ["nature", "Nature of Engagement"], ["amount", "Revenue Generated (₹)"]] },
   { key: "confs", title: "B7. Conference / FDP / Festival Contributions — Organised", max: 20, doc: "conf", fields: [["title", "Event / Session Title"], ["role", "Role"], ["date", "Date"], ["level", "Level (Intl./National)"]] },
-  { key: "fdps", title: "B8. Conference / FDP / Industry-Studio Training Attended", max: 20, doc: "fdp", fields: [["program", "Programme / Event"], ["duration", "Duration"], ["org", "Organised By"]] },
+  { key: "fdps", title: "B8. Conference / FDP / Industry-Studio Training Attended", max: 20, doc: "fdp", fields: [["program", "Programme / Event"], ["fromDate", "From"], ["toDate", "To"], ["org", "Organised By"]] },
   { key: "awards", title: "B9. Research Awards, Fellowships, Reviewer & Citations", max: 20, doc: "awd", fields: [["title", "Title of Award / Fellowship / Metric"], ["agency", "Awarding Agency"], ["level", "Level"], ["date", "Date"]] },
   { key: "innovation", title: "B10. Innovation, Start-ups & Technology Transfer", max: 20, doc: "inn", fields: [["title", "Title / Start-up / Product"], ["role", "Role"], ["status", "Status"]] },
   { key: "ict", title: "B11. ICT Content, MOOCs & E-Learning", max: 40, doc: "ict", fields: [["title", "Title"], ["platform", "Platform / Type"], ["reach", "Reach / Views (if available)"]] },
@@ -507,6 +507,8 @@ const dummyValueForCreativeField = (sectionKey, fieldKey, rowIndex = 0) => {
     label: "UG Design / Media Capstone",
     body: "DYPIU",
     date,
+    fromDate: date,
+    toDate: date,
     journal: "Journal of Creative Practice",
     doi: "10.0000/dypiu.test",
     index: "Q2",
@@ -781,24 +783,30 @@ export const validateCreativeSchoolBeforeSubmit = (form, docs = {}, sectionView 
     : sectionView === "partC"
     ? PART_C_SECTIONS
     : [...PART_A_SECTIONS, ...partBSections, ...PART_C_SECTIONS];
-  const rowSections = sectionsToValidate.map((section) => ({
-    label: section.title,
-    rows: form[section.key] || [],
-    fields: [
+  const rowSections = sectionsToValidate.map((section) => {
+    const fields = [
       ...section.fields.filter(([, , readOnly]) => !readOnly).map(([key]) => key),
       ...(section.selfReadOnlyScore || section.autoScore || section.key === "feedback" ? [] : ["score"]),
-    ],
-    // Explicit 0 (not undefined) when a section defines no per-row cap, so the shared
-    // validator's title-text fallback (e.g. matching "FDP" inside B7's title) never
-    // invents a row cap the UI never enforced in the first place.
-    rowMax: section.rowMax || 0,
-    maxScore: section.key === "feedback" ? undefined : section.max,
-    docPrefix: section.key !== "acr" ? section.doc : "",
-    docKey: section.key !== "acr" && DOC_KEY_ALIASES[section.key]?.length
-      ? (_row, index) => docKeysForSectionRow(section, index)
-      : undefined,
-    capSectionTotal: true,
-  }));
+    ];
+    return {
+      label: section.title,
+      rows: form[section.key] || [],
+      fields,
+      fieldsForRow: section.key === "research"
+        ? (row) => (row?.status === "Ongoing" ? fields.filter((key) => key !== "date") : fields)
+        : undefined,
+      // Explicit 0 (not undefined) when a section defines no per-row cap, so the shared
+      // validator's title-text fallback (e.g. matching "FDP" inside B7's title) never
+      // invents a row cap the UI never enforced in the first place.
+      rowMax: section.rowMax || 0,
+      maxScore: section.key === "feedback" ? undefined : section.max,
+      docPrefix: section.key !== "acr" ? section.doc : "",
+      docKey: section.key !== "acr" && DOC_KEY_ALIASES[section.key]?.length
+        ? (_row, index) => docKeysForSectionRow(section, index)
+        : undefined,
+      capSectionTotal: true,
+    };
+  });
   const errors = validateCompleteRows(rowSections, docs);
 
   if (sectionView !== "partA") ["internalProjects", "externalProjects"].forEach((key) => {
@@ -807,6 +815,15 @@ export const validateCreativeSchoolBeforeSubmit = (form, docs = {}, sectionView 
         errors.push(`${key === "internalProjects" ? "B4(b)" : "B5"}, row ${index + 1}: date must be DD/MM/YYYY.`);
       }
     });
+  });
+
+  if (sectionView !== "partA") (form.fdps || []).forEach((row, index) => {
+    if (row.fromDate && !isValidDDMMYYYY(row.fromDate)) {
+      errors.push(`B8, row ${index + 1}: From date must be DD/MM/YYYY.`);
+    }
+    if (row.toDate && !isValidDDMMYYYY(row.toDate)) {
+      errors.push(`B8, row ${index + 1}: To date must be DD/MM/YYYY.`);
+    }
   });
 
   if (sectionView !== "partB") {
@@ -831,6 +848,7 @@ export const validateDesignArtsBeforeSubmit = validateCreativeSchoolBeforeSubmit
 export const validateMediaBeforeSubmit = validateCreativeSchoolBeforeSubmit;
 
 const NUMERIC_KEYS = new Set(["planned", "conducted", "fb1", "fb2", "amount"]);
+const DATE_FIELD_KEYS = new Set(["date", "fromDate", "toDate"]);
 const TEXT_ONLY_KEYS = new Set(["title", "body", "course", "name", "degree", "thesis", "agency", "role", "status", "type", "level", "activity", "nature", "journal", "book", "publisher", "org", "program", "company", "desc", "coAuthors", "media", "film", "client", "platform"]);
 
 const FIELD_PLACEHOLDERS = {
@@ -846,6 +864,8 @@ const FIELD_PLACEHOLDERS = {
   label: "Select or enter category",
   body: "Awarding body / institute",
   date: "DD/MM/YYYY",
+  fromDate: "DD/MM/YYYY",
+  toDate: "DD/MM/YYYY",
   journal: "Journal name, volume, issue",
   doi: "DOI / URL",
   index: "Q1/Q2/Scopus/WoS",
@@ -933,9 +953,6 @@ const DROPDOWN_FIELD_OPTIONS = {
   confs: {
     role: ["Convener", "Co-Convener", "Organising Secretary", "Session Chair", "Resource Person", "Member"],
     level: ["International", "National", "State / Regional", "University / Institutional"],
-  },
-  fdps: {
-    duration: ["1 Week", "2 Weeks", "3-5 Days", "More than 2 Weeks"],
   },
   awards: {
     level: ["International", "National", "State / Regional", "University / Institutional"],
@@ -1104,8 +1121,11 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
       [section.key]: (prev[section.key] || []).map((row, rowIndex) => {
         if (rowIndex !== index) return row;
         const rowMax = section.rowMax ? (typeof section.rowMax === "function" ? section.rowMax(row) : section.rowMax) : section.max;
-        const nextValue = key === "date" ? maskDateDDMMYYYY(value) : key === "score" ? (value === "" ? "" : clampScore(value, rowMax)) : value;
+        const nextValue = DATE_FIELD_KEYS.has(key) ? maskDateDDMMYYYY(value) : key === "score" ? (value === "" ? "" : clampScore(value, rowMax)) : value;
         const nextRow = { ...row, [key]: nextValue };
+        if (section.key === "research" && key === "status" && nextValue === "Ongoing") {
+          nextRow.date = "";
+        }
         if (section.key === "lectures" && (key === "planned" || key === "conducted")) {
           const planned = Number(nextRow.planned);
           const conducted = Number(nextRow.conducted);
@@ -1207,6 +1227,8 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
                         {mode !== "self" ? (
                           key === "pctConducted" ? (
                             <RO value={row.pctConducted || (Number(row.planned) > 0 && Number(row.conducted) >= 0 ? `${((Number(row.conducted) / Number(row.planned)) * 100).toFixed(1)}%` : "")} placeholder="%" center />
+                          ) : section.key === "research" && key === "date" ? (
+                            <RO value={row.status === "Ongoing" ? "NA" : row[key]} />
                           ) : (
                             <RO value={row[key]} />
                           )
@@ -1269,13 +1291,13 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
                           />
                         ) : (
                           <>
-                            <TI value={row[key]} type={NUMERIC_KEYS.has(key) ? "number" : "text"} center={section.key === "courseFile" && key === "title"} placeholder={placeholderForField(section.key, key)} max={key === "fb1" || key === "fb2" ? SCORE_LIMITS.feedbackAverage : undefined} deferClampWhileTyping={key === "fb1" || key === "fb2"} textOnly={TEXT_ONLY_KEYS.has(key) && !(section.key === "courseFile" && key === "title")} readOnly={!editableSelf || readOnlyField || selfLocked || socRowLocked} onChange={(value) => updateRow(index, key, value)} />
+                            <TI value={row[key]} type={NUMERIC_KEYS.has(key) ? "number" : "text"} center={section.key === "courseFile" && key === "title"} placeholder={section.key === "research" && key === "date" && row.status === "Ongoing" ? "Not required" : placeholderForField(section.key, key)} max={key === "fb1" || key === "fb2" ? SCORE_LIMITS.feedbackAverage : undefined} deferClampWhileTyping={key === "fb1" || key === "fb2"} textOnly={TEXT_ONLY_KEYS.has(key) && !(section.key === "courseFile" && key === "title")} readOnly={!editableSelf || readOnlyField || selfLocked || socRowLocked || (section.key === "research" && key === "date" && row.status === "Ongoing")} onChange={(value) => updateRow(index, key, value)} />
                             {section.key === "acr" && key === "label" && ACR_DETAIL_POINTS[row[key]] && (
                               <ul style={{ margin: "5px 0 0 16px", padding: 0, color: "#64748b", fontSize: 10, lineHeight: 1.5 }}>
                                 {ACR_DETAIL_POINTS[row[key]].map((point) => <li key={point}>{point}</li>)}
                               </ul>
                             )}
-                            {key === "date" && row[key] && !isValidDDMMYYYY(row[key]) && (
+                            {DATE_FIELD_KEYS.has(key) && row[key] && !isValidDDMMYYYY(row[key]) && (
                               <div style={{ color: "#dc2626", fontSize: 10, marginTop: 3 }}>Use DD/MM/YYYY</div>
                             )}
                           </>

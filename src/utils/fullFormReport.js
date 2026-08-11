@@ -394,6 +394,9 @@ const fieldValue = (section, row, key) => {
     const conducted = Number(row?.conducted);
     return planned > 0 && conducted >= 0 ? `${((conducted / planned) * 100).toFixed(1)}%` : "";
   }
+  if (section.key === "research" && key === "date" && (row?.status || row?.thesis) === "Ongoing") {
+    return "NA";
+  }
   return row?.[key];
 };
 
@@ -1090,7 +1093,7 @@ ${PRINT_REPORT_CSS}
   ${lectures.map((l, i) => `<tr><td class="c">${i + 1}</td><td>${displayValue(l.sem)}</td><td>${displayValue(l.code)}</td><td class="c">${displayValue(l.planned)}</td><td class="c">${displayValue(l.conducted)}</td><td class="c">${displayValue(l.score)}</td></tr>`).join("")}
   <tr class="tr"><td colspan="5" class="c b">Total Score (Max 50)</td><td class="c">${isFilledValue(totalLecScore) && totalLecScore > 0 ? totalLecScore.toFixed(1) : "&nbsp;"}</td></tr></table>
   <h3>(ii) Course File (Max 20)</h3>
-  <table><tr><th>SN</th><th>Course/Paper</th><th>Title</th><th>Details</th><th>Self Score</th></tr>
+  <table><tr><th>SN</th><th>Course/Paper</th><th>Program & Semester</th><th>Details</th><th>Self Score</th></tr>
   ${courseFile.map((c, i) => `<tr><td class="c">${i + 1}</td><td>${displayValue(c.course)}</td><td>${displayValue(c.title)}</td><td>${displayValue(c.details)}</td><td class="c">${displayValue(c.score)}</td></tr>`).join("")}
   <tr class="tr"><td colspan="4" class="c b">Total Score (Max 20)</td><td class="c">${isFilledValue(courseFileScore) && courseFileScore > 0 ? courseFileScore.toFixed(1) : "&nbsp;"}</td></tr></table>
   <h3>(iii) Innovative Teaching-Learning Methodologies (Max 10)</h3>
@@ -1166,9 +1169,9 @@ ${PRINT_REPORT_CSS}
   ${ict.map((r, i) => `<tr><td class="c">${i + 1}</td><td>${displayValue(r.title)}</td><td>${displayValue(r.desc)}</td><td>${displayValue(r.type)}</td><td class="c">${displayValue(r.quad)}</td><td class="c">${displayValue(r.score)}</td></tr>`).join("")}
   <tr class="tr"><td colspan="5" class="c b">Total (Max 20)</td><td class="c">${ictScore > 0 ? ictScore.toFixed(1) : "&nbsp;"}</td></tr></table>
   ${`<h3>4a) Research Guidance - PhD / PG (Max 30)</h3>
-  <table><tr><th>SN</th><th>Degree</th><th>Name of Student</th><th>Thesis / Status</th><th>Self Score</th></tr>
-  ${research.map((r, i) => `<tr><td class="c">${i + 1}</td><td class="c">${displayValue(r.degree)}</td><td>${displayValue(r.name)}</td><td>${displayValue(r.thesis)}</td><td class="c">${isFilledValue(rgs(r)) ? rgs(r).toFixed(1) : "&nbsp;"}</td></tr>`).join("")}
-  <tr class="tr"><td colspan="4" class="c b">Total (Max 30)</td><td class="c">${researchScore > 0 ? researchScore.toFixed(1) : "&nbsp;"}</td></tr></table>`
+  <table><tr><th>SN</th><th>Degree</th><th>Name of Student</th><th>Status</th><th>Date</th><th>Self Score</th></tr>
+  ${research.map((r, i) => `<tr><td class="c">${i + 1}</td><td class="c">${displayValue(r.degree)}</td><td>${displayValue(r.name)}</td><td>${displayValue(r.status || r.thesis)}</td><td class="c">${(r.status || r.thesis) === "Ongoing" ? "NA" : displayValue(r.date)}</td><td class="c">${isFilledValue(rgs(r)) ? rgs(r).toFixed(1) : "&nbsp;"}</td></tr>`).join("")}
+  <tr class="tr"><td colspan="5" class="c b">Total (Max 30)</td><td class="c">${researchScore > 0 ? researchScore.toFixed(1) : "&nbsp;"}</td></tr></table>`
   }
   <h3>4b) Internal Research Projects (Max 15)</h3>
   <table><tr><th>SN</th><th>Title</th><th>Agency</th><th>Date</th><th>Amount</th><th>Role</th><th>Status</th><th>Self Score</th></tr>
@@ -1199,9 +1202,9 @@ ${PRINT_REPORT_CSS}
   ${products.map((p, i) => `<tr><td class="c">${i + 1}</td><td>${displayValue(p.details)}</td><td>${displayValue(p.usage)}</td><td class="c">${displayValue(p.score)}</td></tr>`).join("")}
   <tr class="tr"><td colspan="3" class="c b">Total (Max 10)</td><td class="c">${productScore > 0 ? productScore.toFixed(1) : "&nbsp;"}</td></tr></table>
   <h3>8a) Attended FDP / Workshops (Max 10)</h3>
-  <table><tr><th>SN</th><th>Program</th><th>Duration</th><th>Organized By</th><th>Self Score</th></tr>
-  ${fdps.map((f, i) => `<tr><td class="c">${i + 1}</td><td>${displayValue(f.program)}</td><td class="c">${displayValue(f.duration)}</td><td>${displayValue(f.org)}</td><td class="c">${displayValue(clampScore(f.score, SCORE_LIMITS.fdpRow))}</td></tr>`).join("")}
-  <tr class="tr"><td colspan="4" class="c b">Total (Max 10)</td><td class="c">${fdpScore > 0 ? fdpScore.toFixed(1) : "&nbsp;"}</td></tr></table>
+  <table><tr><th>SN</th><th>Program</th><th>From</th><th>To</th><th>Organized By</th><th>Self Score</th></tr>
+  ${fdps.map((f, i) => `<tr><td class="c">${i + 1}</td><td>${displayValue(f.program)}</td><td class="c">${displayValue(f.fromDate)}</td><td class="c">${displayValue(f.toDate)}</td><td>${displayValue(f.org)}</td><td class="c">${displayValue(clampScore(f.score, SCORE_LIMITS.fdpRow))}</td></tr>`).join("")}
+  <tr class="tr"><td colspan="5" class="c b">Total (Max 10)</td><td class="c">${fdpScore > 0 ? fdpScore.toFixed(1) : "&nbsp;"}</td></tr></table>
   <h3>8b) Industrial Training (Max 10)</h3>
   <table><tr><th>SN</th><th>Company / Industry</th><th>Duration</th><th>Nature of Training</th><th>Self Score</th></tr>
   ${training.map((t, i) => `<tr><td class="c">${i + 1}</td><td>${displayValue(t.company)}</td><td class="c">${displayValue(t.duration)}</td><td>${displayValue(t.nature)}</td><td class="c">${displayValue(clampScore(t.score, SCORE_LIMITS.fdpRow))}</td></tr>`).join("")}

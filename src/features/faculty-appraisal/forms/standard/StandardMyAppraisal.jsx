@@ -320,6 +320,8 @@ const B8_ATTENDED_MAX = 20;
 const B9_AWARDS_MAX = 20;
 const B10_STARTUP_MAX = 20;
 const b5RowMax = (row) => researchGuidanceRowMax(row) || B5_RESEARCH_GUIDANCE_MAX;
+const B5_FIELDS = ["degree", "name", "status", "date", "score"];
+const b5FieldsForRow = (row) => (row?.status === "Ongoing" ? B5_FIELDS.filter((key) => key !== "date") : B5_FIELDS);
 
 const defaultObeRows = () => [
   { component: "CO-PO mapping sheet", evidence: "", score: "", max: 5 },
@@ -721,7 +723,7 @@ export default function StandardMyAppraisal({
   const setProd = (i, k, v) => setProducts((p) => p.map((r, j) => j === i ? { ...r, [k]: v } : r));
 
   const [fdps, setFdps] = useState([
-    { program: "", duration: "", org: "", score: "", hod: "", director: "" },
+    { program: "", fromDate: "", toDate: "", org: "", score: "", hod: "", director: "" },
   ]);
   const setFdp = (i, k, v) => setFdps((p) => p.map((r, j) => j === i ? { ...r, [k]: v } : r));
 
@@ -888,8 +890,8 @@ export default function StandardMyAppraisal({
       { details: "Startup mentoring contribution", role: "Mentor", usage: "Student startup support", status: "Ongoing", score: "5", hod: "", director: "" },
     ]);
     setFdps([
-      { program: "Advanced Pedagogy FDP", duration: "5 days", org: "NITTTR", score: "5", hod: "", director: "" },
-      { program: "AI Tools FDP", duration: "1 week", org: "AICTE", score: "5", hod: "", director: "" },
+      { program: "Advanced Pedagogy FDP", fromDate: "01/06/2026", toDate: "05/06/2026", org: "NITTTR", score: "5", hod: "", director: "" },
+      { program: "AI Tools FDP", fromDate: "10/07/2026", toDate: "16/07/2026", org: "AICTE", score: "5", hod: "", director: "" },
     ]);
     setTraining([
       { company: "Tech Partner Pvt Ltd", duration: "1 week", nature: "Industrial training", score: "5", hod: "", director: "" },
@@ -1111,10 +1113,10 @@ export default function StandardMyAppraisal({
       { label: "B2. Books / Chapters", rows: books, fields: ["title", "book", "pub", "score"], rowMax: B2_BOOK_MAX, maxScore: B2_BOOK_MAX },
       { label: "B3. Patents, Copyrights & IP and Product Development", rows: patents, fields: ["title", "type", "status", "fileNo", "score"], rowMax: B3_PATENT_MAX, maxScore: B3_PATENT_MAX },
       { label: "B4. External Funded Research Projects", rows: projects2, fields: ["title", "agency", "date", "amount", "role", "status", "score"] },
-      { label: "B5. Research Guidance", rows: research, fields: ["degree", "name", "status", "date", "score"], rowMax: b5RowMax },
+      { label: "B5. Research Guidance", rows: research, fields: B5_FIELDS, fieldsForRow: b5FieldsForRow, rowMax: b5RowMax },
       { label: "B6. Consultancy, Testing & Training", rows: proposals, fields: ["agency", "duration", "amount", "score"], rowMax: B6_CONSULTANCY_MAX, maxScore: B6_CONSULTANCY_MAX },
       { label: "B7. Conference / FDP Contributions - Organised", rows: confs, fields: ["title", "role", "date", "level", "score"], rowMax: B7_CONFERENCE_MAX, maxScore: B7_CONFERENCE_MAX },
-      { label: "B8. Conference / FDP / Industry Training Attended", rows: fdps, fields: ["program", "duration", "org", "score"], rowMax: B8_ATTENDED_MAX, maxScore: B8_ATTENDED_MAX },
+      { label: "B8. Conference / FDP / Industry Training Attended", rows: fdps, fields: ["program", "fromDate", "toDate", "org", "score"], rowMax: B8_ATTENDED_MAX, maxScore: B8_ATTENDED_MAX },
       { label: "B8. Industrial Training", rows: training, fields: ["company", "duration", "nature", "score"], rowMax: B8_ATTENDED_MAX, maxScore: B8_ATTENDED_MAX },
       { label: "B9. Research Awards, Fellowships & Citations", rows: awards, fields: ["title", "date", "agency", "level", "score"], rowMax: B9_AWARDS_MAX, maxScore: B9_AWARDS_MAX },
       { label: "B10. Innovation, Start-ups & Technology Transfer", rows: products, fields: ["details", "role", "status", "score"], rowMax: B10_STARTUP_MAX, maxScore: B10_STARTUP_MAX },
@@ -1123,6 +1125,10 @@ export default function StandardMyAppraisal({
     const errors = validateCompleteRows(withRelaxedSectionCap(sections), docs);
     [...projects2, ...externalProjects].forEach((row, index) => {
       if (row.date && !isValidDDMMYYYY(row.date)) errors.push(`B4 project row ${index + 1}: date must be DD/MM/YYYY.`);
+    });
+    fdps.forEach((row, index) => {
+      if (row.fromDate && !isValidDDMMYYYY(row.fromDate)) errors.push(`B8 row ${index + 1}: From date must be DD/MM/YYYY.`);
+      if (row.toDate && !isValidDDMMYYYY(row.toDate)) errors.push(`B8 row ${index + 1}: To date must be DD/MM/YYYY.`);
     });
     if (errors.length) { alert(errors.join("\n")); return false; }
     return true;
@@ -1153,10 +1159,10 @@ export default function StandardMyAppraisal({
       { label: "B2. Books / Chapters", rows: books, fields: ["title", "book", "issn", "pub", "coauth", "first", "score"], rowMax: B2_BOOK_MAX, maxScore: B2_BOOK_MAX },
       { label: "B3. Patents, Copyrights & IP and Product Development", rows: patents, fields: ["title", "type", "status", "fileNo", "score"], rowMax: B3_PATENT_MAX, maxScore: B3_PATENT_MAX },
       { label: "B4. External Funded Research Projects", rows: projects2, fields: ["title", "agency", "date", "amount", "role", "status", "score"] },
-      { label: "B5. Research Guidance", rows: research, fields: ["degree", "name", "status", "date", "score"], rowMax: b5RowMax },
+      { label: "B5. Research Guidance", rows: research, fields: B5_FIELDS, fieldsForRow: b5FieldsForRow, rowMax: b5RowMax },
       { label: "B6. Consultancy, Testing & Training", rows: proposals, fields: ["agency", "duration", "amount", "score"], rowMax: B6_CONSULTANCY_MAX, maxScore: B6_CONSULTANCY_MAX },
       { label: "B7. Conference / FDP Contributions - Organised", rows: confs, fields: ["title", "role", "date", "level", "score"], rowMax: B7_CONFERENCE_MAX, maxScore: B7_CONFERENCE_MAX },
-      { label: "B8. Conference / FDP / Industry Training Attended", rows: fdps, fields: ["program", "duration", "org", "score"], rowMax: B8_ATTENDED_MAX, maxScore: B8_ATTENDED_MAX },
+      { label: "B8. Conference / FDP / Industry Training Attended", rows: fdps, fields: ["program", "fromDate", "toDate", "org", "score"], rowMax: B8_ATTENDED_MAX, maxScore: B8_ATTENDED_MAX },
       { label: "B8. Industrial Training", rows: training, fields: ["company", "duration", "nature", "score"], rowMax: B8_ATTENDED_MAX, maxScore: B8_ATTENDED_MAX },
       { label: "B9. Research Awards, Fellowships & Citations", rows: awards, fields: ["title", "date", "agency", "level", "score"], rowMax: B9_AWARDS_MAX, maxScore: B9_AWARDS_MAX },
       { label: "B10. Innovation, Start-ups & Technology Transfer", rows: products, fields: ["details", "role", "status", "score"], rowMax: B10_STARTUP_MAX, maxScore: B10_STARTUP_MAX },
@@ -1167,6 +1173,10 @@ export default function StandardMyAppraisal({
     if (section === "partB") {
       [...projects2, ...externalProjects].forEach((row, index) => {
         if (row.date && !isValidDDMMYYYY(row.date)) errors.push(`B4 project row ${index + 1}: date must be DD/MM/YYYY.`);
+      });
+      fdps.forEach((row, index) => {
+        if (row.fromDate && !isValidDDMMYYYY(row.fromDate)) errors.push(`B8 row ${index + 1}: From date must be DD/MM/YYYY.`);
+        if (row.toDate && !isValidDDMMYYYY(row.toDate)) errors.push(`B8 row ${index + 1}: To date must be DD/MM/YYYY.`);
       });
     }
     if (errors.length) {
@@ -1565,9 +1575,9 @@ export default function StandardMyAppraisal({
     ${`
     <h3>B5. Research Guidance &nbsp;(Max 20)</h3>
     <table>
-      <tr><th>SN</th><th>Degree</th><th>Name of Student</th><th>Thesis / Status</th><th>Self Score</th></tr>
-      ${research.map((r, i) => `<tr><td class="c">${i + 1}</td><td class="c">${reportTextValue(r.degree)}</td><td>${reportTextValue(r.name)}</td><td>${reportTextValue(r.thesis)}</td><td class="c">${(r.degree || r.name || r.thesis || r.score) ? researchGuidanceScore(r).toFixed(1) : "&nbsp;"}</td></tr>`).join('')}
-      <tr class="tr"><td colspan="4" class="c b">Total (Max 20)</td><td class="c">${researchScore > 0 ? researchScore.toFixed(1) : "&nbsp;"}</td></tr>
+      <tr><th>SN</th><th>Degree</th><th>Name of Student</th><th>Status</th><th>Date</th><th>Self Score</th></tr>
+      ${research.map((r, i) => `<tr><td class="c">${i + 1}</td><td class="c">${reportTextValue(r.degree)}</td><td>${reportTextValue(r.name)}</td><td>${reportTextValue(r.status || r.thesis)}</td><td class="c">${(r.status || r.thesis) === "Ongoing" ? "NA" : reportTextValue(r.date)}</td><td class="c">${(r.degree || r.name || r.status || r.thesis || r.score) ? researchGuidanceScore(r).toFixed(1) : "&nbsp;"}</td></tr>`).join('')}
+      <tr class="tr"><td colspan="5" class="c b">Total (Max 20)</td><td class="c">${researchScore > 0 ? researchScore.toFixed(1) : "&nbsp;"}</td></tr>
     </table>`}
 
     <h3>B6. Consultancy, Testing &amp; Training &nbsp;(Max 20)</h3>
@@ -1586,9 +1596,9 @@ export default function StandardMyAppraisal({
 
     <h3>B8. Conference / FDP / Industry Training Attended &nbsp;(Max 20)</h3>
     <table>
-      <tr><th>SN</th><th>Program</th><th>Duration</th><th>Organized By</th><th>Self Score</th></tr>
-      ${fdps.map((f, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(f.program)}</td><td class="c">${reportTextValue(f.duration)}</td><td>${reportTextValue(f.org)}</td><td class="c">${reportTextValue(clampScore(f.score, SCORE_LIMITS.fdpRow))}</td></tr>`).join('')}
-      <tr class="tr"><td colspan="4" class="c b">FDP / Workshops Total</td><td class="c">${fdpScore > 0 ? fdpScore.toFixed(1) : "&nbsp;"}</td></tr>
+      <tr><th>SN</th><th>Program</th><th>From</th><th>To</th><th>Organized By</th><th>Self Score</th></tr>
+      ${fdps.map((f, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(f.program)}</td><td class="c">${reportTextValue(f.fromDate)}</td><td class="c">${reportTextValue(f.toDate)}</td><td>${reportTextValue(f.org)}</td><td class="c">${reportTextValue(clampScore(f.score, SCORE_LIMITS.fdpRow))}</td></tr>`).join('')}
+      <tr class="tr"><td colspan="5" class="c b">FDP / Workshops Total</td><td class="c">${fdpScore > 0 ? fdpScore.toFixed(1) : "&nbsp;"}</td></tr>
     </table>
 
     <h3>Industrial Training</h3>
@@ -2876,7 +2886,11 @@ export default function StandardMyAppraisal({
                                 <td style={TD}>
                                   <select
                                     value={r.status || r.thesis || ""}
-                                    onChange={(event) => setRes(i, "status", event.target.value)}
+                                    onChange={(event) => {
+                                      const nextStatus = event.target.value;
+                                      setRes(i, "status", nextStatus);
+                                      if (nextStatus === "Ongoing") setRes(i, "date", "");
+                                    }}
                                     style={{ width: "100%", height: 30, border: "1px solid #cbd5e1", borderRadius: 4, background: "#fff", fontSize: 11, fontFamily: "inherit" }}
                                   >
                                     <option value="">Select</option>
@@ -2884,7 +2898,7 @@ export default function StandardMyAppraisal({
                                     <option value="Awarded">Awarded</option>
                                   </select>
                                 </td>
-                                <td style={TD}><TI val={r.date} onChange={(v) => setRes(i, "date", maskDateDDMMYYYY(v))} placeholder="DD/MM/YYYY" /></td>
+                                <td style={TD}><TI val={r.date} onChange={(v) => setRes(i, "date", maskDateDDMMYYYY(v))} placeholder={r.status === "Ongoing" ? "Not required" : "DD/MM/YYYY"} readOnly={r.status === "Ongoing"} /></td>
                                 <td style={TD}><DocCell id={`res-${i}`} docs={docs} setDocs={setDocs} /></td>
                                 <td style={TD}><ViewCell id={`res-${i}`} docs={docs} /></td>
                                 <td style={TDS}><TI val={r.score} onChange={(v) => setRes(i, "score", v)} center numeric max={b5RowMax(r)} /></td>
@@ -3222,7 +3236,8 @@ export default function StandardMyAppraisal({
                           <tr>
                             <th style={{ ...TH, width: 30 }}>SN</th>
                             <th style={TH}>Programme / Event</th>
-                            <th style={TH}>Duration</th>
+                            <th style={TH}>From</th>
+                            <th style={TH}>To</th>
                             <th style={TH}>Organised By</th>
                             <th style={TH}>Attachment</th>
                             <th style={TH}>View Docs</th>
@@ -3234,7 +3249,8 @@ export default function StandardMyAppraisal({
                             <tr key={i} style={i % 2 === 1 ? { background: "#f8fafc" } : {}}>
                               <td style={TDC}>{i + 1}</td>
                               <td style={TD}><TI val={r.program} onChange={(v) => setFdp(i, "program", v)} placeholder="Programme / Event" /></td>
-                              <td style={TD}><TI val={r.duration} onChange={(v) => setFdp(i, "duration", v)} placeholder="Duration" /></td>
+                              <td style={TD}><TI val={r.fromDate} onChange={(v) => setFdp(i, "fromDate", maskDateDDMMYYYY(v))} placeholder="DD/MM/YYYY" /></td>
+                              <td style={TD}><TI val={r.toDate} onChange={(v) => setFdp(i, "toDate", maskDateDDMMYYYY(v))} placeholder="DD/MM/YYYY" /></td>
                               <td style={TD}><TI val={r.org} onChange={(v) => setFdp(i, "org", v)} placeholder="Organised By" /></td>
                               <td style={TD}><DocCell id={`fdp-${i}`} docs={docs} setDocs={setDocs} /></td>
                               <td style={TD}><ViewCell id={`fdp-${i}`} docs={docs} /></td>
@@ -3242,12 +3258,12 @@ export default function StandardMyAppraisal({
                             </tr>
                           ))}
                           <tr style={{ background: "#f3e8ff" }}>
-                            <td style={{ ...TDC, fontWeight: "bold" }} colSpan={6}>Total B8 Score (Max 20)</td>
+                            <td style={{ ...TDC, fontWeight: "bold" }} colSpan={7}>Total B8 Score (Max 20)</td>
                             <td style={{ ...TDS, fontWeight: "bold" }}>{b8Score.toFixed(1)}</td>
                           </tr>
                         </tbody>
                       </table>
-                      <RowBtns onAdd={() => setFdps((p) => [...p, { program: "", duration: "", org: "", score: "" }])} onDel={() => setFdps((p) => p.length > 1 ? p.slice(0, -1) : p)} canDel={fdps.length > 1} />
+                      <RowBtns onAdd={() => setFdps((p) => [...p, { program: "", fromDate: "", toDate: "", org: "", score: "" }])} onDel={() => setFdps((p) => p.length > 1 ? p.slice(0, -1) : p)} canDel={fdps.length > 1} />
                     </div>
 
                     {/* Legacy B8(b) Industrial Training section retained hidden for backwards compatibility */}
