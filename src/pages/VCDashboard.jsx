@@ -1687,6 +1687,12 @@ function SchoolPanel({ school, deanList, dirList, hodList, centerHeadList = [], 
 function NonTeachingCard({ item, onReview }) {
  const reviewed = isNonTeachingReviewComplete(item);
  const cardColor = "#1d4ed8";
+ // Same percentage-to-letter grade bands used on the Faculty review cards - based on the
+ // VC score once reviewed, otherwise the staff member's own self-claimed score out of 130.
+ const gradeBasisLabel = reviewed ? "VC" : "Self";
+ const gradeBasisValue = reviewed ? n(item.vcTotal) : n(item.selfTotal);
+ const gradeBasisPercent = (gradeBasisValue / 130) * 100;
+ const gradeInfo = gradeForPercent(gradeBasisPercent);
  return (
 <div className="vc-review-card fa-fade-up" style={{ background: "#fff", borderRadius: 10, boxShadow: "0 2px 10px rgba(15,23,42,0.07)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
 <div style={{ height: 4, background: `linear-gradient(90deg,${cardColor},#0ea5e9)`, flexShrink: 0 }} />
@@ -1699,7 +1705,16 @@ function NonTeachingCard({ item, onReview }) {
 <div style={{ fontSize: 10, color: "#64748b", marginTop: 2 }}>{item.roleLabel} - {item.designation}</div>
 <div style={{ fontSize: 9, color: "#94a3b8", fontFamily: "monospace", marginTop: 1 }}>{item.employeeId}</div>
 </div>
+<div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, flexShrink: 0 }}>
  {reviewed && <span style={{ fontSize: 9, fontWeight: 800, background: "#fdf4ff", color: "#6b21a8", border: "1px solid #e9d5ff", borderRadius: 999, padding: "4px 10px", whiteSpace: "nowrap" }}>VC Reviewed</span>}
+ <div title={`${gradeBasisLabel} score: ${gradeBasisPercent.toFixed(2)}%`} style={{ display: "inline-flex", alignItems: "center", gap: 8, background: `${gradeInfo.color}12`, border: `1px solid ${gradeInfo.color}45`, borderRadius: 999, padding: "4px 12px 4px 4px", whiteSpace: "nowrap" }}>
+<span style={{ width: 26, height: 26, borderRadius: "50%", background: gradeInfo.color, color: "#fff", fontSize: 12, fontWeight: 900, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{gradeInfo.label}</span>
+<div style={{ display: "flex", flexDirection: "column", lineHeight: 1.2 }}>
+<span style={{ fontSize: 8.5, fontWeight: 800, color: gradeInfo.color, textTransform: "uppercase", letterSpacing: 0.4 }}>Grade</span>
+<span style={{ fontSize: 12, fontWeight: 900, color: "#1e293b" }}>{gradeBasisPercent.toFixed(2)}% {gradeBasisLabel}</span>
+</div>
+</div>
+</div>
 </div>
 
 <div className="vc-score-strip" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 6, background: "#f8fafc", borderRadius: 8, padding: "10px 12px" }}>
