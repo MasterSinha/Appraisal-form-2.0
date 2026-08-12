@@ -1010,6 +1010,8 @@ export const generateStandardReport = async ({
   society,
   industry,
   acr,
+  leaveManagement,
+  partDTotal,
   journals,
   books,
   ict,
@@ -1131,8 +1133,13 @@ ${PRINT_REPORT_CSS}
   <table><tr><th>SN</th><th>Name of Industry</th><th>Details of Activity</th><th>Self Score</th></tr>
   ${industry.map((ind, i) => `<tr><td class="c">${i + 1}</td><td>${displayValue(ind.name)}</td><td>${displayValue(ind.details)}</td><td class="c">${displayValue(ind.score)}</td></tr>`).join("")}
   <tr class="tr"><td colspan="3" class="c b">Total (Max 5)</td><td class="c">${isFilledValue(industryScore) && industryScore > 0 ? industryScore.toFixed(1) : "&nbsp;"}</td></tr></table>
-  <h3 style="background:#d9d9d9;padding:4px;text-align:center;font-size:13px">PART D - Annual Confidential Report</h3>
-  <h3>D1. Annual Confidential Report (${selfAcrExcluded ? "Not counted in self score" : "Max 50"})</h3>
+  <h3 style="background:#d9d9d9;padding:4px;text-align:center;font-size:13px">PART D - Leave &amp; Attendance Management (Max 25)</h3>
+  <h3>D1. Management of Leaves (Max 25)</h3>
+  <table><tr><th>SN</th><th>Rating</th><th>Self Score</th></tr>
+  ${(leaveManagement || []).map((r, i) => `<tr><td class="c">${i + 1}</td><td>${displayValue(r.managementRating)}</td><td class="c">${displayValue(r.score)}</td></tr>`).join("")}
+  <tr class="tr"><td colspan="2" class="c b">Total (Max 25)</td><td class="c">${isFilledValue(partDTotal) && n(partDTotal) > 0 ? n(partDTotal).toFixed(1) : "&nbsp;"}</td></tr></table>
+  <h3 style="background:#d9d9d9;padding:4px;text-align:center;font-size:13px">PART E - Annual Confidential Report</h3>
+  <h3>E1. Annual Confidential Report (${selfAcrExcluded ? "Not counted in self score" : "Max 50"})</h3>
   <table><tr><th>SN</th><th>Parameter</th><th>Self Score</th></tr>
   ${acr.map((a, i) => `<tr><td class="c">${i + 1}</td><td>${displayValue(a.label)}</td><td class="c">${displayValue(a.score)}</td></tr>`).join("")}
   <tr class="tr"><td colspan="2" class="c b">Total (${selfAcrExcluded ? "Not counted in self score" : "Max 50"})</td><td class="c">${acrSummaryScoreStr}</td></tr></table>

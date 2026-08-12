@@ -195,7 +195,7 @@ export default function MediaCommDashboard({ fixedRole }) {
  const [attachmentsConfirmed, setAttachmentsConfirmed] = useState(false);
 
  const [showLogoutModal, setShowLogoutModal] = useState(false);
- const [sectionSaveStatus, setSectionSaveStatus] = useState({ partA: false, partB: false, partC: false, partD: false });
+ const [sectionSaveStatus, setSectionSaveStatus] = useState({ partA: false, partB: false, partC: false, partD: false, partE: false });
  const [savingSection, setSavingSection] = useState(null);
  const [declaration, setDeclaration] = useState(null);
  const [reviews, setReviews] = useState([]);
@@ -485,7 +485,7 @@ export default function MediaCommDashboard({ fixedRole }) {
  sectionSaveStatus: nextStatus,
  });
  setSectionSaveStatus(nextStatus);
- const NEXT_SECTION_MAP = { partA: "partB", partB: "partC", partC: "partD", partD: "summary" };
+ const NEXT_SECTION_MAP = { partA: "partB", partB: "partC", partC: "partD", partD: "partE", partE: "summary" };
  const nextSection = NEXT_SECTION_MAP[section];
  if (nextSection) {
    setSelfSectionView(nextSection);
@@ -733,9 +733,12 @@ export default function MediaCommDashboard({ fixedRole }) {
  ...summaryRow(applicability, "alumni", { id: "C6", label: "Alumni Engagement", max: 10, score: rowSum("alumni", 10) }),
  ...summaryRow(applicability, "placements", { id: "C7", label: "Placement & Internship Support", max: 20, score: rowSum("placements", 20) }),
  { isTotal: true, label: "Part C Total", max: maxScores.partC, score: totals.partC },
- { isHeader: true, label: "Part D - Annual Confidential Report (ACR)" },
- ...summaryRow(applicability, "acr", { id: "D1", label: "Annual Confidential Report", max: 50, score: rowSum("acr", 50) }),
+ { isHeader: true, label: "Part D - Leave & Attendance Management" },
+ { id: "D1", label: "Management of Leaves", max: 25, score: totals.partD },
  { isTotal: true, label: "Part D Total", max: maxScores.partD, score: totals.partD },
+ { isHeader: true, label: "Part E - Annual Confidential Report (ACR)" },
+ ...summaryRow(applicability, "acr", { id: "E1", label: "Annual Confidential Report", max: 50, score: rowSum("acr", 50) }),
+ { isTotal: true, label: "Part E Total", max: maxScores.partE, score: rowSum("acr", 50) },
  { isGrandTotal: true, label: "Grand Total", max: maxScores.grand, score: grandTotal },
  ],
  });
@@ -931,7 +934,7 @@ export default function MediaCommDashboard({ fixedRole }) {
       </div>
     </div>
   ) : (<>
- {(selfSectionView === "partA" || selfSectionView === "partB" || selfSectionView === "partC" || selfSectionView === "partD") && (
+ {(selfSectionView === "partA" || selfSectionView === "partB" || selfSectionView === "partC" || selfSectionView === "partD" || selfSectionView === "partE") && (
 <>
 <MediaForm
  form={form}
@@ -943,7 +946,7 @@ export default function MediaCommDashboard({ fixedRole }) {
  sectionView={selfSectionView}
 />
 <SectionSaveFooter
- label={{ partA: "Part A", partB: "Part B", partC: "Part C", partD: "Part D" }[selfSectionView]}
+ label={{ partA: "Part A", partB: "Part B", partC: "Part C", partD: "Part D", partE: "Part E" }[selfSectionView]}
  saved={Boolean(sectionSaveStatus[selfSectionView])}
  saving={savingSection === selfSectionView}
  locked={locked}
@@ -968,7 +971,7 @@ export default function MediaCommDashboard({ fixedRole }) {
         <SummaryRow label="Part A - Teaching & Learning" score={totals.partA} max={totals.maxScores?.partA || 150} color="#4f46e5" tone="#eef2ff" iconTone="#eef2ff" icon="book" />
         <SummaryRow label="Part B - Research & Innovation" score={totals.partB} max={totals.maxScores?.partB || 350} color="#7c3aed" tone="#f5f3ff" iconTone="#f5f3ff" icon="flask" />
         <SummaryRow label="Part C - Administrative Contribution" score={totals.partC} max={totals.maxScores?.partC || 150} color="#0f766e" tone="#ccfbf1" iconTone="#ccfbf1" icon="building" />
-        <SummaryRow label="Part D - Annual Confidential Report" score={totals.partD} max={totals.maxScores?.partD || 50} color="#ea580c" tone="#ffedd5" iconTone="#ffedd5" icon="document" />
+        <SummaryRow label="Part D - Leave & Attendance Management" score={totals.partD} max={totals.maxScores?.partD || 25} color="#0891b2" tone="#cffafe" iconTone="#cffafe" icon="document" />
         <SummaryRow label="Grand Total" score={totals.total} max={totals.maxScores?.grand || 700} color="#dc2626" tone="#fee2e2" iconTone="#fee2e2" icon="sigma" />
       </tbody>
     </table>

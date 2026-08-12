@@ -170,6 +170,83 @@ export const feedbackAverage = (row = {}) =>{
 export const feedbackRowScore = (row = {}, maxScore = 10) =>
  clampScore(feedbackAverage(row) / 10, maxScore);
 
+// A4 Student Feedback Score guideline (Max 10): maps the 0-5 average of the two
+// feedback rounds to a fixed score band, per the published rubric.
+export const feedbackGuidelineScore = (average) =>{
+ const avg = toNumber(average);
+ if (avg >= 4.60) return 10;
+ if (avg >= 4.30) return 9;
+ if (avg >= 4.00) return 7;
+ if (avg >= 3.70) return 5;
+ if (avg >= 3.40) return 3;
+ if (avg >= 3.00) return 1;
+ return 0;
+};
+
+const A1_LECTURE_SCORE_RULES = [
+ { min: 100, score: 10 },
+ { min: 91, score: 9 },
+ { min: 81, score: 8 },
+ { min: 70, score: 7 },
+];
+
+export const lectureEffectivePct = (row = {}) =>{
+ const explicitPct = parseFloat(row.pctConducted);
+ if (Number.isFinite(explicitPct)) return explicitPct;
+ const planned = toNumber(row.planned);
+ const conducted = toNumber(row.conducted);
+ return planned >0 && conducted >=0 ? (conducted / planned) * 100 : NaN;
+};
+
+// A1 Course Delivery & Classroom Engagement guideline (10 marks per course, max 4 courses):
+// 100% conducted -> 10, 91-99% -> 9, 81-90% -> 8, 70-80% -> 7, below 70% -> 0.
+export const lectureGuidelineScore = (row = {}) =>{
+ const pct = lectureEffectivePct(row);
+ if (!Number.isFinite(pct)) return "";
+ const rule = A1_LECTURE_SCORE_RULES.find((r) =>pct >= r.min);
+ return rule ? rule.score : 0;
+};
+
+const LAKH = 100000;
+const currencyAmount = (value) =>{
+ const parsed = parseFloat(String(value ?? "").replace(/[^0-9.]/g, ""));
+ return Number.isFinite(parsed) ? parsed : 0;
+};
+
+// B4 External Funded Research Projects guideline (Max 40, marks per row):
+// Completed: >10L -> 15, 5-10L -> 10, <5L -> 6.
+// Ongoing / Sanctioned: >10L -> 10, 5-10L -> 8, <5L -> 5.
+// Submitted (proposal): >20L -> 10, <=20L -> 5.
+export const externalProjectGuidelineScore = (row = {}) =>{
+ const amount = toNumber(row.amount);
+ const status = String(row.status || "").trim().toLowerCase();
+ if (!status || amount <=0) return "";
+ if (status === "completed") {
+ if (amount >10 * LAKH) return 15;
+ if (amount >=5 * LAKH) return 10;
+ return 6;
+ }
+ if (status === "submitted") {
+ return amount >20 * LAKH ? 10 : 5;
+ }
+ // Ongoing and Sanctioned share the same band.
+ if (amount >10 * LAKH) return 10;
+ if (amount >=5 * LAKH) return 8;
+ return 5;
+};
+
+// B6 Consultancy, Testing & Training guideline (Max 20, marks per row):
+// up to 50K -> 3, 50K-2L -> 5, 2L-5L -> 10, 5L-10L -> 15, above 10L -> 20.
+export const consultancyGuidelineScore = (row = {}) =>{
+ const amount = currencyAmount(row.amount || row.revenue);
+ if (amount <=0) return "";
+ if (amount >10 * LAKH) return 20;
+ if (amount >5 * LAKH) return 15;
+ if (amount >2 * LAKH) return 10;
+ if (amount >50000) return 5;
+ return 3;
+};
+
 export const feedbackSectionScore = (rows = [], maxScore = 10) =>{
  const filled = rows.filter((row) =>String(row?.score ?? "").trim() !== "");
  if (!filled.length) return 0;
@@ -279,6 +356,14 @@ export const normalizeAutoScores = (form = {}) =>({
  externalProjects: (form.externalProjects || []).map((row) =>({
  ...row,
  score: String(clampScore(row.score, row.max || SCORE_LIMITS.researchExternalProjects) || ""),
+ })),
+ proposals: (form.proposals || []).map((row) =>({
+ ...row,
+ score: String(consultancyGuidelineScore(row) || ""),
+ })),
+ consultancy: (form.consultancy || []).map((row) =>({
+ ...row,
+ score: String(consultancyGuidelineScore(row) || ""),
  })),
  quals: (form.quals || []).map((row) =>({
  ...row,

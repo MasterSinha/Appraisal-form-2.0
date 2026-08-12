@@ -208,6 +208,7 @@ function SectionIcon({ section }) {
     partB: "B",
     partC: "C",
     partD: "D",
+    partE: "E",
     summary: "S",
   };
 
@@ -251,6 +252,7 @@ export default function DashboardSidebar({
         ["partB", "Part B"],
         ["partC", "Part C"],
         ["partD", "Part D"],
+        ["partE", "Part E"],
         ["summary", "Summary"],
       ];
   const selectedSectionLabel = sectionOptions.find(([value]) => value === sectionTab)?.[1] || "Part A";
