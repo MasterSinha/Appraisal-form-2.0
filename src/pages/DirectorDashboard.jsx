@@ -13,6 +13,7 @@ import { legacyDashboardMetrics } from "../utils/legacyDashboardMetrics";
 import { canReviewerRejectProfile, getDeanTrack, rejectedStatusFor, reviewedStatusFor, profileFromsessionStorage, workflowValidationError, roleLabel, getSchoolKey, isAppraisalFinalisedByVc, isRejectedStatus, isPendingReviewStatusFor, hasActiveRejection, reviewListFrom } from "../utils/hierarchy";
 import { n, pct, grade, RO, TI } from "../features/faculty-appraisal/shared";
 import { FacultyRecordHeader, ScoreTable, VCFinalRemarks, FinalSubmitButton, FACULTY_RECORD_THEME } from "../components/dashboard/FacultyAppraisalRecord";
+import { fetchImageAsDataUrl } from "../utils/fullFormReport";
 
 // - Helpers - (n, pct, grade, RO, TI → imported from shared)
 const docsCount = (docs = {}, item = {}) => uploadedDocCount(docs, item);
@@ -165,7 +166,7 @@ const STANDARD_ARRAY_SECTIONS = [
 ];
 const STANDARD_REPORT_PART_A_SECTIONS = [
  { key: "lectures", title: "A1. Lectures / Tutorials / Practicals", max: 40, doc: "lec", fields: [["sem", "Semester"], ["code", "Course Code / Name"], ["planned", "Classes (as per course structure)"], ["conducted", "Classes Actually Conducted"], ["pctConducted", "% Conducted"]] },
- { key: "courseFile", title: "A2. Course File", max: 20, doc: "courseFile", fields: [["course", "Course / Paper"], ["title", "Title"], ["details", "IQAC Index Compliance (Yes/No, with proof)"]] },
+ { key: "courseFile", title: "A2. Course File", max: 20, doc: "courseFile", fields: [["course", "Course / Paper"], ["title", "Program & Semester"], ["details", "IQAC Index Compliance (Yes/No, with proof)"]] },
  { key: "innovRows", title: "A3. Innovative Teaching-Learning Methods", max: 10, doc: "innov", fields: [["method", "Methods Used"], ["details", "Details"]] },
  { key: "feedback", title: "A4. Student Feedback", max: 10, doc: "fb", fields: [["code", "Course Code / Name"], ["fb1", "First Feedback(%)"], ["fb2", "Second Feedback(%)"]] },
  { key: "obeRows", title: "A5. Learning Outcomes Attainment & OBE Practice", max: 20, doc: "obe", fields: [["component", "Component"], ["evidence", "Evidence"]] },
@@ -177,11 +178,11 @@ const STANDARD_REPORT_PART_B_SECTIONS = [
  { key: "journals", title: "B1. Journal Publications", max: 100, doc: "jour", fields: [["title", "Title"], ["journal", "Journal"], ["issn", "ISSN"], ["impactFactor", "Impact Factor"], ["authorPosition", "Author Position"]] },
  { key: "books", title: "B2. Books, Book Chapters & Edited Volumes", max: 30, doc: "book", fields: [["title", "Title"], ["book", "Publisher & ISBN"], ["pub", "Type"], ["level", "Level"], ["coauth", "Co-authors from DYPIU"]] },
  { key: "patents", title: "B3. Patents, Copyrights & IP and Product Development", max: 40, doc: "pat", fields: [["title", "Title"], ["type", "National / International"], ["status", "Status"], ["fileNo", "Filing / Grant No. & Date"]] },
- { key: "projects2", title: "B4. Funded Research Projects", max: 40, doc: "project2", fields: [["title", "Title of Project"], ["agency", "Funding Agency"], ["date", "Sanction Date"], ["amount", "Amount"], ["role", "PI / Co-PI"], ["status", "Status"]] },
+ { key: "projects2", title: "B4. External Funded Research Projects", max: 40, doc: "project2", fields: [["title", "Title of Project"], ["agency", "Funding Agency"], ["date", "Sanction Date"], ["amount", "Amount"], ["role", "PI / Co-PI"], ["status", "Status"]] },
  { key: "research", title: "B5. Research Guidance", max: 20, doc: "res", fields: [["degree", "Degree"], ["name", "Name of Student / Scholar"], ["status", "Status"], ["date", "Date"]] },
  { key: "proposals", title: "B6. Consultancy, Testing & Training", max: 20, doc: "prop", fields: [["agency", "Client / Organisation"], ["duration", "Nature of Engagement"], ["amount", "Revenue Generated"]] },
  { key: "confs", title: "B7. Conference / FDP / Training / Workshop Contributions Organised", max: 20, doc: "conf", fields: [["title", "Event / Session Title"], ["role", "Role"], ["date", "Date"], ["level", "Level"]] },
- { key: "fdps", title: "B8. Conference / FDP / Industry Training - Attended", max: 20, doc: "fdp", fields: [["program", "Programme / Event"], ["duration", "Duration"], ["org", "Organised By"]] },
+ { key: "fdps", title: "B8. Conference / FDP / Industry Training - Attended", max: 20, doc: "fdp", fields: [["program", "Programme / Event"], ["fromDate", "From"], ["toDate", "To"], ["org", "Organised By"]] },
  { key: "awards", title: "B9. Research Awards, Fellowships, Reviewer of Journal & Citations", max: 20, doc: "awd", fields: [["title", "Title of Award / Fellowship / Metric"], ["agency", "Awarding Agency"], ["level", "Level"], ["date", "Date"]] },
  { key: "products", title: "B10. Innovation, Start-ups & Technology Transfer", max: 20, doc: "prod", fields: [["details", "Title / Start-up / Product"], ["role", "Role"], ["status", "Status"]] },
  { key: "ict", title: "B11. ICT Content, MOOCs & E-Learning", max: 20, doc: "ict", fields: [["title", "Title"], ["type", "Platform / Type"], ["quad", "Reach / Views"]] },
@@ -274,6 +275,8 @@ const directorReportTable = ({ form, docs, section, scoreRoles, roleLabel }) =>{
  ? (row.pctConducted || (Number(row.planned) > 0 && Number(row.conducted) >= 0 ? `${((Number(row.conducted) / Number(row.planned)) * 100).toFixed(1)}%` : ""))
  : key === "label" && section.key === "quals"
  ? (row.label || row.title || row.qualificationTitle || row.qualification || row.name)
+ : section.key === "research" && key === "date" && (row.status || row.thesis) === "Ongoing"
+ ? "NA"
  : row[key]
  )}</td>`).join("")}
           ${showDocs ? `<td>${reportValue((docs?.[`${section.doc}-${index}`] || []).map((file) =>file.name || file.url || "Document").join(", "))}</td>` : ""}
@@ -296,7 +299,7 @@ const directorSummaryRows = ({ totals, maxScores }) =>[
  ["Part A", totals.partA, maxScores.partA],
  ["Part B", totals.partB, maxScores.partB],
  ["Part C", totals.partC, maxScores.partC],
- ["Part D", totals.partD, maxScores.partD],
+ ["Part E", totals.partD, maxScores.partD],
 ];
 
 const asRows = (value) =>{
@@ -561,7 +564,7 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
 
  const handleSaveAndNext = async () => {
     await handleSaveDraft();
-    const NEXT_SECTION_MAP = { partA: "partB", partB: "partC", partC: "partD", partD: "summary" };
+    const NEXT_SECTION_MAP = { partA: "partB", partB: "partC", partC: "partD", partD: "partE", partE: "summary" };
     const nextSection = NEXT_SECTION_MAP[sectionView];
     if (nextSection) {
       setSectionView(nextSection);
@@ -571,7 +574,7 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
     }
   };
 
- const generateDirectorReport = () =>{
+ const generateDirectorReport = async () =>{
  const reportForm = {
  ...faculty,
  ...directorSectionScores,
@@ -601,7 +604,8 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
  alert("Please allow popups to generate the report.");
  return;
  }
- const logoSrc = `${window.location.origin}/image.png`;
+ const logoSrc = await fetchImageAsDataUrl("/image.png");
+ const iqacLogoSrc = await fetchImageAsDataUrl("/IQAS.png");
  const html = `<!doctype html>
 <html>
 <head>
@@ -678,8 +682,8 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
  const directorRecordSchoolTrack = getDeanTrack({ school: faculty.school || faculty.info?.school, department: faculty.department, designation: faculty.designation });
  const directorRecordSchoolGroupLabel = { engineering: "Engineering", non_engineering: "Non-Engineering", direct_vc: "CISR" }[directorRecordSchoolTrack] || faculty.school || faculty.info?.school || APP_INFO.UNIVERSITY_NAME;
  const directorRecordScoreRows = [
- { key: "self", label: "Self", icon: "user", values: { partA: facultySummary.partA, partB: facultySummary.partB, partC: facultySummary.partC, partD: facultySummary.partD, total: facultySummary.total }, note: summaryOtherInfoValueFrom(faculty) },
- { key: "director", label: "Director", icon: "briefcase", values: { partA: dirPartA, partB: dirPartB, partC: dirPartC, partD: dirPartD, total: dirTotal }, accent: true },
+ { key: "self", label: "Self", icon: "user", values: { partA: facultySummary.partA, partB: facultySummary.partB, partC: facultySummary.partC, partD: facultySummary.partD, partE: 0, total: facultySummary.total }, note: summaryOtherInfoValueFrom(faculty) },
+ { key: "director", label: "Director", icon: "briefcase", values: { partA: dirPartA, partB: dirPartB, partC: dirPartC, partD: facultySummary.partD, partE: dirPartD, total: dirTotal }, accent: true },
  ];
 
  return (
@@ -706,7 +710,7 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
 <div style={{ color: "#2dd4bf", fontWeight: 800, fontSize: 16 }}>{dirPartC.toFixed(1)}</div>
 </div>
 <div style={{ background: "rgba(5,46,22,0.92)", border: "1px solid rgba(134,239,172,0.18)", borderRadius: 10, padding: "8px 14px", textAlign: "center", minWidth: 92 }}>
-<div style={{ color: "#86efac", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.6 }}>Dir Part D</div>
+<div style={{ color: "#86efac", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.6 }}>Dir Part E</div>
 <div style={{ color: "#f59e0b", fontWeight: 800, fontSize: 16 }}>{dirPartD.toFixed(1)}</div>
 </div>
 <div style={{ background: g.bg, border: `2px solid ${g.color}40`, borderRadius: 8, padding: "8px 14px", textAlign: "center" }}>
@@ -717,7 +721,7 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
 </div>
  {/* Section switcher */}
 <div style={{ display: "inline-flex", gap: 6, marginBottom: 16, padding: 4, background: "#ecfdf5", border: "1px solid #bbf7d0", borderRadius: 12, width: "fit-content", flexWrap: "wrap" }}>
- {[["partA", "Part A"], ["partB", "Part B"], ["partC", "Part C"], ["partD", "Part D"], ["summary", "Summary"]].map(([id, label]) =>(
+ {[["partA", "Part A"], ["partB", "Part B"], ["partC", "Part C"], ["partD", "Part D"], ["partE", "Part E"], ["summary", "Summary"]].map(([id, label]) =>(
 <button key={id} onClick={() =>{
  setSectionView(id);
  requestAnimationFrame(() =>{
@@ -730,13 +734,13 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
  ))}
 </div>
 
- {["partA", "partB", "partC", "partD"].includes(sectionView) && (
-<fieldset disabled={reviewLocked} style={{ border: "none", padding: 0, margin: 0 }}>
+ {["partA", "partB", "partC", "partD", "partE"].includes(sectionView) && (
+<fieldset disabled={reviewLocked || sectionView === "partD"} style={{ border: "none", padding: 0, margin: 0 }}>
 <DirectorFacultyReviewForm faculty={directorReviewForm} hodData={hodData} setHodData={setHodData} dirData={dirData} setDirData={setDirData} sectionView={sectionView} reviewLocked={reviewLocked} />
 </fieldset>
  )}
 
- {["partA", "partB", "partC", "partD"].includes(sectionView) && !reviewLocked && (
+ {["partA", "partB", "partC", "partE"].includes(sectionView) && !reviewLocked && (
 <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, margin: "12px 0 14px", flexWrap: "wrap" }}>
 <span style={{ color: "#64748b", fontSize: 11, fontWeight: 700 }}>{draftStatus}</span>
 <button
@@ -772,6 +776,7 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
  { key: "partB", label: "Part B", max: MAX_SCORES.PART_B },
  { key: "partC", label: "Part C", max: MAX_SCORES.PART_C },
  { key: "partD", label: "Part D", max: MAX_SCORES.PART_D },
+ { key: "partE", label: "Part E", max: MAX_SCORES.PART_E },
  { key: "total", label: "Total", max: MAX_SCORES.GRAND_TOTAL },
  ]}
  rows={directorRecordScoreRows}
@@ -1100,7 +1105,7 @@ export default function DirectorDashboard() {
  { label: showDirScores ? "Dir Part A" : "Part A", val: showDirScores ? dirA : selfA, max: showDirScores ? reviewPartAMax : itemSummary.partAMax, color: "#6366f1" },
  { label: showDirScores ? "Dir Part B" : "Part B", val: showDirScores ? dirB : selfB, max: itemSummary.partBMax, color: "#0ea5e9" },
  { label: showDirScores ? "Dir Part C" : "Part C", val: showDirScores ? dirC : selfC, max: itemSummary.partCMax, color: "#10b981" },
- { label: showDirScores ? "Dir Part D" : "Part D", val: showDirScores ? dirD : selfD, max: itemSummary.partDMax, color: "#f59e0b" },
+ { label: showDirScores ? "Dir Part E" : "Part D", val: showDirScores ? dirD : selfD, max: showDirScores ? 50 : itemSummary.partDMax, color: "#f59e0b" },
  { label: showDirScores ? "Dir Total" : "Total", val: showDirScores ? dirTotal : selfTotal, max: itemSummary.grandMax, color: "#4338ca" },
  ];
  const noScoresAvailable = reviewed && dirA === 0 && dirB === 0 && dirC === 0 && dirD === 0 && dirTotal === 0 && selfA === 0 && selfB === 0 && selfC === 0 && selfD === 0 && selfTotal === 0;

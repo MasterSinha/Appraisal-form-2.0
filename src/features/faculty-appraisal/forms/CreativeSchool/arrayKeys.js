@@ -25,6 +25,7 @@ export const ALL_ARRAY_KEYS = [
   "alumni",
   "placements",
   "acr",
+  "leaveManagement",
   "obeRows",
   "mentoringRows",
   "training",

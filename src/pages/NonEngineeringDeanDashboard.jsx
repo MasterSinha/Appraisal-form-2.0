@@ -525,7 +525,7 @@ function DeanReviewScoreForm({ approval, deanData, setDeanData, sectionView = "p
  docPrefix="courseFile"
  columns={[
  { label: "Course / Paper", render: (r) =>r.course },
- { label: "Title", render: (r) =>r.title },
+ { label: "Program & Semester", render: (r) =>r.title },
  { label: "IQAC Index Compliance (Yes/No, with proof)", render: (r) =>r.details },
  ]}
  />
@@ -655,7 +655,7 @@ function DeanReviewScoreForm({ approval, deanData, setDeanData, sectionView = "p
  />
 
 <ReviewTable
- title="B4. Funded Research Projects"
+ title="B4. External Funded Research Projects"
  accent="#059669"
  sectionKey="projects2"
  docPrefix="project2"
@@ -678,7 +678,7 @@ function DeanReviewScoreForm({ approval, deanData, setDeanData, sectionView = "p
  { label: "Degree (PhD/PG)", render: (r) =>r.degree, center: true },
  { label: "Name of Student / Scholar", render: (r) =>r.name },
  { label: "Status (Ongoing/Awarded)", render: (r) =>r.status || r.thesis },
- { label: "Date", render: (r) =>r.date, center: true },
+ { label: "Date", render: (r) =>(r.status || r.thesis) === "Ongoing" ? "NA" : r.date, center: true },
  ]}
  />
 
@@ -714,7 +714,8 @@ function DeanReviewScoreForm({ approval, deanData, setDeanData, sectionView = "p
  docPrefix="fdp"
  columns={[
  { label: "Programme / Event", render: (r) =>r.program },
- { label: "Duration", render: (r) =>r.duration, center: true },
+ { label: "From", render: (r) =>r.fromDate, center: true },
+ { label: "To", render: (r) =>r.toDate, center: true },
  { label: "Organised By", render: (r) =>r.org },
  ]}
  />

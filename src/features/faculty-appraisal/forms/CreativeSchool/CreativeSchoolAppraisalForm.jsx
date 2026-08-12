@@ -28,13 +28,17 @@ import {
   SCORE_LIMITS,
   averageSectionScore,
   clampScore,
+  consultancyGuidelineScore,
   courseFileRowScore,
   effectiveMaxScore,
+  externalProjectGuidelineScore,
   feedbackAverage,
+  feedbackGuidelineScore,
   feedbackSectionScore,
   innovativeSelectionsFromDetails,
   innovativeTeachingScore,
   isValidDDMMYYYY,
+  lectureGuidelineScore,
   maskDateDDMMYYYY,
   normalizeAutoScores,
   projectGuidanceRowMax,
@@ -82,10 +86,25 @@ const clampDirectorReviewScore = (sectionKey, row, value, maxScore) => {
 export const PART_A_MAX = 150;
 export const PART_B_MAX = 350;
 export const PART_C_MAX = 150;
-export const PART_D_MAX = 50;
-export const GRAND_MAX = 700;
+export const PART_D_MAX = 25;
+export const PART_E_MAX = 50;
+export const GRAND_MAX = 725;
+export const PART_D_RATING_OPTIONS = [
+  { value: "Outstanding", label: "Outstanding (Above 20)", score: 25 },
+  { value: "Above Average", label: "Above Average (16-20)", score: 20 },
+  { value: "Average", label: "Average (11-15)", score: 15 },
+  { value: "Below Average", label: "Below Average (6-10)", score: 10 },
+  { value: "Unacceptable", label: "Unacceptable (0-5)", score: 5 },
+];
+export const partDRatingScore = (rating) => PART_D_RATING_OPTIONS.find((option) => option.value === rating)?.score ?? "";
+export const blankLeaveManagementRow = () => ({
+  clTaken: "", mlTaken: "", odTaken: "", coffTaken: "",
+  clOutOf: "", mlOutOf: "", odOutOf: "", coffOutOf: "",
+  lateRemarks: "", workingDays: "", managementRating: "", score: "",
+});
 const CREATIVE_INNOVATIVE_ROW_MAX = 4;
-const CREATIVE_INNOVATIVE_SECTION_MAX = 10;
+const CREATIVE_INNOVATIVE_SECTION_MAX = 20;
+const CREATIVE_A3_ROW_LIMIT = 5;
 
 export const titleCase = (value) => String(value || "").charAt(0).toUpperCase() + String(value || "").slice(1);
 
@@ -231,7 +250,7 @@ export const emptyCreativeSchoolForm = (defaultSchool = "SoD - School of Design"
   courseFile: [{ course: "", title: "", details: "", score: "" }],
   innovDetails: "",
   innovScore: "",
-  innovRows: [{ method: "", details: "", score: "", max: CREATIVE_INNOVATIVE_ROW_MAX, sectionMax: CREATIVE_INNOVATIVE_SECTION_MAX }],
+  innovRows: [{ method: "", details: "", methodOther: "", score: "", max: CREATIVE_INNOVATIVE_ROW_MAX, sectionMax: CREATIVE_INNOVATIVE_SECTION_MAX }],
   obeRows: defaultObeRows(),
   mentoringRows: defaultMentoringRows(),
   projects: [{ label: "", score: "" }],
@@ -245,6 +264,7 @@ export const emptyCreativeSchoolForm = (defaultSchool = "SoD - School of Design"
   alumni: [{ activity: "", details: "", date: "", score: "" }],
   placements: [{ type: "", name: "", date: "", score: "" }],
   acr: createAcrRows(),
+  leaveManagement: [blankLeaveManagementRow()],
   journals: [{ title: "", journal: "", doi: "", index: "", impact: "", coAuthors: "", firstAuthor: "", score: "" }],
   popularWritings: [{ title: "", pubName: "", type: "", circulation: "", media: "", film: "", score: "" }],
   books: [{ title: "", book: "", isbn: "", publisher: "", coAuthors: "", first: "", score: "" }],
@@ -253,7 +273,7 @@ export const emptyCreativeSchoolForm = (defaultSchool = "SoD - School of Design"
   research: [{ degree: "", name: "", thesis: "", score: "" }],
   consultancy: [{ title: "", agency: "", date: "", amount: "", role: "", status: "", score: "" }],
   confs: [{ title: "", type: "", org: "", level: "", score: "" }],
-  fdps: [{ program: "", duration: "", org: "", score: "" }],
+  fdps: [{ program: "", fromDate: "", toDate: "", org: "", score: "" }],
   awards: [{ title: "", date: "", agency: "", level: "", score: "" }],
   innovation: [{ title: "", details: "", impact: "", score: "" }],
   products: [{ title: "", details: "", used: "", status: "", score: "" }],
@@ -274,14 +294,15 @@ export const SECTION_OPTIONS = [
   { value: "partA", label: "Part A — Teaching & Learning (Max: 150)" },
   { value: "partB", label: "Part B — Research & Creative Output (Max: 350)" },
   { value: "partC", label: "Part C — Administrative Role & Contribution (Max: 150)" },
-  { value: "partD", label: "Part D — Annual Confidential Report (Max: 50)" },
-  { value: "summary", label: "Summary & Verification (Grand Total: 700)" },
+  { value: "partD", label: "Part D — Leave & Attendance Management (Max: 25)" },
+  { value: "partE", label: "Part E — Annual Confidential Report (Max: 50)" },
+  { value: "summary", label: "Summary & Verification (Grand Total: 725)" },
 ];
 
 export const PART_A_SECTIONS = [
   { key: "lectures", title: "A1. Course Delivery & Classroom Engagement", max: 40, rowMax: 10, doc: "lec", fields: [["sem", "Semester"], ["code", "Course Code / Name"], ["planned", "Classes (as per course structure)"], ["conducted", "Classes Actually Conducted"], ["pctConducted", "% Conducted"]] },
-  { key: "courseFile", title: "A2. Course File & Curriculum Documentation", max: 20, doc: "cf", rowMax: SCORE_LIMITS.courseFileRow, fields: [["course", "Course / Paper"], ["title", "Title"], ["details", "IQAC Index Compliance (Yes/No, with proof)"]] },
-  { key: "feedback", title: "A4. Student Feedback Score", max: 10, doc: "fb", fields: [["code", "Course Code / Name"], ["fb1", "First Feedback(%)"], ["fb2", "Second Feedback(%)"]] },
+  { key: "courseFile", title: "A2. Course File & Curriculum Documentation", max: 20, doc: "cf", rowMax: SCORE_LIMITS.courseFileRow, fields: [["course", "Course / Paper"], ["title", "Program & Semester"], ["details", "IQAC Index Compliance (Yes/No, with proof)"]] },
+  { key: "feedback", title: "A4. Student Feedback Score", max: 10, doc: "fb", fields: [["code", "Course Code / Name"], ["fb1", "First Student Feedback As per Juno"], ["fb2", "Second Student Feedback As Per Juno"]] },
   { key: "projects", title: "A6. Student Project Guidance", max: 20, doc: "proj", rowMax: projectGuidanceRowMax, fields: [["label", "Project Category"]] },
   { key: "quals", title: "A8. Qualification Enhancement", max: 10, doc: "qual", rowMax: SCORE_LIMITS.qualificationRow, fields: [["title", "Qualification / Certification Title"], ["body", "Awarding Body"], ["date", "Date"]] },
 ];
@@ -295,7 +316,7 @@ export const PART_B_SECTIONS = [
   { key: "research", title: "B5. Research / Creative Guidance", max: 20, doc: "res", rowMax: researchGuidanceRowMax, fields: [["degree", "Degree (PhD/PG)"], ["name", "Name of Student / Scholar"], ["status", "Status (Ongoing/Awarded)"], ["date", "Date"]] },
   { key: "consultancy", title: "B6. Consultancy, Training & Creative Commissions", max: 30, doc: "con", fields: [["client", "Client / Organisation"], ["nature", "Nature of Engagement"], ["amount", "Revenue Generated (₹)"]] },
   { key: "confs", title: "B7. Conference / FDP / Festival Contributions — Organised", max: 20, doc: "conf", fields: [["title", "Event / Session Title"], ["role", "Role"], ["date", "Date"], ["level", "Level (Intl./National)"]] },
-  { key: "fdps", title: "B8. Conference / FDP / Industry-Studio Training Attended", max: 20, doc: "fdp", fields: [["program", "Programme / Event"], ["duration", "Duration"], ["org", "Organised By"]] },
+  { key: "fdps", title: "B8. Conference / FDP / Industry-Studio Training Attended", max: 20, doc: "fdp", fields: [["program", "Programme / Event"], ["fromDate", "From"], ["toDate", "To"], ["org", "Organised By"]] },
   { key: "awards", title: "B9. Research Awards, Fellowships, Reviewer & Citations", max: 20, doc: "awd", fields: [["title", "Title of Award / Fellowship / Metric"], ["agency", "Awarding Agency"], ["level", "Level"], ["date", "Date"]] },
   { key: "innovation", title: "B10. Innovation, Start-ups & Technology Transfer", max: 20, doc: "inn", fields: [["title", "Title / Start-up / Product"], ["role", "Role"], ["status", "Status"]] },
   { key: "ict", title: "B11. ICT Content, MOOCs & E-Learning", max: 40, doc: "ict", fields: [["title", "Title"], ["platform", "Platform / Type"], ["reach", "Reach / Views (if available)"]] },
@@ -313,10 +334,14 @@ export const PART_C_SECTIONS = [
 ];
 
 export const PART_D_SECTIONS = [
-  { key: "acr", title: "Part D — Annual Confidential Report (ACR) - Max 50 marks", max: 50, doc: "acr", rowMax: SCORE_LIMITS.acrRow, fields: [["label", "Attribute", true]], selfReadOnlyScore: true },
+  { key: "leaveManagement", title: "Part D — Leave & Attendance Management - Max 25 marks", max: 25, fields: [["clTaken", "CL Taken"], ["mlTaken", "ML Taken"], ["odTaken", "OD Taken"], ["coffTaken", "C/Off Taken"], ["lateRemarks", "Late Remarks"], ["workingDays", "Working Days"], ["managementRating", "Management of Leaves"]] },
 ];
 
-const SECTION_MAX_BY_KEY = Object.fromEntries([...PART_A_SECTIONS, ...PART_B_SECTIONS, ...PART_C_SECTIONS, ...PART_D_SECTIONS, { key: "obeRows", max: 20 }, { key: "mentoringRows", max: 10 }].map((section) => [section.key, section.max]));
+export const PART_E_SECTIONS = [
+  { key: "acr", title: "Part E — Annual Confidential Report (ACR) - Max 50 marks", max: 50, doc: "acr", rowMax: SCORE_LIMITS.acrRow, fields: [["label", "Attribute", true]], selfReadOnlyScore: true },
+];
+
+const SECTION_MAX_BY_KEY = Object.fromEntries([...PART_A_SECTIONS, ...PART_B_SECTIONS, ...PART_C_SECTIONS, ...PART_D_SECTIONS, ...PART_E_SECTIONS, { key: "obeRows", max: 20 }, { key: "mentoringRows", max: 10 }].map((section) => [section.key, section.max]));
 const REVIEW_SCORE_FIELDS = ["hod", "director", "dean", "vc"];
 
 export const preserveSavedReviewScores = (form = {}, source = {}) => {
@@ -394,10 +419,13 @@ export const calculateCreativeSchoolTotals = (form, scoreKey = "score") => {
     maxScores.partC,
   );
 
-  const partD = scoreKey === "score" ? 0 : clampScore(rowSum("acr", 50), maxScores.partD);
-  const total = clampScore(partA + partB + partC + partD, maxScores.grand);
+  // partD is now the new faculty-filled Leave & Attendance section (25 marks, faculty-scored).
+  // partE is the section that used to be called Part D (the ACR, 50 marks) - reviewer-only, faculty always 0.
+  const partD = clampScore(rowSum("leaveManagement", 25), maxScores.partD);
+  const partE = scoreKey === "score" ? 0 : clampScore(rowSum("acr", 50), maxScores.partE);
+  const total = clampScore(partA + partB + partC + partD + partE, maxScores.grand);
 
-  return { partA, partB, partC, partD, total, maxScores };
+  return { partA, partB, partC, partD, partE, total, maxScores };
 };
 
 export const calculateDesignArtsTotals = calculateCreativeSchoolTotals;
@@ -412,9 +440,9 @@ export const getCreativeSchoolEffectiveMaxScores = (form = {}, { self = false } 
   };
   const isFacultyUser = self || getSessionRole() === "faculty";
   if (isFacultyUser) {
-    return { partA: PART_A_MAX, partB: PART_B_MAX, partC: PART_C_MAX, partD: 0, grand: 650 };
+    return { partA: PART_A_MAX, partB: PART_B_MAX, partC: PART_C_MAX, partD: PART_D_MAX, partE: 0, grand: PART_A_MAX + PART_B_MAX + PART_C_MAX + PART_D_MAX };
   }
-  return { partA: PART_A_MAX, partB: PART_B_MAX, partC: PART_C_MAX, partD: PART_D_MAX, grand: GRAND_MAX };
+  return { partA: PART_A_MAX, partB: PART_B_MAX, partC: PART_C_MAX, partD: PART_D_MAX, partE: PART_E_MAX, grand: GRAND_MAX };
 };
 
 export const getDesignArtsEffectiveMaxScores = getCreativeSchoolEffectiveMaxScores;
@@ -507,6 +535,8 @@ const dummyValueForCreativeField = (sectionKey, fieldKey, rowIndex = 0) => {
     label: "UG Design / Media Capstone",
     body: "DYPIU",
     date,
+    fromDate: date,
+    toDate: date,
     journal: "Journal of Creative Practice",
     doi: "10.0000/dypiu.test",
     index: "Q2",
@@ -781,24 +811,30 @@ export const validateCreativeSchoolBeforeSubmit = (form, docs = {}, sectionView 
     : sectionView === "partC"
     ? PART_C_SECTIONS
     : [...PART_A_SECTIONS, ...partBSections, ...PART_C_SECTIONS];
-  const rowSections = sectionsToValidate.map((section) => ({
-    label: section.title,
-    rows: form[section.key] || [],
-    fields: [
+  const rowSections = sectionsToValidate.map((section) => {
+    const fields = [
       ...section.fields.filter(([, , readOnly]) => !readOnly).map(([key]) => key),
       ...(section.selfReadOnlyScore || section.autoScore || section.key === "feedback" ? [] : ["score"]),
-    ],
-    // Explicit 0 (not undefined) when a section defines no per-row cap, so the shared
-    // validator's title-text fallback (e.g. matching "FDP" inside B7's title) never
-    // invents a row cap the UI never enforced in the first place.
-    rowMax: section.rowMax || 0,
-    maxScore: section.key === "feedback" ? undefined : section.max,
-    docPrefix: section.key !== "acr" ? section.doc : "",
-    docKey: section.key !== "acr" && DOC_KEY_ALIASES[section.key]?.length
-      ? (_row, index) => docKeysForSectionRow(section, index)
-      : undefined,
-    capSectionTotal: true,
-  }));
+    ];
+    return {
+      label: section.title,
+      rows: form[section.key] || [],
+      fields,
+      fieldsForRow: section.key === "research"
+        ? (row) => (row?.status === "Ongoing" ? fields.filter((key) => key !== "date") : fields)
+        : undefined,
+      // Explicit 0 (not undefined) when a section defines no per-row cap, so the shared
+      // validator's title-text fallback (e.g. matching "FDP" inside B7's title) never
+      // invents a row cap the UI never enforced in the first place.
+      rowMax: section.rowMax || 0,
+      maxScore: section.key === "feedback" ? undefined : section.max,
+      docPrefix: section.key !== "acr" ? section.doc : "",
+      docKey: section.key !== "acr" && DOC_KEY_ALIASES[section.key]?.length
+        ? (_row, index) => docKeysForSectionRow(section, index)
+        : undefined,
+      capSectionTotal: true,
+    };
+  });
   const errors = validateCompleteRows(rowSections, docs);
 
   if (sectionView !== "partA") ["internalProjects", "externalProjects"].forEach((key) => {
@@ -809,6 +845,15 @@ export const validateCreativeSchoolBeforeSubmit = (form, docs = {}, sectionView 
     });
   });
 
+  if (sectionView !== "partA") (form.fdps || []).forEach((row, index) => {
+    if (row.fromDate && !isValidDDMMYYYY(row.fromDate)) {
+      errors.push(`B8, row ${index + 1}: From date must be DD/MM/YYYY.`);
+    }
+    if (row.toDate && !isValidDDMMYYYY(row.toDate)) {
+      errors.push(`B8, row ${index + 1}: To date must be DD/MM/YYYY.`);
+    }
+  });
+
   if (sectionView !== "partB") {
     const innovRows = Array.isArray(form.innovRows) && form.innovRows.length
       ? form.innovRows
@@ -817,6 +862,7 @@ export const validateCreativeSchoolBeforeSubmit = (form, docs = {}, sectionView 
       label: "A3. Innovative Teaching Methods",
       rows: innovRows,
       fields: ["method", "details", "score"],
+      fieldsForRow: (row) => row?.method === OTHER_INNOVATIVE_METHOD ? ["method", "methodOther", "details", "score"] : ["method", "details", "score"],
       docPrefix: "innov",
       rowMax: CREATIVE_INNOVATIVE_ROW_MAX,
       maxScore: CREATIVE_INNOVATIVE_SECTION_MAX,
@@ -831,6 +877,7 @@ export const validateDesignArtsBeforeSubmit = validateCreativeSchoolBeforeSubmit
 export const validateMediaBeforeSubmit = validateCreativeSchoolBeforeSubmit;
 
 const NUMERIC_KEYS = new Set(["planned", "conducted", "fb1", "fb2", "amount"]);
+const DATE_FIELD_KEYS = new Set(["date", "fromDate", "toDate"]);
 const TEXT_ONLY_KEYS = new Set(["title", "body", "course", "name", "degree", "thesis", "agency", "role", "status", "type", "level", "activity", "nature", "journal", "book", "publisher", "org", "program", "company", "desc", "coAuthors", "media", "film", "client", "platform"]);
 
 const FIELD_PLACEHOLDERS = {
@@ -841,11 +888,13 @@ const FIELD_PLACEHOLDERS = {
   course: "e.g. CS201 - Data Structures",
   title: "Enter exact title",
   details: "Enter brief verifiable details",
-  fb1: "First feedback %",
-  fb2: "Second feedback %",
+  fb1: "0-5",
+  fb2: "0-5",
   label: "Select or enter category",
   body: "Awarding body / institute",
   date: "DD/MM/YYYY",
+  fromDate: "DD/MM/YYYY",
+  toDate: "DD/MM/YYYY",
   journal: "Journal name, volume, issue",
   doi: "DOI / URL",
   index: "Q1/Q2/Scopus/WoS",
@@ -933,9 +982,6 @@ const DROPDOWN_FIELD_OPTIONS = {
   confs: {
     role: ["Convener", "Co-Convener", "Organising Secretary", "Session Chair", "Resource Person", "Member"],
     level: ["International", "National", "State / Regional", "University / Institutional"],
-  },
-  fdps: {
-    duration: ["1 Week", "2 Weeks", "3-5 Days", "More than 2 Weeks"],
   },
   awards: {
     level: ["International", "National", "State / Regional", "University / Institutional"],
@@ -1104,8 +1150,11 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
       [section.key]: (prev[section.key] || []).map((row, rowIndex) => {
         if (rowIndex !== index) return row;
         const rowMax = section.rowMax ? (typeof section.rowMax === "function" ? section.rowMax(row) : section.rowMax) : section.max;
-        const nextValue = key === "date" ? maskDateDDMMYYYY(value) : key === "score" ? (value === "" ? "" : clampScore(value, rowMax)) : value;
+        const nextValue = DATE_FIELD_KEYS.has(key) ? maskDateDDMMYYYY(value) : key === "score" ? (value === "" ? "" : clampScore(value, rowMax)) : value;
         const nextRow = { ...row, [key]: nextValue };
+        if (section.key === "research" && key === "status" && nextValue === "Ongoing") {
+          nextRow.date = "";
+        }
         if (section.key === "lectures" && (key === "planned" || key === "conducted")) {
           const planned = Number(nextRow.planned);
           const conducted = Number(nextRow.conducted);
@@ -1115,6 +1164,18 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
           } else {
             nextRow.pctConducted = "";
           }
+        }
+        if (section.key === "lectures" && (key === "planned" || key === "conducted" || key === "pctConducted")) {
+          nextRow.score = String(lectureGuidelineScore(nextRow));
+        }
+        if (section.key === "feedback" && (key === "fb1" || key === "fb2")) {
+          nextRow.score = String(feedbackGuidelineScore(feedbackAverage(nextRow)));
+        }
+        if (section.key === "externalProjects" && (key === "amount" || key === "status")) {
+          nextRow.score = String(externalProjectGuidelineScore(nextRow));
+        }
+        if (section.key === "consultancy" && (key === "amount" || key === "revenue")) {
+          nextRow.score = String(consultancyGuidelineScore(nextRow));
         }
         return nextRow;
       }),
@@ -1207,6 +1268,8 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
                         {mode !== "self" ? (
                           key === "pctConducted" ? (
                             <RO value={row.pctConducted || (Number(row.planned) > 0 && Number(row.conducted) >= 0 ? `${((Number(row.conducted) / Number(row.planned)) * 100).toFixed(1)}%` : "")} placeholder="%" center />
+                          ) : section.key === "research" && key === "date" ? (
+                            <RO value={row.status === "Ongoing" ? "NA" : row[key]} />
                           ) : (
                             <RO value={row[key]} />
                           )
@@ -1260,22 +1323,16 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
                             ))}
                           </select>
                         ) : key === "pctConducted" ? (
-                          <TI
-                            value={row.pctConducted || (Number(row.planned) > 0 && Number(row.conducted) >= 0 ? `${((Number(row.conducted) / Number(row.planned)) * 100).toFixed(1)}%` : "")}
-                            onChange={(value) => updateRow(index, "pctConducted", value)}
-                            center
-                            placeholder="%"
-                            readOnly={!editableSelf || readOnlyField || selfLocked || socRowLocked}
-                          />
+                          <RO value={row.pctConducted} center />
                         ) : (
                           <>
-                            <TI value={row[key]} type={NUMERIC_KEYS.has(key) ? "number" : "text"} center={section.key === "courseFile" && key === "title"} placeholder={placeholderForField(section.key, key)} max={key === "fb1" || key === "fb2" ? SCORE_LIMITS.feedbackAverage : undefined} deferClampWhileTyping={key === "fb1" || key === "fb2"} textOnly={TEXT_ONLY_KEYS.has(key) && !(section.key === "courseFile" && key === "title")} readOnly={!editableSelf || readOnlyField || selfLocked || socRowLocked} onChange={(value) => updateRow(index, key, value)} />
+                            <TI value={row[key]} type={key === "amount" ? "integer" : NUMERIC_KEYS.has(key) ? "number" : "text"} center={section.key === "courseFile" && key === "title"} placeholder={section.key === "research" && key === "date" && row.status === "Ongoing" ? "Not required" : placeholderForField(section.key, key)} max={key === "fb1" || key === "fb2" ? 5 : undefined} deferClampWhileTyping={key === "fb1" || key === "fb2"} textOnly={TEXT_ONLY_KEYS.has(key) && !(section.key === "courseFile" && key === "title")} readOnly={!editableSelf || readOnlyField || selfLocked || socRowLocked || (section.key === "research" && key === "date" && row.status === "Ongoing")} onChange={(value) => updateRow(index, key, value)} />
                             {section.key === "acr" && key === "label" && ACR_DETAIL_POINTS[row[key]] && (
                               <ul style={{ margin: "5px 0 0 16px", padding: 0, color: "#64748b", fontSize: 10, lineHeight: 1.5 }}>
                                 {ACR_DETAIL_POINTS[row[key]].map((point) => <li key={point}>{point}</li>)}
                               </ul>
                             )}
-                            {key === "date" && row[key] && !isValidDDMMYYYY(row[key]) && (
+                            {DATE_FIELD_KEYS.has(key) && row[key] && !isValidDDMMYYYY(row[key]) && (
                               <div style={{ color: "#dc2626", fontSize: 10, marginTop: 3 }}>Use DD/MM/YYYY</div>
                             )}
                           </>
@@ -1287,7 +1344,7 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
                     <td style={tdStyle}><ViewDocsCell docKey={docKeysForRow(index)} docs={docs} emptyText="" compact /></td>
                     <td style={tdCenter}>
                       {mode === "self"
-                        ? section.autoScore
+                        ? section.autoScore || section.key === "feedback" || section.key === "lectures" || section.key === "externalProjects" || section.key === "consultancy"
                             ? <RO value={rowSelfScore(row) ? rowSelfScore(row).toFixed(1) : ""} center />
                             : <TI value={row.score} type="number" center placeholder="Marks" max={section.rowMax ? (typeof section.rowMax === "function" ? section.rowMax(row) : section.rowMax) : section.max} readOnly={!editableSelf || section.selfReadOnlyScore || selfLocked || socRowLocked} onChange={(value) => updateRow(index, "score", value)} />
                         : <RO value={rowSelfScore(row) ? rowSelfScore(row).toFixed(1) : ""} center />}
@@ -1326,6 +1383,8 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
   );
 }
 
+const OTHER_INNOVATIVE_METHOD = "Any other innovative method";
+
 const INNOVATIVE_METHOD_OPTIONS = [
   { value: "Blended learning", label: "Blended learning" },
   { value: "Virtual Lab", label: "Virtual Lab" },
@@ -1336,7 +1395,7 @@ const INNOVATIVE_METHOD_OPTIONS = [
   { value: "Quiz", label: "Quiz" },
   { value: "Group Discussion (with photo & report)", label: "Group Discussion (with photo & report)" },
   { value: "Flip classroom (with proof of material shared)", label: "Flip classroom (with proof of material shared)" },
-  { value: "Any other innovative method", label: "Any other innovative method" },
+  { value: OTHER_INNOVATIVE_METHOD, label: OTHER_INNOVATIVE_METHOD },
 ];
 
 const LEGACY_INNOVATIVE_METHODS = new Set(INNOVATIVE_METHOD_OPTIONS.map((method) => method.value));
@@ -1345,7 +1404,7 @@ function InnovativeSection({ form, setForm, docs, setDocs, mode, locked, reviewe
   const currentScore = scoreKeyForInnov(reviewerRole);
   const editableSelf = mode === "self" && !locked;
   const reviewLocked = mode === "review" && locked;
-  const innovRows = (Array.isArray(form.innovRows) && form.innovRows.length ? form.innovRows : [{ method: form.innovDetails || "", details: form.innovDetails || "", score: form.innovScore || "" }]).map(withCreativeInnovativeLimits);
+  const innovRows = (Array.isArray(form.innovRows) && form.innovRows.length ? form.innovRows : [{ method: form.innovDetails || "", details: form.innovDetails || "", methodOther: "", score: form.innovScore || "" }]).map(withCreativeInnovativeLimits);
   const visibleInnovRows = innovRows;
   const selectedInnovativeMethods = new Set(visibleInnovRows.map((row) => String(row.method ?? "").trim()).filter(Boolean));
   const innovativeMethodOptionsForRow = (currentMethod) =>
@@ -1388,7 +1447,7 @@ function InnovativeSection({ form, setForm, docs, setDocs, mode, locked, reviewe
   };
   const updateSelfRow = (index, field, value) => {
     setForm((prev) => {
-      const baseRows = Array.isArray(prev.innovRows) && prev.innovRows.length ? prev.innovRows : [{ method: prev.innovDetails || "", details: prev.innovDetails || "", score: prev.innovScore || "" }];
+      const baseRows = Array.isArray(prev.innovRows) && prev.innovRows.length ? prev.innovRows : [{ method: prev.innovDetails || "", details: prev.innovDetails || "", methodOther: "", score: prev.innovScore || "" }];
       const nextRows = baseRows.map((row, rowIndex) => rowIndex === index ? withCreativeInnovativeLimits({ ...row, [field]: value }) : withCreativeInnovativeLimits(row));
       const hasAnyScore = nextRows.some((row) => String(row.score ?? "").trim() !== "");
       const nextScore = hasAnyScore
@@ -1398,16 +1457,17 @@ function InnovativeSection({ form, setForm, docs, setDocs, mode, locked, reviewe
     });
   };
   const addInnovRow = () => setForm((prev) => {
-    const baseRows = Array.isArray(prev.innovRows) && prev.innovRows.length ? prev.innovRows : [{ method: prev.innovDetails || "", details: prev.innovDetails || "", score: prev.innovScore || "" }];
-    return { ...prev, innovRows: [...baseRows.map(withCreativeInnovativeLimits), withCreativeInnovativeLimits({ method: "", details: "", score: "" })] };
+    const baseRows = Array.isArray(prev.innovRows) && prev.innovRows.length ? prev.innovRows : [{ method: prev.innovDetails || "", details: prev.innovDetails || "", methodOther: "", score: prev.innovScore || "" }];
+    if (baseRows.length >= CREATIVE_A3_ROW_LIMIT) return prev;
+    return { ...prev, innovRows: [...baseRows.map(withCreativeInnovativeLimits), withCreativeInnovativeLimits({ method: "", details: "", methodOther: "", score: "" })] };
   });
   const deleteInnovRow = () => setForm((prev) => {
-    const baseRows = Array.isArray(prev.innovRows) && prev.innovRows.length ? prev.innovRows : [{ method: prev.innovDetails || "", details: prev.innovDetails || "", score: prev.innovScore || "" }];
+    const baseRows = Array.isArray(prev.innovRows) && prev.innovRows.length ? prev.innovRows : [{ method: prev.innovDetails || "", details: prev.innovDetails || "", methodOther: "", score: prev.innovScore || "" }];
     return { ...prev, innovRows: baseRows.length > 1 ? baseRows.slice(0, -1) : baseRows };
   });
 
   return (
-    <SectionShell title="A3. Innovative Teaching-Learning Methodologies - Max 10 marks" max={10} earned={facultyScore}>
+    <SectionShell title="A3. Innovative Teaching-Learning Methodologies - Max 20 marks" max={20} earned={facultyScore}>
       <table style={tableStyle}>
         <thead>
           <tr>
@@ -1429,20 +1489,36 @@ function InnovativeSection({ form, setForm, docs, setDocs, mode, locked, reviewe
                 <td style={tdCenter}>{index + 1}</td>
                 <td style={tdStyle}>
                   {mode === "self" ? (
-                    <select
-                      value={row.method || ""}
-                      disabled={!editableSelf}
-                      onChange={(e) => updateSelfRow(index, "method", e.target.value)}
-                      style={{ width: "100%", height: 30, border: "1px solid #cbd5e1", borderRadius: 4, background: "#fff", fontFamily: "inherit", fontSize: 11 }}
-                    >
-                      <option value="">Select Method</option>
-                      {row.method && !LEGACY_INNOVATIVE_METHODS.has(row.method) && <option value={row.method}>{row.method}</option>}
-                      {innovativeMethodOptionsForRow(row.method).map((option) => (
-                        <option key={option.value} value={option.value}>{option.label}</option>
-                      ))}
-                    </select>
+                    <>
+                      <select
+                        value={row.method || ""}
+                        disabled={!editableSelf}
+                        onChange={(e) => {
+                          const nextMethod = e.target.value;
+                          updateSelfRow(index, "method", nextMethod);
+                          if (nextMethod !== OTHER_INNOVATIVE_METHOD) updateSelfRow(index, "methodOther", "");
+                        }}
+                        style={{ width: "100%", height: 30, border: "1px solid #cbd5e1", borderRadius: 4, background: "#fff", fontFamily: "inherit", fontSize: 11 }}
+                      >
+                        <option value="">Select Method</option>
+                        {row.method && !LEGACY_INNOVATIVE_METHODS.has(row.method) && <option value={row.method}>{row.method}</option>}
+                        {innovativeMethodOptionsForRow(row.method).map((option) => (
+                          <option key={option.value} value={option.value}>{option.label}</option>
+                        ))}
+                      </select>
+                      {row.method === OTHER_INNOVATIVE_METHOD && (
+                        <input
+                          type="text"
+                          value={row.methodOther || ""}
+                          disabled={!editableSelf}
+                          onChange={(e) => updateSelfRow(index, "methodOther", e.target.value)}
+                          placeholder="Mention the name of the innovative method"
+                          style={{ width: "100%", height: 30, border: "1px solid #cbd5e1", borderRadius: 4, background: "#fff", fontFamily: "inherit", fontSize: 11, marginTop: 6, padding: "0 8px", boxSizing: "border-box" }}
+                        />
+                      )}
+                    </>
                   ) : (
-                    <RO value={row.method || form.innovDetails} />
+                    <RO value={(row.method === OTHER_INNOVATIVE_METHOD && row.methodOther) ? row.methodOther : (row.method || form.innovDetails)} />
                   )}
                 </td>
                 <td style={tdStyle}>
@@ -1470,7 +1546,7 @@ function InnovativeSection({ form, setForm, docs, setDocs, mode, locked, reviewe
             );
           })}
           <tr style={{ background: "#eff6ff" }}>
-            <td style={{ ...tdCenter, fontWeight: 800 }} colSpan={5}>Total Score (Max 10)</td>
+            <td style={{ ...tdCenter, fontWeight: 800 }} colSpan={5}>Total Score (Max 20)</td>
             <td style={{ ...tdCenter, fontWeight: 800 }}>{facultyScore.toFixed(1)}</td>
             {mode === "review" && previousRoles.map((role) => <td key={role} style={{ ...tdCenter, fontWeight: 800 }}><RO value={roleInnovTotal(role)} center /></td>)}
             {mode === "review" && <td style={{ ...tdCenter, fontWeight: 800 }}><RO value={currentInnovTotal() || reviewData.innovativeTeaching?.[reviewerRole] || form[currentScore]} center /></td>}
@@ -1478,7 +1554,12 @@ function InnovativeSection({ form, setForm, docs, setDocs, mode, locked, reviewe
         </tbody>
       </table>
       {mode === "self" && !locked && (
-        <RowBtns onAdd={addInnovRow} onDel={deleteInnovRow} canDel={visibleInnovRows.length > 1} />
+        <>
+          <RowBtns onAdd={addInnovRow} onDel={deleteInnovRow} canDel={visibleInnovRows.length > 1} canAdd={visibleInnovRows.length < CREATIVE_A3_ROW_LIMIT} />
+          {visibleInnovRows.length >= CREATIVE_A3_ROW_LIMIT && (
+            <div style={{ fontSize: 11, color: "#ef4444", marginTop: 4 }}>Maximum {CREATIVE_A3_ROW_LIMIT} methods can be claimed.</div>
+          )}
+        </>
       )}
     </SectionShell>
   );
@@ -1856,6 +1937,108 @@ const ACR_PARAM_DETAILS = [
 ];
 
 function PartD({ sectionTableProps }) {
+  const { form = {}, setForm = () => {}, mode = "self", locked = false } = sectionTableProps || {};
+  const rows = Array.isArray(form.leaveManagement) && form.leaveManagement.length ? form.leaveManagement : [blankLeaveManagementRow()];
+  const readOnly = mode !== "self" || locked;
+  const setRow = (index, key, value) => {
+    if (readOnly) return;
+    setForm((prev) => {
+      const prevRows = Array.isArray(prev.leaveManagement) && prev.leaveManagement.length ? prev.leaveManagement : [blankLeaveManagementRow()];
+      const nextRows = prevRows.map((row, rowIndex) => {
+        if (rowIndex !== index) return row;
+        const next = { ...row, [key]: value };
+        if (key === "managementRating") next.score = String(partDRatingScore(value));
+        return next;
+      });
+      return { ...prev, leaveManagement: nextRows };
+    });
+  };
+
+  return (
+    <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 20, marginBottom: 24, boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 10 }}>
+        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#1e293b" }}>Part D - Leave &amp; Attendance Management</h3>
+        <div style={{ background: "#0891b2", color: "#ffffff", padding: "6px 14px", borderRadius: 8, fontWeight: 700, fontSize: 13 }}>
+          Total Score: {n(rows[0]?.score).toFixed(1)} / 25
+        </div>
+      </div>
+      {readOnly && (
+        <div style={{ background: "#ecfeff", border: "1px solid #a5f3fc", borderRadius: 8, padding: "10px 14px", marginBottom: 16, color: "#155e75", fontSize: 12, fontWeight: 600 }}>
+          Faculty-submitted data - view only. This section is not editable by reviewers.
+        </div>
+      )}
+      {rows.map((r, i) => {
+        const totalTaken = n(r.clTaken) + n(r.mlTaken) + n(r.odTaken) + n(r.coffTaken);
+        const totalOutOf = n(r.clOutOf) + n(r.mlOutOf) + n(r.odOutOf) + n(r.coffOutOf);
+        return (
+          <div key={i} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <table style={{ ...tableStyle, tableLayout: "fixed" }}>
+              <colgroup>
+                <col style={{ width: "28%" }} /><col style={{ width: "16%" }} /><col style={{ width: "16%" }} /><col style={{ width: "16%" }} /><col style={{ width: "16%" }} /><col style={{ width: "8%" }} />
+              </colgroup>
+              <thead><tr>
+                <th style={{ ...thStyle, textAlign: "left" }}>1. No. of leaves taken in the Year</th>
+                <th style={thStyle}>CL</th><th style={thStyle}>ML</th><th style={thStyle}>OD</th><th style={thStyle}>C/Off</th><th style={thStyle}>Total</th>
+              </tr></thead>
+              <tbody>
+                <tr>
+                  <td style={tdStyle} />
+                  <td style={tdCenter}>{readOnly ? (r.clTaken || "-") : <TI type="number" center value={r.clTaken} onChange={(v) => setRow(i, "clTaken", v)} />}</td>
+                  <td style={tdCenter}>{readOnly ? (r.mlTaken || "-") : <TI type="number" center value={r.mlTaken} onChange={(v) => setRow(i, "mlTaken", v)} />}</td>
+                  <td style={tdCenter}>{readOnly ? (r.odTaken || "-") : <TI type="number" center value={r.odTaken} onChange={(v) => setRow(i, "odTaken", v)} />}</td>
+                  <td style={tdCenter}>{readOnly ? (r.coffTaken || "-") : <TI type="number" center value={r.coffTaken} onChange={(v) => setRow(i, "coffTaken", v)} />}</td>
+                  <td style={{ ...tdCenter, fontWeight: 700 }}>{totalTaken || ""}</td>
+                </tr>
+                <tr style={{ background: "#f8fafc" }}>
+                  <td style={{ ...tdStyle, fontWeight: 700 }}>Out of</td>
+                  <td style={tdCenter}>{readOnly ? (r.clOutOf || "-") : <TI type="number" center value={r.clOutOf} onChange={(v) => setRow(i, "clOutOf", v)} />}</td>
+                  <td style={tdCenter}>{readOnly ? (r.mlOutOf || "-") : <TI type="number" center value={r.mlOutOf} onChange={(v) => setRow(i, "mlOutOf", v)} />}</td>
+                  <td style={tdCenter}>{readOnly ? (r.odOutOf || "-") : <TI type="number" center value={r.odOutOf} onChange={(v) => setRow(i, "odOutOf", v)} />}</td>
+                  <td style={tdCenter}>{readOnly ? (r.coffOutOf || "-") : <TI type="number" center value={r.coffOutOf} onChange={(v) => setRow(i, "coffOutOf", v)} />}</td>
+                  <td style={{ ...tdCenter, fontWeight: 700 }}>{totalOutOf || ""}</td>
+                </tr>
+              </tbody>
+            </table>
+            <table style={{ ...tableStyle, tableLayout: "fixed" }}>
+              <colgroup>
+                <col style={{ width: "58%" }} /><col style={{ width: "42%" }} />
+              </colgroup>
+              <tbody>
+                <tr>
+                  <td style={{ ...tdStyle, fontWeight: 700 }}>2. No. of Late Remarks in the Year</td>
+                  <td style={tdCenter}>{readOnly ? (r.lateRemarks || "-") : <TI type="number" center value={r.lateRemarks} onChange={(v) => setRow(i, "lateRemarks", v)} />}</td>
+                </tr>
+                <tr style={{ background: "#f8fafc" }}>
+                  <td style={{ ...tdStyle, fontWeight: 700 }}>3. Total Actual Working Days for the current academic year</td>
+                  <td style={tdCenter}>{readOnly ? (r.workingDays || "-") : <TI type="number" center value={r.workingDays} onChange={(v) => setRow(i, "workingDays", v)} />}</td>
+                </tr>
+                <tr>
+                  <td style={{ ...tdStyle, fontWeight: 700 }}>4. Management of leaves</td>
+                  <td style={tdStyle}>
+                    {readOnly ? (r.managementRating || "-") : (
+                      <select value={r.managementRating} onChange={(e) => setRow(i, "managementRating", e.target.value)} style={{ width: "100%", padding: "6px 8px", borderRadius: 6, border: "1px solid #cbd5e1", fontSize: 12.5 }}>
+                        <option value="">Select rating...</option>
+                        {PART_D_RATING_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>{option.label} - {option.score} marks</option>
+                        ))}
+                      </select>
+                    )}
+                  </td>
+                </tr>
+                <tr className="appraisal-total-row" style={{ background: "#ecfeff" }}>
+                  <td style={{ ...tdStyle, textAlign: "right", color: "#155e75", fontSize: 14, fontWeight: 800, background: "#ecfeff" }}>Total Score out of (25) =</td>
+                  <td style={{ ...tdCenter, fontWeight: 800, color: "#155e75", fontSize: 14, background: "#ecfeff" }}>{r.score || 0}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function PartE({ sectionTableProps }) {
   const { form = {}, mode = "self", locked = false, reviewerRole = "", reviewData = {}, setReviewData = () => {}, previousRoles = [] } = sectionTableProps || {};
   const rows = form.acr || [];
   const acrRows = createAcrRows(rows);
@@ -1896,7 +2079,7 @@ function PartD({ sectionTableProps }) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 10 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#1e293b" }}>
-            Part D - Annual Confidential Report
+            Part E - Annual Confidential Report
           </h3>
           <span
             title="Evaluated by HOD/Director only. This part has no faculty self-score input."
@@ -1969,7 +2152,7 @@ function PartD({ sectionTableProps }) {
             })}
             <tr className="appraisal-total-row" style={{ background: "#f0f3ff", borderTop: "1px solid #c7d2fe" }}>
               <td colSpan={3} style={{ ...tdStyle, textAlign: "center", color: "#3730a3", fontSize: 14, fontWeight: 800, background: "#f0f3ff" }}>
-                Part D Total (Max 50)
+                Part E Total (Max 50)
               </td>
               <td style={{ ...tdCenter, fontWeight: 800, color: "#3730a3", fontSize: 14, background: "#f0f3ff" }}>50</td>
               {mode === "review" && previousRoles.map((role) => {
@@ -2033,7 +2216,10 @@ export function CreativeSchoolForm({ form, setForm, docs, setDocs, mode = "self"
         <PartC sections={PART_C_SECTIONS} SectionTable={SectionTable} sectionTableProps={sectionTableProps} />
       )}
       {(sectionView === "partD" || sectionView === "all") && (
-        <PartD sections={PART_D_SECTIONS} SectionTable={SectionTable} sectionTableProps={sectionTableProps} />
+        <PartD sectionTableProps={sectionTableProps} />
+      )}
+      {(sectionView === "partE" || sectionView === "all") && (
+        <PartE sectionTableProps={sectionTableProps} />
       )}
     </>
   );
@@ -2051,12 +2237,13 @@ export function AccuracyCheckbox({ checked, onChange, disabled = false }) {
   );
 }
 
-export function SummaryBox({ totals, roleScoreLabel = "Score", maxScores = { partA: PART_A_MAX, partB: PART_B_MAX, partC: PART_C_MAX, partD: PART_D_MAX, grand: GRAND_MAX } }) {
+export function SummaryBox({ totals, roleScoreLabel = "Score", maxScores = { partA: PART_A_MAX, partB: PART_B_MAX, partC: PART_C_MAX, partD: PART_D_MAX, partE: PART_E_MAX, grand: GRAND_MAX } }) {
   const rows = [
     ["Part A", totals.partA, maxScores.partA, "#4f46e5"],
     ["Part B", totals.partB, maxScores.partB, "#4338ca"],
     ["Part C", totals.partC, maxScores.partC, "#6366f1"],
-    maxScores.partD > 0 && ["Part D", totals.partD, maxScores.partD, "#3730a3"],
+    maxScores.partD > 0 && ["Part D", totals.partD, maxScores.partD, "#0891b2"],
+    maxScores.partE > 0 && ["Part E", totals.partE, maxScores.partE, "#3730a3"],
     ["Grand Total", totals.total, maxScores.grand, "#4338ca"],
   ].filter(Boolean);
   return (
@@ -2079,7 +2266,8 @@ export function CompactAuthoritySummaryCard({ title, subtitle, totals, maxScores
     ["Part A", totals.partA, maxScores.partA, "#4f46e5"],
     ["Part B", totals.partB, maxScores.partB, "#4338ca"],
     ["Part C", totals.partC, maxScores.partC, "#6366f1"],
-    maxScores.partD > 0 && ["Part D", totals.partD, maxScores.partD, "#3730a3"],
+    maxScores.partD > 0 && ["Part D", totals.partD, maxScores.partD, "#0891b2"],
+    maxScores.partE > 0 && ["Part E", totals.partE, maxScores.partE, "#3730a3"],
     ["Total", totals.total, maxScores.grand, "#4338ca"],
   ].filter(Boolean);
   const hasRemarks = Boolean(remarksContent);
@@ -2123,6 +2311,7 @@ export function SectionSelector({ value, onChange, label = "Appraisal Section", 
     partB: "Part B",
     partC: "Part C",
     partD: "Part D",
+    partE: "Part E",
     summary: "Summary",
   };
   const handleChange = (nextValue) => {
@@ -2379,7 +2568,9 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
       partA: n(person?.[`${prefix}PartA`]),
       partB: n(person?.[`${prefix}PartB`]),
       partC: n(person?.[`${prefix}PartC`]),
-      partD: n(person?.[`${prefix}PartD`]),
+      // `${prefix}PartD` is the historical wire field, which has always meant Part E/ACR (reviewer-scored).
+      partD: 0,
+      partE: n(person?.[`${prefix}PartD`]),
       total: n(rawTotal),
       maxScores: totals.maxScores,
       hasTotal: rawTotal !== undefined && rawTotal !== null && String(rawTotal).trim() !== "",
@@ -2772,7 +2963,7 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
         { isHeader: true, label: "Part A - Teaching Process & Academic Activities" },
         ...summaryRow(applicability, "lectures", { id: "A(i)", label: "Lectures / Tutorials / Practicals", max: 40, score: lecScore }),
         ...summaryRow(applicability, "courseFile", { id: "A(ii)", label: "Course File", max: 20, score: cfScore }),
-        { id: "A(iii)", label: "Innovative Teaching-Learning Methodologies", max: 10, score: innovScore },
+        { id: "A(iii)", label: "Innovative Teaching-Learning Methodologies", max: 20, score: innovScore },
         ...summaryRow(applicability, "projects", { id: "A(iv)", label: "Project Guidance", max: 20, score: rowSum("projects", 20) }),
         ...summaryRow(applicability, "quals", { id: "A(v)", label: "Qualification Enhancement", max: 10, score: rowSum("quals", 10) }),
         ...summaryRow(applicability, "feedback", { id: "A(vi)", label: "Students' Feedback", max: 10, score: feedbackSectionScore(reviewerForm.feedback || [], 10) }),
@@ -2884,6 +3075,7 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
                 { key: "partB", label: "Part B", max: PART_B_MAX },
                 { key: "partC", label: "Part C", max: PART_C_MAX },
                 { key: "partD", label: "Part D", max: PART_D_MAX },
+                { key: "partE", label: "Part E", max: PART_E_MAX },
                 { key: "total", label: "Total", max: GRAND_MAX },
               ]}
               rows={authorityRecordScoreRows}
@@ -2905,7 +3097,7 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
             {!panelReadOnly && (
               <FinalSubmitButton
                 disabled={!confirmed || !remarks.trim()}
-                onClick={() => onSubmit(person.id, { partA: totals.partA, partB: totals.partB, partC: totals.partC, partD: totals.partD, total: totals.total }, remarks, buildCreativeSchoolSectionScores(form, reviewData, reviewerRole), confirmed)}
+                onClick={() => onSubmit(person.id, { partA: totals.partA, partB: totals.partB, partC: totals.partC, partD: totals.partE, total: totals.total }, remarks, buildCreativeSchoolSectionScores(form, reviewData, reviewerRole), confirmed)}
               >
                 Confirm and submit final score
               </FinalSubmitButton>
@@ -2928,7 +3120,7 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
                       <button
                         onClick={() => {
                           if (window.confirm("Reject this appraisal and send it back to the user for editing?")) {
-                            onSubmit(person.id, { partA: totals.partA, partB: totals.partB, partC: totals.partC, partD: totals.partD, total: totals.total }, remarks, buildCreativeSchoolSectionScores(form, reviewData, reviewerRole), confirmed, "rejected");
+                            onSubmit(person.id, { partA: totals.partA, partB: totals.partB, partC: totals.partC, partD: totals.partE, total: totals.total }, remarks, buildCreativeSchoolSectionScores(form, reviewData, reviewerRole), confirmed, "rejected");
                           }
                         }}
                         disabled={!confirmed || !remarks.trim()}
@@ -3030,7 +3222,7 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
                     <button
                       onClick={() => {
                         if (window.confirm("Reject this appraisal and send it back to the user for editing?")) {
-                          onSubmit(person.id, { partA: totals.partA, partB: totals.partB, partC: totals.partC, partD: totals.partD, total: totals.total }, remarks, buildCreativeSchoolSectionScores(form, reviewData, reviewerRole), confirmed, "rejected");
+                          onSubmit(person.id, { partA: totals.partA, partB: totals.partB, partC: totals.partC, partD: totals.partE, total: totals.total }, remarks, buildCreativeSchoolSectionScores(form, reviewData, reviewerRole), confirmed, "rejected");
                         }
                       }}
                       disabled={!confirmed || !remarks.trim()}
@@ -3040,7 +3232,7 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
                     </button>
                   )}
                   <button
-                    onClick={() => onSubmit(person.id, { partA: totals.partA, partB: totals.partB, partC: totals.partC, partD: totals.partD, total: totals.total }, remarks, buildCreativeSchoolSectionScores(form, reviewData, reviewerRole), confirmed)}
+                    onClick={() => onSubmit(person.id, { partA: totals.partA, partB: totals.partB, partC: totals.partC, partD: totals.partE, total: totals.total }, remarks, buildCreativeSchoolSectionScores(form, reviewData, reviewerRole), confirmed)}
                     disabled={!confirmed || !remarks.trim()}
                     style={smallButton((confirmed && remarks.trim()) ? "#059669" : "#94a3b8")}
                   >

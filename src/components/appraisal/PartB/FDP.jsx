@@ -31,7 +31,7 @@ export default function FDP({ ctx }) {
 <SC title="B8. Conference / FDP / Industry Training - Attended (Max 20)" accent="#10b981">
 <table style={T}>
 <thead><tr>
-<th style={TH}>SN</th><th style={TH}>Programme / Event</th><th style={TH}>Duration</th><th style={TH}>Organised By</th>
+<th style={TH}>SN</th><th style={TH}>Programme / Event</th><th style={TH}>From</th><th style={TH}>To</th><th style={TH}>Organised By</th>
 <th style={TH}>View Docs</th><th style={TH}>Faculty Score</th><th style={TH_HOD}>{reviewerScoreLabel}</th>
 </tr></thead>
 <tbody>
@@ -39,7 +39,8 @@ export default function FDP({ ctx }) {
 <tr key={i}>
 <td style={TDC}>{i + 1}</td>
 <td style={TD}><RO val={r.program} /></td>
-<td style={TDC}><RO val={r.duration} center /></td>
+<td style={TDC}><RO val={r.fromDate} center /></td>
+<td style={TDC}><RO val={r.toDate} center /></td>
 <td style={TD}><RO val={r.org} /></td>
 <td style={TDV}><ViewDocsCell docKey={`fdp-${i}`} docs={docs} /></td>
 <td style={TDS}><RO val={String(r.score ?? "").trim() ? clampScore(r.score, SCORE_LIMITS.fdpRow) : ""} center /></td>

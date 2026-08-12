@@ -456,7 +456,7 @@ const preserveSavedReviewScores = (form = {}, source = {}) =>{
 };
 const VC_REPORT_PART_A_SECTIONS = [
  { key: "lectures", title: "A1. Lectures / Tutorials / Practicals", max: 40, doc: "lec", fields: [["sem", "Semester"], ["code", "Course Code / Name"], ["planned", "Classes (as per course structure)"], ["conducted", "Classes Actually Conducted"], ["pctConducted", "% Conducted"]] },
- { key: "courseFile", title: "A2. Course File", max: 20, doc: "courseFile", fields: [["course", "Course / Paper"], ["title", "Title"], ["details", "IQAC Index Compliance (Yes/No, with proof)"]] },
+ { key: "courseFile", title: "A2. Course File", max: 20, doc: "courseFile", fields: [["course", "Course / Paper"], ["title", "Program & Semester"], ["details", "IQAC Index Compliance (Yes/No, with proof)"]] },
  { key: "obeRows", title: "A5. Learning Outcomes Attainment & OBE Practice", max: 20, doc: "obe", fields: [["component", "Component"], ["evidence", "Evidence"]] },
  { key: "projects", title: "A6. Guided Students Project", max: 20, doc: "proj", fields: [["label", "Project Category"]] },
  { key: "mentoringRows", title: "A7. Student Mentoring & Counselling", max: 10, doc: "mentor", fields: [["activity", "Activity"], ["evidence", "Evidence"]] },
@@ -479,11 +479,11 @@ const VC_REPORT_PART_B_SECTIONS = [
  { key: "journals", title: "B1. Journal Publications", max: 100, doc: "jour", fields: [["title", "Title"], ["journal", "Journal"], ["issn", "ISSN"], ["impactFactor", "Impact Factor"], ["authorPosition", "Author Position"]] },
  { key: "books", title: "B2. Books, Book Chapters & Edited Volumes", max: 30, doc: "book", fields: [["title", "Title"], ["book", "Publisher & ISBN"], ["pub", "Type"], ["level", "Level"], ["coauth", "Co-authors from DYPIU"]] },
  { key: "patents", title: "B3. Patents, Copyrights & IP and Product Development", max: 40, doc: "pat", fields: [["title", "Title"], ["type", "National / International"], ["status", "Status (Published/Granted)"], ["fileNo", "Filing / Grant No. & Date"]] },
- { key: "projects2", title: "B4. Funded Research Projects", max: 40, doc: "project2", fields: [["title", "Title of Project"], ["agency", "Funding Agency"], ["date", "Sanction Date"], ["amount", "Amount (₹)"], ["role", "PI / Co-PI"], ["status", "Status"]] },
+ { key: "projects2", title: "B4. External Funded Research Projects", max: 40, doc: "project2", fields: [["title", "Title of Project"], ["agency", "Funding Agency"], ["date", "Sanction Date"], ["amount", "Amount (₹)"], ["role", "PI / Co-PI"], ["status", "Status"]] },
  { key: "research", title: "B5. Research Guidance", max: 20, doc: "res", fields: [["degree", "Degree (PhD/PG)"], ["name", "Name of Student / Scholar"], ["status", "Status (Ongoing/Awarded)"], ["date", "Date"]] },
  { key: "proposals", title: "B6. Consultancy, Testing & Training", max: 20, doc: "prop", fields: [["agency", "Client / Organisation"], ["duration", "Nature of Engagement"], ["amount", "Revenue Generated (₹)"]] },
  { key: "confs", title: "B7. Conference / FDP / Training / Workshop Contributions Organised", max: 20, doc: "conf", fields: [["title", "Event / Session Title"], ["role", "Role"], ["date", "Date"], ["level", "Level (Intl./National)"]] },
- { key: "fdps", title: "B8. Conference / FDP / Industry Training - Attended", max: 20, doc: "fdp", fields: [["program", "Programme / Event"], ["duration", "Duration"], ["org", "Organised By"]] },
+ { key: "fdps", title: "B8. Conference / FDP / Industry Training - Attended", max: 20, doc: "fdp", fields: [["program", "Programme / Event"], ["fromDate", "From"], ["toDate", "To"], ["org", "Organised By"]] },
  { key: "awards", title: "B9. Research Awards, Fellowships, Reviewer of Journal & Citations", max: 20, doc: "awd", fields: [["title", "Title of Award / Fellowship / Metric"], ["agency", "Awarding Agency"], ["level", "Level"], ["date", "Date"]] },
  { key: "products", title: "B10. Innovation, Start-ups & Technology Transfer", max: 20, doc: "prod", fields: [["details", "Title / Start-up / Product"], ["role", "Role"], ["status", "Status"]] },
  { key: "ict", title: "B11. ICT Content, MOOCs & E-Learning", max: 20, doc: "ict", fields: [["title", "Title"], ["type", "Platform / Type"], ["quad", "Reach / Views (if available)"]] },
@@ -698,7 +698,7 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
  return (
 <tr key={`innov-${index}`}>
 <td style={TDC}>{index + 1}</td>
-<td style={TD}><RO val={row.method || person.innovDetails} /></td>
+<td style={TD}><RO val={(row.method === "Any other innovative method" && row.methodOther) ? row.methodOther : (row.method || person.innovDetails)} /></td>
 <td style={TD}><RO val={row.details} /></td>
 <td style={TDV}><ViewDocsCell docKey={index === 0 ? ["innov", "innov-0"] : `innov-${index}`} docs={docs} /></td>
 <td style={TDS}><ScoreValue val={String(row.score ?? "").trim() ? clampScore(row.score, row.max || SCORE_LIMITS.innovativeRow) : ""} center /></td>
@@ -781,8 +781,26 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
 </div>)}
 
  {sectionView === "partD" && (<div className="review-part-stack">
-<div className="review-part-stack__title">PART D - Annual Confidential Report</div>
-<SC title="D1. Annual Confidential Report (ACR) (Max 50)" accent="#ef4444">
+<div className="review-part-stack__title">PART D - Leave &amp; Attendance Management</div>
+<SC title="Part D - Leave & Attendance Management (Max 25)" accent="#0891b2">
+<div style={{ fontSize: 11, color: "#64748b", marginBottom: 8 }}>Faculty-submitted data - view only.</div>
+{(Array.isArray(person.leaveManagement) && person.leaveManagement.length ? person.leaveManagement : [{}]).map((r, i) => (
+<table key={i} style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, marginBottom: 12 }}>
+<tbody>
+<tr><td style={{ padding: 6, border: "1px solid #e2e8f0", fontWeight: 700 }}>CL / ML / OD / C-Off taken</td><td style={{ padding: 6, border: "1px solid #e2e8f0" }}>{r.clTaken || "-"} / {r.mlTaken || "-"} / {r.odTaken || "-"} / {r.coffTaken || "-"}</td></tr>
+<tr><td style={{ padding: 6, border: "1px solid #e2e8f0", fontWeight: 700 }}>Out of</td><td style={{ padding: 6, border: "1px solid #e2e8f0" }}>{r.clOutOf || "-"} / {r.mlOutOf || "-"} / {r.odOutOf || "-"} / {r.coffOutOf || "-"}</td></tr>
+<tr><td style={{ padding: 6, border: "1px solid #e2e8f0", fontWeight: 700 }}>Late Remarks</td><td style={{ padding: 6, border: "1px solid #e2e8f0" }}>{r.lateRemarks || "-"}</td></tr>
+<tr><td style={{ padding: 6, border: "1px solid #e2e8f0", fontWeight: 700 }}>Working Days</td><td style={{ padding: 6, border: "1px solid #e2e8f0" }}>{r.workingDays || "-"}</td></tr>
+<tr><td style={{ padding: 6, border: "1px solid #e2e8f0", fontWeight: 700 }}>Management of Leaves</td><td style={{ padding: 6, border: "1px solid #e2e8f0" }}>{r.managementRating || "-"} ({r.score || 0}/25)</td></tr>
+</tbody>
+</table>
+))}
+</SC>
+</div>)}
+
+ {sectionView === "partE" && (<div className="review-part-stack">
+<div className="review-part-stack__title">PART E - Annual Confidential Report</div>
+<SC title="E1. Annual Confidential Report (ACR) (Max 50)" accent="#ef4444">
 <table style={T}><thead><tr>
 <th style={TH}>SN</th><th style={TH}>Parameter</th>
  {renderScoreHeaders()}
@@ -830,16 +848,16 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
  columns: [["Title", (r) =>r.title], ["Publisher & ISBN", (r) =>r.book || r.publisherIsbn], ["Type", (r) =>r.pub || r.type], ["Level", (r) =>r.level], ["Co-authors from DYPIU", (r) =>r.coauth]] },
  { title: "B3. Patents, Copyrights & IP and Product Development (Max 40)", key: "patents", docPfx: "pat",
  columns: [["Title", (r) =>r.title], ["National / International", (r) =>r.type || r.level], ["Status", (r) =>r.status], ["Filing / Grant No. & Date", (r) =>r.fileNo || r.date]] },
- { title: "B4. Funded Research Projects (Max 40)", key: "projects2", docPfx: "project2",
+ { title: "B4. External Funded Research Projects (Max 40)", key: "projects2", docPfx: "project2",
  columns: [["Title of Project", (r) =>r.title], ["Funding Agency", (r) =>r.agency], ["Sanction Date", (r) =>r.date], ["Amount", (r) =>r.amount], ["Role", (r) =>r.role], ["Status", (r) =>r.status]] },
  { title: "B5. Research Guidance (Max 20)", key: "research", docPfx: "res",
- columns: [["Degree", (r) =>r.degree], ["Name of Student / Scholar", (r) =>r.name], ["Status", (r) =>r.status || r.thesis], ["Date", (r) =>r.date]] },
+ columns: [["Degree", (r) =>r.degree], ["Name of Student / Scholar", (r) =>r.name], ["Status", (r) =>r.status || r.thesis], ["Date", (r) =>(r.status || r.thesis) === "Ongoing" ? "NA" : r.date]] },
  { title: "B6. Consultancy, Testing & Training (Max 20)", key: "proposals", docPfx: "prop",
  columns: [["Client / Organisation", (r) =>r.agency || r.title], ["Nature of Engagement", (r) =>r.duration || r.nature], ["Revenue Generated", (r) =>r.amount || r.revenue]] },
  { title: "B7. Conference / FDP / Training / Workshop Contributions Organised (Max 20)", key: "confs", docPfx: "conf",
  columns: [["Event / Session Title", (r) =>r.title], ["Role", (r) =>r.role || r.type], ["Date", (r) =>r.date], ["Level", (r) =>r.level || r.org]] },
  { title: "B8. Conference / FDP / Industry Training - Attended (Max 20)", key: "fdps", docPfx: "fdp",
- columns: [["Programme / Event", (r) =>r.program], ["Duration", (r) =>r.duration], ["Organised By", (r) =>r.org]] },
+ columns: [["Programme / Event", (r) =>r.program], ["From", (r) =>r.fromDate], ["To", (r) =>r.toDate], ["Organised By", (r) =>r.org]] },
  { title: "B9. Research Awards, Fellowships, Reviewer of Journal & Citations (Max 20)", key: "awards", docPfx: "awd",
  columns: [["Title", (r) =>r.title], ["Awarding Agency", (r) =>r.agency], ["Level", (r) =>r.level], ["Date", (r) =>r.date]] },
  { title: "B10. Innovation, Start-ups & Technology Transfer (Max 20)", key: "products", docPfx: "prod",
@@ -1013,7 +1031,8 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  const selfPartC = Math.min(n(person.declaration?.part_c_total ?? person.selfPartC ?? person.partCTotal), selfMaxScores.partC);
  const selfPartD = Math.min(n(person.declaration?.part_d_total ?? person.selfPartD ?? person.partDTotal), selfMaxScores.partD);
  const selfTotal = Math.min(vcSelfTotalForPerson(person), selfPartA + selfPartB + selfPartC + selfPartD, selfMaxScores.grand);
- const facultyTotals = { partA: selfPartA, partB: selfPartB, partC: selfPartC, partD: selfPartD, total: selfTotal, maxScores: selfMaxScores };
+ // partD here means Part E/ACR for the reviewer-comparison table below - faculty never scores it.
+ const facultyTotals = { partA: selfPartA, partB: selfPartB, partC: selfPartC, partD: 0, total: selfTotal, maxScores: selfMaxScores };
  const reviewerSummaryTotals = { partA, partB, partC, partD, total, maxScores: reviewerMaxScores };
  const roleSummaryTotalsFor = (role) =>{
  const prefix = role === "hod" || role === "center_head" ? "hod" : role;
@@ -1112,7 +1131,7 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
 
   const handleSaveAndNext = async () => {
     await handleSaveDraft();
-    const NEXT_SECTION_MAP = { partA: "partB", partB: "partC", partC: "partD", partD: "summary" };
+    const NEXT_SECTION_MAP = { partA: "partB", partB: "partC", partC: "partD", partD: "partE", partE: "summary" };
     const nextSection = NEXT_SECTION_MAP[sectionView];
     if (nextSection) {
       setSectionView(nextSection);
@@ -1196,7 +1215,7 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  { key: "partA", label: "Part A - Teaching & Learning", icon: "A" },
  { key: "partB", label: "Part B - Research & Innovation", icon: "B" },
  { key: "partC", label: "Part C - Administrative Contribution", icon: "C" },
- { key: "partD", label: "Part D - Annual Confidential Report", icon: "D" },
+ { key: "partD", label: "Part E - Annual Confidential Report", icon: "E" },
  { key: "total", label: "Grand Total", icon: "Σ" },
  ];
  const vcPartColors = { partA: "#6d5dfc", partB: "#0f9f9a", partC: "#ef6f61", partD: "#f59e0b", total: "#059669" };
@@ -1309,7 +1328,7 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
 <div style={{ color: "#2dd4bf", fontWeight: 800, fontSize: 14 }}>{partC.toFixed(1)}</div>
 </div>
 <div style={{ background: "#1e293b", borderRadius: 8, padding: "8px 12px", textAlign: "center" }}>
-<div style={{ color: "#94a3b8", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.6 }}>VC Part D</div>
+<div style={{ color: "#94a3b8", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.6 }}>VC Part E</div>
 <div style={{ color: "#f59e0b", fontWeight: 800, fontSize: 14 }}>{partD.toFixed(1)}</div>
 </div>
 <div style={{ background: g.bg, border: `2px solid ${g.color}40`, borderRadius: 8, padding: "8px 12px", textAlign: "center" }}>
@@ -1322,7 +1341,7 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  {/* Section switcher */}
 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 14 }}>
 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
- {[["partA", "Part A"], ["partB", "Part B"], ["partC", "Part C"], ["partD", "Part D"], ["summary", "Summary"]].map(([id, label]) =>(
+ {[["partA", "Part A"], ["partB", "Part B"], ["partC", "Part C"], ["partD", "Part D"], ["partE", "Part E"], ["summary", "Summary"]].map(([id, label]) =>(
 <button key={id} onClick={() =>{ setSectionView(id); requestAnimationFrame(() =>{ window.scrollTo({ top: 0, left: 0, behavior: "auto" }); }); }}
  style={{ padding: "7px 18px", border: "none", borderRadius: 6, cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 700, background: sectionView === id ? "#4c1d95" : "#e2e8f0", color: sectionView === id ? "#ddd6fe" : "#475569" }}>
  {label}
@@ -1337,12 +1356,12 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  )}
 </div>
 
- {["partA", "partB", "partC", "partD"].includes(sectionView) && (
-<fieldset disabled={reviewLocked} style={{ border: "none", padding: 0, margin: 0 }}>
+ {["partA", "partB", "partC", "partD", "partE"].includes(sectionView) && (
+<fieldset disabled={reviewLocked || sectionView === "partD"} style={{ border: "none", padding: 0, margin: 0 }}>
 <VCReviewForm person={person} vcData={vcData} setVcData={setVcData} personMode={personMode} sectionView={sectionView} />
 </fieldset>
  )}
- {["partA", "partB", "partC", "partD"].includes(sectionView) && !reviewLocked && (
+ {["partA", "partB", "partC", "partE"].includes(sectionView) && !reviewLocked && (
 <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, margin: "12px 0 14px", flexWrap: "wrap" }}>
 <span style={{ color: "#64748b", fontSize: 11, fontWeight: 700 }}>{draftStatus}</span>
 <button type="button" onClick={handleSaveDraft} disabled={savingDraft}
@@ -1373,7 +1392,7 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  { key: "partA", label: "Part A", max: MAX_SCORES.PART_A },
  { key: "partB", label: "Part B", max: MAX_SCORES.PART_B },
  { key: "partC", label: "Part C", max: MAX_SCORES.PART_C },
- { key: "partD", label: "Part D", max: MAX_SCORES.PART_D },
+ { key: "partD", label: "Part E", max: MAX_SCORES.PART_E },
  { key: "total", label: "Total", max: MAX_SCORES.GRAND_TOTAL },
  ]}
  rows={recordScoreRows}

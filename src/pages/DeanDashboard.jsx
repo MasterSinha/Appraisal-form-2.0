@@ -188,7 +188,7 @@ function ReviewPanel({ faculty, onBack, onSubmit }) {
 
  {/* Section switcher */}
 <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
- {[["partA", "Part A"], ["partB", "Part B"], ["partC", "Part C"], ["partD", "Part D"], ["summary", "Summary"]].map(([id, label]) =>(
+ {[["partA", "Part A"], ["partB", "Part B"], ["partC", "Part C"], ["partD", "Part D"], ["partE", "Part E"], ["summary", "Summary"]].map(([id, label]) =>(
 <button key={id} onClick={() =>{
  setSectionView(id);
  requestAnimationFrame(() =>{
@@ -518,7 +518,7 @@ function DeanReviewScoreForm({ approval, deanData, setDeanData, sectionView = "p
               docPrefix="courseFile"
               columns={[
                 { label: "Course / Paper", render: (r) => r.course },
-                { label: "Title", render: (r) => r.title },
+                { label: "Program & Semester", render: (r) => r.title },
                 { label: "IQAC Index Compliance (Yes/No, with proof)", render: (r) => r.details },
               ]}
             />
@@ -697,10 +697,26 @@ function DeanReviewScoreForm({ approval, deanData, setDeanData, sectionView = "p
 </div>)}
 
  {sectionView === "partD" && (<div className="review-part-stack">
-<div className="review-part-stack__title">Part D - Annual Confidential Report</div>
+<div className="review-part-stack__title">Part D - Leave &amp; Attendance Management</div>
+<div style={{ fontSize: 11, color: "#64748b", margin: "8px 0 12px" }}>Faculty-submitted data - view only.</div>
+{(Array.isArray(approval.leaveManagement) && approval.leaveManagement.length ? approval.leaveManagement : [{}]).map((r, i) =>(
+<table key={i} style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, marginBottom: 12 }}>
+<tbody>
+<tr><td style={{ padding: 6, border: "1px solid #e2e8f0", fontWeight: 700 }}>CL / ML / OD / C-Off taken</td><td style={{ padding: 6, border: "1px solid #e2e8f0" }}>{r.clTaken || "-"} / {r.mlTaken || "-"} / {r.odTaken || "-"} / {r.coffTaken || "-"}</td></tr>
+<tr><td style={{ padding: 6, border: "1px solid #e2e8f0", fontWeight: 700 }}>Out of</td><td style={{ padding: 6, border: "1px solid #e2e8f0" }}>{r.clOutOf || "-"} / {r.mlOutOf || "-"} / {r.odOutOf || "-"} / {r.coffOutOf || "-"}</td></tr>
+<tr><td style={{ padding: 6, border: "1px solid #e2e8f0", fontWeight: 700 }}>Late Remarks</td><td style={{ padding: 6, border: "1px solid #e2e8f0" }}>{r.lateRemarks || "-"}</td></tr>
+<tr><td style={{ padding: 6, border: "1px solid #e2e8f0", fontWeight: 700 }}>Working Days</td><td style={{ padding: 6, border: "1px solid #e2e8f0" }}>{r.workingDays || "-"}</td></tr>
+<tr><td style={{ padding: 6, border: "1px solid #e2e8f0", fontWeight: 700 }}>Management of Leaves</td><td style={{ padding: 6, border: "1px solid #e2e8f0" }}>{r.managementRating || "-"} ({r.score || 0}/25)</td></tr>
+</tbody>
+</table>
+))}
+</div>)}
+
+ {sectionView === "partE" && (<div className="review-part-stack">
+<div className="review-part-stack__title">Part E - Annual Confidential Report</div>
 
 <ReviewTable
- title="D1. Annual Confidential Report (ACR)"
+ title="E1. Annual Confidential Report (ACR)"
  accent="#ef4444"
  sectionKey="acr"
  rows={createAcrRows(approval.acr)}
@@ -753,7 +769,7 @@ function DeanReviewScoreForm({ approval, deanData, setDeanData, sectionView = "p
  />
 
 <ReviewTable
- title="B4. Funded Research Projects"
+ title="B4. External Funded Research Projects"
  accent="#059669"
  sectionKey="projects2"
  docPrefix="project2"
@@ -776,7 +792,7 @@ function DeanReviewScoreForm({ approval, deanData, setDeanData, sectionView = "p
  { label: "Degree (PhD/PG)", render: (r) =>r.degree, center: true },
  { label: "Name of Student / Scholar", render: (r) =>r.name },
  { label: "Status (Ongoing/Awarded)", render: (r) =>r.status || r.thesis },
- { label: "Date", render: (r) =>r.date, center: true },
+ { label: "Date", render: (r) =>(r.status || r.thesis) === "Ongoing" ? "NA" : r.date, center: true },
  ]}
  />
 
@@ -812,7 +828,8 @@ function DeanReviewScoreForm({ approval, deanData, setDeanData, sectionView = "p
  docPrefix="fdp"
  columns={[
  { label: "Programme / Event", render: (r) =>r.program },
- { label: "Duration", render: (r) =>r.duration, center: true },
+ { label: "From", render: (r) =>r.fromDate, center: true },
+ { label: "To", render: (r) =>r.toDate, center: true },
  { label: "Organised By", render: (r) =>r.org },
  ]}
  />
@@ -974,8 +991,8 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
  const recordSchoolTrack = getDeanTrack({ school: approval.school || approval.info?.school, department: approval.department, designation: approval.designation });
  const recordSchoolGroupLabel = { engineering: "Engineering", non_engineering: "Non-Engineering", direct_vc: "CISR" }[recordSchoolTrack] || approval.school || approval.info?.school || APP_INFO.UNIVERSITY_NAME;
  const recordScoreRows = [
- { key: "self", label: "Self", icon: "user", values: { partA: selfSummary.partA, partB: selfSummary.partB, partC: selfSummary.partC, partD: selfSummary.partD, total: selfSummary.total }, note: summaryOtherInfoValueFrom(approval) },
- { key: "dean", label: "Dean", icon: "briefcase", values: displayedDeanScores, accent: true },
+ { key: "self", label: "Self", icon: "user", values: { partA: selfSummary.partA, partB: selfSummary.partB, partC: selfSummary.partC, partD: selfSummary.partD, partE: 0, total: selfSummary.total }, note: summaryOtherInfoValueFrom(approval) },
+ { key: "dean", label: "Dean", icon: "briefcase", values: { ...displayedDeanScores, partD: selfSummary.partD, partE: displayedDeanScores.partD }, accent: true },
  ];
  useEffect(() =>{
  let active = true;
@@ -1021,7 +1038,7 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
 
  const handleSaveAndNext = async () => {
     await handleSaveDraft();
-    const NEXT_SECTION_MAP = { partA: "partB", partB: "partC", partC: "partD", partD: "summary" };
+    const NEXT_SECTION_MAP = { partA: "partB", partB: "partC", partC: "partD", partD: "partE", partE: "summary" };
     const nextSection = NEXT_SECTION_MAP[sectionView];
     if (nextSection) {
       setSectionView(nextSection);
@@ -1055,7 +1072,7 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
 <div style={{ color: "#2dd4bf", fontWeight: 900, fontSize: 16 }}>{displayedDeanScores.partC.toFixed(1)}</div>
 </div>
 <div style={{ background: "rgba(30,27,75,0.78)", border: "1px solid rgba(196,181,253,0.16)", borderRadius: 10, padding: "8px 14px", textAlign: "center", minWidth: 92 }}>
-<div style={{ color: "#c4b5fd", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.6 }}>Dean Part D</div>
+<div style={{ color: "#c4b5fd", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.6 }}>Dean Part E</div>
 <div style={{ color: "#f59e0b", fontWeight: 900, fontSize: 16 }}>{displayedDeanScores.partD.toFixed(1)}</div>
 </div>
 <div style={{ background: "#fff1f2", border: "2px solid #fb718540", borderRadius: 10, padding: "8px 14px", textAlign: "center", minWidth: 100 }}>
@@ -1066,7 +1083,7 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
 </div>
 
 <div style={{ display: "inline-flex", gap: 6, marginBottom: 16, padding: 4, background: "#f5f3ff", border: "1px solid #ddd6fe", borderRadius: 12, width: "fit-content", flexWrap: "wrap" }}>
- {[["partA", "Part A"], ["partB", "Part B"], ["partC", "Part C"], ["partD", "Part D"], ["summary", "Summary"]].map(([id, label]) =>(
+ {[["partA", "Part A"], ["partB", "Part B"], ["partC", "Part C"], ["partD", "Part D"], ["partE", "Part E"], ["summary", "Summary"]].map(([id, label]) =>(
 <button key={id} onClick={() =>{
  setSectionView(id);
  requestAnimationFrame(() =>{
@@ -1079,13 +1096,13 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
  ))}
 </div>
 
- {["partA", "partB", "partC", "partD"].includes(sectionView) && (
+ {["partA", "partB", "partC", "partD", "partE"].includes(sectionView) && (
 <fieldset disabled={reviewLocked} style={{ border: "none", padding: 0, margin: 0 }}>
 <DeanReviewScoreForm approval={approval} deanData={deanData} setDeanData={setDeanData} sectionView={sectionView} />
 </fieldset>
  )}
 
- {["partA", "partB", "partC", "partD"].includes(sectionView) && !reviewLocked && (
+ {["partA", "partB", "partC", "partE"].includes(sectionView) && !reviewLocked && (
 <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, margin: "12px 0 14px", flexWrap: "wrap" }}>
 <span style={{ color: "#64748b", fontSize: 11, fontWeight: 700 }}>{draftStatus}</span>
 <button
@@ -1121,6 +1138,7 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
  { key: "partB", label: "Part B", max: MAX_SCORES.PART_B },
  { key: "partC", label: "Part C", max: MAX_SCORES.PART_C },
  { key: "partD", label: "Part D", max: MAX_SCORES.PART_D },
+ { key: "partE", label: "Part E", max: MAX_SCORES.PART_E },
  { key: "total", label: "Total", max: MAX_SCORES.GRAND_TOTAL },
  ]}
  rows={recordScoreRows}

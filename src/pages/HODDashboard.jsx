@@ -303,7 +303,7 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false, revi
 
   const handleSaveAndNext = async () => {
     await handleSaveDraft();
-    const NEXT_SECTION_MAP = { partA: "partB", partB: "partC", partC: "partD", partD: "summary" };
+    const NEXT_SECTION_MAP = { partA: "partB", partB: "partC", partC: "partD", partD: "partE", partE: "summary" };
     const nextSection = NEXT_SECTION_MAP[sectionView];
     if (nextSection) {
       setSectionView(nextSection);
@@ -319,8 +319,8 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false, revi
  const hodRecordSchoolTrack = getDeanTrack({ school: faculty.school || faculty.info?.school, department: faculty.department, designation: faculty.designation });
  const hodRecordSchoolGroupLabel = { engineering: "Engineering", non_engineering: "Non-Engineering", direct_vc: "CISR" }[hodRecordSchoolTrack] || faculty.school || faculty.info?.school || APP_INFO.UNIVERSITY_NAME;
  const hodRecordScoreRows = [
- { key: "self", label: "Self", icon: "user", values: { partA: facultySummary.partA, partB: facultySummary.partB, partC: facultySummary.partC, partD: facultySummary.partD, total: facultySummary.total }, note: summaryOtherInfoValueFrom(faculty) },
- { key: reviewerRole, label: reviewerLabel, icon: "briefcase", values: { partA, partB, partC, partD, total }, accent: true },
+ { key: "self", label: "Self", icon: "user", values: { partA: facultySummary.partA, partB: facultySummary.partB, partC: facultySummary.partC, partD: facultySummary.partD, partE: 0, total: facultySummary.total }, note: summaryOtherInfoValueFrom(faculty) },
+ { key: reviewerRole, label: reviewerLabel, icon: "briefcase", values: { partA, partB, partC, partD: facultySummary.partD, partE: partD, total }, accent: true },
  ];
 
  return (
@@ -347,7 +347,7 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false, revi
 <div style={{ color: "#2dd4bf", fontWeight: 800, fontSize: 16 }}>{partC.toFixed(1)}</div>
 </div>
 <div style={{ background: "rgba(30,41,59,0.92)", border: "1px solid rgba(148,163,184,0.13)", borderRadius: 10, padding: "8px 14px", textAlign: "center", minWidth: 92 }}>
-<div style={{ color: "#94a3b8", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.6 }}>{reviewerLabel} Part D</div>
+<div style={{ color: "#94a3b8", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.6 }}>{reviewerLabel} Part E</div>
 <div style={{ color: "#f59e0b", fontWeight: 800, fontSize: 16 }}>{partD.toFixed(1)}</div>
 </div>
 <div style={{ background: g.bg, border: `2px solid ${g.color}40`, borderRadius: 10, padding: "8px 14px", textAlign: "center", minWidth: 100 }}>
@@ -358,7 +358,7 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false, revi
 </div>
  {/* Section switcher */}
 <div style={{ display: "inline-flex", gap: 6, marginBottom: 16, padding: 4, background: "#eef2ff", border: "1px solid #dbe3ff", borderRadius: 12, width: "fit-content", flexWrap: "wrap" }}>
- {[["partA", "Part A"], ["partB", "Part B"], ["partC", "Part C"], ["partD", "Part D"], ["summary", "Summary"]].map(([id, label]) =>(
+ {[["partA", "Part A"], ["partB", "Part B"], ["partC", "Part C"], ["partD", "Part D"], ["partE", "Part E"], ["summary", "Summary"]].map(([id, label]) =>(
 <button key={id} onClick={() =>{
  setSectionView(id);
  requestAnimationFrame(() =>{
@@ -371,13 +371,13 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false, revi
  ))}
 </div>
 
- {["partA", "partB", "partC", "partD"].includes(sectionView) && (
-<fieldset disabled={reviewLocked} style={{ border: "none", padding: 0, margin: 0 }}>
+ {["partA", "partB", "partC", "partD", "partE"].includes(sectionView) && (
+<fieldset disabled={reviewLocked || sectionView === "partD"} style={{ border: "none", padding: 0, margin: 0 }}>
 <MyAppraisalForm faculty={faculty} hodData={hodData} setHodData={setHodData} reviewerLabel={reviewerLabel} sectionView={sectionView} />
 </fieldset>
  )}
 
- {["partA", "partB", "partC", "partD"].includes(sectionView) && !reviewLocked && (
+ {["partA", "partB", "partC", "partE"].includes(sectionView) && !reviewLocked && (
 <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, margin: "12px 0 14px", flexWrap: "wrap" }}>
 <span style={{ color: "#64748b", fontSize: 11, fontWeight: 700 }}>{draftStatus}</span>
 <button
@@ -413,6 +413,7 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false, revi
  { key: "partB", label: "Part B", max: MAX_SCORES.PART_B },
  { key: "partC", label: "Part C", max: MAX_SCORES.PART_C },
  { key: "partD", label: "Part D", max: MAX_SCORES.PART_D },
+ { key: "partE", label: "Part E", max: MAX_SCORES.PART_E },
  { key: "total", label: "Total", max: MAX_SCORES.GRAND_TOTAL },
  ]}
  rows={hodRecordScoreRows}

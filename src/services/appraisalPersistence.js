@@ -620,7 +620,7 @@ const repairDeanDivisionProfile = async () =>{
 
 const FORM_SECTION_KEYS = [
  "lectures", "courseFile", "obeRows", "projects", "mentoringRows", "quals", "feedback", "deptActs", "uniActs",
- "eventRows", "events", "society", "industry", "alumniRows", "alumni", "placementRows", "placements", "acr", "journals", "books", "ict", "research", "projects2",
+ "eventRows", "events", "society", "industry", "alumniRows", "alumni", "placementRows", "placements", "acr", "leaveManagement", "journals", "books", "ict", "research", "projects2",
  "internalProjects", "externalProjects", "ipr", "patents", "awards", "confs",
  "proposals", "products", "innovation", "consultancy", "fdps", "training", "popularWritings", "exhibitions",
 ];
