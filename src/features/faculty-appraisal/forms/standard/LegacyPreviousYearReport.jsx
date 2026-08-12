@@ -165,9 +165,14 @@ export default function LegacyPreviousYearReport({
   const hasPartBScores = legacySectionsHaveScores(partBSections);
   const facultyPartA = hasPartAScores ? calculatedPartA : clampScore(storedTotals?.partA, 200);
   const facultyPartB = hasPartBScores ? calculatedPartB : clampScore(storedTotals?.partB, 375);
-  const grandFaculty = hasPartAScores || hasPartBScores
-    ? clampScore(facultyPartA + facultyPartB, 575)
-    : clampScore(storedTotals?.grand, 575);
+  const facultyPartAMax = storedTotals?.partAMax || normalizedReport.totals?.faculty?.partAMax || normalizedReport.partA?.max || 200;
+  const facultyPartBMax = storedTotals?.partBMax || normalizedReport.totals?.faculty?.partBMax || normalizedReport.partB?.max || 375;
+  const facultyGrandMax = storedTotals?.grandMax || normalizedReport.totals?.faculty?.grandMax || normalizedReport.totals?.faculty?.max || facultyPartAMax + facultyPartBMax;
+  const displayedFacultyPartA = storedTotals?.partA ?? facultyPartA;
+  const displayedFacultyPartB = storedTotals?.partB ?? facultyPartB;
+  const grandFaculty = storedTotals?.grand ?? (hasPartAScores || hasPartBScores
+    ? clampScore(facultyPartA + facultyPartB, facultyGrandMax)
+    : clampScore(storedTotals?.grand, facultyGrandMax));
   const hasStoredScore = [storedTotals?.partA, storedTotals?.partB, storedTotals?.grand]
     .some((value) => value !== null && value !== undefined && n(value) > 0);
   const hasPreviousRecord = hasStoredScore ||
@@ -205,9 +210,9 @@ export default function LegacyPreviousYearReport({
     <SC title={`Previous Year Appraisal Report - ${academicYear}`} accent="#4c1d95">
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12 }}>
         {[
-          ["Part A Faculty", `${facultyPartA.toFixed(1)} / 200`],
-          ["Part B Faculty", `${facultyPartB.toFixed(1)} / 375`],
-          ["Grand Faculty", `${grandFaculty.toFixed(1)} / 575`],
+          ["Part A Faculty", `${displayedFacultyPartA.toFixed(1)} / ${facultyPartAMax}`],
+          ["Part B Faculty", `${displayedFacultyPartB.toFixed(1)} / ${facultyPartBMax}`],
+          ["Grand Faculty", `${grandFaculty.toFixed(1)} / ${facultyGrandMax}`],
         ].map(([label, value]) => (
           <div key={label} style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: "11px 13px", background: "#f8fafc" }}>
             <div style={{ color: "#64748b", fontSize: 10, fontWeight: 900, textTransform: "uppercase", letterSpacing: 0.4 }}>{label}</div>
