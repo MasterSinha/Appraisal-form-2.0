@@ -299,7 +299,7 @@ const directorSummaryRows = ({ totals, maxScores }) =>[
  ["Part A", totals.partA, maxScores.partA],
  ["Part B", totals.partB, maxScores.partB],
  ["Part C", totals.partC, maxScores.partC],
- ["Part D", totals.partD, maxScores.partD],
+ ["Part E", totals.partD, maxScores.partD],
 ];
 
 const asRows = (value) =>{
@@ -564,7 +564,7 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
 
  const handleSaveAndNext = async () => {
     await handleSaveDraft();
-    const NEXT_SECTION_MAP = { partA: "partB", partB: "partC", partC: "partD", partD: "summary" };
+    const NEXT_SECTION_MAP = { partA: "partB", partB: "partC", partC: "partD", partD: "partE", partE: "summary" };
     const nextSection = NEXT_SECTION_MAP[sectionView];
     if (nextSection) {
       setSectionView(nextSection);
@@ -682,8 +682,8 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
  const directorRecordSchoolTrack = getDeanTrack({ school: faculty.school || faculty.info?.school, department: faculty.department, designation: faculty.designation });
  const directorRecordSchoolGroupLabel = { engineering: "Engineering", non_engineering: "Non-Engineering", direct_vc: "CISR" }[directorRecordSchoolTrack] || faculty.school || faculty.info?.school || APP_INFO.UNIVERSITY_NAME;
  const directorRecordScoreRows = [
- { key: "self", label: "Self", icon: "user", values: { partA: facultySummary.partA, partB: facultySummary.partB, partC: facultySummary.partC, partD: facultySummary.partD, total: facultySummary.total }, note: summaryOtherInfoValueFrom(faculty) },
- { key: "director", label: "Director", icon: "briefcase", values: { partA: dirPartA, partB: dirPartB, partC: dirPartC, partD: dirPartD, total: dirTotal }, accent: true },
+ { key: "self", label: "Self", icon: "user", values: { partA: facultySummary.partA, partB: facultySummary.partB, partC: facultySummary.partC, partD: facultySummary.partD, partE: 0, total: facultySummary.total }, note: summaryOtherInfoValueFrom(faculty) },
+ { key: "director", label: "Director", icon: "briefcase", values: { partA: dirPartA, partB: dirPartB, partC: dirPartC, partD: facultySummary.partD, partE: dirPartD, total: dirTotal }, accent: true },
  ];
 
  return (
@@ -710,7 +710,7 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
 <div style={{ color: "#2dd4bf", fontWeight: 800, fontSize: 16 }}>{dirPartC.toFixed(1)}</div>
 </div>
 <div style={{ background: "rgba(5,46,22,0.92)", border: "1px solid rgba(134,239,172,0.18)", borderRadius: 10, padding: "8px 14px", textAlign: "center", minWidth: 92 }}>
-<div style={{ color: "#86efac", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.6 }}>Dir Part D</div>
+<div style={{ color: "#86efac", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.6 }}>Dir Part E</div>
 <div style={{ color: "#f59e0b", fontWeight: 800, fontSize: 16 }}>{dirPartD.toFixed(1)}</div>
 </div>
 <div style={{ background: g.bg, border: `2px solid ${g.color}40`, borderRadius: 8, padding: "8px 14px", textAlign: "center" }}>
@@ -721,7 +721,7 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
 </div>
  {/* Section switcher */}
 <div style={{ display: "inline-flex", gap: 6, marginBottom: 16, padding: 4, background: "#ecfdf5", border: "1px solid #bbf7d0", borderRadius: 12, width: "fit-content", flexWrap: "wrap" }}>
- {[["partA", "Part A"], ["partB", "Part B"], ["partC", "Part C"], ["partD", "Part D"], ["summary", "Summary"]].map(([id, label]) =>(
+ {[["partA", "Part A"], ["partB", "Part B"], ["partC", "Part C"], ["partD", "Part D"], ["partE", "Part E"], ["summary", "Summary"]].map(([id, label]) =>(
 <button key={id} onClick={() =>{
  setSectionView(id);
  requestAnimationFrame(() =>{
@@ -734,13 +734,13 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
  ))}
 </div>
 
- {["partA", "partB", "partC", "partD"].includes(sectionView) && (
-<fieldset disabled={reviewLocked} style={{ border: "none", padding: 0, margin: 0 }}>
+ {["partA", "partB", "partC", "partD", "partE"].includes(sectionView) && (
+<fieldset disabled={reviewLocked || sectionView === "partD"} style={{ border: "none", padding: 0, margin: 0 }}>
 <DirectorFacultyReviewForm faculty={directorReviewForm} hodData={hodData} setHodData={setHodData} dirData={dirData} setDirData={setDirData} sectionView={sectionView} reviewLocked={reviewLocked} />
 </fieldset>
  )}
 
- {["partA", "partB", "partC", "partD"].includes(sectionView) && !reviewLocked && (
+ {["partA", "partB", "partC", "partE"].includes(sectionView) && !reviewLocked && (
 <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, margin: "12px 0 14px", flexWrap: "wrap" }}>
 <span style={{ color: "#64748b", fontSize: 11, fontWeight: 700 }}>{draftStatus}</span>
 <button
@@ -776,6 +776,7 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
  { key: "partB", label: "Part B", max: MAX_SCORES.PART_B },
  { key: "partC", label: "Part C", max: MAX_SCORES.PART_C },
  { key: "partD", label: "Part D", max: MAX_SCORES.PART_D },
+ { key: "partE", label: "Part E", max: MAX_SCORES.PART_E },
  { key: "total", label: "Total", max: MAX_SCORES.GRAND_TOTAL },
  ]}
  rows={directorRecordScoreRows}
@@ -1104,7 +1105,7 @@ export default function DirectorDashboard() {
  { label: showDirScores ? "Dir Part A" : "Part A", val: showDirScores ? dirA : selfA, max: showDirScores ? reviewPartAMax : itemSummary.partAMax, color: "#6366f1" },
  { label: showDirScores ? "Dir Part B" : "Part B", val: showDirScores ? dirB : selfB, max: itemSummary.partBMax, color: "#0ea5e9" },
  { label: showDirScores ? "Dir Part C" : "Part C", val: showDirScores ? dirC : selfC, max: itemSummary.partCMax, color: "#10b981" },
- { label: showDirScores ? "Dir Part D" : "Part D", val: showDirScores ? dirD : selfD, max: itemSummary.partDMax, color: "#f59e0b" },
+ { label: showDirScores ? "Dir Part E" : "Part D", val: showDirScores ? dirD : selfD, max: showDirScores ? 50 : itemSummary.partDMax, color: "#f59e0b" },
  { label: showDirScores ? "Dir Total" : "Total", val: showDirScores ? dirTotal : selfTotal, max: itemSummary.grandMax, color: "#4338ca" },
  ];
  const noScoresAvailable = reviewed && dirA === 0 && dirB === 0 && dirC === 0 && dirD === 0 && dirTotal === 0 && selfA === 0 && selfB === 0 && selfC === 0 && selfD === 0 && selfTotal === 0;

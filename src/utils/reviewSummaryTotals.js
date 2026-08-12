@@ -50,12 +50,18 @@ const scoreRowsFromSources = (sources, keys, sectionMax, rowMax = sectionMax) =>
   }, 0);
 
 const effectiveMaxFromApplicability = (baseMax) => n(baseMax);
+// "partD" below now means the NEW faculty-filled Leave & Attendance section (25 marks).
+// "partE" is the section that used to be called Part D (the ACR, 50 marks) - its wire
+// fields (part_d_score / part_d_total etc, read in standardReviewSummary below) were
+// deliberately left unrenamed to avoid any backend contract change; only the UI label
+// changed from "Part D" to "Part E".
 const CURRENT_FORM_MAX = {
   partA: 150,
   partB: 350,
   partC: 150,
-  partD: 50,
-  grand: 700,
+  partD: 25,
+  partE: 50,
+  grand: 725,
 };
 
 const parseMaybeJson = (value) => {
@@ -287,12 +293,15 @@ export const standardSubmittedScoreSummary = (subject = {}, fallback = {}) => {
   const partDMax = numericFrom(sources, [
     "partDMax", "part_d_max", "effectivePartDMax", "effective_part_d_max", "maxPartD", "faculty_part_d_max",
   ], inferredPartDMax);
-  const cappedPartDMax = isFacultyUser ? 0 : Math.min(partDMax || inferredPartDMax, CURRENT_FORM_MAX.partD);
+  // Part D (new) is faculty-filled, so - unlike the old ACR Part D - it is NOT zeroed
+  // out for faculty viewers; only Part E/ACR (handled separately via standardReviewSummary)
+  // stays reviewer-only.
+  const cappedPartDMax = Math.min(partDMax || inferredPartDMax, CURRENT_FORM_MAX.partD);
   const grandMax = numericFrom(sources, [
     "grandMax", "grand_max", "effectiveGrandMax", "effective_grand_max", "maxGrand", "totalMax", "faculty_total_max",
   ], partAMax + cappedPartBMax + cappedPartCMax + cappedPartDMax);
   const cappedGrandMax = isFacultyUser
-    ? (partAMax + cappedPartBMax + cappedPartCMax)
+    ? (partAMax + cappedPartBMax + cappedPartCMax + cappedPartDMax)
     : Math.min(grandMax || CURRENT_FORM_MAX.grand, CURRENT_FORM_MAX.grand);
 
   const rawPartA = numericFrom(sources, [
@@ -315,7 +324,7 @@ export const standardSubmittedScoreSummary = (subject = {}, fallback = {}) => {
     "partDTotal", "partD", "part_d_total", "part_d_score", "selfPartD", "self_part_d",
     "facultyPartD", "faculty_part_d", "facultyPartDScore", "faculty_part_d_score",
   ], fallback.partD);
-  const partD = isFacultyUser ? 0 : Math.min(rawPartD, cappedPartDMax);
+  const partD = Math.min(rawPartD, cappedPartDMax);
   const computedTotal = partA + partB + partC + partD;
   const rawTotal = numericFrom(sources, [
     "grandTotal", "grand_total", "totalScore", "total_score", "total", "selfTotal",

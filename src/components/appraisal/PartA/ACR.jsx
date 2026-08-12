@@ -22,7 +22,7 @@ export default function ACR({ ctx }) {
   return (
     <>
       {/* D1: ACR */}
-      <SC title="D1. Annual Confidential Report (Max 50)" accent="#ef4444">
+      <SC title="E1. Annual Confidential Report (Max 50)" accent="#ef4444">
         <div style={{ fontSize: 11, color: "#64748b", marginBottom: 8 }}>
           ACR is assessed by evaluator — faculty does not fill scores. Enter marks for each parameter (Max 10 per row).
         </div>

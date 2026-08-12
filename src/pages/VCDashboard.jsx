@@ -781,8 +781,26 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
 </div>)}
 
  {sectionView === "partD" && (<div className="review-part-stack">
-<div className="review-part-stack__title">PART D - Annual Confidential Report</div>
-<SC title="D1. Annual Confidential Report (ACR) (Max 50)" accent="#ef4444">
+<div className="review-part-stack__title">PART D - Leave &amp; Attendance Management</div>
+<SC title="Part D - Leave & Attendance Management (Max 25)" accent="#0891b2">
+<div style={{ fontSize: 11, color: "#64748b", marginBottom: 8 }}>Faculty-submitted data - view only.</div>
+{(Array.isArray(person.leaveManagement) && person.leaveManagement.length ? person.leaveManagement : [{}]).map((r, i) => (
+<table key={i} style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, marginBottom: 12 }}>
+<tbody>
+<tr><td style={{ padding: 6, border: "1px solid #e2e8f0", fontWeight: 700 }}>CL / ML / OD / C-Off taken</td><td style={{ padding: 6, border: "1px solid #e2e8f0" }}>{r.clTaken || "-"} / {r.mlTaken || "-"} / {r.odTaken || "-"} / {r.coffTaken || "-"}</td></tr>
+<tr><td style={{ padding: 6, border: "1px solid #e2e8f0", fontWeight: 700 }}>Out of</td><td style={{ padding: 6, border: "1px solid #e2e8f0" }}>{r.clOutOf || "-"} / {r.mlOutOf || "-"} / {r.odOutOf || "-"} / {r.coffOutOf || "-"}</td></tr>
+<tr><td style={{ padding: 6, border: "1px solid #e2e8f0", fontWeight: 700 }}>Late Remarks</td><td style={{ padding: 6, border: "1px solid #e2e8f0" }}>{r.lateRemarks || "-"}</td></tr>
+<tr><td style={{ padding: 6, border: "1px solid #e2e8f0", fontWeight: 700 }}>Working Days</td><td style={{ padding: 6, border: "1px solid #e2e8f0" }}>{r.workingDays || "-"}</td></tr>
+<tr><td style={{ padding: 6, border: "1px solid #e2e8f0", fontWeight: 700 }}>Management of Leaves</td><td style={{ padding: 6, border: "1px solid #e2e8f0" }}>{r.managementRating || "-"} ({r.score || 0}/25)</td></tr>
+</tbody>
+</table>
+))}
+</SC>
+</div>)}
+
+ {sectionView === "partE" && (<div className="review-part-stack">
+<div className="review-part-stack__title">PART E - Annual Confidential Report</div>
+<SC title="E1. Annual Confidential Report (ACR) (Max 50)" accent="#ef4444">
 <table style={T}><thead><tr>
 <th style={TH}>SN</th><th style={TH}>Parameter</th>
  {renderScoreHeaders()}
@@ -1013,7 +1031,8 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  const selfPartC = Math.min(n(person.declaration?.part_c_total ?? person.selfPartC ?? person.partCTotal), selfMaxScores.partC);
  const selfPartD = Math.min(n(person.declaration?.part_d_total ?? person.selfPartD ?? person.partDTotal), selfMaxScores.partD);
  const selfTotal = Math.min(vcSelfTotalForPerson(person), selfPartA + selfPartB + selfPartC + selfPartD, selfMaxScores.grand);
- const facultyTotals = { partA: selfPartA, partB: selfPartB, partC: selfPartC, partD: selfPartD, total: selfTotal, maxScores: selfMaxScores };
+ // partD here means Part E/ACR for the reviewer-comparison table below - faculty never scores it.
+ const facultyTotals = { partA: selfPartA, partB: selfPartB, partC: selfPartC, partD: 0, total: selfTotal, maxScores: selfMaxScores };
  const reviewerSummaryTotals = { partA, partB, partC, partD, total, maxScores: reviewerMaxScores };
  const roleSummaryTotalsFor = (role) =>{
  const prefix = role === "hod" || role === "center_head" ? "hod" : role;
@@ -1112,7 +1131,7 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
 
   const handleSaveAndNext = async () => {
     await handleSaveDraft();
-    const NEXT_SECTION_MAP = { partA: "partB", partB: "partC", partC: "partD", partD: "summary" };
+    const NEXT_SECTION_MAP = { partA: "partB", partB: "partC", partC: "partD", partD: "partE", partE: "summary" };
     const nextSection = NEXT_SECTION_MAP[sectionView];
     if (nextSection) {
       setSectionView(nextSection);
@@ -1196,7 +1215,7 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  { key: "partA", label: "Part A - Teaching & Learning", icon: "A" },
  { key: "partB", label: "Part B - Research & Innovation", icon: "B" },
  { key: "partC", label: "Part C - Administrative Contribution", icon: "C" },
- { key: "partD", label: "Part D - Annual Confidential Report", icon: "D" },
+ { key: "partD", label: "Part E - Annual Confidential Report", icon: "E" },
  { key: "total", label: "Grand Total", icon: "Σ" },
  ];
  const vcPartColors = { partA: "#6d5dfc", partB: "#0f9f9a", partC: "#ef6f61", partD: "#f59e0b", total: "#059669" };
@@ -1309,7 +1328,7 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
 <div style={{ color: "#2dd4bf", fontWeight: 800, fontSize: 14 }}>{partC.toFixed(1)}</div>
 </div>
 <div style={{ background: "#1e293b", borderRadius: 8, padding: "8px 12px", textAlign: "center" }}>
-<div style={{ color: "#94a3b8", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.6 }}>VC Part D</div>
+<div style={{ color: "#94a3b8", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.6 }}>VC Part E</div>
 <div style={{ color: "#f59e0b", fontWeight: 800, fontSize: 14 }}>{partD.toFixed(1)}</div>
 </div>
 <div style={{ background: g.bg, border: `2px solid ${g.color}40`, borderRadius: 8, padding: "8px 12px", textAlign: "center" }}>
@@ -1322,7 +1341,7 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  {/* Section switcher */}
 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 14 }}>
 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
- {[["partA", "Part A"], ["partB", "Part B"], ["partC", "Part C"], ["partD", "Part D"], ["summary", "Summary"]].map(([id, label]) =>(
+ {[["partA", "Part A"], ["partB", "Part B"], ["partC", "Part C"], ["partD", "Part D"], ["partE", "Part E"], ["summary", "Summary"]].map(([id, label]) =>(
 <button key={id} onClick={() =>{ setSectionView(id); requestAnimationFrame(() =>{ window.scrollTo({ top: 0, left: 0, behavior: "auto" }); }); }}
  style={{ padding: "7px 18px", border: "none", borderRadius: 6, cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 700, background: sectionView === id ? "#4c1d95" : "#e2e8f0", color: sectionView === id ? "#ddd6fe" : "#475569" }}>
  {label}
@@ -1337,12 +1356,12 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  )}
 </div>
 
- {["partA", "partB", "partC", "partD"].includes(sectionView) && (
-<fieldset disabled={reviewLocked} style={{ border: "none", padding: 0, margin: 0 }}>
+ {["partA", "partB", "partC", "partD", "partE"].includes(sectionView) && (
+<fieldset disabled={reviewLocked || sectionView === "partD"} style={{ border: "none", padding: 0, margin: 0 }}>
 <VCReviewForm person={person} vcData={vcData} setVcData={setVcData} personMode={personMode} sectionView={sectionView} />
 </fieldset>
  )}
- {["partA", "partB", "partC", "partD"].includes(sectionView) && !reviewLocked && (
+ {["partA", "partB", "partC", "partE"].includes(sectionView) && !reviewLocked && (
 <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, margin: "12px 0 14px", flexWrap: "wrap" }}>
 <span style={{ color: "#64748b", fontSize: 11, fontWeight: 700 }}>{draftStatus}</span>
 <button type="button" onClick={handleSaveDraft} disabled={savingDraft}
@@ -1373,7 +1392,7 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  { key: "partA", label: "Part A", max: MAX_SCORES.PART_A },
  { key: "partB", label: "Part B", max: MAX_SCORES.PART_B },
  { key: "partC", label: "Part C", max: MAX_SCORES.PART_C },
- { key: "partD", label: "Part D", max: MAX_SCORES.PART_D },
+ { key: "partD", label: "Part E", max: MAX_SCORES.PART_E },
  { key: "total", label: "Total", max: MAX_SCORES.GRAND_TOTAL },
  ]}
  rows={recordScoreRows}

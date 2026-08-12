@@ -74,7 +74,7 @@ import {
 import { canReviewerRejectProfile, getReviewChain, pendingStatusFor, profileFromsessionStorage, reviewedStatusFor, roleLabel, visiblePreviousReviewRoles, workflowValidationError, isAppraisalFinalisedByVc, isRejectedStatus, isPendingReviewStatusFor, hasActiveRejection, reviewListFrom } from "../utils/hierarchy";
 import { n, pct, RO, TI } from "../features/faculty-appraisal/shared";
 
-import { emptyDesignArtsForm, ALL_ARRAY_KEYS, titleCase, calculateDesignArtsTotals, getDesignArtsEffectiveMaxScores, validateDesignArtsBeforeSubmit, mergeForm, preserveSavedReviewScores, designArtsSchoolName, PART_A_SECTIONS, PART_B_SECTIONS, PART_C_SECTIONS, PART_D_SECTIONS, DesignArtsForm, DesignArtsAuthorityReviewPanel, SectionSelector, AccuracyCheckbox, CompactAuthoritySummaryCard, isReviewerReviewComplete, normalizeScoresForSubmit, summaryRow, b8summaryRow, SECTION_OPTIONS, SummaryBox, WorkflowTracker, ACCENT, ACCENT2, PART_A_MAX, PART_B_MAX, GRAND_MAX, userInitials } from "../features/faculty-appraisal";
+import { emptyDesignArtsForm, ALL_ARRAY_KEYS, titleCase, calculateDesignArtsTotals, getDesignArtsEffectiveMaxScores, validateDesignArtsBeforeSubmit, mergeForm, preserveSavedReviewScores, designArtsSchoolName, PART_A_SECTIONS, PART_B_SECTIONS, PART_C_SECTIONS, PART_D_SECTIONS, PART_E_SECTIONS, DesignArtsForm, DesignArtsAuthorityReviewPanel, SectionSelector, AccuracyCheckbox, CompactAuthoritySummaryCard, isReviewerReviewComplete, normalizeScoresForSubmit, summaryRow, b8summaryRow, SECTION_OPTIONS, SummaryBox, WorkflowTracker, ACCENT, ACCENT2, PART_A_MAX, PART_B_MAX, PART_D_MAX, PART_E_MAX, GRAND_MAX, userInitials } from "../features/faculty-appraisal";
 import { loadClosedAppraisal } from "../services/appraisalPersistence";
 import { DesignArtsPreviousYearView } from "../features/previousYearReport";
 import { isLegacyTwoPartAcademicYear } from "../features/faculty-appraisal/forms/standard/legacyPreviousYearReportUtils";
@@ -194,7 +194,7 @@ export default function DesignArtsDashboard({ fixedRole }) {
  const [attachmentsConfirmed, setAttachmentsConfirmed] = useState(false);
 
  const [showLogoutModal, setShowLogoutModal] = useState(false);
- const [sectionSaveStatus, setSectionSaveStatus] = useState({ partA: false, partB: false, partC: false, partD: false });
+ const [sectionSaveStatus, setSectionSaveStatus] = useState({ partA: false, partB: false, partC: false, partD: false, partE: false });
  const [savingSection, setSavingSection] = useState(null);
  const [declaration, setDeclaration] = useState(null);
  const [reviews, setReviews] = useState([]);
@@ -496,7 +496,7 @@ export default function DesignArtsDashboard({ fixedRole }) {
  sectionSaveStatus: nextStatus,
  });
  setSectionSaveStatus(nextStatus);
- const NEXT_SECTION_MAP = { partA: "partB", partB: "partC", partC: "partD", partD: "summary" };
+ const NEXT_SECTION_MAP = { partA: "partB", partB: "partC", partC: "partD", partD: "partE", partE: "summary" };
  const nextSection = NEXT_SECTION_MAP[section];
  if (nextSection) {
    setSelfSectionView(nextSection);
@@ -718,9 +718,12 @@ export default function DesignArtsDashboard({ fixedRole }) {
   ...summaryRow(applicability, "alumni", { id: "C6", label: "Alumni Engagement", max: 10, score: rowSum("alumni", 10) }),
   ...summaryRow(applicability, "placements", { id: "C7", label: "Placement & Internship Support", max: 20, score: rowSum("placements", 20) }),
   { isTotal: true, label: "Part C Total", max: maxScores.partC, score: partCTotal },
-  { isHeader: true, label: "Part D - Annual Confidential Report (ACR)" },
-  ...summaryRow(applicability, "acr", { id: "D1", label: "Annual Confidential Report", max: 50, score: rowSum("acr", 50) }),
+  { isHeader: true, label: "Part D - Leave & Attendance Management" },
+  { id: "D1", label: "Management of Leaves", max: 25, score: partDTotal },
   { isTotal: true, label: "Part D Total", max: maxScores.partD, score: partDTotal },
+  { isHeader: true, label: "Part E - Annual Confidential Report (ACR)" },
+  ...summaryRow(applicability, "acr", { id: "E1", label: "Annual Confidential Report", max: 50, score: rowSum("acr", 50) }),
+  { isTotal: true, label: "Part E Total", max: maxScores.partE, score: rowSum("acr", 50) },
   { isGrandTotal: true, label: "Grand Total", max: maxScores.grand, score: grandTotal },
   ],
   });
@@ -964,7 +967,7 @@ export default function DesignArtsDashboard({ fixedRole }) {
       </div>
     </div>
   ) : (<>
-  {(selfSectionView === "partA" || selfSectionView === "partB" || selfSectionView === "partC" || selfSectionView === "partD") && (
+  {(selfSectionView === "partA" || selfSectionView === "partB" || selfSectionView === "partC" || selfSectionView === "partD" || selfSectionView === "partE") && (
 <>
 <DesignArtsForm
  form={form}
@@ -976,7 +979,7 @@ export default function DesignArtsDashboard({ fixedRole }) {
  sectionView={selfSectionView}
 />
 <SectionSaveFooter
- label={{ partA: "Part A", partB: "Part B", partC: "Part C", partD: "Part D" }[selfSectionView]}
+ label={{ partA: "Part A", partB: "Part B", partC: "Part C", partD: "Part D", partE: "Part E" }[selfSectionView]}
  saved={Boolean(sectionSaveStatus[selfSectionView])}
  saving={savingSection === selfSectionView}
  locked={locked}
@@ -1001,7 +1004,7 @@ export default function DesignArtsDashboard({ fixedRole }) {
         <SummaryRow label="Part A - Teaching & Learning" score={totals.partA} max={totals.maxScores?.partA || PART_A_MAX} color="#4f46e5" tone="#eef2ff" iconTone="#eef2ff" icon="book" />
         <SummaryRow label="Part B - Research & Innovation" score={totals.partB} max={totals.maxScores?.partB || PART_B_MAX} color="#7c3aed" tone="#f5f3ff" iconTone="#f5f3ff" icon="flask" />
         <SummaryRow label="Part C - Administrative Contribution" score={totals.partC} max={totals.maxScores?.partC || 150} color="#0f766e" tone="#ccfbf1" iconTone="#ccfbf1" icon="building" />
-        <SummaryRow label="Part D - Annual Confidential Report" score={totals.partD} max={totals.maxScores?.partD || 50} color="#ea580c" tone="#ffedd5" iconTone="#ffedd5" icon="document" />
+        <SummaryRow label="Part D - Leave & Attendance Management" score={totals.partD} max={totals.maxScores?.partD || PART_D_MAX} color="#0891b2" tone="#cffafe" iconTone="#cffafe" icon="document" />
         <SummaryRow label="Grand Total" score={totals.total} max={totals.maxScores?.grand || GRAND_MAX} color="#dc2626" tone="#fee2e2" iconTone="#fee2e2" icon="sigma" />
       </tbody>
     </table>

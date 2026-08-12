@@ -27,10 +27,14 @@ import {
   SCORE_LIMITS,
   averageSectionScore,
   clampScore,
+  consultancyGuidelineScore,
   effectiveMaxScore,
+  externalProjectGuidelineScore,
   feedbackAverage,
+  feedbackGuidelineScore,
   feedbackSectionScore,
   isValidDDMMYYYY,
+  lectureGuidelineScore,
   maskDateDDMMYYYY,
   normalizeAutoScores,
   projectGuidanceRowMax,
@@ -292,7 +296,21 @@ const downloadBlob = (blob, name) => {
 const PART_A_MAX = 150;
 const PART_B_MAX = 350;
 const PART_C_MAX = 150;
-const PART_D_MAX = 50;
+const PART_D_MAX = 25;
+const PART_E_MAX = 50;
+const PART_D_RATING_OPTIONS = [
+  { value: "Outstanding", label: "Outstanding (Above 20)", score: 25 },
+  { value: "Above Average", label: "Above Average (16-20)", score: 20 },
+  { value: "Average", label: "Average (11-15)", score: 15 },
+  { value: "Below Average", label: "Below Average (6-10)", score: 10 },
+  { value: "Unacceptable", label: "Unacceptable (0-5)", score: 5 },
+];
+const partDRatingScore = (rating) => PART_D_RATING_OPTIONS.find((option) => option.value === rating)?.score ?? "";
+const blankLeaveManagementRow = () => ({
+  clTaken: "", mlTaken: "", odTaken: "", coffTaken: "",
+  clOutOf: "", mlOutOf: "", odOutOf: "", coffOutOf: "",
+  lateRemarks: "", workingDays: "", managementRating: "", score: "",
+});
 const A1_COURSE_DELIVERY_MAX = 40;
 const A2_COURSE_FILE_MAX = 20;
 const A3_INNOVATIVE_MAX = 20;
@@ -465,7 +483,7 @@ function SummaryRow({ label, score, max, color, tone, iconTone, icon }) {
   );
 }
 
-const partDParameters = [
+const partEParameters = [
   { parameter: "Self-motivation & Proactiveness", description: "List of activities/initiatives other than regular load/duties.", max: 10 },
   { parameter: "Knowledge & Competence", description: "Domain/technical expertise relevant to role, Understanding of policies, procedures, and compliance requirements", max: 10 },
   { parameter: "Target-based Work", description: "Tasks allotted; timely completion observed by authorities, Accuracy and thoroughness of output. Volume of work handled relative to role expectations, Adherence to deadlines and timelines", max: 10 },
@@ -594,7 +612,17 @@ export default function StandardMyAppraisal({
   const [lectures, setLectures] = useState([
     { sem: "", code: "", planned: "", conducted: "", score: "", hod: "", director: "" },
   ]);
-  const setLec = (i, k, v) => setLectures((p) => p.map((r, j) => j === i ? { ...r, [k]: v } : r));
+  const setLec = (i, k, v) => setLectures((p) => p.map((r, j) => {
+    if (j !== i) return r;
+    const next = { ...r, [k]: v };
+    if (k === "planned" || k === "conducted") {
+      const planned = Number(next.planned);
+      const conducted = Number(next.conducted);
+      next.pctConducted = planned > 0 && conducted >= 0 ? `${((conducted / planned) * 100).toFixed(1)}%` : "";
+    }
+    if (k === "planned" || k === "conducted" || k === "pctConducted") next.score = String(lectureGuidelineScore(next));
+    return next;
+  }));
 
   const [courseFile, setCourseFile] = useState([{ course: "", title: "", details: "", score: "", hod: "", director: "" }]);
   const setCF = (i, k, v) => setCourseFile((p) => p.map((r, j) => {
@@ -623,7 +651,12 @@ export default function StandardMyAppraisal({
   const [feedback, setFeedback] = useState([
     { code: "", fb1: "", fb2: "", score: "", hod: "", director: "" },
   ]);
-  const setFb = (i, k, v) => setFeedback((p) => p.map((r, j) => j === i ? { ...r, [k]: v } : r));
+  const setFb = (i, k, v) => setFeedback((p) => p.map((r, j) => {
+    if (j !== i) return r;
+    const next = { ...r, [k]: v };
+    if (k === "fb1" || k === "fb2") next.score = String(feedbackGuidelineScore(feedbackAverage(next)));
+    return next;
+  }));
 
   const [obeRows, setObeRows] = useState(defaultObeRows);
   const setObe = (i, k, v) => setObeRows((p) => p.map((r, j) => j === i ? { ...r, [k]: k === "score" ? String(clampScore(v, r.max || A5_OBE_MAX) || "") : v } : r));
@@ -692,7 +725,12 @@ export default function StandardMyAppraisal({
   const [projects2, setProjects2] = useState([
     { title: "", agency: "", date: "", amount: "", role: "", status: "", score: "", hod: "", max: B4_PROJECT_MAX },
   ]);
-  const setPrj2 = (i, k, v) => setProjects2((p) => p.map((r, j) => j === i ? { ...r, max: r.max || B4_PROJECT_MAX, [k]: v } : r));
+  const setPrj2 = (i, k, v) => setProjects2((p) => p.map((r, j) => {
+    if (j !== i) return r;
+    const next = { ...r, max: r.max || B4_PROJECT_MAX, [k]: v };
+    if (k === "amount" || k === "status") next.score = String(externalProjectGuidelineScore(next));
+    return next;
+  }));
 
   const [externalProjects, setExternalProjects] = useState([
     { title: "", agency: "", date: "", amount: "", role: "", status: "", score: "", hod: "" },
@@ -717,7 +755,12 @@ export default function StandardMyAppraisal({
   const [proposals, setProposals] = useState([
     { title: "", duration: "", agency: "", amount: "", score: "", hod: "", director: "" },
   ]);
-  const setProp = (i, k, v) => setProposals((p) => p.map((r, j) => j === i ? { ...r, [k]: v } : r));
+  const setProp = (i, k, v) => setProposals((p) => p.map((r, j) => {
+    if (j !== i) return r;
+    const next = { ...r, [k]: v };
+    if (k === "amount" || k === "revenue") next.score = String(consultancyGuidelineScore(next));
+    return next;
+  }));
 
   const [products, setProducts] = useState([
     { details: "", usage: "", score: "", hod: "", director: "" },
@@ -739,9 +782,16 @@ export default function StandardMyAppraisal({
   ]);
   const setExh = (i, k, v) => setExhibitions((p) => p.map((r, j) => j === i ? { ...r, [k]: v } : r));
 
+  const [leaveManagement, setLeaveManagement] = useState([blankLeaveManagementRow()]);
+  const setLeaveMgmt = (i, k, v) => setLeaveManagement((p) => p.map((r, j) => {
+    if (j !== i) return r;
+    const next = { ...r, [k]: v };
+    return k === "managementRating" ? { ...next, score: String(partDRatingScore(v)) } : next;
+  }));
+
   const [docs, setDocs] = useState({});
   const [appraisalLocked, setAppraisalLocked] = useState(false);
-  const [sectionSaveStatus, setSectionSaveStatus] = useState({ partA: false, partB: false, partC: false, partD: false });
+  const [sectionSaveStatus, setSectionSaveStatus] = useState({ partA: false, partB: false, partC: false, partD: false, partE: false });
   const [summaryOtherInfo, setSummaryOtherInfo] = useState("");
   const [savingSection, setSavingSection] = useState(null);
   const [workflowDeclaration, setWorkflowDeclaration] = useState(null);
@@ -768,6 +818,7 @@ export default function StandardMyAppraisal({
         ["partB", "Part B"],
         ["partC", "Part C"],
         ["partD", "Part D"],
+        ["partE", "Part E"],
         ["summary", "Summary"],
       ];
 
@@ -781,16 +832,16 @@ export default function StandardMyAppraisal({
     setEventRows, setSociety, setIndustry, setAlumniRows, setPlacementRows, setAcr, setJournals, setBooks, setIct,
     setResearch, setProjects2, setExternalProjects, setPatents, setAwards,
     setConfs, setProposals, setProducts, setFdps, setTraining, setExhibitions, setDocs,
-    setSummaryOtherInfo, setSectionSaveStatus,
+    setSummaryOtherInfo, setSectionSaveStatus, setLeaveManagement,
   };
 
   const fillStandardDummyData = () => {
     if (formLocked || submitting || showClosedReportOnly) return;
     setLectures([
-      { sem: "2026-27 Sem-I", code: "CS101 - Programming Fundamentals", planned: "40", conducted: "39", pctConducted: "97.5%", score: "10", hod: "", director: "" },
-      { sem: "2026-27 Sem-I", code: "CS205 - Data Structures", planned: "42", conducted: "40", pctConducted: "95.2%", score: "10", hod: "", director: "" },
-      { sem: "2026-27 Sem-II", code: "CS302 - Database Systems", planned: "38", conducted: "36", pctConducted: "94.7%", score: "10", hod: "", director: "" },
-      { sem: "2026-27 Sem-II", code: "CS404 - Cloud Computing", planned: "36", conducted: "34", pctConducted: "94.4%", score: "10", hod: "", director: "" },
+      { sem: "2026-27 Sem-I", code: "CS101 - Programming Fundamentals", planned: "40", conducted: "39", pctConducted: "97.5%", score: "9", hod: "", director: "" },
+      { sem: "2026-27 Sem-I", code: "CS205 - Data Structures", planned: "42", conducted: "40", pctConducted: "95.2%", score: "9", hod: "", director: "" },
+      { sem: "2026-27 Sem-II", code: "CS302 - Database Systems", planned: "38", conducted: "36", pctConducted: "94.7%", score: "9", hod: "", director: "" },
+      { sem: "2026-27 Sem-II", code: "CS404 - Cloud Computing", planned: "36", conducted: "34", pctConducted: "94.4%", score: "9", hod: "", director: "" },
     ]);
     setCourseFile([
       { course: "CS101 - Programming Fundamentals", title: "Course File Sem-I", details: "Yes", score: "4", hod: "", director: "" },
@@ -1064,8 +1115,8 @@ export default function StandardMyAppraisal({
   const researchGuidanceProjectMax = B4_PROJECT_MAX + B5_RESEARCH_GUIDANCE_MAX;
   const effectivePartBMax = PART_B_MAX;
   const partCTotal = clampScore(uniScore + deptScore + eventScore + societyScore + industryScore + alumniScore + placementScore, PART_C_MAX);
-  const partDTotal = 0;
-  const effectiveGrandMax = effectivePartAMax + effectivePartBMax + PART_C_MAX;
+  const partDTotal = sumSectionScore(leaveManagement, PART_D_MAX, "score", PART_D_MAX);
+  const effectiveGrandMax = effectivePartAMax + effectivePartBMax + PART_C_MAX + PART_D_MAX;
   const partBTotal = clampScore(journalScore + bookScore + ictScore + researchScore + projectBScore + patentScore + awardScore + confScore + proposalScore + productScore + b8Score, effectivePartBMax);
   const grandTotal = clampScore(partATotal + partBTotal + partCTotal + partDTotal, effectiveGrandMax);
 
@@ -1170,7 +1221,7 @@ export default function StandardMyAppraisal({
       { label: "B10. Innovation, Start-ups & Technology Transfer", rows: products, fields: ["details", "role", "status", "score"], rowMax: B10_STARTUP_MAX, maxScore: B10_STARTUP_MAX },
       { label: "B11. ICT Content, MOOCs & E-Learning", rows: ict, fields: ["title", "type", "quad", "score"], rowMax: B3_ICT_MAX, maxScore: B3_ICT_MAX },
     ];
-    const sectionMap = { partA: partASections, partB: partBSections, partC: partCSections, partD: [] };
+    const sectionMap = { partA: partASections, partB: partBSections, partC: partCSections, partD: [], partE: [] };
     const errors = validateCompleteRows(withRelaxedSectionCap(sectionMap[section] || partASections), docs);
     if (section === "partB") {
       [...projects2, ...externalProjects].forEach((row, index) => {
@@ -1197,7 +1248,7 @@ export default function StandardMyAppraisal({
     });
   };
 
-  const buildSelfDraftForm = (saveStatus = sectionSaveStatus) => normalizeAutoScores({ info: profileSafeInfoForYear(info, info.ay, defaultDesignation), lectures, courseFile, innovDetails: innovRows.map((row) => row.method).filter(Boolean).join(", "), innovScore: innovScoreComputed, innovRows: innovRows.map((row) => ({ ...row, max: row.max || A3_INNOVATIVE_ROW_MAX })), projects, obeRows, mentoringRows, quals, feedback, deptActs, uniActs, eventRows, society: society.map((row) => ({ ...row, max: row.max || C4_OUTREACH_MAX })), industry, alumniRows, placementRows, acr, journals, books, ict, research, projects2: projects2.map((row) => ({ ...row, max: row.max || B4_PROJECT_MAX })), externalProjects, patents, awards, confs, proposals, products, fdps, training, exhibitions, summaryOtherInfo, sectionSaveStatus: saveStatus });
+  const buildSelfDraftForm = (saveStatus = sectionSaveStatus) => normalizeAutoScores({ info: profileSafeInfoForYear(info, info.ay, defaultDesignation), lectures, courseFile, innovDetails: innovRows.map((row) => row.method).filter(Boolean).join(", "), innovScore: innovScoreComputed, innovRows: innovRows.map((row) => ({ ...row, max: row.max || A3_INNOVATIVE_ROW_MAX })), projects, obeRows, mentoringRows, quals, feedback, deptActs, uniActs, eventRows, society: society.map((row) => ({ ...row, max: row.max || C4_OUTREACH_MAX })), industry, alumniRows, placementRows, acr, leaveManagement, journals, books, ict, research, projects2: projects2.map((row) => ({ ...row, max: row.max || B4_PROJECT_MAX })), externalProjects, patents, awards, confs, proposals, products, fdps, training, exhibitions, summaryOtherInfo, sectionSaveStatus: saveStatus });
 
   const markSnapshotLocked = () => {
     setAppraisalLocked(true);
@@ -1263,7 +1314,7 @@ export default function StandardMyAppraisal({
     }, 1800);
 
     return () => window.clearTimeout(timer);
-  }, [info, lectures, courseFile, innovRows, projects, obeRows, mentoringRows, quals, feedback, deptActs, uniActs, eventRows, society, industry, alumniRows, placementRows, acr, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, exhibitions, summaryOtherInfo, docs, sectionSaveStatus, formLocked, submitting, showClosedReportOnly, isLegacyTwoPartYear, isSelectedCycleOpen, appraisalWindowStatus, partATotal, partBTotal, partCTotal, partDTotal, grandTotal, effectivePartAMax, effectivePartBMax, effectiveGrandMax]);
+  }, [info, lectures, courseFile, innovRows, projects, obeRows, mentoringRows, quals, feedback, deptActs, uniActs, eventRows, society, industry, alumniRows, placementRows, acr, leaveManagement, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, exhibitions, summaryOtherInfo, docs, sectionSaveStatus, formLocked, submitting, showClosedReportOnly, isLegacyTwoPartYear, isSelectedCycleOpen, appraisalWindowStatus, partATotal, partBTotal, partCTotal, partDTotal, grandTotal, effectivePartAMax, effectivePartBMax, effectiveGrandMax]);
 
   const handleSaveCurrentSection = async (section, navigateNext = true) => {
     if (formLocked) return;
@@ -1304,7 +1355,7 @@ export default function StandardMyAppraisal({
       });
       setSectionSaveStatus(nextStatus);
       if (navigateNext) {
-        const NEXT_SECTION = { partA: "partB", partB: "partC", partC: "partD", partD: "summary" };
+        const NEXT_SECTION = { partA: "partB", partB: "partC", partC: "partD", partD: "partE", partE: "summary" };
         const nextTab = NEXT_SECTION[section];
         if (nextTab) {
           setHodAppraisalTab(nextTab);
@@ -1502,7 +1553,7 @@ export default function StandardMyAppraisal({
 
     <h3>A4. Student Feedback Score &nbsp;(Max 10)</h3>
     <table>
-      <tr><th>SN</th><th>Course Code / Name</th><th>First Feedback(%)</th><th>Second Feedback(%)</th><th>Average</th><th>Self Score</th></tr>
+      <tr><th>SN</th><th>Course Code / Name</th><th>First Student Feedback As per Juno</th><th>Second Student Feedback As Per Juno</th><th>Average</th><th>Self Score</th></tr>
       ${feedback.map((f, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(f.code)}</td><td class="c">${reportTextValue(f.fb1)}</td><td class="c">${reportTextValue(f.fb2)}</td><td class="c">${(f.fb1 || f.fb2) ? ((n(f.fb1) + n(f.fb2)) / ((f.fb1 ? 1 : 0) + (f.fb2 ? 1 : 0) || 1)).toFixed(2) : '&nbsp;'}</td><td class="c">${reportTextValue(f.score)}</td></tr>`).join('')}
       <tr class="tr"><td colspan="5" class="c b">Total (Max 10)</td><td class="c">${stuFeedbackScore > 0 ? stuFeedbackScore.toFixed(1) : "&nbsp;"}</td></tr>
     </table>
@@ -2046,17 +2097,10 @@ export default function StandardMyAppraisal({
                               <td style={TD}><TI val={r.code} onChange={(v) => setLec(i, "code", v)} textOnly placeholder="e.g. CS201 - Data Structures" /></td>
                               <td style={TDC}><TI val={r.planned} onChange={(v) => setLec(i, "planned", v)} center numeric placeholder="Planned" /></td>
                               <td style={TDC}><TI val={r.conducted} onChange={(v) => setLec(i, "conducted", v)} center numeric placeholder="Conducted" /></td>
-                              <td style={TDC}>
-                                <TI
-                                  val={r.pctConducted || (Number(r.planned) > 0 && Number(r.conducted) >= 0 ? `${((Number(r.conducted) / Number(r.planned)) * 100).toFixed(1)}%` : "")}
-                                  onChange={(v) => setLec(i, "pctConducted", v)}
-                                  center
-                                  placeholder="%"
-                                />
-                              </td>
+                              <td style={{ ...TDC, fontWeight: 700 }}>{r.pctConducted}</td>
                               <td style={TD}><DocCell id={`lec-${i}`} docs={docs} setDocs={setDocs} /></td>
                               <td style={TD}><ViewCell id={`lec-${i}`} docs={docs} /></td>
-                              <td style={TDS}><TI val={r.score} onChange={(v) => setLec(i, "score", v)} center numeric max={10} /></td>
+                              <td style={{ ...TDS, fontWeight: 800 }}>{r.score}</td>
                             </tr>
                           ))}
                           <tr style={{ background: "#eff6ff" }}>
@@ -2206,8 +2250,8 @@ export default function StandardMyAppraisal({
                           <tr>
                             <th style={TH}>SN</th>
                             <th style={TH}>Course Code / Name</th>
-                            <th style={TH}>First Feedback(%)</th>
-                            <th style={TH}>Second Feedback(%)</th>
+                            <th style={TH}>First Student Feedback As per Juno</th>
+                            <th style={TH}>Second Student Feedback As Per Juno</th>
                             <th style={TH}>Average</th>
                             <th style={TH}>Score</th>
                           </tr>
@@ -2217,10 +2261,10 @@ export default function StandardMyAppraisal({
                             <tr key={i} style={i % 2 === 1 ? { background: "#f8fafc" } : {}}>
                               <td style={TDC}>{i + 1}</td>
                               <td style={TD}><TI val={r.code} onChange={(v) => setFb(i, "code", v)} textOnly placeholder="Course code / name" /></td>
-                              <td style={TDC}><TI val={r.fb1} onChange={(v) => setFb(i, "fb1", v)} center numeric max={SCORE_LIMITS.feedbackAverage} deferClampWhileTyping placeholder="0-100" /></td>
-                              <td style={TDC}><TI val={r.fb2} onChange={(v) => setFb(i, "fb2", v)} center numeric max={SCORE_LIMITS.feedbackAverage} deferClampWhileTyping placeholder="0-100" /></td>
+                              <td style={TDC}><TI val={r.fb1} onChange={(v) => setFb(i, "fb1", v)} center numeric max={5} deferClampWhileTyping placeholder="0-5" /></td>
+                              <td style={TDC}><TI val={r.fb2} onChange={(v) => setFb(i, "fb2", v)} center numeric max={5} deferClampWhileTyping placeholder="0-5" /></td>
                               <td style={{ ...TDC, fontWeight: 700, color: "#0ea5e9" }}>{r.fb1 || r.fb2 ? feedbackAverage(r).toFixed(2) : ""}</td>
-                              <td style={TDS}><TI val={r.score} onChange={(v) => setFb(i, "score", v)} center numeric max={A4_FEEDBACK_MAX} deferClampWhileTyping placeholder="0-10" /></td>
+                              <td style={{ ...TDS, fontWeight: 800 }}>{r.fb1 || r.fb2 ? r.score || "0" : ""}</td>
                             </tr>
                           ))}
                           <tr style={{ background: "#eff6ff" }}>
@@ -2690,7 +2734,95 @@ export default function StandardMyAppraisal({
 
                 {/* Part D Tab */}
                 {!isLegacyTwoPartYear && hodAppraisalTab === "partD" && (
-                  <SC title={`Part D - Annual Confidential Report (Max ${PART_D_MAX})`} accent="#b45309" scoreBadge={`${partDTotal.toFixed(1)} / ${PART_D_MAX}`}>
+                  <SC title={`Part D - Leave & Attendance Management (Max ${PART_D_MAX})`} accent="#0891b2" scoreBadge={`${partDTotal.toFixed(1)} / ${PART_D_MAX}`}>
+                    <div style={{ marginBottom: 14, padding: "8px 12px", background: "#ecfeff", borderRadius: 6, fontSize: 12, color: "#155e75", fontWeight: 600 }}>
+                      1. Unacceptable (0-5) &nbsp; 2. Below Average (6-10) &nbsp; 3. Average (11-15) &nbsp; 4. Above Average (16-20) &nbsp; 5. Outstanding (Above 20)
+                    </div>
+                    {leaveManagement.map((r, i) => {
+                      const totalTaken = n(r.clTaken) + n(r.mlTaken) + n(r.odTaken) + n(r.coffTaken);
+                      const totalOutOf = n(r.clOutOf) + n(r.mlOutOf) + n(r.odOutOf) + n(r.coffOutOf);
+                      return (
+                        <div key={i} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                          <table style={{ ...T, minWidth: 0, tableLayout: "fixed" }}>
+                            <colgroup>
+                              <col style={{ width: "28%" }} />
+                              <col style={{ width: "16%" }} />
+                              <col style={{ width: "16%" }} />
+                              <col style={{ width: "16%" }} />
+                              <col style={{ width: "16%" }} />
+                              <col style={{ width: "8%" }} />
+                            </colgroup>
+                            <thead><tr>
+                              <th style={{ ...TH, textAlign: "left" }}>1. No. of leaves taken in the Year</th>
+                              <th style={TH}>CL</th>
+                              <th style={TH}>ML</th>
+                              <th style={TH}>OD</th>
+                              <th style={TH}>C/Off</th>
+                              <th style={TH}>Total</th>
+                            </tr></thead>
+                            <tbody>
+                              <tr>
+                                <td style={TD} />
+                                <td style={TDS}><TI val={r.clTaken} onChange={(v) => setLeaveMgmt(i, "clTaken", v)} center numeric /></td>
+                                <td style={TDS}><TI val={r.mlTaken} onChange={(v) => setLeaveMgmt(i, "mlTaken", v)} center numeric /></td>
+                                <td style={TDS}><TI val={r.odTaken} onChange={(v) => setLeaveMgmt(i, "odTaken", v)} center numeric /></td>
+                                <td style={TDS}><TI val={r.coffTaken} onChange={(v) => setLeaveMgmt(i, "coffTaken", v)} center numeric /></td>
+                                <td style={{ ...TDC, fontWeight: 700 }}>{totalTaken || ""}</td>
+                              </tr>
+                              <tr style={{ background: "#f8fafc" }}>
+                                <td style={{ ...TD, fontWeight: 700 }}>Out of</td>
+                                <td style={TDS}><TI val={r.clOutOf} onChange={(v) => setLeaveMgmt(i, "clOutOf", v)} center numeric /></td>
+                                <td style={TDS}><TI val={r.mlOutOf} onChange={(v) => setLeaveMgmt(i, "mlOutOf", v)} center numeric /></td>
+                                <td style={TDS}><TI val={r.odOutOf} onChange={(v) => setLeaveMgmt(i, "odOutOf", v)} center numeric /></td>
+                                <td style={TDS}><TI val={r.coffOutOf} onChange={(v) => setLeaveMgmt(i, "coffOutOf", v)} center numeric /></td>
+                                <td style={{ ...TDC, fontWeight: 700 }}>{totalOutOf || ""}</td>
+                              </tr>
+                            </tbody>
+                          </table>
+                          <table style={{ ...T, minWidth: 0, tableLayout: "fixed" }}>
+                            <colgroup>
+                              <col style={{ width: "58%" }} />
+                              <col style={{ width: "42%" }} />
+                            </colgroup>
+                            <tbody>
+                              <tr>
+                                <td style={{ ...TD, fontWeight: 700 }}>2. No. of Late Remarks in the Year</td>
+                                <td style={TDS}><TI val={r.lateRemarks} onChange={(v) => setLeaveMgmt(i, "lateRemarks", v)} center numeric /></td>
+                              </tr>
+                              <tr style={{ background: "#f8fafc" }}>
+                                <td style={{ ...TD, fontWeight: 700 }}>3. Total Actual Working Days for the current academic year</td>
+                                <td style={TDS}><TI val={r.workingDays} onChange={(v) => setLeaveMgmt(i, "workingDays", v)} center numeric /></td>
+                              </tr>
+                              <tr>
+                                <td style={{ ...TD, fontWeight: 700 }}>4. Management of leaves</td>
+                                <td style={TD}>
+                                  <select
+                                    value={r.managementRating}
+                                    onChange={(e) => setLeaveMgmt(i, "managementRating", e.target.value)}
+                                    style={{ width: "100%", padding: "6px 8px", borderRadius: 6, border: "1px solid #cbd5e1", fontSize: 12.5 }}
+                                  >
+                                    <option value="">Select rating...</option>
+                                    {PART_D_RATING_OPTIONS.map((option) => (
+                                      <option key={option.value} value={option.value}>{option.label} - {option.score} marks</option>
+                                    ))}
+                                  </select>
+                                </td>
+                              </tr>
+                              <tr style={{ background: "#ecfeff" }}>
+                                <td style={{ ...TD, fontWeight: "bold", textAlign: "right" }}>Total Score out of ({PART_D_MAX}) =</td>
+                                <td style={{ ...TDS, fontWeight: "bold" }}>{r.score || 0}</td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      );
+                    })}
+                  </SC>
+                )}
+
+                {/* Part E Tab */}
+                {!isLegacyTwoPartYear && hodAppraisalTab === "partE" && (
+                  <SC title={`Part E - Annual Confidential Report (Max ${PART_E_MAX})`} accent="#b45309" scoreBadge={`0.0 / ${PART_E_MAX}`}>
                     <div style={{ marginBottom: 14, padding: "8px 12px", background: "#fef3c7", borderRadius: 6, fontSize: 12, color: "#92400e", fontWeight: 600 }}>
                       Evaluated by HOD/Director only. This part has no faculty self-score input.
                     </div>
@@ -2702,17 +2834,17 @@ export default function StandardMyAppraisal({
                         <th style={TH}>Max Marks</th>
                       </tr></thead>
                       <tbody>
-                        {partDParameters.map((row, index) => (
+                        {partEParameters.map((row, index) => (
                           <tr key={row.parameter} style={index % 2 === 1 ? { background: "#f8fafc" } : {}}>
-                            <td style={TDC}>{`D${index + 1}`}</td>
+                            <td style={TDC}>{`E${index + 1}`}</td>
                             <td style={{ ...TD, fontWeight: 700 }}>{row.parameter}</td>
                             <td style={TD}>{row.description}</td>
                             <td style={TDC}>{row.max}</td>
                           </tr>
                         ))}
                         <tr style={{ background: "#fef3c7" }}>
-                          <td style={{ ...TDC, fontWeight: "bold" }} colSpan={3}>Part D Total (Max: 50)</td>
-                          <td style={{ ...TDS, fontWeight: "bold" }}>{PART_D_MAX}</td>
+                          <td style={{ ...TDC, fontWeight: "bold" }} colSpan={3}>Part E Total (Max: {PART_E_MAX})</td>
+                          <td style={{ ...TDS, fontWeight: "bold" }}>{PART_E_MAX}</td>
                         </tr>
                       </tbody>
                     </table>
@@ -2954,7 +3086,7 @@ export default function StandardMyAppraisal({
                               <td style={TD}><TI val={r.title} onChange={(v) => setPrj2(i, "title", v)} textOnly placeholder="Project title" /></td>
                               <td style={TD}><TI val={r.agency} onChange={(v) => setPrj2(i, "agency", v)} textOnly placeholder="Funding agency" /></td>
                               <td style={TD}><TI val={r.date} onChange={(v) => setPrj2(i, "date", maskDateDDMMYYYY(v))} placeholder="DD/MM/YYYY" /></td>
-                              <td style={TD}><TI val={r.amount} onChange={(v) => setPrj2(i, "amount", v)} numeric placeholder="Amount in INR" /></td>
+                              <td style={TD}><TI val={r.amount} onChange={(v) => setPrj2(i, "amount", v)} integer placeholder="Amount in INR" /></td>
                               <td style={TD}>
                                 <select
                                   value={r.role || ""}
@@ -2981,7 +3113,7 @@ export default function StandardMyAppraisal({
                               </td>
                               <td style={TD}><DocCell id={`project2-${i}`} docs={docs} setDocs={setDocs} /></td>
                               <td style={TD}><ViewCell id={`project2-${i}`} docs={docs} /></td>
-                              <td style={TDS}><TI val={r.score} onChange={(v) => setPrj2(i, "score", v)} center numeric max={B4_PROJECT_MAX} /></td>
+                              <td style={{ ...TDS, fontWeight: 800 }}>{r.score}</td>
                             </tr>
                           ))}
                           <tr style={{ background: "#f3e8ff" }}>
@@ -3195,7 +3327,7 @@ export default function StandardMyAppraisal({
                               <td style={TD}><TI val={r.amount || r.revenue} onChange={(v) => setProp(i, "amount", v)} numeric placeholder="Revenue (₹)" /></td>
                               <td style={TD}><DocCell id={`prop-${i}`} docs={docs} setDocs={setDocs} /></td>
                               <td style={TD}><ViewCell id={`prop-${i}`} docs={docs} /></td>
-                              <td style={TDS}><TI val={r.score} onChange={(v) => setProp(i, "score", v)} center numeric max={B6_CONSULTANCY_MAX} /></td>
+                              <td style={{ ...TDS, fontWeight: 800 }}>{r.score}</td>
                             </tr>
                           ))}
                           <tr style={{ background: "#f3e8ff" }}>
@@ -3315,9 +3447,9 @@ export default function StandardMyAppraisal({
                   </SC>
                 )}
 
-                {["partA", "partB", "partC", "partD"].includes(hodAppraisalTab) && !formLocked && (
+                {["partA", "partB", "partC", "partD", "partE"].includes(hodAppraisalTab) && !formLocked && (
                   <SectionSaveFooter
-                    label={{ partA: "Part A", partB: "Part B", partC: "Part C", partD: "Part D" }[hodAppraisalTab]}
+                    label={{ partA: "Part A", partB: "Part B", partC: "Part C", partD: "Part D", partE: "Part E" }[hodAppraisalTab]}
                     saved={Boolean(sectionSaveStatus[hodAppraisalTab])}
                     saving={savingSection === hodAppraisalTab}
                     locked={formLocked}
@@ -3334,6 +3466,7 @@ export default function StandardMyAppraisal({
                         <SummaryRow label="Part A - Teaching & Learning" score={partATotal} max={effectivePartAMax} color="#4f46e5" tone="#eef2ff" iconTone="#eef2ff" icon="book" />
                         <SummaryRow label="Part B - Research & Innovation" score={partBTotal} max={effectivePartBMax} color="#7c3aed" tone="#f3e8ff" iconTone="#f5f3ff" icon="flask" />
                         <SummaryRow label="Part C - Administrative Contribution" score={partCTotal} max={PART_C_MAX} color="#0f766e" tone="#ccfbf1" iconTone="#ccfbf1" icon="building" />
+                        <SummaryRow label="Part D - Leave & Attendance Management" score={partDTotal} max={PART_D_MAX} color="#0891b2" tone="#cffafe" iconTone="#cffafe" icon="report" />
                         <SummaryRow label="Grand Total" score={grandTotal} max={effectiveGrandMax} color={g.color} tone="#ffe4e6" iconTone="#f1f5f9" icon="sigma" />
                       </tbody>
                     </table>
