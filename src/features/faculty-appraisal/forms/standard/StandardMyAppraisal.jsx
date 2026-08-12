@@ -86,6 +86,8 @@ import {
   legacySubmittedTotals,
 } from "./legacyPreviousYearReportUtils";
 
+const OTHER_INNOVATIVE_METHOD = "Any other innovative method";
+
 const INNOVATIVE_METHOD_OPTIONS = [
   { value: "Blended learning", label: "Blended learning" },
   { value: "Virtual Lab", label: "Virtual Lab" },
@@ -96,12 +98,12 @@ const INNOVATIVE_METHOD_OPTIONS = [
   { value: "Quiz", label: "Quiz" },
   { value: "Group Discussion (with photo & report)", label: "Group Discussion (with photo & report)" },
   { value: "Flip classroom (with proof of material shared)", label: "Flip classroom (with proof of material shared)" },
-  { value: "Any other innovative method", label: "Any other innovative method" },
+  { value: OTHER_INNOVATIVE_METHOD, label: OTHER_INNOVATIVE_METHOD },
 ];
 
 const LEGACY_INNOVATIVE_METHODS = new Set(INNOVATIVE_METHOD_OPTIONS.map((method) => method.value));
 
-const blankInnovativeRow = () => ({ method: "", details: "", score: "", max: A3_INNOVATIVE_ROW_MAX });
+const blankInnovativeRow = () => ({ method: "", details: "", methodOther: "", score: "", max: A3_INNOVATIVE_ROW_MAX });
 
 const sanitizeInnovativeRows = (rows) => {
   if (!Array.isArray(rows)) return [blankInnovativeRow()];
@@ -110,7 +112,7 @@ const sanitizeInnovativeRows = (rows) => {
     && legacyPresetRows.every((row = {}, index) => String(row.method ?? "").trim() === INNOVATIVE_METHOD_OPTIONS[index].value);
   const cleaned = rows.filter((row = {}, index) => {
     const method = String(row.method ?? "").trim();
-    const hasEnteredData = ["details", "score", "hod", "director", "dean", "vc"].some((key) => String(row[key] ?? "").trim());
+    const hasEnteredData = ["details", "methodOther", "score", "hod", "director", "dean", "vc"].some((key) => String(row[key] ?? "").trim());
     if (hasLegacyPreset && index < INNOVATIVE_METHOD_OPTIONS.length && LEGACY_INNOVATIVE_METHODS.has(method) && !hasEnteredData) return false;
     return method || hasEnteredData;
   });
@@ -1096,7 +1098,7 @@ export default function StandardMyAppraisal({
     const sections = [
       { label: "A(i). Lectures", rows: lectures, fields: ["sem", "code", "planned", "conducted", "score"] },
       { label: "A(ii). Course File", rows: courseFile, fields: ["course", "title", "details", "score"] },
-      { label: "A(iii). Innovative Teaching Methods", rows: innovRows, fields: ["method", "details", "score"] },
+      { label: "A(iii). Innovative Teaching Methods", rows: innovRows, fields: ["method", "details", "score"], fieldsForRow: (row) => row?.method === OTHER_INNOVATIVE_METHOD ? ["method", "methodOther", "details", "score"] : ["method", "details", "score"] },
       { label: "A5. Learning Outcomes Attainment & OBE Practice", rows: obeRows, fields: ["component", "score"], isRowActive: evidenceClaimedOrScored },
       { label: "A6. Student Project Guidance", rows: projects, fields: ["label", "score"], rowMax: A6_PROJECT_GUIDANCE_MAX, maxScore: A6_PROJECT_GUIDANCE_MAX },
       { label: "A7. Student Mentoring & Counselling", rows: mentoringRows, fields: ["activity", "score"], isRowActive: evidenceClaimedOrScored },
@@ -1138,7 +1140,7 @@ export default function StandardMyAppraisal({
     const partASections = [
       { label: "A(i). Lectures", rows: lectures, fields: ["sem", "code", "planned", "conducted", "score"] },
       { label: "A(ii). Course File", rows: courseFile, fields: ["course", "title", "details", "score"] },
-      { label: "A(iii). Innovative Teaching Methods", rows: innovRows, fields: ["method", "details", "score"] },
+      { label: "A(iii). Innovative Teaching Methods", rows: innovRows, fields: ["method", "details", "score"], fieldsForRow: (row) => row?.method === OTHER_INNOVATIVE_METHOD ? ["method", "methodOther", "details", "score"] : ["method", "details", "score"] },
       { label: "A5. Learning Outcomes Attainment & OBE Practice", rows: obeRows, fields: ["component", "score"], isRowActive: evidenceClaimedOrScored },
       { label: "A6. Student Project Guidance", rows: projects, fields: ["label", "score"], rowMax: A6_PROJECT_GUIDANCE_MAX, maxScore: A6_PROJECT_GUIDANCE_MAX },
       { label: "A7. Student Mentoring & Counselling", rows: mentoringRows, fields: ["activity", "score"], isRowActive: evidenceClaimedOrScored },
@@ -2137,7 +2139,11 @@ export default function StandardMyAppraisal({
                               <td style={TD}>
                                 <select
                                   value={r.method || ""}
-                                  onChange={(e) => setInnov(i, "method", e.target.value)}
+                                  onChange={(e) => {
+                                    const nextMethod = e.target.value;
+                                    setInnov(i, "method", nextMethod);
+                                    if (nextMethod !== OTHER_INNOVATIVE_METHOD) setInnov(i, "methodOther", "");
+                                  }}
                                   style={{ width: "100%", height: 30, border: "1px solid #cbd5e1", borderRadius: 4, background: "#fff", fontFamily: "inherit", fontSize: 11 }}
                                 >
                                   <option value="">Select Method</option>
@@ -2146,6 +2152,15 @@ export default function StandardMyAppraisal({
                                     <option key={option.value} value={option.value}>{option.label}</option>
                                   ))}
                                 </select>
+                                {r.method === OTHER_INNOVATIVE_METHOD && (
+                                  <input
+                                    type="text"
+                                    value={r.methodOther || ""}
+                                    onChange={(e) => setInnov(i, "methodOther", e.target.value)}
+                                    placeholder="Mention the name of the innovative method"
+                                    style={{ width: "100%", height: 30, border: "1px solid #cbd5e1", borderRadius: 4, background: "#fff", fontFamily: "inherit", fontSize: 11, marginTop: 6, padding: "0 8px", boxSizing: "border-box" }}
+                                  />
+                                )}
                               </td>
                                <td style={TD}>
                                  <select

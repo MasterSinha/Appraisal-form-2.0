@@ -698,7 +698,7 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
  return (
 <tr key={`innov-${index}`}>
 <td style={TDC}>{index + 1}</td>
-<td style={TD}><RO val={row.method || person.innovDetails} /></td>
+<td style={TD}><RO val={(row.method === "Any other innovative method" && row.methodOther) ? row.methodOther : (row.method || person.innovDetails)} /></td>
 <td style={TD}><RO val={row.details} /></td>
 <td style={TDV}><ViewDocsCell docKey={index === 0 ? ["innov", "innov-0"] : `innov-${index}`} docs={docs} /></td>
 <td style={TDS}><ScoreValue val={String(row.score ?? "").trim() ? clampScore(row.score, row.max || SCORE_LIMITS.innovativeRow) : ""} center /></td>

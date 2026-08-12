@@ -85,7 +85,8 @@ export const PART_C_MAX = 150;
 export const PART_D_MAX = 50;
 export const GRAND_MAX = 700;
 const CREATIVE_INNOVATIVE_ROW_MAX = 4;
-const CREATIVE_INNOVATIVE_SECTION_MAX = 10;
+const CREATIVE_INNOVATIVE_SECTION_MAX = 20;
+const CREATIVE_A3_ROW_LIMIT = 5;
 
 export const titleCase = (value) => String(value || "").charAt(0).toUpperCase() + String(value || "").slice(1);
 
@@ -231,7 +232,7 @@ export const emptyCreativeSchoolForm = (defaultSchool = "SoD - School of Design"
   courseFile: [{ course: "", title: "", details: "", score: "" }],
   innovDetails: "",
   innovScore: "",
-  innovRows: [{ method: "", details: "", score: "", max: CREATIVE_INNOVATIVE_ROW_MAX, sectionMax: CREATIVE_INNOVATIVE_SECTION_MAX }],
+  innovRows: [{ method: "", details: "", methodOther: "", score: "", max: CREATIVE_INNOVATIVE_ROW_MAX, sectionMax: CREATIVE_INNOVATIVE_SECTION_MAX }],
   obeRows: defaultObeRows(),
   mentoringRows: defaultMentoringRows(),
   projects: [{ label: "", score: "" }],
@@ -834,6 +835,7 @@ export const validateCreativeSchoolBeforeSubmit = (form, docs = {}, sectionView 
       label: "A3. Innovative Teaching Methods",
       rows: innovRows,
       fields: ["method", "details", "score"],
+      fieldsForRow: (row) => row?.method === OTHER_INNOVATIVE_METHOD ? ["method", "methodOther", "details", "score"] : ["method", "details", "score"],
       docPrefix: "innov",
       rowMax: CREATIVE_INNOVATIVE_ROW_MAX,
       maxScore: CREATIVE_INNOVATIVE_SECTION_MAX,
@@ -1348,6 +1350,8 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
   );
 }
 
+const OTHER_INNOVATIVE_METHOD = "Any other innovative method";
+
 const INNOVATIVE_METHOD_OPTIONS = [
   { value: "Blended learning", label: "Blended learning" },
   { value: "Virtual Lab", label: "Virtual Lab" },
@@ -1358,7 +1362,7 @@ const INNOVATIVE_METHOD_OPTIONS = [
   { value: "Quiz", label: "Quiz" },
   { value: "Group Discussion (with photo & report)", label: "Group Discussion (with photo & report)" },
   { value: "Flip classroom (with proof of material shared)", label: "Flip classroom (with proof of material shared)" },
-  { value: "Any other innovative method", label: "Any other innovative method" },
+  { value: OTHER_INNOVATIVE_METHOD, label: OTHER_INNOVATIVE_METHOD },
 ];
 
 const LEGACY_INNOVATIVE_METHODS = new Set(INNOVATIVE_METHOD_OPTIONS.map((method) => method.value));
@@ -1367,7 +1371,7 @@ function InnovativeSection({ form, setForm, docs, setDocs, mode, locked, reviewe
   const currentScore = scoreKeyForInnov(reviewerRole);
   const editableSelf = mode === "self" && !locked;
   const reviewLocked = mode === "review" && locked;
-  const innovRows = (Array.isArray(form.innovRows) && form.innovRows.length ? form.innovRows : [{ method: form.innovDetails || "", details: form.innovDetails || "", score: form.innovScore || "" }]).map(withCreativeInnovativeLimits);
+  const innovRows = (Array.isArray(form.innovRows) && form.innovRows.length ? form.innovRows : [{ method: form.innovDetails || "", details: form.innovDetails || "", methodOther: "", score: form.innovScore || "" }]).map(withCreativeInnovativeLimits);
   const visibleInnovRows = innovRows;
   const selectedInnovativeMethods = new Set(visibleInnovRows.map((row) => String(row.method ?? "").trim()).filter(Boolean));
   const innovativeMethodOptionsForRow = (currentMethod) =>
@@ -1410,7 +1414,7 @@ function InnovativeSection({ form, setForm, docs, setDocs, mode, locked, reviewe
   };
   const updateSelfRow = (index, field, value) => {
     setForm((prev) => {
-      const baseRows = Array.isArray(prev.innovRows) && prev.innovRows.length ? prev.innovRows : [{ method: prev.innovDetails || "", details: prev.innovDetails || "", score: prev.innovScore || "" }];
+      const baseRows = Array.isArray(prev.innovRows) && prev.innovRows.length ? prev.innovRows : [{ method: prev.innovDetails || "", details: prev.innovDetails || "", methodOther: "", score: prev.innovScore || "" }];
       const nextRows = baseRows.map((row, rowIndex) => rowIndex === index ? withCreativeInnovativeLimits({ ...row, [field]: value }) : withCreativeInnovativeLimits(row));
       const hasAnyScore = nextRows.some((row) => String(row.score ?? "").trim() !== "");
       const nextScore = hasAnyScore
@@ -1420,16 +1424,17 @@ function InnovativeSection({ form, setForm, docs, setDocs, mode, locked, reviewe
     });
   };
   const addInnovRow = () => setForm((prev) => {
-    const baseRows = Array.isArray(prev.innovRows) && prev.innovRows.length ? prev.innovRows : [{ method: prev.innovDetails || "", details: prev.innovDetails || "", score: prev.innovScore || "" }];
-    return { ...prev, innovRows: [...baseRows.map(withCreativeInnovativeLimits), withCreativeInnovativeLimits({ method: "", details: "", score: "" })] };
+    const baseRows = Array.isArray(prev.innovRows) && prev.innovRows.length ? prev.innovRows : [{ method: prev.innovDetails || "", details: prev.innovDetails || "", methodOther: "", score: prev.innovScore || "" }];
+    if (baseRows.length >= CREATIVE_A3_ROW_LIMIT) return prev;
+    return { ...prev, innovRows: [...baseRows.map(withCreativeInnovativeLimits), withCreativeInnovativeLimits({ method: "", details: "", methodOther: "", score: "" })] };
   });
   const deleteInnovRow = () => setForm((prev) => {
-    const baseRows = Array.isArray(prev.innovRows) && prev.innovRows.length ? prev.innovRows : [{ method: prev.innovDetails || "", details: prev.innovDetails || "", score: prev.innovScore || "" }];
+    const baseRows = Array.isArray(prev.innovRows) && prev.innovRows.length ? prev.innovRows : [{ method: prev.innovDetails || "", details: prev.innovDetails || "", methodOther: "", score: prev.innovScore || "" }];
     return { ...prev, innovRows: baseRows.length > 1 ? baseRows.slice(0, -1) : baseRows };
   });
 
   return (
-    <SectionShell title="A3. Innovative Teaching-Learning Methodologies - Max 10 marks" max={10} earned={facultyScore}>
+    <SectionShell title="A3. Innovative Teaching-Learning Methodologies - Max 20 marks" max={20} earned={facultyScore}>
       <table style={tableStyle}>
         <thead>
           <tr>
@@ -1451,20 +1456,36 @@ function InnovativeSection({ form, setForm, docs, setDocs, mode, locked, reviewe
                 <td style={tdCenter}>{index + 1}</td>
                 <td style={tdStyle}>
                   {mode === "self" ? (
-                    <select
-                      value={row.method || ""}
-                      disabled={!editableSelf}
-                      onChange={(e) => updateSelfRow(index, "method", e.target.value)}
-                      style={{ width: "100%", height: 30, border: "1px solid #cbd5e1", borderRadius: 4, background: "#fff", fontFamily: "inherit", fontSize: 11 }}
-                    >
-                      <option value="">Select Method</option>
-                      {row.method && !LEGACY_INNOVATIVE_METHODS.has(row.method) && <option value={row.method}>{row.method}</option>}
-                      {innovativeMethodOptionsForRow(row.method).map((option) => (
-                        <option key={option.value} value={option.value}>{option.label}</option>
-                      ))}
-                    </select>
+                    <>
+                      <select
+                        value={row.method || ""}
+                        disabled={!editableSelf}
+                        onChange={(e) => {
+                          const nextMethod = e.target.value;
+                          updateSelfRow(index, "method", nextMethod);
+                          if (nextMethod !== OTHER_INNOVATIVE_METHOD) updateSelfRow(index, "methodOther", "");
+                        }}
+                        style={{ width: "100%", height: 30, border: "1px solid #cbd5e1", borderRadius: 4, background: "#fff", fontFamily: "inherit", fontSize: 11 }}
+                      >
+                        <option value="">Select Method</option>
+                        {row.method && !LEGACY_INNOVATIVE_METHODS.has(row.method) && <option value={row.method}>{row.method}</option>}
+                        {innovativeMethodOptionsForRow(row.method).map((option) => (
+                          <option key={option.value} value={option.value}>{option.label}</option>
+                        ))}
+                      </select>
+                      {row.method === OTHER_INNOVATIVE_METHOD && (
+                        <input
+                          type="text"
+                          value={row.methodOther || ""}
+                          disabled={!editableSelf}
+                          onChange={(e) => updateSelfRow(index, "methodOther", e.target.value)}
+                          placeholder="Mention the name of the innovative method"
+                          style={{ width: "100%", height: 30, border: "1px solid #cbd5e1", borderRadius: 4, background: "#fff", fontFamily: "inherit", fontSize: 11, marginTop: 6, padding: "0 8px", boxSizing: "border-box" }}
+                        />
+                      )}
+                    </>
                   ) : (
-                    <RO value={row.method || form.innovDetails} />
+                    <RO value={(row.method === OTHER_INNOVATIVE_METHOD && row.methodOther) ? row.methodOther : (row.method || form.innovDetails)} />
                   )}
                 </td>
                 <td style={tdStyle}>
@@ -1492,7 +1513,7 @@ function InnovativeSection({ form, setForm, docs, setDocs, mode, locked, reviewe
             );
           })}
           <tr style={{ background: "#eff6ff" }}>
-            <td style={{ ...tdCenter, fontWeight: 800 }} colSpan={5}>Total Score (Max 10)</td>
+            <td style={{ ...tdCenter, fontWeight: 800 }} colSpan={5}>Total Score (Max 20)</td>
             <td style={{ ...tdCenter, fontWeight: 800 }}>{facultyScore.toFixed(1)}</td>
             {mode === "review" && previousRoles.map((role) => <td key={role} style={{ ...tdCenter, fontWeight: 800 }}><RO value={roleInnovTotal(role)} center /></td>)}
             {mode === "review" && <td style={{ ...tdCenter, fontWeight: 800 }}><RO value={currentInnovTotal() || reviewData.innovativeTeaching?.[reviewerRole] || form[currentScore]} center /></td>}
@@ -1500,7 +1521,12 @@ function InnovativeSection({ form, setForm, docs, setDocs, mode, locked, reviewe
         </tbody>
       </table>
       {mode === "self" && !locked && (
-        <RowBtns onAdd={addInnovRow} onDel={deleteInnovRow} canDel={visibleInnovRows.length > 1} />
+        <>
+          <RowBtns onAdd={addInnovRow} onDel={deleteInnovRow} canDel={visibleInnovRows.length > 1} canAdd={visibleInnovRows.length < CREATIVE_A3_ROW_LIMIT} />
+          {visibleInnovRows.length >= CREATIVE_A3_ROW_LIMIT && (
+            <div style={{ fontSize: 11, color: "#ef4444", marginTop: 4 }}>Maximum {CREATIVE_A3_ROW_LIMIT} methods can be claimed.</div>
+          )}
+        </>
       )}
     </SectionShell>
   );
@@ -2794,7 +2820,7 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
         { isHeader: true, label: "Part A - Teaching Process & Academic Activities" },
         ...summaryRow(applicability, "lectures", { id: "A(i)", label: "Lectures / Tutorials / Practicals", max: 40, score: lecScore }),
         ...summaryRow(applicability, "courseFile", { id: "A(ii)", label: "Course File", max: 20, score: cfScore }),
-        { id: "A(iii)", label: "Innovative Teaching-Learning Methodologies", max: 10, score: innovScore },
+        { id: "A(iii)", label: "Innovative Teaching-Learning Methodologies", max: 20, score: innovScore },
         ...summaryRow(applicability, "projects", { id: "A(iv)", label: "Project Guidance", max: 20, score: rowSum("projects", 20) }),
         ...summaryRow(applicability, "quals", { id: "A(v)", label: "Qualification Enhancement", max: 10, score: rowSum("quals", 10) }),
         ...summaryRow(applicability, "feedback", { id: "A(vi)", label: "Students' Feedback", max: 10, score: feedbackSectionScore(reviewerForm.feedback || [], 10) }),
