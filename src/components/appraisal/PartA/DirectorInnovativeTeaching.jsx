@@ -40,7 +40,7 @@ export default function DirectorInnovativeTeaching({ ctx }) {
  return (
 <tr key={index}>
 <td style={TDC}>{index + 1}</td>
-<td style={TD}><RO val={row.method || faculty.innovDetails} /></td>
+<td style={TD}><RO val={(row.method === "Any other innovative method" && row.methodOther) ? row.methodOther : (row.method || faculty.innovDetails)} /></td>
 <td style={TD}><RO val={row.details} /></td>
 <td style={TDV}><ViewDocsCell docKey={index === 0 ? ["innov", "innov-0"] : `innov-${index}`} docs={docs} /></td>
 <td style={TDS}><RO val={String(row.score ?? "").trim() ? clampScore(row.score, row.max || innovativeRowMax) : ""} center /></td>
