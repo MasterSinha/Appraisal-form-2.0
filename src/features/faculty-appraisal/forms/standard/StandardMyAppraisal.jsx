@@ -473,7 +473,7 @@ function SummaryRow({ label, score, max, color, tone, iconTone, icon }) {
           <span style={{ width: 32, height: 32, borderRadius: 9, background: iconTone, color, border: `1px solid ${color}20`, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <InlineSvgIcon paths={SUMMARY_ICONS[icon]} size={17} />
           </span>
-          <span style={{ color: "#1f2937", fontSize: 13, fontWeight: 850, lineHeight: 1.35 }}>{label}</span>
+          <span style={{ color: "#1f2937", fontSize: 13, fontWeight: 800, lineHeight: 1.35 }}>{label}</span>
         </div>
       </td>
       <td style={{ width: 150, padding: "10px 12px", border: 0, textAlign: "right", verticalAlign: "middle" }}>
@@ -677,7 +677,7 @@ export default function StandardMyAppraisal({
   const setUni = (i, k, v) => setUniActs((p) => p.map((r, j) => j === i ? { ...r, [k]: v } : r));
 
   const [eventRows, setEventRows] = useState([
-    { event: "", role: "", date: "", level: "", score: "" },
+    { event: "", role: "", fromDate: "", toDate: "", level: "", score: "" },
   ]);
   const setEvent = (i, k, v) => setEventRows((p) => p.map((r, j) => j === i ? { ...r, [k]: v } : r));
 
@@ -882,8 +882,8 @@ export default function StandardMyAppraisal({
       { activity: "Lab development activity", nature: "Member", period: "Jan 2027 - Apr 2027", score: "10", hod: "", director: "" },
     ]);
     setEventRows([
-      { event: "Technical workshop", role: "Coordinator", date: "03/08/2026", level: "University", score: "10" },
-      { event: "Hackathon mentoring", role: "Mentor", date: "04/08/2026", level: "National", score: "10" },
+      { event: "Technical workshop", role: "Coordinator", fromDate: "03/08/2026", toDate: "03/08/2026", level: "University", score: "10" },
+      { event: "Hackathon mentoring", role: "Mentor", fromDate: "04/08/2026", toDate: "04/08/2026", level: "National", score: "10" },
     ]);
     setSociety([
       { label: "NSS / outreach activity", details: "Community coding awareness session", date: "05/08/2026", score: "5", hod: "", director: "", max: C4_OUTREACH_MAX },
@@ -1209,7 +1209,7 @@ export default function StandardMyAppraisal({
       { label: "A(vi). Student Feedback", rows: feedback, fields: ["code", "fb1", "fb2"] },
       { label: "C1. Administration at University Level", rows: uniActs, fields: ["activity", "nature", "period", "score"] },
       { label: "C2. Administration at School Level", rows: deptActs, fields: ["activity", "nature", "period", "score"] },
-      { label: "C3. Event Organisation & Institutional Visibility", rows: eventRows, fields: ["event", "role", "date", "level", "score"] },
+      { label: "C3. Event Organisation & Institutional Visibility", rows: eventRows, fields: ["event", "role", "fromDate", "toDate", "level", "score"] },
       { label: "C4. Outreach, Extension & Social Responsibility", rows: society, fields: ["label", "details", "date", "score"], rowMax: C4_OUTREACH_MAX, maxScore: C4_OUTREACH_MAX },
       { label: "C5. Industry Interaction & Linkages", rows: industry, fields: ["activity", "partner", "date", "score"], rowMax: C5_INDUSTRY_MAX, maxScore: C5_INDUSTRY_MAX },
       { label: "C6. Alumni Engagement & Networking", rows: alumniRows, fields: ["activity", "details", "date", "score"] },
@@ -1220,7 +1220,7 @@ export default function StandardMyAppraisal({
       { label: "B4. External Funded Research Projects", rows: projects2, fields: ["title", "agency", "date", "amount", "role", "status", "score"] },
       { label: "B5. Research Guidance", rows: research, fields: B5_FIELDS, fieldsForRow: b5FieldsForRow, rowMax: b5RowMax },
       { label: "B6. Consultancy, Testing & Training", rows: proposals, fields: ["agency", "duration", "amount", "score"], rowMax: B6_CONSULTANCY_MAX, maxScore: B6_CONSULTANCY_MAX },
-      { label: "B7. Conference / FDP Contributions - Organised", rows: confs, fields: ["title", "role", "date", "level", "score"], rowMax: B7_CONFERENCE_MAX, maxScore: B7_CONFERENCE_MAX },
+      { label: "B7. Conference / FDP / Training / Workshop Contributions as Resource Person", rows: confs, fields: ["title", "role", "date", "level", "score"], rowMax: B7_CONFERENCE_MAX, maxScore: B7_CONFERENCE_MAX },
       { label: "B8. Conference / FDP / Industry Training Attended", rows: fdps, fields: ["program", "fromDate", "toDate", "org", "score"], rowMax: B8_ATTENDED_MAX, maxScore: B8_ATTENDED_MAX },
       { label: "B8. Industrial Training", rows: training, fields: ["company", "duration", "nature", "score"], rowMax: B8_ATTENDED_MAX, maxScore: B8_ATTENDED_MAX },
       { label: "B9. Research Awards, Fellowships & Citations", rows: awards, fields: ["title", "date", "agency", "level", "score"], rowMax: B9_AWARDS_MAX, maxScore: B9_AWARDS_MAX },
@@ -1230,6 +1230,10 @@ export default function StandardMyAppraisal({
     const errors = validateCompleteRows(withRelaxedSectionCap(sections), docs);
     [...projects2, ...externalProjects].forEach((row, index) => {
       if (row.date && !isValidDDMMYYYY(row.date)) errors.push(`B4 project row ${index + 1}: date must be DD/MM/YYYY.`);
+    });
+    eventRows.forEach((row, index) => {
+      if (row.fromDate && !isValidDDMMYYYY(row.fromDate)) errors.push(`C3 row ${index + 1}: From date must be DD/MM/YYYY.`);
+      if (row.toDate && !isValidDDMMYYYY(row.toDate)) errors.push(`C3 row ${index + 1}: To date must be DD/MM/YYYY.`);
     });
     fdps.forEach((row, index) => {
       if (row.fromDate && !isValidDDMMYYYY(row.fromDate)) errors.push(`B8 row ${index + 1}: From date must be DD/MM/YYYY.`);
@@ -1253,7 +1257,7 @@ export default function StandardMyAppraisal({
     const partCSections = [
       { label: "C1. Administration at University Level", rows: uniActs, fields: ["activity", "nature", "period", "score"] },
       { label: "C2. Administration at School Level", rows: deptActs, fields: ["activity", "nature", "period", "score"] },
-      { label: "C3. Event Organisation & Institutional Visibility", rows: eventRows, fields: ["event", "role", "date", "level", "score"] },
+      { label: "C3. Event Organisation & Institutional Visibility", rows: eventRows, fields: ["event", "role", "fromDate", "toDate", "level", "score"] },
       { label: "C4. Outreach, Extension & Social Responsibility", rows: society, fields: ["label", "details", "date", "score"], rowMax: C4_OUTREACH_MAX, maxScore: C4_OUTREACH_MAX },
       { label: "C5. Industry Interaction & Linkages", rows: industry, fields: ["activity", "partner", "date", "score"], rowMax: C5_INDUSTRY_MAX, maxScore: C5_INDUSTRY_MAX },
       { label: "C6. Alumni Engagement & Networking", rows: alumniRows, fields: ["activity", "details", "date", "score"] },
@@ -1266,7 +1270,7 @@ export default function StandardMyAppraisal({
       { label: "B4. External Funded Research Projects", rows: projects2, fields: ["title", "agency", "date", "amount", "role", "status", "score"] },
       { label: "B5. Research Guidance", rows: research, fields: B5_FIELDS, fieldsForRow: b5FieldsForRow, rowMax: b5RowMax },
       { label: "B6. Consultancy, Testing & Training", rows: proposals, fields: ["agency", "duration", "amount", "score"], rowMax: B6_CONSULTANCY_MAX, maxScore: B6_CONSULTANCY_MAX },
-      { label: "B7. Conference / FDP Contributions - Organised", rows: confs, fields: ["title", "role", "date", "level", "score"], rowMax: B7_CONFERENCE_MAX, maxScore: B7_CONFERENCE_MAX },
+      { label: "B7. Conference / FDP / Training / Workshop Contributions as Resource Person", rows: confs, fields: ["title", "role", "date", "level", "score"], rowMax: B7_CONFERENCE_MAX, maxScore: B7_CONFERENCE_MAX },
       { label: "B8. Conference / FDP / Industry Training Attended", rows: fdps, fields: ["program", "fromDate", "toDate", "org", "score"], rowMax: B8_ATTENDED_MAX, maxScore: B8_ATTENDED_MAX },
       { label: "B8. Industrial Training", rows: training, fields: ["company", "duration", "nature", "score"], rowMax: B8_ATTENDED_MAX, maxScore: B8_ATTENDED_MAX },
       { label: "B9. Research Awards, Fellowships & Citations", rows: awards, fields: ["title", "date", "agency", "level", "score"], rowMax: B9_AWARDS_MAX, maxScore: B9_AWARDS_MAX },
@@ -1282,6 +1286,12 @@ export default function StandardMyAppraisal({
       fdps.forEach((row, index) => {
         if (row.fromDate && !isValidDDMMYYYY(row.fromDate)) errors.push(`B8 row ${index + 1}: From date must be DD/MM/YYYY.`);
         if (row.toDate && !isValidDDMMYYYY(row.toDate)) errors.push(`B8 row ${index + 1}: To date must be DD/MM/YYYY.`);
+      });
+    }
+    if (section === "partC") {
+      eventRows.forEach((row, index) => {
+        if (row.fromDate && !isValidDDMMYYYY(row.fromDate)) errors.push(`C3 row ${index + 1}: From date must be DD/MM/YYYY.`);
+        if (row.toDate && !isValidDDMMYYYY(row.toDate)) errors.push(`C3 row ${index + 1}: To date must be DD/MM/YYYY.`);
       });
     }
     if (errors.length) {
@@ -1744,7 +1754,7 @@ export default function StandardMyAppraisal({
       <tr class="tr"><td colspan="5" class="c b">Total (Max 20)</td><td class="c">${proposalScore > 0 ? proposalScore.toFixed(1) : "&nbsp;"}</td></tr>
     </table>
 
-    <h3>B7. Conference / FDP Contributions - Organised &nbsp;(Max 20)</h3>
+    <h3>B7. Conference / FDP / Training / Workshop Contributions as Resource Person &nbsp;(Max 20)</h3>
     <table>
       <tr><th>SN</th><th>Title / Session</th><th>Type</th><th>Organization</th><th>Level</th><th>Self Score</th></tr>
       ${confs.map((c, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(c.title)}</td><td>${reportTextValue(c.type)}</td><td>${reportTextValue(c.org)}</td><td>${reportTextValue(c.level)}</td><td class="c">${reportTextValue(c.score)}</td></tr>`).join('')}
@@ -1805,9 +1815,9 @@ export default function StandardMyAppraisal({
 
     <h3>C3. Event Organisation &amp; Institutional Visibility &nbsp;(Max 20)</h3>
     <table>
-      <tr><th>SN</th><th>Event / Contribution</th><th>Role</th><th>Date</th><th>Level</th><th>Self Score</th></tr>
-      ${eventRows.map((r, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(r.event)}</td><td>${reportTextValue(r.role)}</td><td class="c">${reportTextValue(r.date)}</td><td>${reportTextValue(r.level)}</td><td class="c">${reportTextValue(r.score)}</td></tr>`).join('')}
-      <tr class="tr"><td colspan="5" class="c b">Total (Max 20)</td><td class="c">${eventScore > 0 ? eventScore.toFixed(1) : "&nbsp;"}</td></tr>
+      <tr><th>SN</th><th>Event / Contribution</th><th>Role</th><th>From</th><th>To</th><th>Level</th><th>Self Score</th></tr>
+      ${eventRows.map((r, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(r.event)}</td><td>${reportTextValue(r.role)}</td><td class="c">${reportTextValue(r.fromDate || r.date)}</td><td class="c">${reportTextValue(r.toDate || r.date)}</td><td>${reportTextValue(r.level)}</td><td class="c">${reportTextValue(r.score)}</td></tr>`).join('')}
+      <tr class="tr"><td colspan="6" class="c b">Total (Max 20)</td><td class="c">${eventScore > 0 ? eventScore.toFixed(1) : "&nbsp;"}</td></tr>
     </table>
 
     <h3>C4. Outreach, Extension &amp; Social Responsibility &nbsp;(Max 20)</h3>
@@ -2045,7 +2055,7 @@ export default function StandardMyAppraisal({
                 <div className="appraisal-progress-card" style={{ background: "#fff", borderRadius: 14, padding: "18px 22px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb", display: "flex", flexDirection: "column", justifyContent: "center", gap: 10 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
                     <div style={{ fontSize: 14, color: "#374151", fontWeight: 800 }}>Overall Progress</div>
-                    <div style={{ fontSize: 22, color: "#111827", fontWeight: 950, lineHeight: 1 }}>{overallProgress}%</div>
+                    <div style={{ fontSize: 22, color: "#111827", fontWeight: 900, lineHeight: 1 }}>{overallProgress}%</div>
                   </div>
                   <div aria-label={`Overall progress ${overallProgress}%`} style={{ height: 8, borderRadius: 999, background: "#e5e7eb", overflow: "hidden" }}>
                     <div style={{ width: `${overallProgress}%`, height: "100%", borderRadius: 999, background: "linear-gradient(90deg,#06b6d4,#10b981)", transition: "width 300ms ease" }} />
@@ -2058,7 +2068,7 @@ export default function StandardMyAppraisal({
                       return (
                       <div key={label} title={`${label}: ${score.toFixed(1)} / ${max}`} style={{ minWidth: 0, background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 6, padding: "5px 4px", textAlign: "center" }}>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 3, marginBottom: 1 }}>
-                          <span style={{ width: 14, height: 14, borderRadius: 999, display: "inline-flex", alignItems: "center", justifyContent: "center", background: `${partColor}14`, border: `1px solid ${partColor}33`, color: partColor, fontSize: 9, fontWeight: 950 }}>{partLetter}</span>
+                          <span style={{ width: 14, height: 14, borderRadius: 999, display: "inline-flex", alignItems: "center", justifyContent: "center", background: `${partColor}14`, border: `1px solid ${partColor}33`, color: partColor, fontSize: 9, fontWeight: 900 }}>{partLetter}</span>
                         </div>
                         <div style={{ fontSize: 10, color: "#0f172a", fontWeight: 900, whiteSpace: "nowrap" }}>{score.toFixed(0)}/{max}</div>
                       </div>
@@ -2076,7 +2086,7 @@ export default function StandardMyAppraisal({
             />
             {formLocked && (
               <div style={{ background: appraisalWindowLockMessage || isSelectedCycleClosed ? "#fffbeb" : workflowRejected ? "#fef2f2" : "#ecfdf5", border: `1px solid ${appraisalWindowLockMessage || isSelectedCycleClosed ? "#fde68a" : workflowRejected ? "#fecaca" : "#bbf7d0"}`, color: appraisalWindowLockMessage || isSelectedCycleClosed ? "#92400e" : workflowRejected ? "#991b1b" : "#166534", borderRadius: 9, padding: "11px 14px", fontSize: 12, fontWeight: 750, display: "flex", alignItems: "center", gap: 10 }}>
-                <span aria-hidden="true" style={{ width: 24, height: 24, borderRadius: "50%", background: appraisalWindowLockMessage || isSelectedCycleClosed ? "#fef3c7" : workflowRejected ? "#fee2e2" : "#dcfce7", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 14, fontWeight: 950 }}>{appraisalWindowLockMessage || isSelectedCycleClosed ? "!" : "i"}</span>
+                <span aria-hidden="true" style={{ width: 24, height: 24, borderRadius: "50%", background: appraisalWindowLockMessage || isSelectedCycleClosed ? "#fef3c7" : workflowRejected ? "#fee2e2" : "#dcfce7", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 14, fontWeight: 900 }}>{appraisalWindowLockMessage || isSelectedCycleClosed ? "!" : "i"}</span>
                 <span>
                   {appraisalWindowLockMessage
                     ? appraisalWindowLockMessage
@@ -2670,7 +2680,8 @@ export default function StandardMyAppraisal({
                           <th style={{ ...TH, width: 30 }}>Sr. No.</th>
                           <th style={TH}>Event / Contribution</th>
                           <th style={TH}>Role</th>
-                          <th style={TH}>Date</th>
+                          <th style={TH}>From</th>
+                          <th style={TH}>To</th>
                           <th style={TH}>Level</th>
                           <th style={TH}>Attachment</th>
                           <th style={TH}>View Docs</th>
@@ -2682,7 +2693,8 @@ export default function StandardMyAppraisal({
                               <td style={TDC}>{i + 1}</td>
                               <td style={TD}><TI val={r.event} onChange={(v) => setEvent(i, "event", v)} placeholder="Event / conference / workshop name" /></td>
                               <td style={TD}><TI val={r.role} onChange={(v) => setEvent(i, "role", v)} placeholder="Convener / coordinator / member" /></td>
-                              <td style={TD}><TI val={r.date} onChange={(v) => setEvent(i, "date", maskDateDDMMYYYY(v))} placeholder="DD/MM/YYYY" /></td>
+                              <td style={TD}><TI val={r.fromDate || r.date || ""} onChange={(v) => setEvent(i, "fromDate", maskDateDDMMYYYY(v))} placeholder="DD/MM/YYYY" /></td>
+                              <td style={TD}><TI val={r.toDate || r.date || ""} onChange={(v) => setEvent(i, "toDate", maskDateDDMMYYYY(v))} placeholder="DD/MM/YYYY" /></td>
                               <td style={TD}>
                                  <select
                                    value={r.level || ""}
@@ -2701,12 +2713,12 @@ export default function StandardMyAppraisal({
                             </tr>
                           ))}
                           <tr style={{ background: "#ccfbf1" }}>
-                            <td style={{ ...TDC, fontWeight: "bold" }} colSpan={7}>Total (Max 20)</td>
+                            <td style={{ ...TDC, fontWeight: "bold" }} colSpan={8}>Total (Max 20)</td>
                             <td style={{ ...TDS, fontWeight: "bold" }}>{eventScore.toFixed(1)}</td>
                           </tr>
                         </tbody>
                       </table>
-                      <RowBtns onAdd={() => setEventRows((p) => [...p, { event: "", role: "", date: "", level: "", score: "" }])} onDel={() => setEventRows((p) => p.length > 1 ? p.slice(0, -1) : p)} canDel={eventRows.length > 1} />
+                      <RowBtns onAdd={() => setEventRows((p) => [...p, { event: "", role: "", fromDate: "", toDate: "", level: "", score: "" }])} onDel={() => setEventRows((p) => p.length > 1 ? p.slice(0, -1) : p)} canDel={eventRows.length > 1} />
                     </div>
 
                     <div style={{ marginBottom: 16 }}>
@@ -3381,9 +3393,9 @@ export default function StandardMyAppraisal({
                       <RowBtns onAdd={() => setAwards((p) => [...p, { title: "", agency: "", level: "", date: "", score: "" }])} onDel={() => setAwards((p) => p.length > 1 ? p.slice(0, -1) : p)} canDel={awards.length > 1} />
                     </div>
 
-                    {/* B7. Conference / FDP Contributions - Organised */}
+                    {/* B7. Conference / FDP / Training / Workshop Contributions as Resource Person */}
                     <div style={{ marginBottom: 16, order: 7 }}>
-                      <SubsectionTitle icon="conference">B7. Conference / FDP / Training / Workshop Contributions Organised - Max 20 marks</SubsectionTitle>
+                      <SubsectionTitle icon="conference">B7. Conference / FDP / Training / Workshop Contributions as Resource Person - Max 20 marks</SubsectionTitle>
                       <table style={T}>
                         <thead>
                           <tr>

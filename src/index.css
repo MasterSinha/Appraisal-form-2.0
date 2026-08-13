@@ -4,8 +4,6 @@
    row interactions across all dashboards.  No functionality is changed.
    - */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-
 /* - Base reset - */
 *, *::before, *::after { box-sizing: border-box; }
 

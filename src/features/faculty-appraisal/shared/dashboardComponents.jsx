@@ -445,7 +445,7 @@ export function WorkflowStatusTracker({ declaration, reviews, profile }) {
                 </span>
                 <span>{step.state}</span>
               </div>
-              <div style={{ marginTop: 6, fontSize: 12, fontWeight: 850, color: "#0f172a", lineHeight: 1.18 }}>
+              <div style={{ marginTop: 6, fontSize: 12, fontWeight: 800, color: "#0f172a", lineHeight: 1.18 }}>
                 {step.label}
               </div>
               <div style={{ marginTop: 4, fontSize: 10, color: "#64748b", lineHeight: 1.25 }}>

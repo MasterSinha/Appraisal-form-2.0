@@ -194,7 +194,7 @@ export default function LegacyPreviousYearReport({
               </svg>
             </span>
             <div>
-              <div style={{ color: "#111827", fontSize: 16, fontWeight: 950 }}>No previous-year report available</div>
+              <div style={{ color: "#111827", fontSize: 16, fontWeight: 900 }}>No previous-year report available</div>
               <div style={{ marginTop: 6, color: "#4c1d95", fontSize: 12, fontWeight: 900 }}>Academic Year: {academicYear}</div>
               <div style={{ marginTop: 8, color: "#64748b", fontSize: 13, fontWeight: 700 }}>
                 We could not find a submitted previous-year appraisal report for this academic year. Please contact appraisal@dypiu.ac.in.

@@ -262,7 +262,7 @@ export default function DashboardSidebar({
   return (
     <aside className="appraisal-sidebar" style={sidebarShellStyle}>
       <div style={{ display: "flex", alignItems: "center", gap: 11, padding: "2px 2px 4px" }}>
-        <div style={{ width: 44, height: 44, borderRadius: 14, background: "linear-gradient(135deg,#6366f1 0%,#4338ca 100%)", border: "1px solid rgba(199,210,254,0.35)", display: "flex", alignItems: "center", justifyContent: "center", color: "#f8fafc", fontWeight: 950, fontSize: 13, boxShadow: "0 10px 22px rgba(79,70,229,0.38), 0 0 0 3px rgba(99,102,241,0.10)", letterSpacing: 0, flexShrink: 0 }}>FA</div>
+        <div style={{ width: 44, height: 44, borderRadius: 14, background: "linear-gradient(135deg,#6366f1 0%,#4338ca 100%)", border: "1px solid rgba(199,210,254,0.35)", display: "flex", alignItems: "center", justifyContent: "center", color: "#f8fafc", fontWeight: 900, fontSize: 13, boxShadow: "0 10px 22px rgba(79,70,229,0.38), 0 0 0 3px rgba(99,102,241,0.10)", letterSpacing: 0, flexShrink: 0 }}>FA</div>
         <div style={{ minWidth: 0 }}>
           <div style={{ color: "#f8fafc", fontWeight: 900, fontSize: 13.5, lineHeight: 1.2, letterSpacing: 0 }}>{appInfo.PORTAL_NAME}</div>
           <div style={{ color: "#7c8698", fontSize: 10, lineHeight: 1.3, marginTop: 3 }}>{appInfo.UNIVERSITY_NAME}</div>
@@ -362,7 +362,7 @@ export default function DashboardSidebar({
               onClick={() => setSectionMenuOpen((open) => !open)}
               aria-haspopup="listbox"
               aria-expanded={sectionMenuOpen}
-              style={{ width: "100%", height: 40, border: sectionMenuOpen ? "1px solid rgba(255,255,255,0.28)" : "1px solid rgba(255,255,255,0.10)", borderRadius: 12, padding: "0 11px 0 9px", color: "#f8fafc", background: "rgba(255,255,255,0.05)", fontFamily: "inherit", fontWeight: 850, cursor: "pointer", display: "flex", alignItems: "center", gap: 9, boxShadow: sectionMenuOpen ? "0 0 0 3px rgba(255,255,255,0.06)" : "none" }}
+              style={{ width: "100%", height: 40, border: sectionMenuOpen ? "1px solid rgba(255,255,255,0.28)" : "1px solid rgba(255,255,255,0.10)", borderRadius: 12, padding: "0 11px 0 9px", color: "#f8fafc", background: "rgba(255,255,255,0.05)", fontFamily: "inherit", fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", gap: 9, boxShadow: sectionMenuOpen ? "0 0 0 3px rgba(255,255,255,0.06)" : "none" }}
             >
               <SectionIcon section={sectionTab} />
               <span style={{ flex: 1, textAlign: "left", fontSize: 12.5 }}>{selectedSectionLabel}</span>

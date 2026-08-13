@@ -288,7 +288,7 @@ export function ScoreCard({
 
       {hasRemarks && (
         <div className="score-card-remarks-slot" style={{ background: isFinal ? "#fff" : "#f8fafc", border: isFinal ? "1px solid #e9d5ff" : "1px solid #e2e8f0", borderRadius: 10, padding: compact ? "8px 10px" : "9px 11px" }}>
-          <div style={{ fontSize: 11, fontWeight: 850, color: isFinal ? "#5b21b6" : "#475569", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 5 }}>{remarksTitle || `${title} Remarks`}</div>
+          <div style={{ fontSize: 11, fontWeight: 800, color: isFinal ? "#5b21b6" : "#475569", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 5 }}>{remarksTitle || `${title} Remarks`}</div>
           <div className="score-card-remarks-content">{remarksContent}</div>
         </div>
       )}

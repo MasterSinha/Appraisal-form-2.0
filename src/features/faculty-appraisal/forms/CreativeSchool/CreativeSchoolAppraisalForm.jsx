@@ -258,7 +258,7 @@ export const emptyCreativeSchoolForm = (defaultSchool = "SoD - School of Design"
   feedback: [{ code: "", fb1: "", fb2: "", score: "" }],
   uniActs: [{ activity: "", durationCat: "", period: "", score: "" }],
   deptActs: [{ activity: "", durationCat: "", period: "", score: "" }],
-  events: [{ event: "", role: "", date: "", level: "", score: "" }],
+  events: [{ event: "", role: "", fromDate: "", toDate: "", level: "", score: "" }],
   society: [{ activity: "", details: "", date: "", score: "", max: 10 }],
   industry: [{ activity: "", partner: "", date: "", score: "" }],
   alumni: [{ activity: "", details: "", date: "", score: "" }],
@@ -315,7 +315,7 @@ export const PART_B_SECTIONS = [
   { key: "externalProjects", title: "B4. Funded Research / Creative Projects & Grants", max: 20, doc: "ext", fields: [["title", "Title of Project / Grant"], ["agency", "Funding Agency"], ["date", "Sanction Date"], ["amount", "Amount (₹)"], ["role", "PI / Co-PI"], ["status", "Status"]] },
   { key: "research", title: "B5. Research / Creative Guidance", max: 20, doc: "res", rowMax: researchGuidanceRowMax, fields: [["degree", "Degree (PhD/PG)"], ["name", "Name of Student / Scholar"], ["status", "Status (Ongoing/Awarded)"], ["date", "Date"]] },
   { key: "consultancy", title: "B6. Consultancy, Training & Creative Commissions", max: 30, doc: "con", fields: [["client", "Client / Organisation"], ["nature", "Nature of Engagement"], ["amount", "Revenue Generated (₹)"]] },
-  { key: "confs", title: "B7. Conference / FDP / Festival Contributions — Organised", max: 20, doc: "conf", fields: [["title", "Event / Session Title"], ["role", "Role"], ["date", "Date"], ["level", "Level (Intl./National)"]] },
+  { key: "confs", title: "B7. Conference / FDP / Training / Workshop Contributions as Resource Person", max: 20, doc: "conf", fields: [["title", "Event / Session Title"], ["role", "Role"], ["date", "Date"], ["level", "Level (Intl./National)"]] },
   { key: "fdps", title: "B8. Conference / FDP / Industry-Studio Training Attended", max: 20, doc: "fdp", fields: [["program", "Programme / Event"], ["fromDate", "From"], ["toDate", "To"], ["org", "Organised By"]] },
   { key: "awards", title: "B9. Research Awards, Fellowships, Reviewer & Citations", max: 20, doc: "awd", fields: [["title", "Title of Award / Fellowship / Metric"], ["agency", "Awarding Agency"], ["level", "Level"], ["date", "Date"]] },
   { key: "innovation", title: "B10. Innovation, Start-ups & Technology Transfer", max: 20, doc: "inn", fields: [["title", "Title / Start-up / Product"], ["role", "Role"], ["status", "Status"]] },
@@ -326,7 +326,7 @@ export const PART_B_SECTIONS = [
 export const PART_C_SECTIONS = [
   { key: "uniActs", title: "C1. Administration at University Level", max: 50, doc: "uni", fields: [["activity", "Activity / Responsibility"], ["durationCat", "Duration Category"], ["period", "Period"]] },
   { key: "deptActs", title: "C2. Administration at School Level", max: 30, doc: "dept", fields: [["activity", "Activity / Responsibility"], ["durationCat", "Duration Category"], ["period", "Period"]] },
-  { key: "events", title: "C3. Event Organisation & Institutional Visibility", max: 20, doc: "evt", fields: [["event", "Event / Contribution"], ["role", "Role"], ["date", "Date"], ["level", "Level"]] },
+  { key: "events", title: "C3. Event Organisation & Institutional Visibility", max: 20, doc: "evt", fields: [["event", "Event / Contribution"], ["role", "Role"], ["fromDate", "From"], ["toDate", "To"], ["level", "Level"]] },
   { key: "society", title: "C4. Mentoring Student Clubs, Outreach, Extension & Social Responsibility", max: 10, doc: "soc", fields: [["activity", "Activity"], ["details", "Details"], ["date", "Date"]] },
   { key: "industry", title: "C5. Industry Interaction & Linkages", max: 10, doc: "ind", fields: [["activity", "Activity (MOU / CoE / Drive / Programme)"], ["partner", "Industry Partner"], ["date", "Date"]] },
   { key: "alumni", title: "C6. Alumni Engagement & Networking", max: 10, doc: "alm", fields: [["activity", "Activity"], ["details", "Details"], ["date", "Date"]] },
@@ -1270,6 +1270,8 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
                             <RO value={row.pctConducted || (Number(row.planned) > 0 && Number(row.conducted) >= 0 ? `${((Number(row.conducted) / Number(row.planned)) * 100).toFixed(1)}%` : "")} placeholder="%" center />
                           ) : section.key === "research" && key === "date" ? (
                             <RO value={row.status === "Ongoing" ? "NA" : row[key]} />
+                          ) : section.key === "events" && (key === "fromDate" || key === "toDate") ? (
+                            <RO value={row[key] || row.date} />
                           ) : (
                             <RO value={row[key]} />
                           )
@@ -1326,7 +1328,7 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
                           <RO value={row.pctConducted} center />
                         ) : (
                           <>
-                            <TI value={row[key]} type={key === "amount" ? "integer" : NUMERIC_KEYS.has(key) ? "number" : "text"} center={section.key === "courseFile" && key === "title"} placeholder={section.key === "research" && key === "date" && row.status === "Ongoing" ? "Not required" : placeholderForField(section.key, key)} max={key === "fb1" || key === "fb2" ? 5 : undefined} deferClampWhileTyping={key === "fb1" || key === "fb2"} textOnly={TEXT_ONLY_KEYS.has(key) && !(section.key === "courseFile" && key === "title")} readOnly={!editableSelf || readOnlyField || selfLocked || socRowLocked || (section.key === "research" && key === "date" && row.status === "Ongoing")} onChange={(value) => updateRow(index, key, value)} />
+                            <TI value={section.key === "events" && (key === "fromDate" || key === "toDate") ? (row[key] || row.date || "") : row[key]} type={key === "amount" ? "integer" : NUMERIC_KEYS.has(key) ? "number" : "text"} center={section.key === "courseFile" && key === "title"} placeholder={section.key === "research" && key === "date" && row.status === "Ongoing" ? "Not required" : placeholderForField(section.key, key)} max={key === "fb1" || key === "fb2" ? 5 : undefined} deferClampWhileTyping={key === "fb1" || key === "fb2"} textOnly={TEXT_ONLY_KEYS.has(key) && !(section.key === "courseFile" && key === "title")} readOnly={!editableSelf || readOnlyField || selfLocked || socRowLocked || (section.key === "research" && key === "date" && row.status === "Ongoing")} onChange={(value) => updateRow(index, key, value)} />
                             {section.key === "acr" && key === "label" && ACR_DETAIL_POINTS[row[key]] && (
                               <ul style={{ margin: "5px 0 0 16px", padding: 0, color: "#64748b", fontSize: 10, lineHeight: 1.5 }}>
                                 {ACR_DETAIL_POINTS[row[key]].map((point) => <li key={point}>{point}</li>)}
@@ -2464,7 +2466,7 @@ export function WorkflowTracker({ declaration, reviews, profile }) {
                 </span>
                 <span>{step.state}</span>
               </div>
-              <div style={{ fontSize: 12, fontWeight: 850, marginTop: 6, color: "#0f172a", lineHeight: 1.18 }}>{step.label}</div>
+              <div style={{ fontSize: 12, fontWeight: 800, marginTop: 6, color: "#0f172a", lineHeight: 1.18 }}>{step.label}</div>
               <div style={{ fontSize: 10, color: "#64748b", marginTop: 4, lineHeight: 1.25 }}>{step.time ? new Date(step.time).toLocaleString() : "No timestamp yet"}</div>
             </div>
           );
@@ -2980,7 +2982,7 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
         ...summaryRow(applicability, "externalProjects", { id: "B4", label: "External Research / Consultancy Projects", max: 20, score: rowSum("externalProjects", 20) }),
         ...summaryRow(applicability, "research", { id: "B5", label: "Research Guidance - PhD / PG", max: 20, score: rowSum("research", 20) }),
         ...summaryRow(applicability, "consultancy", { id: "B6", label: "Consultancy, Training & Creative Commissions", max: 30, score: rowSum("consultancy", 30) }),
-        ...summaryRow(applicability, "confs", { id: "B7", label: "Conferences / Seminars / Workshops", max: 20, score: rowSum("confs", 20) }),
+        ...summaryRow(applicability, "confs", { id: "B7", label: "Conference / FDP / Training / Workshop Contributions as Resource Person", max: 20, score: rowSum("confs", 20) }),
         ...b8summaryRow(applicability, { id: "B8", label: "FDP / Self Development + Industrial Training", max: 20, score: b8Score }),
         ...summaryRow(applicability, "awards", { id: "B9", label: "Research Awards", max: 20, score: rowSum("awards", 20) }),
         ...summaryRow(applicability, "innovation", { id: "B10", label: "Innovation, Start-ups & Technology Transfer", max: 20, score: rowSum("innovation", 20) }),

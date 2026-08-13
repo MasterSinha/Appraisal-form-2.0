@@ -1,4 +1,4 @@
-﻿/* eslint-disable no-unused-vars */
+/* eslint-disable no-unused-vars */
 import { cloneElement, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { APP_INFO } from "../constants/formConfig";
@@ -257,7 +257,7 @@ function PhotoAdjustModal({ src, adjust, setAdjust, onCancel, onApply }) {
               ["y", "Move Up / Down", -70, 70, 1],
             ].map(([field, label, min, max, step]) => (
               <label key={field} style={{ display: "grid", gap: 7 }}>
-                <span style={{ display: "flex", justifyContent: "space-between", color: "#334155", fontSize: 12, fontWeight: 850 }}>
+                <span style={{ display: "flex", justifyContent: "space-between", color: "#334155", fontSize: 12, fontWeight: 800 }}>
                   {label}
                   <span style={{ color: "#64748b", fontWeight: 750 }}>{field === "zoom" ? `${Math.round(adjust.zoom * 100)}%` : adjust[field]}</span>
                 </span>

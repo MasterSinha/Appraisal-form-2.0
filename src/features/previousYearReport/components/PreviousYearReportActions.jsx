@@ -32,7 +32,7 @@ export default function PreviousYearReportActions({ report, title, showSummary =
             <DocumentIcon />
           </span>
           <div style={{ minWidth: 0 }}>
-            <div style={{ color: "#111827", fontSize: 16, fontWeight: 950, lineHeight: 1.2 }}>Previous year records are ready</div>
+            <div style={{ color: "#111827", fontSize: 16, fontWeight: 900, lineHeight: 1.2 }}>Previous year records are ready</div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 7 }}>
               <span style={pill("#eef2ff", "#4338ca", "#c7d2fe")}>Old two-part format</span>
               <span style={pill("#ecfdf5", "#047857", "#bbf7d0")}>{attachments.length} unique attachments</span>
@@ -74,7 +74,7 @@ const baseButton = {
   cursor: "pointer",
   fontFamily: "inherit",
   fontSize: 12,
-  fontWeight: 950,
+  fontWeight: 900,
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",

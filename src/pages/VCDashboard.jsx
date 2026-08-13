@@ -466,7 +466,7 @@ const VC_REPORT_PART_A_SECTIONS = [
 const VC_REPORT_PART_C_SECTIONS = [
  { key: "uniActs", title: "C1. Administration at University Level", max: 50, doc: "uni", fields: [["activity", "Activity"], ["nature", "Nature"], ["period", "Period"]] },
  { key: "deptActs", title: "C2. Administration at School Level", max: 30, doc: "dept", fields: [["activity", "Activity"], ["nature", "Nature"], ["period", "Period"]] },
- { key: "eventRows", title: "C3. Event Organisation & Institutional Visibility", max: 20, doc: "event", fields: [["event", "Event / Contribution"], ["role", "Role"], ["date", "Date"], ["level", "Level"]] },
+ { key: "eventRows", title: "C3. Event Organisation & Institutional Visibility", max: 20, doc: "event", fields: [["event", "Event / Contribution"], ["role", "Role"], ["fromDate", "From"], ["toDate", "To"], ["level", "Level"]] },
  { key: "society", title: "C4. Outreach, Extension & Social Responsibility", max: 20, doc: "soc", fields: [["label", "Activity"], ["details", "Details"], ["date", "Date"]] },
  { key: "industry", title: "C5. Industry Interaction & Linkages", max: 10, doc: "ind", fields: [["activity", "Activity"], ["partner", "Industry Partner"], ["date", "Date"]] },
  { key: "alumniRows", title: "C6. Alumni Engagement & Networking", max: 10, doc: "alumni", fields: [["activity", "Activity"], ["details", "Details"], ["date", "Date"]] },
@@ -482,7 +482,7 @@ const VC_REPORT_PART_B_SECTIONS = [
  { key: "projects2", title: "B4. External Funded Research Projects", max: 40, doc: "project2", fields: [["title", "Title of Project"], ["agency", "Funding Agency"], ["date", "Sanction Date"], ["amount", "Amount (₹)"], ["role", "PI / Co-PI"], ["status", "Status"]] },
  { key: "research", title: "B5. Research Guidance", max: 20, doc: "res", fields: [["degree", "Degree (PhD/PG)"], ["name", "Name of Student / Scholar"], ["status", "Status (Ongoing/Awarded)"], ["date", "Date"]] },
  { key: "proposals", title: "B6. Consultancy, Testing & Training", max: 20, doc: "prop", fields: [["agency", "Client / Organisation"], ["duration", "Nature of Engagement"], ["amount", "Revenue Generated (₹)"]] },
- { key: "confs", title: "B7. Conference / FDP / Training / Workshop Contributions Organised", max: 20, doc: "conf", fields: [["title", "Event / Session Title"], ["role", "Role"], ["date", "Date"], ["level", "Level (Intl./National)"]] },
+ { key: "confs", title: "B7. Conference / FDP / Training / Workshop Contributions as Resource Person", max: 20, doc: "conf", fields: [["title", "Event / Session Title"], ["role", "Role"], ["date", "Date"], ["level", "Level (Intl./National)"]] },
  { key: "fdps", title: "B8. Conference / FDP / Industry Training - Attended", max: 20, doc: "fdp", fields: [["program", "Programme / Event"], ["fromDate", "From"], ["toDate", "To"], ["org", "Organised By"]] },
  { key: "awards", title: "B9. Research Awards, Fellowships, Reviewer of Journal & Citations", max: 20, doc: "awd", fields: [["title", "Title of Award / Fellowship / Metric"], ["agency", "Awarding Agency"], ["level", "Level"], ["date", "Date"]] },
  { key: "products", title: "B10. Innovation, Start-ups & Technology Transfer", max: 20, doc: "prod", fields: [["details", "Title / Start-up / Product"], ["role", "Role"], ["status", "Status"]] },
@@ -743,7 +743,7 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
 <tbody>{rows(person[key]).map((r, i) =>(
 <tr key={i} style={i % 2 ? { background: "#f8fafc" } : {}}>
 <td style={TDC}>{i + 1}</td>
- {fields.map(([field]) =><td key={field} style={TD}><RO val={key === "quals" && field === "label" ? qualificationRowDescription(r) : r[field]} /></td>)}
+ {fields.map(([field]) =><td key={field} style={TD}><RO val={key === "quals" && field === "label" ? qualificationRowDescription(r) : key === "eventRows" && (field === "fromDate" || field === "toDate") ? (r[field] || r.date) : r[field]} /></td>)}
 <td style={TDV}><ViewDocsCell docKey={`${docPfx}-${i}`} docs={docs} /></td>
  {renderScoreCells(r, key, i)}
 </tr>
@@ -757,7 +757,7 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
  {[
  { title: "C1. Administration at University Level (Max 50)", key: "uniActs", docPfx: "uni", fields: [["activity", "Activity / Responsibility"], ["nature", "Duration Category"], ["period", "Period"]] },
  { title: "C2. Administration at School Level (Max 30)", key: "deptActs", docPfx: "dept", fields: [["activity", "Activity / Responsibility"], ["nature", "Duration Category"], ["period", "Period"]] },
- { title: "C3. Event Organisation & Institutional Visibility (Max 20)", key: "eventRows", docPfx: "event", fields: [["event", "Event / Contribution"], ["role", "Role"], ["date", "Date"], ["level", "Level"]] },
+ { title: "C3. Event Organisation & Institutional Visibility (Max 20)", key: "eventRows", docPfx: "event", fields: [["event", "Event / Contribution"], ["role", "Role"], ["fromDate", "From"], ["toDate", "To"], ["level", "Level"]] },
  { title: "C4. Outreach, Extension & Social Responsibility (Max 20)", key: "society", docPfx: "soc", fields: [["label", "Activity"], ["details", "Details"], ["date", "Date"]] },
  { title: "C5. Industry Interaction & Linkages (Max 10)", key: "industry", docPfx: "ind", fields: [["activity", "Activity"], ["partner", "Industry Partner"], ["date", "Date"]] },
  { title: "C6. Alumni Engagement & Networking (Max 10)", key: "alumniRows", docPfx: "alumni", fields: [["activity", "Activity"], ["details", "Details"], ["date", "Date"]] },
@@ -771,7 +771,7 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
 <tbody>{rows(person[key]).map((r, i) =>(
 <tr key={i} style={key === "society" && societyRowLocked(r) ? { background: "#f1f5f9", opacity: 0.65 } : i % 2 ? { background: "#f8fafc" } : {}}>
 <td style={TDC}>{i + 1}</td>
- {fields.map(([field]) =><td key={field} style={TD}><RO val={r[field]} /></td>)}
+ {fields.map(([field]) =><td key={field} style={TD}><RO val={key === "eventRows" && (field === "fromDate" || field === "toDate") ? (r[field] || r.date) : r[field]} /></td>)}
 <td style={TDV}><ViewDocsCell docKey={`${docPfx}-${i}`} docs={docs} /></td>
  {renderScoreCells(r, key, i)}
 </tr>
@@ -854,7 +854,7 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
  columns: [["Degree", (r) =>r.degree], ["Name of Student / Scholar", (r) =>r.name], ["Status", (r) =>r.status || r.thesis], ["Date", (r) =>(r.status || r.thesis) === "Ongoing" ? "NA" : r.date]] },
  { title: "B6. Consultancy, Testing & Training (Max 20)", key: "proposals", docPfx: "prop",
  columns: [["Client / Organisation", (r) =>r.agency || r.title], ["Nature of Engagement", (r) =>r.duration || r.nature], ["Revenue Generated", (r) =>r.amount || r.revenue]] },
- { title: "B7. Conference / FDP / Training / Workshop Contributions Organised (Max 20)", key: "confs", docPfx: "conf",
+ { title: "B7. Conference / FDP / Training / Workshop Contributions as Resource Person (Max 20)", key: "confs", docPfx: "conf",
  columns: [["Event / Session Title", (r) =>r.title], ["Role", (r) =>r.role || r.type], ["Date", (r) =>r.date], ["Level", (r) =>r.level || r.org]] },
  { title: "B8. Conference / FDP / Industry Training - Attended (Max 20)", key: "fdps", docPfx: "fdp",
  columns: [["Programme / Event", (r) =>r.program], ["From", (r) =>r.fromDate], ["To", (r) =>r.toDate], ["Organised By", (r) =>r.org]] },
@@ -2152,7 +2152,7 @@ export default function VCDashboard() {
  {/* -- Sidebar -- */}
 <aside className="vc-sidebar" style={{ width: 264, height: "100vh", minHeight: "100vh", boxSizing: "border-box", overflow: "hidden", background: "linear-gradient(180deg,#111827 0%,#111827 54%,#0f172a 100%)", display: "flex", flexDirection: "column", padding: "18px 13px", gap: 11, position: "sticky", top: 0, alignSelf: "flex-start", flexShrink: 0, borderRight: "1px solid rgba(148,163,184,0.14)", boxShadow: "10px 0 28px rgba(15,23,42,0.20)" }}>
 <div className="vc-sidebar-brand" style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 2, padding: "0 1px" }}>
-<div className="vc-brand-mark" style={{ width: 42, height: 42, borderRadius: 13, background: "linear-gradient(135deg,#0ea5e9 0%,#7c3aed 100%)", border: "1px solid rgba(224,242,254,0.35)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 950, fontSize: 13, boxShadow: "0 10px 22px rgba(124,58,237,0.38), 0 0 0 3px rgba(124,58,237,0.10)" }}>FA</div>
+<div className="vc-brand-mark" style={{ width: 42, height: 42, borderRadius: 13, background: "linear-gradient(135deg,#0ea5e9 0%,#7c3aed 100%)", border: "1px solid rgba(224,242,254,0.35)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 900, fontSize: 13, boxShadow: "0 10px 22px rgba(124,58,237,0.38), 0 0 0 3px rgba(124,58,237,0.10)" }}>FA</div>
 <div style={{ minWidth: 0 }}>
 <div style={{ color: "#f8fafc", fontWeight: 900, fontSize: 13, lineHeight: 1.15 }}>{APP_INFO.PORTAL_NAME}</div>
 <div style={{ color: "#94a3b8", fontSize: 10, lineHeight: 1.3, marginTop: 3 }}>{APP_INFO.UNIVERSITY_NAME}</div>
@@ -2320,7 +2320,7 @@ University Overview
 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M7 3h7l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" /><path d="M14 3v4h4" /><path d="M9 13h6M9 17h4" /></svg>
 </span>
 <span>
-<span style={{ display: "block", color: "#6d28d9", fontWeight: 950, fontSize: 17, lineHeight: 1.1 }}>{deanList.length + dirList.length + hodList.length + centerHeadList.length + facList.length + nonTeachingList.length + nonTeachingReviewedList.length}</span>
+<span style={{ display: "block", color: "#6d28d9", fontWeight: 900, fontSize: 17, lineHeight: 1.1 }}>{deanList.length + dirList.length + hodList.length + centerHeadList.length + facList.length + nonTeachingList.length + nonTeachingReviewedList.length}</span>
 <span style={{ display: "block", fontSize: 10.5, color: "#6b7280", fontWeight: 700, marginTop: 1 }}>total submissions</span>
 </span>
 </div>
