@@ -1426,7 +1426,7 @@ export default function NonEngineeringDeanDashboard() {
       )}
 
       {(activeMainTab === "schoolAppraisal" || activeMainTab === "directorApprovals" || activeMainTab === "facultyApprovals") && !reviewingApproval && (
-        <div style={{ position: "relative" }}>
+        <div style={{ position: "relative", display: "flex", flexDirection: "column", gap: 18 }}>
           {loadingYearData && (
             <div className="appraisal-year-loading-overlay" role="status" aria-live="polite">
               <div className="appraisal-year-loading-card">
