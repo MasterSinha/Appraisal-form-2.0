@@ -2152,7 +2152,7 @@ export default function VCDashboard() {
  {/* -- Sidebar -- */}
 <aside className="vc-sidebar" style={{ width: 264, height: "100vh", minHeight: "100vh", boxSizing: "border-box", overflow: "hidden", background: "linear-gradient(180deg,#111827 0%,#111827 54%,#0f172a 100%)", display: "flex", flexDirection: "column", padding: "18px 13px", gap: 11, position: "sticky", top: 0, alignSelf: "flex-start", flexShrink: 0, borderRight: "1px solid rgba(148,163,184,0.14)", boxShadow: "10px 0 28px rgba(15,23,42,0.20)" }}>
 <div className="vc-sidebar-brand" style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 2, padding: "0 1px" }}>
-<div className="vc-brand-mark" style={{ width: 42, height: 42, borderRadius: 13, background: "linear-gradient(135deg,#0ea5e9 0%,#7c3aed 100%)", border: "1px solid rgba(224,242,254,0.35)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 950, fontSize: 13, boxShadow: "0 10px 22px rgba(124,58,237,0.38), 0 0 0 3px rgba(124,58,237,0.10)" }}>FA</div>
+<div className="vc-brand-mark" style={{ width: 42, height: 42, borderRadius: 13, background: "linear-gradient(135deg,#0ea5e9 0%,#7c3aed 100%)", border: "1px solid rgba(224,242,254,0.35)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 900, fontSize: 13, boxShadow: "0 10px 22px rgba(124,58,237,0.38), 0 0 0 3px rgba(124,58,237,0.10)" }}>FA</div>
 <div style={{ minWidth: 0 }}>
 <div style={{ color: "#f8fafc", fontWeight: 900, fontSize: 13, lineHeight: 1.15 }}>{APP_INFO.PORTAL_NAME}</div>
 <div style={{ color: "#94a3b8", fontSize: 10, lineHeight: 1.3, marginTop: 3 }}>{APP_INFO.UNIVERSITY_NAME}</div>
@@ -2320,7 +2320,7 @@ University Overview
 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M7 3h7l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" /><path d="M14 3v4h4" /><path d="M9 13h6M9 17h4" /></svg>
 </span>
 <span>
-<span style={{ display: "block", color: "#6d28d9", fontWeight: 950, fontSize: 17, lineHeight: 1.1 }}>{deanList.length + dirList.length + hodList.length + centerHeadList.length + facList.length + nonTeachingList.length + nonTeachingReviewedList.length}</span>
+<span style={{ display: "block", color: "#6d28d9", fontWeight: 900, fontSize: 17, lineHeight: 1.1 }}>{deanList.length + dirList.length + hodList.length + centerHeadList.length + facList.length + nonTeachingList.length + nonTeachingReviewedList.length}</span>
 <span style={{ display: "block", fontSize: 10.5, color: "#6b7280", fontWeight: 700, marginTop: 1 }}>total submissions</span>
 </span>
 </div>

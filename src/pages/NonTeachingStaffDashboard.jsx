@@ -512,7 +512,7 @@ function NonTeachingApprovalTracker({ workflow }) {
                 </span>
                 <span>{tone.label}</span>
               </div>
-              <div style={{ marginTop: 6, fontSize: 12, fontWeight: 850, color: "#0f172a", lineHeight: 1.18 }}>
+              <div style={{ marginTop: 6, fontSize: 12, fontWeight: 800, color: "#0f172a", lineHeight: 1.18 }}>
                 {step.isInitial ? "Staff Submission" : step.designation}
               </div>
               <div style={{ marginTop: 4, fontSize: 10, color: "#64748b", lineHeight: 1.25 }}>
@@ -540,7 +540,7 @@ function NonTeachingProgressCard({ totals, max }) {
     <div className="appraisal-progress-card" style={{ background: "#fff", borderRadius: 14, padding: "18px 22px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb", display: "flex", flexDirection: "column", justifyContent: "center", gap: 10 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
         <div style={{ fontSize: 14, color: "#374151", fontWeight: 800 }}>Overall Progress</div>
-        <div style={{ fontSize: 22, color: "#111827", fontWeight: 950, lineHeight: 1 }}>{overallProgress}%</div>
+        <div style={{ fontSize: 22, color: "#111827", fontWeight: 900, lineHeight: 1 }}>{overallProgress}%</div>
       </div>
       <div aria-label={`Overall progress ${overallProgress}%`} style={{ height: 8, borderRadius: 999, background: "#e5e7eb", overflow: "hidden" }}>
         <div style={{ width: `${overallProgress}%`, height: "100%", borderRadius: 999, background: "linear-gradient(90deg,#06b6d4,#10b981)", transition: "width 300ms ease" }} />
@@ -552,7 +552,7 @@ function NonTeachingProgressCard({ totals, max }) {
           return (
             <div key={label} title={`${label}: ${score.toFixed(1)} / ${partMax}`} style={{ minWidth: 0, background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 6, padding: "5px 4px", textAlign: "center" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 3, marginBottom: 1 }}>
-                <span style={{ width: 14, height: 14, borderRadius: 999, display: "inline-flex", alignItems: "center", justifyContent: "center", background: `${partColor}14`, border: `1px solid ${partColor}33`, color: partColor, fontSize: 9, fontWeight: 950 }}>{partLetter}</span>
+                <span style={{ width: 14, height: 14, borderRadius: 999, display: "inline-flex", alignItems: "center", justifyContent: "center", background: `${partColor}14`, border: `1px solid ${partColor}33`, color: partColor, fontSize: 9, fontWeight: 900 }}>{partLetter}</span>
               </div>
               <div style={{ fontSize: 10, color: "#0f172a", fontWeight: 900, whiteSpace: "nowrap" }}>{score.toFixed(0)}/{partMax}</div>
             </div>
@@ -1063,7 +1063,7 @@ export function NonTeachingAppraisalForm({ role = sessionStorage.getItem("role")
     <div style={{ minHeight: "100vh", display: "flex", background: "#f1f5f9", fontFamily: "inherit", color: "#0f172a" }}>
       <aside className="appraisal-sidebar" style={{ width: 260, height: "100vh", position: "fixed", left: 0, top: 0, zIndex: 20, boxSizing: "border-box", background: "linear-gradient(180deg,#111827 0%,#111827 54%,#0f172a 100%)", padding: "18px 14px 110px", color: "#e2e8f0", display: "flex", flexDirection: "column", gap: 12, borderRight: "1px solid rgba(148,163,184,0.14)", boxShadow: "10px 0 28px rgba(15,23,42,0.20)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 1px 3px" }}>
-          <div style={{ width: 42, height: 42, borderRadius: 13, background: "linear-gradient(135deg,#6366f1 0%,#4338ca 100%)", border: "1px solid rgba(199,210,254,0.35)", display: "flex", alignItems: "center", justifyContent: "center", color: "#f8fafc", fontWeight: 950, fontSize: 13, boxShadow: "0 10px 22px rgba(79,70,229,0.38), 0 0 0 3px rgba(99,102,241,0.10)" }}>NT</div>
+          <div style={{ width: 42, height: 42, borderRadius: 13, background: "linear-gradient(135deg,#6366f1 0%,#4338ca 100%)", border: "1px solid rgba(199,210,254,0.35)", display: "flex", alignItems: "center", justifyContent: "center", color: "#f8fafc", fontWeight: 900, fontSize: 13, boxShadow: "0 10px 22px rgba(79,70,229,0.38), 0 0 0 3px rgba(99,102,241,0.10)" }}>NT</div>
           <div style={{ minWidth: 0 }}>
             <div style={{ color: "#f8fafc", fontWeight: 900, fontSize: 13, lineHeight: 1.15 }}>{APP_INFO.PORTAL_NAME}</div>
             <div style={{ color: "#94a3b8", fontSize: 10, lineHeight: 1.3, marginTop: 3 }}>{APP_INFO.UNIVERSITY_NAME}</div>
@@ -1696,7 +1696,7 @@ export function NonTeachingReviewDashboard({ reviewerRole, title, subtitle, acce
     <div style={{ minHeight: "100vh", display: "flex", background: "#f1f5f9", color: "#0f172a", fontFamily: "inherit" }}>
       <aside className="appraisal-sidebar" style={{ width: 260, height: "100vh", position: "fixed", left: 0, top: 0, zIndex: 20, boxSizing: "border-box", background: "linear-gradient(180deg,#111827 0%,#111827 54%,#0f172a 100%)", color: "#e2e8f0", display: "flex", flexDirection: "column", padding: "18px 14px 86px", gap: 12, borderRight: "1px solid rgba(148,163,184,0.14)", boxShadow: "10px 0 28px rgba(15,23,42,0.20)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 1px 3px" }}>
-          <div style={{ width: 42, height: 42, borderRadius: 13, background: "linear-gradient(135deg,#6366f1 0%,#4338ca 100%)", border: "1px solid rgba(199,210,254,0.35)", display: "flex", alignItems: "center", justifyContent: "center", color: "#f8fafc", fontWeight: 950, fontSize: 13, boxShadow: "0 10px 22px rgba(79,70,229,0.38), 0 0 0 3px rgba(99,102,241,0.10)" }}>NT</div>
+          <div style={{ width: 42, height: 42, borderRadius: 13, background: "linear-gradient(135deg,#6366f1 0%,#4338ca 100%)", border: "1px solid rgba(199,210,254,0.35)", display: "flex", alignItems: "center", justifyContent: "center", color: "#f8fafc", fontWeight: 900, fontSize: 13, boxShadow: "0 10px 22px rgba(79,70,229,0.38), 0 0 0 3px rgba(99,102,241,0.10)" }}>NT</div>
           <div style={{ minWidth: 0 }}>
             <div style={{ color: "#f8fafc", fontWeight: 900, fontSize: 13, lineHeight: 1.15 }}>{APP_INFO.PORTAL_NAME}</div>
             <div style={{ color: "#94a3b8", fontSize: 10, lineHeight: 1.3, marginTop: 3 }}>{APP_INFO.UNIVERSITY_NAME}</div>

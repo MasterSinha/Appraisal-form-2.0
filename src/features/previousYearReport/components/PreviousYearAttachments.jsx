@@ -14,7 +14,7 @@ export default function PreviousYearAttachments({ attachments = [] }) {
       {attachments.map((file, index) => (
         <div key={`${file.sectionKey}-${file.fileName}-${index}`} style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: 12, alignItems: "center", border: "1px solid #e5e7eb", borderRadius: 8, padding: "9px 11px", background: "#fff" }}>
           <div style={{ minWidth: 0 }}>
-            <div style={{ color: "#111827", fontSize: 12, fontWeight: 850, overflowWrap: "anywhere" }}>{file.fileName || "Document"}</div>
+            <div style={{ color: "#111827", fontSize: 12, fontWeight: 800, overflowWrap: "anywhere" }}>{file.fileName || "Document"}</div>
             <div style={{ color: "#64748b", fontSize: 11, fontWeight: 700, marginTop: 2 }}>
               {file.sectionLabel}{file.rowNo ? ` - Row ${file.rowNo}` : ""}{file.fileType ? ` - ${file.fileType}` : ""}
             </div>

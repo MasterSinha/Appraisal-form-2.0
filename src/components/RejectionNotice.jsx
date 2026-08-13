@@ -122,14 +122,14 @@ export default function RejectionNotice({ declaration, reviews, form, item, stat
 
   return (
     <div style={{ background: "#fff7ed", border: "1px solid #fed7aa", color: "#7c2d12", borderRadius: 9, padding: "14px 16px", fontSize: 13, lineHeight: 1.45, display: "grid", gridTemplateColumns: "32px minmax(0, 1fr)", gap: 12, alignItems: "start", boxShadow: "0 8px 20px rgba(124,45,18,0.06)" }}>
-      <span aria-hidden="true" style={{ width: 32, height: 32, borderRadius: "50%", background: "#ffedd5", border: "1px solid #fdba74", color: "#c2410c", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 950, lineHeight: 1 }}>!</span>
+      <span aria-hidden="true" style={{ width: 32, height: 32, borderRadius: "50%", background: "#ffedd5", border: "1px solid #fdba74", color: "#c2410c", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 900, lineHeight: 1 }}>!</span>
       <div style={{ minWidth: 0 }}>
         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
-          <div style={{ fontWeight: 950, color: "#9a3412" }}>Appraisal returned for correction</div>
+          <div style={{ fontWeight: 900, color: "#9a3412" }}>Appraisal returned for correction</div>
           <span style={{ background: "#ffedd5", border: "1px solid #fdba74", color: "#9a3412", borderRadius: 999, padding: "3px 9px", fontSize: 11, fontWeight: 900 }}>By {notice.reviewer}</span>
         </div>
         <div style={{ marginTop: 9, background: "#fff", border: "1px solid #fed7aa", borderRadius: 7, padding: "8px 10px", color: "#431407", fontWeight: 700 }}>
-          <span style={{ color: "#9a3412", fontWeight: 950 }}>Remarks: </span>{notice.reason}
+          <span style={{ color: "#9a3412", fontWeight: 900 }}>Remarks: </span>{notice.reason}
         </div>
         <div style={{ marginTop: 8, color: "#9a3412", fontWeight: 800 }}>
           Please review the remarks, update the required details, and submit the appraisal again.

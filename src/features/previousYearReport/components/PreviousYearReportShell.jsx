@@ -79,7 +79,7 @@ function PreviousYearFacultyInfo({ report }) {
 
 function PartBand({ title, tone = "#dbeafe" }) {
   return (
-    <div style={{ background: tone, color: "#172033", borderRadius: 6, padding: "9px 12px", fontSize: 13, fontWeight: 950 }}>
+    <div style={{ background: tone, color: "#172033", borderRadius: 6, padding: "9px 12px", fontSize: 13, fontWeight: 900 }}>
       {title}
     </div>
   );
@@ -94,7 +94,7 @@ function EmptyNotice({ title, academicYear, children }) {
             <NoticeIcon />
           </span>
           <div>
-            <div style={{ color: "#111827", fontSize: 16, fontWeight: 950 }}>{title}</div>
+            <div style={{ color: "#111827", fontSize: 16, fontWeight: 900 }}>{title}</div>
             {academicYear && <div style={{ marginTop: 6, color: "#4c1d95", fontSize: 12, fontWeight: 900 }}>Academic Year: {academicYear}</div>}
             <div style={{ marginTop: 8, color: "#64748b", fontSize: 13, fontWeight: 700 }}>{children}</div>
           </div>

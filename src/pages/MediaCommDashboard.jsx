@@ -117,7 +117,7 @@ function SummaryRow({ label, score, max, color, tone, iconTone, icon }) {
          <span style={{ width: 32, height: 32, borderRadius: 9, background: iconTone, color, border: `1px solid ${color}20`, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
            <InlineSvgIcon paths={SUMMARY_ICONS[icon]} size={17} />
          </span>
-         <span style={{ color: "#1f2937", fontSize: 13, fontWeight: 850, lineHeight: 1.35 }}>{label}</span>
+         <span style={{ color: "#1f2937", fontSize: 13, fontWeight: 800, lineHeight: 1.35 }}>{label}</span>
        </div>
      </td>
      <td style={{ width: 150, padding: "10px 12px", border: 0, textAlign: "right", verticalAlign: "middle" }}>
@@ -860,7 +860,7 @@ export default function MediaCommDashboard({ fixedRole }) {
   <div className="appraisal-progress-card" style={{ background: "#fff", borderRadius: 14, padding: "18px 22px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb", display: "flex", flexDirection: "column", justifyContent: "center", gap: 10 }}>
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
       <div style={{ fontSize: 14, color: "#374151", fontWeight: 800 }}>Overall Progress</div>
-      <div style={{ fontSize: 22, color: "#111827", fontWeight: 950, lineHeight: 1 }}>{Math.round((totals.total / (totals.maxScores?.grand || 700)) * 100)}%</div>
+      <div style={{ fontSize: 22, color: "#111827", fontWeight: 900, lineHeight: 1 }}>{Math.round((totals.total / (totals.maxScores?.grand || 700)) * 100)}%</div>
     </div>
     <div style={{ height: 8, borderRadius: 999, background: "#e5e7eb", overflow: "hidden" }}>
       <div style={{ width: `${Math.round((totals.total / (totals.maxScores?.grand || 700)) * 100)}%`, height: "100%", borderRadius: 999, background: "linear-gradient(90deg,#06b6d4,#10b981)", transition: "width 300ms ease" }} />
@@ -873,7 +873,7 @@ export default function MediaCommDashboard({ fixedRole }) {
         return (
         <div key={label} title={`${label}: ${score.toFixed(1)} / ${max}`} style={{ minWidth: 0, background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 6, padding: "5px 4px", textAlign: "center" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 3, marginBottom: 1 }}>
-            <span style={{ width: 14, height: 14, borderRadius: 999, display: "inline-flex", alignItems: "center", justifyContent: "center", background: `${partColor}14`, border: `1px solid ${partColor}33`, color: partColor, fontSize: 9, fontWeight: 950 }}>{partLetter}</span>
+            <span style={{ width: 14, height: 14, borderRadius: 999, display: "inline-flex", alignItems: "center", justifyContent: "center", background: `${partColor}14`, border: `1px solid ${partColor}33`, color: partColor, fontSize: 9, fontWeight: 900 }}>{partLetter}</span>
           </div>
           <div style={{ fontSize: 10, color: "#0f172a", fontWeight: 900, whiteSpace: "nowrap" }}>{score.toFixed(0)}/{max}</div>
         </div>
@@ -892,7 +892,7 @@ export default function MediaCommDashboard({ fixedRole }) {
 />}
   {!isLegacyTwoPartYear && locked && (
     <div style={{ background: appraisalWindowLockMessage || isSelectedCycleClosed ? "#fffbeb" : workflowRejected ? "#fef2f2" : "#ecfdf5", border: `1px solid ${appraisalWindowLockMessage || isSelectedCycleClosed ? "#fde68a" : workflowRejected ? "#fecaca" : "#bbf7d0"}`, color: appraisalWindowLockMessage || isSelectedCycleClosed ? "#92400e" : workflowRejected ? "#991b1b" : "#166534", borderRadius: 9, padding: "11px 14px", fontSize: 12, fontWeight: 750, display: "flex", alignItems: "center", gap: 10 }}>
-      <span aria-hidden="true" style={{ width: 24, height: 24, borderRadius: "50%", background: appraisalWindowLockMessage || isSelectedCycleClosed ? "#fef3c7" : workflowRejected ? "#fee2e2" : "#dcfce7", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 14, fontWeight: 950 }}>{appraisalWindowLockMessage || isSelectedCycleClosed ? "!" : "i"}</span>
+      <span aria-hidden="true" style={{ width: 24, height: 24, borderRadius: "50%", background: appraisalWindowLockMessage || isSelectedCycleClosed ? "#fef3c7" : workflowRejected ? "#fee2e2" : "#dcfce7", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 14, fontWeight: 900 }}>{appraisalWindowLockMessage || isSelectedCycleClosed ? "!" : "i"}</span>
       <span>
         {appraisalWindowLockMessage
           ? appraisalWindowLockMessage

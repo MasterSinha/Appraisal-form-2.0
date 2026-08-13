@@ -2464,7 +2464,7 @@ export function WorkflowTracker({ declaration, reviews, profile }) {
                 </span>
                 <span>{step.state}</span>
               </div>
-              <div style={{ fontSize: 12, fontWeight: 850, marginTop: 6, color: "#0f172a", lineHeight: 1.18 }}>{step.label}</div>
+              <div style={{ fontSize: 12, fontWeight: 800, marginTop: 6, color: "#0f172a", lineHeight: 1.18 }}>{step.label}</div>
               <div style={{ fontSize: 10, color: "#64748b", marginTop: 4, lineHeight: 1.25 }}>{step.time ? new Date(step.time).toLocaleString() : "No timestamp yet"}</div>
             </div>
           );
