@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { login, forgotPassword } from "../services/authService";
+import { refreshAcademicYearCycles } from "../services/academicYearCycles";
 import { isValidEmail, normalizeEmail } from "../utils/validation";
 
 export default function Login() {
@@ -38,6 +39,10 @@ export default function Login() {
 
     try {
       await login(email, pw);
+      // Populate every available academic year cycle (current + previous) before the dashboard
+      // mounts, so the year dropdown shows previous years immediately on first login instead of
+      // only the current year until a manual page refresh happens to trigger this fetch.
+      await refreshAcademicYearCycles();
       navigate("/dashboard", { replace: true });
     } catch (err) {
       setError(err?.message || "Invalid credentials. Please try again.");

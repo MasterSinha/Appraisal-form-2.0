@@ -2161,7 +2161,7 @@ export default function VCDashboard() {
 
 <div className="vc-sidebar-role-card" style={{ background: "linear-gradient(150deg,#581c87 0%,#3b0764 100%)", border: "1px solid rgba(196,181,253,0.28)", borderRadius: 14, padding: "13px 14px", fontSize: 11, color: "#c4b5fd", boxShadow: "0 10px 24px rgba(88,28,135,0.30)" }}>
 <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
+<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#e9d5ff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
 <path d="m3 8 4 3 5-6 5 6 4-3-1.5 9h-15L3 8Z" />
 <path d="M6 20h12" />
 </svg>
@@ -2186,16 +2186,16 @@ export default function VCDashboard() {
 <button className="vc-sidebar-nav" onClick={() =>setReviewing(null)}
  onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-1px)"; }}
  onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; }}
- style={{ position: "relative", background: "linear-gradient(135deg, rgba(124,58,237,0.22) 0%, rgba(99,102,241,0.16) 100%)", border: "1px solid rgba(196,181,253,0.28)", borderRadius: 15, padding: "10px 11px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, width: "100%", fontFamily: "inherit", transition: "transform 0.15s ease, background 0.15s ease", boxShadow: "inset 3px 0 0 #a78bfa" }}>
-<span style={{ width: 31, height: 31, borderRadius: 10, background: "rgba(167,139,250,0.20)", border: "1px solid rgba(196,181,253,0.32)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-<VcIcon name="school" size={17} color="#c4b5fd" />
+ style={{ position: "relative", background: "#f8fafc", border: "1px solid #f8fafc", borderRadius: 15, padding: "10px 11px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, width: "100%", fontFamily: "inherit", transition: "transform 0.15s ease, background 0.15s ease", boxShadow: "0 10px 24px rgba(0,0,0,0.30), 0 0 0 3px rgba(248,250,252,0.08)" }}>
+<span style={{ width: 31, height: 31, borderRadius: 10, background: "rgba(15,23,42,0.07)", border: "1px solid rgba(15,23,42,0.10)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+<VcIcon name="school" size={17} color="#0f172a" />
 </span>
 <div style={{ flex: 1, textAlign: "left", minWidth: 0 }}>
-<div style={{ color: "#f1f5f9", fontWeight: 900, fontSize: 12.5 }}>School Reviews</div>
-<div style={{ color: "#c4b5fd", fontSize: 10, marginTop: 1 }}>{totalPending} awaiting</div>
+<div style={{ color: "#0f172a", fontWeight: 900, fontSize: 12.5 }}>School Reviews</div>
+<div style={{ color: "#475569", fontSize: 10, marginTop: 1 }}>{totalPending} awaiting</div>
 </div>
  {totalPending >0 && (
-<div style={{ background: "linear-gradient(135deg,#a78bfa 0%,#7c3aed 100%)", color: "#fff", fontWeight: 900, fontSize: 10, minWidth: 20, height: 20, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 5px", boxShadow: "0 3px 8px rgba(124,58,237,0.45)", flexShrink: 0 }}>{totalPending}</div>
+<div style={{ background: "#0f172a", color: "#f8fafc", fontWeight: 900, fontSize: 10, minWidth: 20, height: 20, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 5px", flexShrink: 0 }}>{totalPending}</div>
  )}
 </button>
 
@@ -2252,12 +2252,12 @@ University Overview
 </span>
 </button>
 <div className="vc-sidebar-help" style={{ margin: "2px 0", padding: "11px 12px", background: "rgba(30,41,59,0.62)", border: "1px solid rgba(148,163,184,0.18)", borderRadius: 16, display: "flex", alignItems: "center", gap: 10 }}>
-<span style={{ width: 30, height: 30, borderRadius: 10, background: "rgba(96,165,250,0.14)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-<VcIcon name="mail" size={16} color="#60a5fa" />
+<span style={{ width: 30, height: 30, borderRadius: 10, background: "rgba(148,163,184,0.12)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+<VcIcon name="mail" size={16} color="#94a3b8" />
 </span>
 <div style={{ minWidth: 0 }}>
 <div style={{ color: "#f9fafb", fontWeight: 900, fontSize: 12, marginBottom: 4 }}>Need Help?</div>
-<a href="mailto:appraisal@dypiu.ac.in" style={{ color: "#93c5fd", fontWeight: 800, fontSize: 11, wordBreak: "break-all", textDecoration: "none" }}>appraisal@dypiu.ac.in</a>
+<a href="mailto:appraisal@dypiu.ac.in" style={{ color: "#c7d2fe", fontWeight: 800, fontSize: 11, wordBreak: "break-all", textDecoration: "none" }}>appraisal@dypiu.ac.in</a>
 </div>
 </div>
 <button type="button" onClick={() =>setShowLogoutModal(true)}

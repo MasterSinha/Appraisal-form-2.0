@@ -16,6 +16,7 @@ import {
   normalizeRoleForWorkflow,
 } from "../utils/hierarchy";
 import { standardReviewSummary, standardSubmittedScoreSummary } from "../utils/reviewSummaryTotals";
+import { isLegacyTwoPartAcademicYear, legacySubmittedTotals } from "../features/faculty-appraisal/forms/standard/legacyPreviousYearReportUtils";
 
 const n = (value) => parseFloat(value) || 0;
 const clean = (value) => String(value ?? "").trim();
@@ -185,22 +186,43 @@ const docsForQueueCard = (item = {}) => {
 
 const enrichQueueItemDocs = async (item = {}) => {
   if (!item.email || !item.academicYear) return item;
+
+  // normalizeQueueItem() above already derives self/hod/director/dean totals - including via
+  // the legacy score_summary reader - from the lightweight /dashboard/subordinates response, and
+  // most items already carry an accurate doc count from that same response. Re-fetching this
+  // person's full saved appraisal (and their doc list) for *every* item in the queue, every time,
+  // was the main reason switching academic year felt slow - it turned one list request into up
+  // to 2 extra network round trips per person, even for people who needed neither. Only pay that
+  // cost for people who actually need it: nobody reported any documents yet, or (legacy two-part
+  // format only) a reviewer score is still missing after the lightweight pass.
+  const currentDocCount = docCountFromValue(item.docs, item);
+  const isLegacyYear = isLegacyTwoPartAcademicYear(item.academicYear);
+  const missingLegacyScore = isLegacyYear && (n(item.grandTotal) === 0 || n(item.hodTotal) === 0);
+  if (currentDocCount > 0 && !missingLegacyScore) {
+    return item;
+  }
+
   let enrichedItem = item;
 
-  try {
-    const rows = await api.get("/appraisal-documents", {
-      params: {
-        academic_year: item.academicYear,
-        faculty_email: item.email,
-      },
-    });
-    const fetchedCount = docCountFromValue(rows);
-    const currentCount = docCountFromValue(item.docs, item);
-    if (fetchedCount > 0 && fetchedCount !== currentCount) {
-      enrichedItem = { ...enrichedItem, docs: rows, docCount: fetchedCount };
+  if (currentDocCount === 0) {
+    try {
+      const rows = await api.get("/appraisal-documents", {
+        params: {
+          academic_year: item.academicYear,
+          faculty_email: item.email,
+        },
+      });
+      const fetchedCount = docCountFromValue(rows);
+      if (fetchedCount > 0 && fetchedCount !== currentDocCount) {
+        enrichedItem = { ...enrichedItem, docs: rows, docCount: fetchedCount };
+      }
+    } catch {
+      // Fall through to the submitted-form endpoint below.
     }
-  } catch {
-    // Fall through to the submitted-form endpoint below.
+  }
+
+  if (!missingLegacyScore && docCountFromValue(enrichedItem.docs, enrichedItem) > 0) {
+    return enrichedItem;
   }
 
   try {
@@ -211,9 +233,52 @@ const enrichQueueItemDocs = async (item = {}) => {
     const bestSubmittedDocs = docsForQueueCard(submitted);
     const submittedCount = docCountFromValue(bestSubmittedDocs, submitted);
     const currentCount = docCountFromValue(enrichedItem.docs, enrichedItem);
-    const submittedSummary = standardSubmittedScoreSummary(submitted, standardSubmittedScoreSummary(enrichedItem));
+    // The 2025-2026 cycle stored scores under score_summary.{role} rather than the standard
+    // partA/.../hodTotal fields normalizeQueueItem reads. This pass overwrites the self score
+    // with a fresh standardSubmittedScoreSummary() below, which would silently wipe out that
+    // earlier legacy-aware self score - and it's also the only place with the *full* fetched
+    // submission (fetchSavedAppraisal), which is needed to recover reviewer totals (hod/
+    // director/dean/vc) for this legacy format when the lightweight queue-list item lacked them.
+    const legacyTotals = isLegacyTwoPartAcademicYear(item.academicYear)
+      ? legacySubmittedTotals(submitted, submitted?.declaration, submitted?.totals, submitted?.payload, submitted?.payload?.totals, submitted?.payload?.form, submitted?.form, submitted?.info, submitted?.payload?.declaration)
+      : null;
+    const submittedSummary = legacyTotals
+      ? {
+          partA: n(legacyTotals.partA),
+          partB: n(legacyTotals.partB),
+          partC: 0,
+          partD: 0,
+          total: n(legacyTotals.grand ?? (n(legacyTotals.partA) + n(legacyTotals.partB))),
+          partAMax: n(legacyTotals.partAMax),
+          partBMax: n(legacyTotals.partBMax),
+          partCMax: 0,
+          partDMax: 0,
+          grandMax: n(legacyTotals.grandMax) || 575,
+        }
+      : standardSubmittedScoreSummary(submitted, standardSubmittedScoreSummary(enrichedItem));
+    const legacyReviewerFields = legacyTotals
+      ? {
+          hodTotal: numberValue(legacyTotals.hodTotal, enrichedItem.hodTotal),
+          hodPartA: numberValue(legacyTotals.hodPartA, enrichedItem.hodPartA),
+          hodPartB: numberValue(legacyTotals.hodPartB, enrichedItem.hodPartB),
+          hodRemarks: firstValue(legacyTotals.hodRemarks, enrichedItem.hodRemarks),
+          directorTotal: numberValue(legacyTotals.directorTotal, enrichedItem.directorTotal),
+          directorPartA: numberValue(legacyTotals.directorPartA, enrichedItem.directorPartA),
+          directorPartB: numberValue(legacyTotals.directorPartB, enrichedItem.directorPartB),
+          directorRemarks: firstValue(legacyTotals.directorRemarks, enrichedItem.directorRemarks),
+          deanTotal: numberValue(legacyTotals.deanTotal, enrichedItem.deanTotal),
+          deanPartA: numberValue(legacyTotals.deanPartA, enrichedItem.deanPartA),
+          deanPartB: numberValue(legacyTotals.deanPartB, enrichedItem.deanPartB),
+          deanRemarks: firstValue(legacyTotals.deanRemarks, enrichedItem.deanRemarks),
+          vcTotal: numberValue(legacyTotals.vcTotal, enrichedItem.vcTotal),
+          vcPartA: numberValue(legacyTotals.vcPartA, enrichedItem.vcPartA),
+          vcPartB: numberValue(legacyTotals.vcPartB, enrichedItem.vcPartB),
+          vcRemarks: firstValue(legacyTotals.vcRemarks, enrichedItem.vcRemarks),
+        }
+      : {};
     const nextItem = {
       ...enrichedItem,
+      ...legacyReviewerFields,
       partATotal: submittedSummary.partA,
       partBTotal: submittedSummary.partB,
       partCTotal: submittedSummary.partC,
@@ -585,8 +650,30 @@ const normalizeQueueItem = (item = {}) => {
   const email = subjectProfile.email;
   const academicYear = firstValue(item.academicYear, item.academic_year, item.info?.ay, getActiveAcademicYear(), APP_INFO.DEFAULT_AY, "2026-2027");
   const school = subjectProfile.school;
-  const selfSummary = standardSubmittedScoreSummary(item);
-  const reviewSummary = standardReviewSummary(item, item.payload, item.form);
+  // The 2025-2026 cycle used a legacy two-part form (Part A + Part B only) whose scores are
+  // stored under score_summary.{role} rather than the standard partA/partB/partC/partD +
+  // hodTotal/directorTotal/... fields read above - without this, review-queue cards for that
+  // year (e.g. VC/Director/Dean/HOD dashboards) show a wrong/zeroed self score and blank
+  // reviewer scores even though the same data renders correctly on the faculty's own
+  // "Previous Year Report" view, which already reads score_summary via legacySubmittedTotals.
+  const legacyTotals = isLegacyTwoPartAcademicYear(academicYear)
+    ? legacySubmittedTotals(item, item.declaration, item.totals, item.payload, item.payload?.totals, item.payload?.form, item.form, item.info)
+    : null;
+  const selfSummary = legacyTotals
+    ? {
+        partA: n(legacyTotals.partA),
+        partB: n(legacyTotals.partB),
+        partC: 0,
+        partD: 0,
+        total: n(legacyTotals.grand ?? (n(legacyTotals.partA) + n(legacyTotals.partB))),
+        partAMax: n(legacyTotals.partAMax),
+        partBMax: n(legacyTotals.partBMax),
+        partCMax: 0,
+        partDMax: 0,
+        grandMax: n(legacyTotals.grandMax) || 575,
+      }
+    : standardSubmittedScoreSummary(item);
+  const reviewSummary = legacyTotals || standardReviewSummary(item, item.payload, item.form);
 
   return {
     ...item,
