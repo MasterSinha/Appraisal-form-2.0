@@ -906,10 +906,19 @@ export function NonTeachingAppraisalForm({ role = sessionStorage.getItem("role")
   };
 
   const content = (
-    <main style={{ flex: 1, minWidth: 0, marginLeft: embedded ? 0 : 260, padding: embedded ? 0 : "22px 26px", overflowX: "auto" }}>
-      {loading ? (
-        <div style={{ color: "#64748b", padding: 30 }}>Loading appraisal...</div>
-      ) : (
+    <main style={{ flex: 1, minWidth: 0, marginLeft: embedded ? 0 : 260, padding: embedded ? 0 : "22px 26px", overflowX: "auto", position: "relative" }}>
+      {loading && (
+        <div className="appraisal-year-loading-overlay" role="status" aria-live="polite">
+          <div className="appraisal-year-loading-card">
+            <div className="appraisal-year-loading-spinner" />
+            <div className="appraisal-year-loading-textwrap">
+              <div className="appraisal-year-loading-text">Loading {selectedAcademicYear || "academic year"} data…</div>
+              <div className="appraisal-year-loading-subtext">Fetching your appraisal records</div>
+              <div className="appraisal-year-loading-dots"><span /><span /><span /></div>
+            </div>
+          </div>
+        </div>
+      )}
         <>
           <div className="appraisal-page-header" style={{ background: "#fff", borderRadius: 14, padding: "16px 24px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 18, flexWrap: "wrap", marginBottom: 16 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
@@ -1045,7 +1054,6 @@ export function NonTeachingAppraisalForm({ role = sessionStorage.getItem("role")
           </>
           )}
         </>
-      )}
     </main>
   );
 
@@ -1764,7 +1772,7 @@ export function NonTeachingReviewDashboard({ reviewerRole, title, subtitle, acce
         </div>
       </aside>
 
-      <main style={{ flex: 1, minWidth: 0, marginLeft: 260, padding: "22px 26px", overflowX: "auto" }}>
+      <main style={{ flex: 1, minWidth: 0, marginLeft: 260, padding: "22px 26px", overflowX: "auto", position: "relative" }}>
         {tab === "self" ? (
           <NonTeachingAppraisalForm role={reviewerRole} embedded />
         ) : loadError ? (
@@ -1773,6 +1781,18 @@ export function NonTeachingReviewDashboard({ reviewerRole, title, subtitle, acce
           </div>
         ) : !selected ? (
           <>
+            {loading && (
+              <div className="appraisal-year-loading-overlay" role="status" aria-live="polite">
+                <div className="appraisal-year-loading-card">
+                  <div className="appraisal-year-loading-spinner" />
+                  <div className="appraisal-year-loading-textwrap">
+                    <div className="appraisal-year-loading-text">Loading {selectedAcademicYear || "academic year"} data…</div>
+                    <div className="appraisal-year-loading-subtext">Fetching review queue records</div>
+                    <div className="appraisal-year-loading-dots"><span /><span /><span /></div>
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="appraisal-page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 18, background: "#fff", borderRadius: 14, padding: "16px 24px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb", marginBottom: 16 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
                 <AppraisalHeaderImage logo="dypiu" />
@@ -1801,9 +1821,7 @@ export function NonTeachingReviewDashboard({ reviewerRole, title, subtitle, acce
               </div>
             </div>
 
-            {loading ? (
-              <div style={{ color: "#64748b", fontSize: 14, marginTop: 40, textAlign: "center" }}>Loading queue...</div>
-            ) : items.length === 0 ? (
+            {items.length === 0 ? (
               <div style={{ textAlign: "center", padding: "60px 0", color: "#94a3b8" }}>
                 <div style={{ fontWeight: 700, color: "#0f172a" }}>All caught up!</div>
                 <div style={{ color: "#64748b", fontSize: 12 }}>No appraisals in your queue right now.</div>

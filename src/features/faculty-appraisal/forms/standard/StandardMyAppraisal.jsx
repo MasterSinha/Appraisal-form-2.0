@@ -799,6 +799,7 @@ export default function StandardMyAppraisal({
   const [workflowDeclaration, setWorkflowDeclaration] = useState(null);
   const [workflowReviews, setWorkflowReviews] = useState([]);
   const [legacyReportTotals, setLegacyReportTotals] = useState(null);
+  const [loadingYearData, setLoadingYearData] = useState(false);
   const [appraisalWindowStatus, setAppraisalWindowStatus] = useState(null);
   const [appraisalWindowError, setAppraisalWindowError] = useState("");
   const selectedCycle = availableCyclesState.find((cycle) => cycle.academic_year === info.ay);
@@ -1025,6 +1026,7 @@ export default function StandardMyAppraisal({
     );
     setDocs({});
     setLegacyReportTotals(null);
+    setLoadingYearData(true);
 
     const loadOwnAppraisal = async () => {
       try {
@@ -1080,6 +1082,8 @@ export default function StandardMyAppraisal({
         ]);
       } catch (err) {
         console.error("Could not load saved appraisal:", err);
+      } finally {
+        if (isCurrentLoad()) setLoadingYearData(false);
       }
     };
 
@@ -1969,7 +1973,19 @@ export default function StandardMyAppraisal({
   };
 
   return (
-    <div className="appraisal-form-shell" style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+    <div className="appraisal-form-shell" style={{ position: "relative", display: "flex", flexDirection: "column", gap: 24 }}>
+      {loadingYearData && (
+        <div className="appraisal-year-loading-overlay" role="status" aria-live="polite">
+          <div className="appraisal-year-loading-card">
+            <div className="appraisal-year-loading-spinner" />
+            <div className="appraisal-year-loading-textwrap">
+              <div className="appraisal-year-loading-text">Loading {info.ay || "academic year"} data…</div>
+              <div className="appraisal-year-loading-subtext">Fetching your appraisal records</div>
+              <div className="appraisal-year-loading-dots"><span /><span /><span /></div>
+            </div>
+          </div>
+        </div>
+      )}
       {showSectionSelector && !showClosedReportOnly && !isLegacyTwoPartYear && (
       <div className="appraisal-section-selector" style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 20, padding: "16px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, flexWrap: "wrap", boxShadow: "0 12px 30px rgba(17,24,39,0.06)" }}>
         <div style={{ fontSize: 13, color: "#6b7280", fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.6 }}>My Appraisal Section</div>

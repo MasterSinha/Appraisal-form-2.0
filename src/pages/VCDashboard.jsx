@@ -1957,10 +1957,12 @@ export default function VCDashboard() {
  const [nonTeachingReviewedList, setNonTeachingReviewedList] = useState([]);
  const [selectedAcademicYear, setSelectedAcademicYear] = useState(() =>getActiveAcademicYear());
  const [availableCycles, setAvailableCycles] = useState(() =>storedAcademicYearCycles());
+ const [loadingYearData, setLoadingYearData] = useState(false);
  const academicYearOptions = availableCycles.length ? availableCycles : [{ academic_year: selectedAcademicYear || APP_INFO.DEFAULT_AY, is_open: true }];
 
  const pollingActiveRef = useRef(true);
  const prevDataRef = useRef(null);
+ const yearLoadRequestRef = useRef(0);
 
  const handleReviewAcademicYearChange = (academicYear) =>{
  const nextAcademicYear = setActiveAcademicYear(academicYear);
@@ -1980,6 +1982,9 @@ export default function VCDashboard() {
 
  const loadReviewQueue = useCallback(async (silent = false) =>{
  if (!pollingActiveRef.current) return;
+ const requestId = silent ? yearLoadRequestRef.current : ++yearLoadRequestRef.current;
+ const isCurrentRequest = () =>yearLoadRequestRef.current === requestId;
+ if (!silent) setLoadingYearData(true);
  try {
  const items = await fetchReviewQueueForRole({
  reviewerRole: "vc",
@@ -2029,6 +2034,8 @@ export default function VCDashboard() {
  setNonTeachingList([]);
  setNonTeachingReviewedList([]);
  }
+ } finally {
+ if (!silent && isCurrentRequest()) setLoadingYearData(false);
  }
  }, [selectedAcademicYear]);
 
@@ -2267,7 +2274,20 @@ University Overview
 </aside>
 
  {/* ===== MAIN CONTENT ===== */}
-<main className="vc-dashboard-main" style={{ flex: 1, padding: "28px 30px", display: "flex", flexDirection: "column", gap: 16, overflowX: "auto" }}>
+<main className="vc-dashboard-main" style={{ flex: 1, padding: "28px 30px", display: "flex", flexDirection: "column", gap: 16, overflowX: "auto", position: "relative" }}>
+
+{loadingYearData && (
+ <div className="appraisal-year-loading-overlay" role="status" aria-live="polite">
+ <div className="appraisal-year-loading-card">
+ <div className="appraisal-year-loading-spinner" />
+ <div className="appraisal-year-loading-textwrap">
+ <div className="appraisal-year-loading-text">Loading {selectedAcademicYear || "academic year"} data…</div>
+ <div className="appraisal-year-loading-subtext">Fetching review queue records</div>
+ <div className="appraisal-year-loading-dots"><span /><span /><span /></div>
+ </div>
+ </div>
+ </div>
+)}
 
  {!reviewing && (
 <>
