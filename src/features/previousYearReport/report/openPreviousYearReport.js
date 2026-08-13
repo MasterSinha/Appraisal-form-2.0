@@ -139,7 +139,7 @@ const renderSummary = (report = {}, levels = ["faculty"]) => `
         const totals = report.totals?.[level] || {};
         const partAMax = totals.partAMax || report.partA?.max;
         const partBMax = totals.partBMax || report.partB?.max;
-        const grandMax = totals.max || report.totals?.faculty?.max || ((report.partA?.max || 0) + (report.partB?.max || 0));
+        const grandMax = totals.grandMax || totals.max || report.totals?.faculty?.grandMax || report.totals?.faculty?.max || ((report.partA?.max || 0) + (report.partB?.max || 0));
         return `
         <tr>
           <td>${safeHtml(roleLabels[level]?.replace(" Score", "") || level)}</td>

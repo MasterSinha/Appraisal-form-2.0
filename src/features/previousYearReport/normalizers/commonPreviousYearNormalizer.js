@@ -58,6 +58,21 @@ const responseTotals = (response = {}) => {
   return parseMaybeJson(data?.payload?.totals || data?.totals || data?.data?.payload?.totals || data?.data?.totals || {});
 };
 
+const responseScoreSummary = (response = {}) => {
+  const data = unwrapResponse(response);
+  return parseMaybeJson(
+    data?.score_summary ||
+    data?.scoreSummary ||
+    data?.payload?.score_summary ||
+    data?.payload?.scoreSummary ||
+    data?.data?.score_summary ||
+    data?.data?.scoreSummary ||
+    data?.data?.payload?.score_summary ||
+    data?.data?.payload?.scoreSummary ||
+    {},
+  );
+};
+
 const responseProfile = (response = {}, form = {}) => {
   const data = unwrapResponse(response);
   return data?.profile || data?.faculty || data?.payload?.submitterProfile || data?.payload?.submitter_profile || form?.info || {};
@@ -171,6 +186,34 @@ const readTotalFromSources = (sources = [], aliases = []) => {
   return null;
 };
 
+const scoreSummaryTotal = (summary = {}, aliases = []) => {
+  for (const alias of aliases) {
+    if (!summary || typeof summary !== "object") continue;
+    const value = summary[alias];
+    if (value !== undefined && value !== null && String(value).trim() !== "") return previousYearNumber(value);
+  }
+  return null;
+};
+
+const scoreSummaryValue = (summary = {}, aliases = []) => {
+  if (!summary || typeof summary !== "object") return null;
+  for (const alias of aliases) {
+    if (Object.prototype.hasOwnProperty.call(summary, alias)) {
+      const value = summary[alias];
+      return value === undefined || value === null || String(value).trim() === "" ? null : previousYearNumber(value);
+    }
+  }
+  return null;
+};
+
+const hasScoreSummaryValue = (summary = {}, aliases = []) =>
+  Boolean(summary && typeof summary === "object" && aliases.some((alias) =>
+    Object.prototype.hasOwnProperty.call(summary, alias)
+  ));
+
+const sectionMaxByKey = (sections = [], key = "") =>
+  sections.find((section) => section?.key === key)?.max || 0;
+
 const normalizeDocFile = (file) => {
   if (!file) return null;
   if (typeof file === "string") return { fileName: file.split("/").pop() || "Document", fileUrl: getFileUrl(file), fileType: "", academicYear: "" };
@@ -248,6 +291,8 @@ export const normalizePreviousYearReport = ({
   const fetchedForm = responseForm(response);
   const form = formHasOldRows(fetchedForm) ? fetchedForm : formOverride || fetchedForm;
   const totals = responseTotals(response);
+  const scoreSummary = responseScoreSummary(response);
+  const facultyScoreSummary = scoreSummary?.faculty || {};
   const unwrappedResponse = unwrapResponse(response);
   const totalSources = [
     totals,
@@ -266,9 +311,15 @@ export const normalizePreviousYearReport = ({
   const profile = mergeProfiles(profileOverride, form?.info, responseProfile(response, form));
   const docs = responseDocs(response, docsOverride);
   const resolvedAcademicYear = academicYear || form?.info?.ay || unwrappedResponse?.academic_year || unwrappedResponse?.academicYear || "";
-  const effectivePartAMax = readTotalFromSources(totalSources, ["effectivePartAMax", "effective_part_a_max", "partAMax", "part_a_max", "maxPartA", "max_part_a", "facultyPartAMax", "faculty_part_a_max", "totalPartAMax", "total_part_a_max"]) ?? partAMax;
-  const effectivePartBMax = readTotalFromSources(totalSources, ["effectivePartBMax", "effective_part_b_max", "partBMax", "part_b_max", "maxPartB", "max_part_b", "facultyPartBMax", "faculty_part_b_max", "totalPartBMax", "total_part_b_max"]) ?? partBMax;
-  const effectiveGrandMax = readTotalFromSources(totalSources, ["effectiveGrandMax", "effective_grand_max", "grandMax", "grand_max", "maxGrand", "max_grand", "totalMax", "total_max", "facultyTotalMax", "faculty_total_max", "grandTotalMax", "grand_total_max"]) ?? grandMax;
+  const effectivePartAMax = scoreSummaryTotal(facultyScoreSummary, ["partAMax", "part_a_max"])
+    ?? readTotalFromSources(totalSources, ["effectivePartAMax", "effective_part_a_max", "partAMax", "part_a_max", "maxPartA", "max_part_a", "facultyPartAMax", "faculty_part_a_max", "totalPartAMax", "total_part_a_max"])
+    ?? partAMax;
+  const effectivePartBMax = scoreSummaryTotal(facultyScoreSummary, ["partBMax", "part_b_max"])
+    ?? readTotalFromSources(totalSources, ["effectivePartBMax", "effective_part_b_max", "partBMax", "part_b_max", "maxPartB", "max_part_b", "facultyPartBMax", "faculty_part_b_max", "totalPartBMax", "total_part_b_max"])
+    ?? partBMax;
+  const effectiveGrandMax = scoreSummaryTotal(facultyScoreSummary, ["grandMax", "grand_max", "max"])
+    ?? readTotalFromSources(totalSources, ["effectiveGrandMax", "effective_grand_max", "grandMax", "grand_max", "maxGrand", "max_grand", "totalMax", "total_max", "facultyTotalMax", "faculty_total_max", "grandTotalMax", "grand_total_max"])
+    ?? grandMax;
   const normalizedPartA = attachSectionDocs(partASections.map((section) => normalizeSection(form, section)), docs, resolvedAcademicYear, "A", formType);
   const normalizedPartB = attachSectionDocs(partBSections.map((section) => normalizeSection(form, section)), docs, resolvedAcademicYear, "B", formType);
   const partAFaculty = groupedTotal(normalizedPartA, "faculty", effectivePartAMax);
@@ -282,31 +333,53 @@ export const normalizePreviousYearReport = ({
   const storedGrand = readTotalFromSources(totalSources, ["grandTotal", "grand_total", "totalScore", "total_score", "total", "facultyTotal", "faculty_total"]);
   const storedPartA = readTotalFromSources(totalSources, ["partATotal", "part_a_total", "totalPartA", "total_part_a", "partA", "part_a_score", "facultyPartA", "faculty_part_a", "faculty_part_a_total"]);
   const storedPartB = readTotalFromSources(totalSources, ["partBTotal", "part_b_total", "totalPartB", "total_part_b", "partB", "part_b_score", "facultyPartB", "faculty_part_b", "faculty_part_b_total"]);
+  const summaryPartA = scoreSummaryValue(facultyScoreSummary, ["partA", "part_a"]);
+  const summaryPartB = scoreSummaryValue(facultyScoreSummary, ["partB", "part_b"]);
+  const summaryGrand = scoreSummaryValue(facultyScoreSummary, ["grand", "total", "total_score"]);
   // Prefer the total freshly computed from this report's own rows over a stored total whenever
   // there's actual row data to compute from — a stored generic total may have been calculated
   // against a different (e.g. current-year) section/max configuration and can be stale or wrong.
   // Exception: confirmed legacy two-part years (see isLegacyTwoPartAcademicYear above) — there
   // the stored total is the authoritative one, so it takes priority instead.
   const isLegacyYear = isLegacyTwoPartAcademicYear(resolvedAcademicYear);
-  const displayPartA = isLegacyYear
+  const reviewerPartAMaxFallback = isLegacyYear
+    ? Math.min(effectivePartAMax + sectionMaxByKey(partASections, "acr"), partAMax)
+    : effectivePartAMax;
+  const displayPartA = summaryPartA ?? (isLegacyYear
     ? (storedPartA ?? partAFaculty)
-    : (partAHasFacultyScores ? partAFaculty : (storedPartA ?? partAFaculty));
-  const displayPartB = isLegacyYear
+    : (partAHasFacultyScores ? partAFaculty : (storedPartA ?? partAFaculty)));
+  const displayPartB = summaryPartB ?? (isLegacyYear
     ? (storedPartB ?? partBFaculty)
-    : (partBHasFacultyScores ? partBFaculty : (storedPartB ?? partBFaculty));
-  const displayGrand = isLegacyYear
+    : (partBHasFacultyScores ? partBFaculty : (storedPartB ?? partBFaculty)));
+  const displayGrand = summaryGrand ?? (isLegacyYear
     ? (storedGrand ?? clampScore(displayPartA + displayPartB, effectiveGrandMax))
     : ((partAHasFacultyScores || partBHasFacultyScores)
       ? clampScore(displayPartA + displayPartB, effectiveGrandMax)
-      : (storedGrand ?? clampScore(displayPartA + displayPartB, effectiveGrandMax)));
+      : (storedGrand ?? clampScore(displayPartA + displayPartB, effectiveGrandMax))));
   const reviewerTotals = (role, prefix) => {
-    const rolePartAMax = readTotalFromSources(totalSources, [`${prefix}PartAMax`, `${prefix}_part_a_max`, `${prefix}MaxPartA`, `${prefix}_max_part_a`]) ?? effectivePartAMax;
-    const rolePartBMax = readTotalFromSources(totalSources, [`${prefix}PartBMax`, `${prefix}_part_b_max`, `${prefix}MaxPartB`, `${prefix}_max_part_b`]) ?? effectivePartBMax;
-    const roleGrandMax = readTotalFromSources(totalSources, [`${prefix}TotalMax`, `${prefix}_total_max`, `${prefix}GrandMax`, `${prefix}_grand_max`]) ?? effectiveGrandMax;
-    const partA = readTotalFromSources(totalSources, [`${prefix}PartA`, `${prefix}_part_a`, `${prefix}_part_a_total`]) ?? groupedTotal(normalizedPartA, role, rolePartAMax);
-    const partB = readTotalFromSources(totalSources, [`${prefix}PartB`, `${prefix}_part_b`, `${prefix}_part_b_total`]) ?? groupedTotal(normalizedPartB, role, rolePartBMax);
-    const grand = readTotalFromSources(totalSources, [`${prefix}Total`, `${prefix}_total`, `${prefix}Grand`, `${prefix}_grand`]) ?? clampScore(partA + partB, roleGrandMax);
-    return { partA, partB, grand, partAMax: rolePartAMax, partBMax: rolePartBMax, max: roleGrandMax };
+    const explicitSummary = scoreSummary?.[role] || {};
+    const rolePartAMax = scoreSummaryTotal(explicitSummary, ["partAMax", "part_a_max"])
+      ?? readTotalFromSources(totalSources, [`${prefix}PartAMax`, `${prefix}_part_a_max`, `${prefix}MaxPartA`, `${prefix}_max_part_a`])
+      ?? reviewerPartAMaxFallback;
+    const rolePartBMax = scoreSummaryTotal(explicitSummary, ["partBMax", "part_b_max"])
+      ?? readTotalFromSources(totalSources, [`${prefix}PartBMax`, `${prefix}_part_b_max`, `${prefix}MaxPartB`, `${prefix}_max_part_b`])
+      ?? effectivePartBMax;
+    const roleGrandMax = scoreSummaryTotal(explicitSummary, ["grandMax", "grand_max", "max"])
+      ?? readTotalFromSources(totalSources, [`${prefix}TotalMax`, `${prefix}_total_max`, `${prefix}GrandMax`, `${prefix}_grand_max`])
+      ?? (rolePartAMax + rolePartBMax);
+    const explicitPartA = hasScoreSummaryValue(explicitSummary, ["partA", "part_a"]);
+    const explicitPartB = hasScoreSummaryValue(explicitSummary, ["partB", "part_b"]);
+    const explicitGrand = hasScoreSummaryValue(explicitSummary, ["grand", "total", "total_score"]);
+    const partA = explicitPartA
+      ? scoreSummaryValue(explicitSummary, ["partA", "part_a"])
+      : readTotalFromSources(totalSources, [`${prefix}PartA`, `${prefix}_part_a`, `${prefix}_part_a_total`]) ?? groupedTotal(normalizedPartA, role, rolePartAMax);
+    const partB = explicitPartB
+      ? scoreSummaryValue(explicitSummary, ["partB", "part_b"])
+      : readTotalFromSources(totalSources, [`${prefix}PartB`, `${prefix}_part_b`, `${prefix}_part_b_total`]) ?? groupedTotal(normalizedPartB, role, rolePartBMax);
+    const grand = explicitGrand
+      ? scoreSummaryValue(explicitSummary, ["grand", "total", "total_score"])
+      : readTotalFromSources(totalSources, [`${prefix}Total`, `${prefix}_total`, `${prefix}Grand`, `${prefix}_grand`]) ?? clampScore(partA + partB, roleGrandMax);
+    return { partA, partB, grand, partAMax: rolePartAMax, partBMax: rolePartBMax, grandMax: roleGrandMax, max: roleGrandMax };
   };
 
   return {
@@ -322,6 +395,7 @@ export const normalizePreviousYearReport = ({
         grand: displayGrand,
         partAMax: effectivePartAMax,
         partBMax: effectivePartBMax,
+        grandMax: effectiveGrandMax,
         max: effectiveGrandMax,
       },
       hod: reviewerTotals("hod", "hod"),

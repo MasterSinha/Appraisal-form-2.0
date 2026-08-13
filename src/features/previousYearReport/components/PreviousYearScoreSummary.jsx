@@ -36,7 +36,7 @@ export default function PreviousYearScoreSummary({ report, compact = false, visi
       grand,
       partAMax: totals.partAMax || report.partA.max,
       partBMax: totals.partBMax || report.partB.max,
-      grandMax: totals.max || report.totals?.faculty?.max || report.partA.max + report.partB.max,
+      grandMax: totals.grandMax || totals.max || report.totals?.faculty?.grandMax || report.totals?.faculty?.max || report.partA.max + report.partB.max,
     }];
   });
 
