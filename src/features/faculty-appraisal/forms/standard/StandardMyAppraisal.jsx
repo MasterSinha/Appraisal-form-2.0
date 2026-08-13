@@ -575,6 +575,8 @@ export default function StandardMyAppraisal({
   const hodAppraisalTab = sectionTab || localAppraisalTab;
   const setHodAppraisalTab = onSectionTabChange || setLocalAppraisalTab;
   const resolvedAcademicYear = defaultAcademicYear || getActiveAcademicYear();
+  const snapshotCacheRef = useRef({});
+  const loadedTabsRef = useRef(new Set([hodAppraisalTab || "partA"]));
 
   // -- HOD's own appraisal form state --
   const [info, setInfo] = useState({
@@ -992,12 +994,32 @@ export default function StandardMyAppraisal({
     let cancelled = false;
     const requestedAcademicYear = info.ay;
     const isCurrentLoad = () => !cancelled && loadRequestRef.current === requestId;
+    snapshotCacheRef.current = {};
+    loadedTabsRef.current = new Set([hodAppraisalTab || "partA"]);
+
+    const SETTER_TO_TAB = {
+      setLectures: "partA", setCourseFile: "partA", setInnovRows: "partA", setInnovDetails: "partA", setInnovScore: "partA",
+      setProjects: "partA", setQuals: "partA", setFeedback: "partA", setObeRows: "partA", setMentoringRows: "partA", setAcr: "partA",
+      setJournals: "partB", setBooks: "partB", setIct: "partB", setResearch: "partB", setProjects2: "partB",
+      setExternalProjects: "partB", setPatents: "partB", setAwards: "partB", setConfs: "partB", setProposals: "partB",
+      setProducts: "partB", setFdps: "partB", setTraining: "partB", setExhibitions: "partB",
+      setUniActs: "partC", setDeptActs: "partC", setEventRows: "partC", setSociety: "partC", setIndustry: "partC",
+      setAlumniRows: "partC", setPlacementRows: "partC",
+      setLeaveManagement: "partD"
+    };
+
     const scopedAppraisalSetters = Object.fromEntries(
       Object.entries(appraisalSetters).map(([key, setter]) => [
         key,
         (...args) => {
           if (!isCurrentLoad()) return undefined;
-          return setter?.(...args);
+          const targetTab = SETTER_TO_TAB[key];
+          if (!targetTab || targetTab === (hodAppraisalTab || "partA")) {
+            return setter?.(...args);
+          }
+          if (!snapshotCacheRef.current) snapshotCacheRef.current = {};
+          snapshotCacheRef.current[key] = args[0];
+          return undefined;
         },
       ])
     );
@@ -1072,6 +1094,32 @@ export default function StandardMyAppraisal({
       setHodAppraisalTab("partA");
     }
   }, [isLegacyTwoPartYear, hodAppraisalTab]);
+
+  useEffect(() => {
+    if (!hodAppraisalTab) return;
+    if (loadedTabsRef.current.has(hodAppraisalTab)) return;
+
+    loadedTabsRef.current.add(hodAppraisalTab);
+    const cached = snapshotCacheRef.current;
+    if (cached) {
+      const SETTER_TO_TAB = {
+        setLectures: "partA", setCourseFile: "partA", setInnovRows: "partA", setInnovDetails: "partA", setInnovScore: "partA",
+        setProjects: "partA", setQuals: "partA", setFeedback: "partA", setObeRows: "partA", setMentoringRows: "partA", setAcr: "partA",
+        setJournals: "partB", setBooks: "partB", setIct: "partB", setResearch: "partB", setProjects2: "partB",
+        setExternalProjects: "partB", setPatents: "partB", setAwards: "partB", setConfs: "partB", setProposals: "partB",
+        setProducts: "partB", setFdps: "partB", setTraining: "partB", setExhibitions: "partB",
+        setUniActs: "partC", setDeptActs: "partC", setEventRows: "partC", setSociety: "partC", setIndustry: "partC",
+        setAlumniRows: "partC", setPlacementRows: "partC",
+        setLeaveManagement: "partD"
+      };
+
+      Object.entries(SETTER_TO_TAB).forEach(([setterName, tab]) => {
+        if (tab === hodAppraisalTab && cached[setterName] !== undefined) {
+          appraisalSetters[setterName]?.(cached[setterName]);
+        }
+      });
+    }
+  }, [hodAppraisalTab]);
 
   // -- Computed scores for HOD appraisal --
   const totalLecScore = sumSectionScore(lectures, A1_COURSE_DELIVERY_MAX, "score", 10);
@@ -1248,7 +1296,59 @@ export default function StandardMyAppraisal({
     });
   };
 
-  const buildSelfDraftForm = (saveStatus = sectionSaveStatus) => normalizeAutoScores({ info: profileSafeInfoForYear(info, info.ay, defaultDesignation), lectures, courseFile, innovDetails: innovRows.map((row) => row.method).filter(Boolean).join(", "), innovScore: innovScoreComputed, innovRows: innovRows.map((row) => ({ ...row, max: row.max || A3_INNOVATIVE_ROW_MAX })), projects, obeRows, mentoringRows, quals, feedback, deptActs, uniActs, eventRows, society: society.map((row) => ({ ...row, max: row.max || C4_OUTREACH_MAX })), industry, alumniRows, placementRows, acr, leaveManagement, journals, books, ict, research, projects2: projects2.map((row) => ({ ...row, max: row.max || B4_PROJECT_MAX })), externalProjects, patents, awards, confs, proposals, products, fdps, training, exhibitions, summaryOtherInfo, sectionSaveStatus: saveStatus });
+  const getValue = (localVal, setterName, tab) => {
+    if (loadedTabsRef.current?.has(tab)) {
+      return localVal;
+    }
+    const cached = snapshotCacheRef.current?.[setterName];
+    return cached !== undefined ? cached : localVal;
+  };
+
+  const buildSelfDraftForm = (saveStatus = sectionSaveStatus) => {
+    const resolvedInnovRows = getValue(innovRows, "setInnovRows", "partA");
+    const resolvedInnovTotal = clampScore(resolvedInnovRows.reduce((s, r) => s + clampScore(r.score, A3_INNOVATIVE_ROW_MAX), 0), A3_INNOVATIVE_MAX);
+    const resolvedInnovScore = String(resolvedInnovTotal);
+    const resolvedInnovDetails = resolvedInnovRows.map((row) => row.method).filter(Boolean).join(", ");
+
+    return normalizeAutoScores({
+      info: profileSafeInfoForYear(info, info.ay, defaultDesignation),
+      lectures: getValue(lectures, "setLectures", "partA"),
+      courseFile: getValue(courseFile, "setCourseFile", "partA"),
+      innovDetails: resolvedInnovDetails,
+      innovScore: resolvedInnovScore,
+      innovRows: resolvedInnovRows.map((row) => ({ ...row, max: row.max || A3_INNOVATIVE_ROW_MAX })),
+      projects: getValue(projects, "setProjects", "partA"),
+      obeRows: getValue(obeRows, "setObeRows", "partA"),
+      mentoringRows: getValue(mentoringRows, "setMentoringRows", "partA"),
+      quals: getValue(quals, "setQuals", "partA"),
+      feedback: getValue(feedback, "setFeedback", "partA"),
+      deptActs: getValue(deptActs, "setDeptActs", "partC"),
+      uniActs: getValue(uniActs, "setUniActs", "partC"),
+      eventRows: getValue(eventRows, "setEventRows", "partC"),
+      society: getValue(society, "setSociety", "partC").map((row) => ({ ...row, max: row.max || C4_OUTREACH_MAX })),
+      industry: getValue(industry, "setIndustry", "partC"),
+      alumniRows: getValue(alumniRows, "setAlumniRows", "partC"),
+      placementRows: getValue(placementRows, "setPlacementRows", "partC"),
+      acr: getValue(acr, "setAcr", "partA"),
+      leaveManagement: getValue(leaveManagement, "setLeaveManagement", "partD"),
+      journals: getValue(journals, "setJournals", "partB"),
+      books: getValue(books, "setBooks", "partB"),
+      ict: getValue(ict, "setIct", "partB"),
+      research: getValue(research, "setResearch", "partB"),
+      projects2: getValue(projects2, "setProjects2", "partB").map((row) => ({ ...row, max: row.max || B4_PROJECT_MAX })),
+      externalProjects: getValue(externalProjects, "setExternalProjects", "partB"),
+      patents: getValue(patents, "setPatents", "partB"),
+      awards: getValue(awards, "setAwards", "partB"),
+      confs: getValue(confs, "setConfs", "partB"),
+      proposals: getValue(proposals, "setProposals", "partB"),
+      products: getValue(products, "setProducts", "partB"),
+      fdps: getValue(fdps, "setFdps", "partB"),
+      training: getValue(training, "setTraining", "partB"),
+      exhibitions: getValue(exhibitions, "setExhibitions", "partB"),
+      summaryOtherInfo,
+      sectionSaveStatus: saveStatus
+    });
+  };
 
   const markSnapshotLocked = () => {
     setAppraisalLocked(true);

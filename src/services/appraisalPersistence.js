@@ -23,10 +23,13 @@ const SNAPSHOT_SETTERS = {
  feedback: "setFeedback",
 deptActs: "setDeptActs",
 uniActs: "setUniActs",
+events: "setEvents",
 eventRows: "setEventRows",
 society: "setSociety",
 industry: "setIndustry",
+alumni: "setAlumni",
 alumniRows: "setAlumniRows",
+placements: "setPlacements",
 placementRows: "setPlacementRows",
 acr: "setAcr",
  journals: "setJournals",
@@ -275,7 +278,7 @@ const normalizeTotalsForSubmit = (totals = {}) =>({
  grand_total: totals.grand_total ?? totals.grandTotal,
  effective_part_a_max: totals.effective_part_a_max ?? totals.effectivePartAMax,
  effective_part_b_max: totals.effective_part_b_max ?? totals.effectivePartBMax,
- effective_part_c_max: totals.effective_part_c_max ?? totals.effectivePartCMax,
+ effective_part_c_max: totals.effective_part_c_max ?? totals.effectivePartCTotal,
  effective_part_d_max: totals.effective_part_d_max ?? totals.effectivePartDMax,
  effective_grand_max: totals.effective_grand_max ?? totals.effectiveGrandMax,
 });
@@ -350,10 +353,13 @@ const resetSnapshotSetters = (academicYear, setters) =>{
  setters.setFeedback?.([{ code: "", fb1: "", fb2: "", score: "", hod: "", director: "" }]);
  setters.setDeptActs?.([{ activity: "", nature: "", period: "", score: "", hod: "", director: "" }]);
  setters.setUniActs?.([{ activity: "", nature: "", period: "", score: "", hod: "", director: "" }]);
+ setters.setEvents?.([{ event: "", role: "", date: "", level: "", score: "" }]);
  setters.setEventRows?.([{ event: "", role: "", date: "", level: "", score: "" }]);
  setters.setSociety?.([{ label: "", details: "", date: "", score: "", hod: "", director: "", max: 10 }]);
  setters.setIndustry?.([{ activity: "", partner: "", date: "", name: "", details: "", score: "", hod: "", director: "" }]);
+ setters.setAlumni?.([{ activity: "", details: "", date: "", score: "" }]);
  setters.setAlumniRows?.([{ activity: "", details: "", date: "", score: "" }]);
+ setters.setPlacements?.([{ activityType: "", name: "", date: "", score: "" }]);
  setters.setPlacementRows?.([{ activityType: "", name: "", date: "", score: "" }]);
  setters.setAcr?.(defaultAcrRows());
  setters.setJournals?.([{ title: "", journal: "", issn: "", index: "", score: "", hod: "", director: "" }]);
