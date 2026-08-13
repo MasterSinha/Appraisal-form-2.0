@@ -1061,7 +1061,7 @@ export function NonTeachingAppraisalForm({ role = sessionStorage.getItem("role")
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", background: "#f1f5f9", fontFamily: "inherit", color: "#0f172a" }}>
-      <aside className="appraisal-sidebar" style={{ width: 260, height: "100vh", position: "fixed", left: 0, top: 0, zIndex: 20, boxSizing: "border-box", background: "linear-gradient(180deg,#111827 0%,#111827 54%,#0f172a 100%)", padding: "18px 14px 110px", color: "#e2e8f0", display: "flex", flexDirection: "column", gap: 12, borderRight: "1px solid rgba(148,163,184,0.14)", boxShadow: "10px 0 28px rgba(15,23,42,0.20)" }}>
+      <aside className="appraisal-sidebar" style={{ width: 272, height: "100vh", position: "fixed", left: 0, top: 0, zIndex: 20, boxSizing: "border-box", background: "linear-gradient(180deg,#111827 0%,#111827 54%,#0f172a 100%)", padding: "18px 14px", color: "#e2e8f0", display: "flex", flexDirection: "column", gap: 12, borderRight: "1px solid rgba(148,163,184,0.14)", boxShadow: "10px 0 28px rgba(15,23,42,0.20)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 1px 3px" }}>
           <div style={{ width: 42, height: 42, borderRadius: 13, background: "linear-gradient(135deg,#6366f1 0%,#4338ca 100%)", border: "1px solid rgba(199,210,254,0.35)", display: "flex", alignItems: "center", justifyContent: "center", color: "#f8fafc", fontWeight: 900, fontSize: 13, boxShadow: "0 10px 22px rgba(79,70,229,0.38), 0 0 0 3px rgba(99,102,241,0.10)" }}>NT</div>
           <div style={{ minWidth: 0 }}>
@@ -1075,11 +1075,12 @@ export function NonTeachingAppraisalForm({ role = sessionStorage.getItem("role")
         </div>
         <div style={{ flex: 1 }} />
         <div style={{ height: 1, background: "rgba(148,163,184,0.16)" }} />
+        <div style={{ padding: 10, borderRadius: 20, background: "linear-gradient(180deg,rgba(30,41,59,0.86),rgba(15,23,42,0.92))", border: "1px solid rgba(148,163,184,0.18)", boxShadow: "0 18px 34px rgba(2,6,23,0.28), inset 0 1px 0 rgba(255,255,255,0.05)", display: "grid", gap: 8 }}>
         <button
           type="button"
           onClick={() => navigate("/edit-profile")}
           title="Edit profile"
-          style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(255,255,255,0.055)", border: "1px solid rgba(148,163,184,0.16)", borderRadius: 16, padding: 10, width: "100%", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
+          style={{ display: "flex", alignItems: "center", gap: 10, background: "transparent", border: "none", borderRadius: 14, padding: 2, width: "100%", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
         >
           <Avatar
             initials={initials(sessionStorage.getItem("name") || "Staff")}
@@ -1088,20 +1089,24 @@ export function NonTeachingAppraisalForm({ role = sessionStorage.getItem("role")
             size={42}
           />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 800, fontSize: 13 }}>{sessionStorage.getItem("name") || "Staff"}</div>
-            <div style={{ color: "#94a3b8", fontSize: 10 }}>{nonTeachingRoleLabel(normalizedRole)}</div>
+            <div style={{ color: "#f9fafb", fontWeight: 900, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sessionStorage.getItem("name") || "Staff"}</div>
+            <div style={{ color: "#a8b3c7", fontSize: 10.5, marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nonTeachingRoleLabel(normalizedRole)}</div>
           </div>
           <ProfileNavIcon />
         </button>
-        <div style={{ margin: "4px 0", padding: "11px 12px", background: "rgba(30,41,59,0.62)", border: "1px solid rgba(148,163,184,0.18)", borderRadius: 16 }}>
-          <div style={{ color: "#94a3b8", fontWeight: 700, fontSize: 9, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 4 }}>For any queries</div>
-          <a href="mailto:appraisal@dypiu.ac.in" style={{ color: "#c7d2fe", fontWeight: 700, fontSize: 11, wordBreak: "break-all", textDecoration: "none" }}>appraisal@dypiu.ac.in</a>
-        </div>
+        <div style={{ height: 1, background: "rgba(148,163,184,0.13)" }} />
+        <a href="mailto:appraisal@dypiu.ac.in" style={{ minHeight: 34, borderRadius: 12, padding: "6px 8px", color: "#c7d2fe", background: "rgba(99,102,241,0.10)", textDecoration: "none", display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ width: 24, height: 24, borderRadius: 9, background: "rgba(99,102,241,0.18)", color: "#c7d2fe", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <MailIcon />
+          </span>
+          <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 800, fontSize: 11 }}>appraisal@dypiu.ac.in</span>
+        </a>
         <div style={S.sideActions}>
           <button type="button" onClick={() => setShowLogoutModal(true)} style={S.sideButton}>
             <LogoutButtonIcon />
             <span>Logout</span>
           </button>
+        </div>
         </div>
       </aside>
       {content}
@@ -1694,7 +1699,7 @@ export function NonTeachingReviewDashboard({ reviewerRole, title, subtitle, acce
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", background: "#f1f5f9", color: "#0f172a", fontFamily: "inherit" }}>
-      <aside className="appraisal-sidebar" style={{ width: 260, height: "100vh", position: "fixed", left: 0, top: 0, zIndex: 20, boxSizing: "border-box", background: "linear-gradient(180deg,#111827 0%,#111827 54%,#0f172a 100%)", color: "#e2e8f0", display: "flex", flexDirection: "column", padding: "18px 14px 86px", gap: 12, borderRight: "1px solid rgba(148,163,184,0.14)", boxShadow: "10px 0 28px rgba(15,23,42,0.20)" }}>
+      <aside className="appraisal-sidebar" style={{ width: 272, height: "100vh", position: "fixed", left: 0, top: 0, zIndex: 20, boxSizing: "border-box", background: "linear-gradient(180deg,#111827 0%,#111827 54%,#0f172a 100%)", color: "#e2e8f0", display: "flex", flexDirection: "column", padding: "18px 14px", gap: 12, borderRight: "1px solid rgba(148,163,184,0.14)", boxShadow: "10px 0 28px rgba(15,23,42,0.20)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 1px 3px" }}>
           <div style={{ width: 42, height: 42, borderRadius: 13, background: "linear-gradient(135deg,#6366f1 0%,#4338ca 100%)", border: "1px solid rgba(199,210,254,0.35)", display: "flex", alignItems: "center", justifyContent: "center", color: "#f8fafc", fontWeight: 900, fontSize: 13, boxShadow: "0 10px 22px rgba(79,70,229,0.38), 0 0 0 3px rgba(99,102,241,0.10)" }}>NT</div>
           <div style={{ minWidth: 0 }}>
@@ -1740,12 +1745,13 @@ export function NonTeachingReviewDashboard({ reviewerRole, title, subtitle, acce
 
         <div style={{ flex: 1 }} />
         <div style={{ height: 1, background: "rgba(148,163,184,0.16)" }} />
+        <div style={{ padding: 10, borderRadius: 20, background: "linear-gradient(180deg,rgba(30,41,59,0.86),rgba(15,23,42,0.92))", border: "1px solid rgba(148,163,184,0.18)", boxShadow: "0 18px 34px rgba(2,6,23,0.28), inset 0 1px 0 rgba(255,255,255,0.05)", display: "grid", gap: 8 }}>
 
         <button
           type="button"
           onClick={() => navigate("/edit-profile")}
           title="Edit profile"
-          style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(255,255,255,0.055)", border: "1px solid rgba(148,163,184,0.16)", borderRadius: 16, padding: 10, width: "100%", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
+          style={{ display: "flex", alignItems: "center", gap: 10, background: "transparent", border: "none", borderRadius: 14, padding: 2, width: "100%", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
         >
           <Avatar
             initials={initials(sessionStorage.getItem("name") || title)}
@@ -1754,25 +1760,29 @@ export function NonTeachingReviewDashboard({ reviewerRole, title, subtitle, acce
             size={42}
           />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 900 }}>{title}</div>
-            <div style={{ color: "#94a3b8", fontSize: 10 }}>{subtitle}</div>
+            <div style={{ color: "#f9fafb", fontSize: 13, fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{title}</div>
+            <div style={{ color: "#a8b3c7", fontSize: 10.5, marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{subtitle}</div>
           </div>
           <ProfileNavIcon />
         </button>
 
-        <div style={{ margin: "4px 0", padding: "11px 12px", background: "rgba(30,41,59,0.62)", border: "1px solid rgba(148,163,184,0.18)", borderRadius: 16 }}>
-          <div style={{ color: "#94a3b8", fontWeight: 700, fontSize: 9, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 4 }}>For any queries</div>
-          <a href="mailto:appraisal@dypiu.ac.in" style={{ color: "#c7d2fe", fontWeight: 700, fontSize: 11, wordBreak: "break-all", textDecoration: "none" }}>appraisal@dypiu.ac.in</a>
-        </div>
+        <div style={{ height: 1, background: "rgba(148,163,184,0.13)" }} />
+        <a href="mailto:appraisal@dypiu.ac.in" style={{ minHeight: 34, borderRadius: 12, padding: "6px 8px", color: "#c7d2fe", background: "rgba(99,102,241,0.10)", textDecoration: "none", display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ width: 24, height: 24, borderRadius: 9, background: "rgba(99,102,241,0.18)", color: "#c7d2fe", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <MailIcon />
+          </span>
+          <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 800, fontSize: 11 }}>appraisal@dypiu.ac.in</span>
+        </a>
         <div style={S.sideActions}>
           <button type="button" onClick={() => setShowLogoutModal(true)} style={S.sideButton}>
             <LogoutButtonIcon />
             <span>Logout</span>
           </button>
         </div>
+        </div>
       </aside>
 
-      <main style={{ flex: 1, minWidth: 0, marginLeft: 260, padding: "22px 26px", overflowX: "auto", position: "relative" }}>
+      <main style={{ flex: 1, minWidth: 0, marginLeft: 272, padding: "22px 26px", overflowX: "auto", position: "relative" }}>
         {tab === "self" ? (
           <NonTeachingAppraisalForm role={reviewerRole} embedded />
         ) : loadError ? (
@@ -1865,12 +1875,21 @@ function PersonIcon() {
 
 function ProfileNavIcon() {
   return (
-    <span style={{ width: 28, height: 28, borderRadius: 10, background: "rgba(148,163,184,0.10)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <span style={{ width: 30, height: 30, borderRadius: 12, background: "rgba(129,140,248,0.18)", border: "1px solid rgba(199,210,254,0.18)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#c7d2fe" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M19 21a7 7 0 0 0-14 0" />
         <circle cx="12" cy="8" r="4" />
       </svg>
     </span>
+  );
+}
+
+function MailIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 4h16v16H4z" />
+      <path d="m22 6-10 7L2 6" />
+    </svg>
   );
 }
 
@@ -1919,32 +1938,26 @@ const S = {
   },
   sideButton: {
     width: "100%",
-    minHeight: 54,
+    minHeight: 38,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     gap: 9,
-    border: "1px solid rgba(248,113,113,0.55)",
-    borderRadius: 14,
-    background: "#111827",
-    color: "#f87171",
-    padding: "13px 16px",
+    border: "1px solid rgba(248,113,113,0.32)",
+    borderRadius: 13,
+    background: "rgba(248,113,113,0.10)",
+    color: "#fecaca",
+    padding: "9px 12px",
     cursor: "pointer",
     fontWeight: 900,
-    fontSize: 13,
+    fontSize: 12,
     fontFamily: "inherit",
+    transition: "background 0.15s ease, border-color 0.15s ease",
   },
   sideActions: {
-    position: "absolute",
-    left: 14,
-    right: 14,
-    bottom: 18,
     display: "flex",
     flexDirection: "column",
     gap: 8,
-    paddingTop: 10,
-    borderTop: "1px solid #1e293b",
-    background: "#0f172a",
   },
 };
 
