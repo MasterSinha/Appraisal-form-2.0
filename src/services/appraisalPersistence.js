@@ -353,8 +353,8 @@ const resetSnapshotSetters = (academicYear, setters) =>{
  setters.setFeedback?.([{ code: "", fb1: "", fb2: "", score: "", hod: "", director: "" }]);
  setters.setDeptActs?.([{ activity: "", nature: "", period: "", score: "", hod: "", director: "" }]);
  setters.setUniActs?.([{ activity: "", nature: "", period: "", score: "", hod: "", director: "" }]);
- setters.setEvents?.([{ event: "", role: "", date: "", level: "", score: "" }]);
- setters.setEventRows?.([{ event: "", role: "", date: "", level: "", score: "" }]);
+ setters.setEvents?.([{ event: "", role: "", fromDate: "", toDate: "", level: "", score: "" }]);
+ setters.setEventRows?.([{ event: "", role: "", fromDate: "", toDate: "", level: "", score: "" }]);
  setters.setSociety?.([{ label: "", details: "", date: "", score: "", hod: "", director: "", max: 10 }]);
  setters.setIndustry?.([{ activity: "", partner: "", date: "", name: "", details: "", score: "", hod: "", director: "" }]);
  setters.setAlumni?.([{ activity: "", details: "", date: "", score: "" }]);
@@ -1180,6 +1180,14 @@ const EVENT_ROW_ALIASES = {
  event_name: "event",
  eventName: "event",
  responsibility: "role",
+ from_date: "fromDate",
+ from: "fromDate",
+ start_date: "fromDate",
+ startDate: "fromDate",
+ to_date: "toDate",
+ to: "toDate",
+ end_date: "toDate",
+ endDate: "toDate",
  scope: "level",
 };
 

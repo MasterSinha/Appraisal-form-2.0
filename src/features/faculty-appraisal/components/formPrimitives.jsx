@@ -232,10 +232,10 @@ export const SECTION_GUIDELINES = {
     ]
   },
   B7: {
-    title: "B7. Conference / FDP Contributions — Organised (Max 20)",
+    title: "B7. Conference / FDP Contributions — As Resource Person (Max 20)",
     rules: [
-      "Conference organised (coordinator): 5 marks/event.",
-      "FDP organised (≥ 1 week, max 2): 5 marks/FDP."
+      "Conference / FDP contribution as Resource Person: 5 marks/event.",
+      "FDP as Resource Person (≥ 1 week, max 2): 5 marks/FDP."
     ]
   },
   B8: {
@@ -305,7 +305,7 @@ export const SECTION_GUIDELINES = {
   C3: {
     title: "C3. Event Organisation & Institutional Visibility (Max 20)",
     rules: [
-      "Conference / Seminar organised: 5 marks/event.",
+      "Conference / Seminar / FDP organised: 5 marks/event.",
       "Dept symposium / hackathon / workshop: 5 marks/event.",
       "Cultural / Sports / Fest: 5 marks/event.",
       "Industry-Academia Conclave: 5 marks/event.",
@@ -388,7 +388,7 @@ export const SECTION_GUIDELINES = {
       "B4. External Funded Research Projects: Max 40 marks",
       "B5. Research Guidance (PhD): Max 20 marks",
       "B6. Consultancy, Testing & Training: Max 20 marks",
-      "B7. Conferences / FDPs Organised: Max 20 marks",
+      "B7. Conferences / FDPs as Resource Person: Max 20 marks",
       "B8. Conferences / FDPs Attended: Max 20 marks",
       "B9. Research Awards & Fellowships: Max 20 marks",
       "B10. Innovation, Start-ups & Tech Transfer: Max 20 marks",
@@ -439,7 +439,7 @@ export function getGuidelineForTitle(titleText) {
   if (/funded|research project/i.test(str)) return SECTION_GUIDELINES.B4;
   if (/guidance|phd/i.test(str)) return SECTION_GUIDELINES.B5;
   if (/consultancy|testing/i.test(str)) return SECTION_GUIDELINES.B6;
-  if (/organised|organized/i.test(str)) return SECTION_GUIDELINES.B7;
+  if (/resource person|organised|organized/i.test(str)) return SECTION_GUIDELINES.B7;
   if (/attended/i.test(str)) return SECTION_GUIDELINES.B8;
   if (/award|citation|fellowship/i.test(str)) return SECTION_GUIDELINES.B9;
   if (/startup|start-up|\binnovation\b|technology transfer/i.test(str)) return SECTION_GUIDELINES.B10;
@@ -496,7 +496,7 @@ export function SectionInfoButton({ titleText, customGuideline }) {
           style={{
             position: "absolute",
             top: 28,
-            left: 0,
+            right: 0,
             zIndex: 9999,
             width: 380,
             maxWidth: "90vw",

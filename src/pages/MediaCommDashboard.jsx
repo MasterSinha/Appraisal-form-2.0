@@ -728,7 +728,7 @@ export default function MediaCommDashboard({ fixedRole }) {
  ...summaryRow(applicability, "externalProjects", { id: "B4", label: "Funded Research / Creative Projects & Grants", max: 20, score: b4Score }),
  ...summaryRow(applicability, "research", { id: "B5", label: "Research / Creative Guidance", max: 20, score: b5Score }),
  ...summaryRow(applicability, "consultancy", { id: "B6", label: "Consultancy, Training & Creative Commissions", max: 30, score: b6Score }),
- ...summaryRow(applicability, "confs", { id: "B7", label: "Conference / FDP / Festival Contributions — Organised", max: 20, score: b7Score }),
+ ...summaryRow(applicability, "confs", { id: "B7", label: "Conference / FDP / Training / Workshop Contributions as Resource Person", max: 20, score: b7Score }),
  ...summaryRow(applicability, "fdps", { id: "B8", label: "Conference / FDP / Industry-Studio Training Attended", max: 20, score: b8Score }),
  ...summaryRow(applicability, "awards", { id: "B9", label: "Research Awards, Fellowships, Reviewer & Citations", max: 20, score: b9Score }),
  ...summaryRow(applicability, "products", { id: "B10", label: "Innovation, Start-ups & Technology Transfer", max: 20, score: b10Score }),
@@ -815,6 +815,7 @@ export default function MediaCommDashboard({ fixedRole }) {
           </div>
         </div>
       )}
+      {activeTab === "my" && (
       <div style={{ marginBottom: 0, display: "flex", flexDirection: "column", gap: 0 }}>
         <div className="appraisal-page-header" style={{ background: "#fff", borderRadius: 14, padding: "16px 24px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 18, flexWrap: "wrap" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 16, minWidth: 260 }}>
@@ -849,6 +850,7 @@ export default function MediaCommDashboard({ fixedRole }) {
           <AppraisalHeaderImage logo="iqas" height={78} />
         </div>
       </div>
+      )}
 
   {activeTab === "my" && canSelfSubmit && (
 <div style={{ display: "grid", gap: 16 }}>

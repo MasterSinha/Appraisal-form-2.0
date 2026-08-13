@@ -397,6 +397,9 @@ const fieldValue = (section, row, key) => {
   if (section.key === "research" && key === "date" && (row?.status || row?.thesis) === "Ongoing") {
     return "NA";
   }
+  if ((section.key === "events" || section.key === "eventRows") && (key === "fromDate" || key === "toDate")) {
+    return row?.[key] || row?.date;
+  }
   return row?.[key];
 };
 
@@ -724,7 +727,7 @@ ${PRINT_REPORT_CSS}
   ${(partCSections && partCSections.length ? partCSections : [
     { key: "uniActs", title: "C1. Administration at University Level", max: 50, fields: [["activity", "Activity / Responsibility"], ["durationCat", "Duration Category"], ["period", "Period"]] },
     { key: "deptActs", title: "C2. Administration at School Level", max: 30, fields: [["activity", "Activity / Responsibility"], ["durationCat", "Duration Category"], ["period", "Period"]] },
-    { key: "events", title: "C3. Event Organisation & Institutional Visibility", max: 20, fields: [["event", "Event / Contribution"], ["role", "Role"], ["date", "Date"], ["level", "Level"]] },
+    { key: "events", title: "C3. Event Organisation & Institutional Visibility", max: 20, fields: [["event", "Event / Contribution"], ["role", "Role"], ["fromDate", "From"], ["toDate", "To"], ["level", "Level"]] },
     { key: "society", title: "C4. Contribution to Society", max: 10, fields: [["label", "Activity / Initiative"], ["details", "Details & Impact"]] },
     { key: "industry", title: "C5. Industry Connect", max: 10, fields: [["name", "Company / Industry Partner"], ["details", "Details of Engagement"]] },
     { key: "alumni", title: "C6. Alumni Engagement", max: 10, fields: [["activity", "Alumni Activity / Initiative"], ["details", "Details & Outcomes"]] },
@@ -907,7 +910,7 @@ ${PRINT_REPORT_CSS}
   ${(partCSections.length ? partCSections : [
     { key: "uniActs", title: "C1. Administration at University Level", max: 50, fields: [["activity", "Activity / Responsibility"], ["durationCat", "Duration Category"], ["period", "Period"]] },
     { key: "deptActs", title: "C2. Administration at School Level", max: 30, fields: [["activity", "Activity / Responsibility"], ["durationCat", "Duration Category"], ["period", "Period"]] },
-    { key: "events", title: "C3. Event Organisation & Institutional Visibility", max: 20, fields: [["event", "Event / Contribution"], ["role", "Role"], ["date", "Date"], ["level", "Level"]] },
+    { key: "events", title: "C3. Event Organisation & Institutional Visibility", max: 20, fields: [["event", "Event / Contribution"], ["role", "Role"], ["fromDate", "From"], ["toDate", "To"], ["level", "Level"]] },
     { key: "society", title: "C4. Contribution to Society", max: 10, fields: [["label", "Activity / Initiative"], ["details", "Details & Impact"]] },
     { key: "industry", title: "C5. Industry Connect", max: 10, fields: [["name", "Company / Industry Partner"], ["details", "Details of Engagement"]] },
     { key: "alumni", title: "C6. Alumni Engagement", max: 10, fields: [["activity", "Alumni Activity / Initiative"], ["details", "Details & Outcomes"]] },

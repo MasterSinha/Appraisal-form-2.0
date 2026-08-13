@@ -67,7 +67,7 @@ export default function PartC({ ctx }) {
         rowKey="eventRows"
         docs={docs}
         docPrefix="event"
-        columns={[{ key: ["event", "activity", "title"], label: "Event / Contribution" }, { key: "role", label: "Role" }, { key: "date", label: "Date" }, { key: "level", label: "Level" }]}
+        columns={[{ key: ["event", "activity", "title"], label: "Event / Contribution" }, { key: "role", label: "Role" }, { key: ["fromDate", "date"], label: "From" }, { key: ["toDate", "date"], label: "To" }, { key: "level", label: "Level" }]}
         get={get}
         set={set}
         reviewerScoreLabel={reviewerScoreLabel}

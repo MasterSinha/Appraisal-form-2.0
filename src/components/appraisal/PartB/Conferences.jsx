@@ -29,7 +29,7 @@ export default function Conferences({ ctx }) {
  return (
 <>
 {/* B6: Conferences */}
-<SC title="B7. Conference / FDP / Training / Workshop Contributions Organised (Max 20)" accent="#6366f1">
+<SC title="B7. Conference / FDP / Training / Workshop Contributions as Resource Person (Max 20)" accent="#6366f1">
 <table style={T}>
 <thead><tr>
 <th style={TH}>SN</th><th style={TH}>Event / Session Title</th><th style={TH}>Role</th>

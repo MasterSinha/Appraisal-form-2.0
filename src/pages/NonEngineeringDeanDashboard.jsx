@@ -695,7 +695,7 @@ function DeanReviewScoreForm({ approval, deanData, setDeanData, sectionView = "p
  />
 
 <ReviewTable
- title="B7. Conference / FDP / Training / Workshop Contributions Organised"
+ title="B7. Conference / FDP / Training / Workshop Contributions as Resource Person"
  accent="#6366f1"
  sectionKey="confs"
  docPrefix="conf"
@@ -809,7 +809,8 @@ function DeanReviewScoreForm({ approval, deanData, setDeanData, sectionView = "p
  columns={[
  { label: "Event / Contribution", render: (r) =>r.event },
  { label: "Role", render: (r) =>r.role },
- { label: "Date", render: (r) =>r.date, center: true },
+ { label: "From", render: (r) =>r.fromDate || r.date, center: true },
+ { label: "To", render: (r) =>r.toDate || r.date, center: true },
  { label: "Level", render: (r) =>r.level, center: true },
  ]}
  />

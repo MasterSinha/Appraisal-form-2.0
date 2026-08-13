@@ -424,8 +424,8 @@ export const REVIEW_ROW_VALUE_KEYS = {
   feedback: ["fb1", "fb2"],
   deptActs: ["activity", "nature", "period", "durationCat"],
   uniActs: ["activity", "nature", "period", "durationCat"],
-  eventRows: ["event", "role", "date", "level"],
-  events: ["event", "role", "date", "level"],
+  eventRows: ["event", "role", "fromDate", "toDate", "level"],
+  events: ["event", "role", "fromDate", "toDate", "level"],
   society: ["activity", "details", "date", "participated", "completed", "yesNo", "yes_no"],
   industry: ["name", "details", "activity", "partner", "date"],
   alumniRows: ["activity", "details", "date"],
@@ -585,6 +585,8 @@ const FIELD_ALIASES = {
   book: ["book", "publisherIsbn", "publisher"],
   pub: ["pub", "type", "publisher"],
   fileNo: ["fileNo", "date"],
+  fromDate: ["fromDate", "date"],
+  toDate: ["toDate", "date"],
 };
 
 export const rowMissingFields = (row = {}, keys = []) =>

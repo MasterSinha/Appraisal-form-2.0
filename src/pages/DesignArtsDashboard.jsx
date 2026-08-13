@@ -713,7 +713,7 @@ export default function DesignArtsDashboard({ fixedRole }) {
   ...summaryRow(applicability, "externalProjects", { id: "B4", label: "Funded Research / Creative Projects & Grants", max: 20, score: rowSum("externalProjects", 20) }),
   ...summaryRow(applicability, "research", { id: "B5", label: "Research / Creative Guidance", max: 20, score: rowSum("research", 20) }),
   ...summaryRow(applicability, "consultancy", { id: "B6", label: "Consultancy, Training & Creative Commissions", max: 30, score: rowSum("consultancy", 30) }),
-  ...summaryRow(applicability, "confs", { id: "B7", label: "Conference / FDP / Festival Contributions — Organised", max: 20, score: rowSum("confs", 20) }),
+  ...summaryRow(applicability, "confs", { id: "B7", label: "Conference / FDP / Training / Workshop Contributions as Resource Person", max: 20, score: rowSum("confs", 20) }),
   ...summaryRow(applicability, "fdps", { id: "B8", label: "Conference / FDP / Industry-Studio Training Attended", max: 20, score: b8Score }),
   ...summaryRow(applicability, "awards", { id: "B9", label: "Research Awards, Fellowships, Reviewer & Citations", max: 20, score: rowSum("awards", 20) }),
   ...summaryRow(applicability, "innovation", { id: "B10", label: "Innovation, Start-ups & Technology Transfer", max: 20, score: rowSum("innovation", 20) }),
