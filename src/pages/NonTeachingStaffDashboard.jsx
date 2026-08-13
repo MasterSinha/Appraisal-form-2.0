@@ -906,10 +906,19 @@ export function NonTeachingAppraisalForm({ role = sessionStorage.getItem("role")
   };
 
   const content = (
-    <main style={{ flex: 1, minWidth: 0, marginLeft: embedded ? 0 : 260, padding: embedded ? 0 : "22px 26px", overflowX: "auto" }}>
-      {loading ? (
-        <div style={{ color: "#64748b", padding: 30 }}>Loading appraisal...</div>
-      ) : (
+    <main style={{ flex: 1, minWidth: 0, marginLeft: embedded ? 0 : 260, padding: embedded ? 0 : "22px 26px", overflowX: "auto", position: "relative" }}>
+      {loading && (
+        <div className="appraisal-year-loading-overlay" role="status" aria-live="polite">
+          <div className="appraisal-year-loading-card">
+            <div className="appraisal-year-loading-spinner" />
+            <div className="appraisal-year-loading-textwrap">
+              <div className="appraisal-year-loading-text">Loading {selectedAcademicYear || "academic year"} data…</div>
+              <div className="appraisal-year-loading-subtext">Fetching your appraisal records</div>
+              <div className="appraisal-year-loading-dots"><span /><span /><span /></div>
+            </div>
+          </div>
+        </div>
+      )}
         <>
           <div className="appraisal-page-header" style={{ background: "#fff", borderRadius: 14, padding: "16px 24px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 18, flexWrap: "wrap", marginBottom: 16 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
@@ -1045,7 +1054,6 @@ export function NonTeachingAppraisalForm({ role = sessionStorage.getItem("role")
           </>
           )}
         </>
-      )}
     </main>
   );
 
@@ -1698,8 +1706,8 @@ export function NonTeachingReviewDashboard({ reviewerRole, title, subtitle, acce
 
         <nav style={{ display: "grid", gap: 7 }} aria-label="Dashboard sections">
           {[
-            { id: "self", label: "My Staff Appraisal", sub: "View your self-appraisal form", icon: <SelfNavIcon />, navAccent: "#818cf8" },
-            { id: "review", label: "Non Teaching Approval", sub: `${pendingCount} awaiting review`, icon: <ReviewNavIcon />, navAccent: "#a78bfa", badge: pendingCount },
+            { id: "self", label: "My Staff Appraisal", sub: "View your self-appraisal form", icon: <SelfNavIcon /> },
+            { id: "review", label: "Non Teaching Approval", sub: `${pendingCount} awaiting review`, icon: <ReviewNavIcon />, badge: pendingCount },
           ].map((navItem) => {
             const isActive = tab === navItem.id;
             return (
@@ -1713,17 +1721,17 @@ export function NonTeachingReviewDashboard({ reviewerRole, title, subtitle, acce
                     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
                   });
                 }}
-                style={{ background: isActive ? "#1e293b" : "transparent", border: isActive ? `1px solid ${navItem.navAccent}40` : "1px solid transparent", borderRadius: 8, padding: "10px 11px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, width: "100%", fontFamily: "inherit" }}
+                style={{ background: isActive ? "#f8fafc" : "transparent", border: isActive ? "1px solid #f8fafc" : "1px solid transparent", borderRadius: 8, padding: "10px 11px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, width: "100%", fontFamily: "inherit", boxShadow: isActive ? "0 10px 24px rgba(0,0,0,0.30)" : "none" }}
               >
-                <span style={{ width: 28, height: 28, borderRadius: 7, background: "rgba(148,163,184,0.14)", color: isActive ? navItem.navAccent : "#94a3b8", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <span style={{ width: 28, height: 28, borderRadius: 7, background: isActive ? "rgba(15,23,42,0.07)" : "rgba(148,163,184,0.14)", color: isActive ? "#0f172a" : "#94a3b8", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                   {navItem.icon}
                 </span>
                 <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
-                  <div style={{ color: isActive ? "#f8fafc" : "#e2e8f0", fontWeight: 700, fontSize: 12.5, lineHeight: 1.1 }}>{navItem.label}</div>
-                  <div style={{ color: "#94a3b8", fontSize: 10.5, marginTop: 3, lineHeight: 1.3 }}>{navItem.sub}</div>
+                  <div style={{ color: isActive ? "#0f172a" : "#e2e8f0", fontWeight: 700, fontSize: 12.5, lineHeight: 1.1 }}>{navItem.label}</div>
+                  <div style={{ color: isActive ? "#475569" : "#94a3b8", fontSize: 10.5, marginTop: 3, lineHeight: 1.3 }}>{navItem.sub}</div>
                 </div>
                 {navItem.badge > 0 && (
-                  <div style={{ background: "rgba(148,163,184,0.15)", color: "#cbd5e1", fontWeight: 700, fontSize: 10, minWidth: 18, height: 18, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 5px", flexShrink: 0 }}>{navItem.badge}</div>
+                  <div style={{ background: isActive ? "#0f172a" : "rgba(148,163,184,0.15)", color: isActive ? "#f8fafc" : "#cbd5e1", fontWeight: 700, fontSize: 10, minWidth: 18, height: 18, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 5px", flexShrink: 0 }}>{navItem.badge}</div>
                 )}
               </button>
             );
@@ -1764,7 +1772,7 @@ export function NonTeachingReviewDashboard({ reviewerRole, title, subtitle, acce
         </div>
       </aside>
 
-      <main style={{ flex: 1, minWidth: 0, marginLeft: 260, padding: "22px 26px", overflowX: "auto" }}>
+      <main style={{ flex: 1, minWidth: 0, marginLeft: 260, padding: "22px 26px", overflowX: "auto", position: "relative" }}>
         {tab === "self" ? (
           <NonTeachingAppraisalForm role={reviewerRole} embedded />
         ) : loadError ? (
@@ -1773,6 +1781,18 @@ export function NonTeachingReviewDashboard({ reviewerRole, title, subtitle, acce
           </div>
         ) : !selected ? (
           <>
+            {loading && (
+              <div className="appraisal-year-loading-overlay" role="status" aria-live="polite">
+                <div className="appraisal-year-loading-card">
+                  <div className="appraisal-year-loading-spinner" />
+                  <div className="appraisal-year-loading-textwrap">
+                    <div className="appraisal-year-loading-text">Loading {selectedAcademicYear || "academic year"} data…</div>
+                    <div className="appraisal-year-loading-subtext">Fetching review queue records</div>
+                    <div className="appraisal-year-loading-dots"><span /><span /><span /></div>
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="appraisal-page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 18, background: "#fff", borderRadius: 14, padding: "16px 24px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb", marginBottom: 16 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
                 <AppraisalHeaderImage logo="dypiu" />
@@ -1801,9 +1821,7 @@ export function NonTeachingReviewDashboard({ reviewerRole, title, subtitle, acce
               </div>
             </div>
 
-            {loading ? (
-              <div style={{ color: "#64748b", fontSize: 14, marginTop: 40, textAlign: "center" }}>Loading queue...</div>
-            ) : items.length === 0 ? (
+            {items.length === 0 ? (
               <div style={{ textAlign: "center", padding: "60px 0", color: "#94a3b8" }}>
                 <div style={{ fontWeight: 700, color: "#0f172a" }}>All caught up!</div>
                 <div style={{ color: "#64748b", fontSize: 12 }}>No appraisals in your queue right now.</div>

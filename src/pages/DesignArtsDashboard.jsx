@@ -202,6 +202,8 @@ export default function DesignArtsDashboard({ fixedRole }) {
  const [previousYearResponse, setPreviousYearResponse] = useState(null);
  const [appraisalWindowStatus, setAppraisalWindowStatus] = useState(null);
  const [appraisalWindowError, setAppraisalWindowError] = useState("");
+ const [loadingYearData, setLoadingYearData] = useState(false);
+ const yearLoadRequestRef = useRef(0);
  const userEmail = sessionStorage.getItem("username") || sessionStorage.getItem("email") || localStorage.getItem("username") || localStorage.getItem("email") || "";
  const academicYear = form.info?.ay || getActiveAcademicYear();
 
@@ -313,13 +315,18 @@ export default function DesignArtsDashboard({ fixedRole }) {
 
  useEffect(() =>{
  if (!userEmail || !academicYear || !canSelfSubmit) return;
+ const requestId = ++yearLoadRequestRef.current;
+ const isCurrentLoad = () =>yearLoadRequestRef.current === requestId;
  setDocs({});
  setPreviousYearResponse(null);
+ setLoadingYearData(true);
  const loadAll = async () =>{
+ try {
  const data = await api.get("/appraisal/status", { params: { academic_year: academicYear } }).catch((err) =>{
  console.error("Could not load workflow status:", err);
  return null;
  });
+ if (!isCurrentLoad()) return;
  const declarationRow = data?.declaration || null;
  const loadedReviews = reviewListFrom(data?.reviews);
  setDeclaration(declarationRow);
@@ -332,7 +339,11 @@ export default function DesignArtsDashboard({ fixedRole }) {
  loadAppraisal,
  loadAppraisalDocuments({ facultyEmail: userEmail, academicYear, setDocs }),
  ]);
+ if (!isCurrentLoad()) return;
  setPreviousYearResponse(loadedAppraisal || null);
+ } finally {
+ if (isCurrentLoad()) setLoadingYearData(false);
+ }
  };
  loadAll().catch((err) =>console.error(`Could not load ${schoolDisplayName} appraisal:`, err));
  }, [userEmail, academicYear, setters, canSelfSubmit, isSelectedCycleClosed, isLegacyTwoPartYear]);
@@ -759,7 +770,7 @@ export default function DesignArtsDashboard({ fixedRole }) {
       showLogoutModal={showLogoutModal}
       onCancelLogout={() => setShowLogoutModal(false)}
       containerStyle={{ display: "flex", minHeight: "100vh", fontFamily: "inherit", background: "#f8fafc", color: "#111827" }}
-      mainStyle={{ flex: 1, padding: "40px", display: "flex", flexDirection: "column", gap: 24, overflowX: "hidden", maxWidth: 1600, margin: "0 auto", width: "100%" }}
+      mainStyle={{ flex: 1, padding: "40px", display: "flex", flexDirection: "column", gap: 24, overflowX: "hidden", maxWidth: 1600, margin: "0 auto", width: "100%", position: "relative" }}
       sidebar={(
         <DashboardSidebar
           appInfo={APP_INFO}
@@ -777,6 +788,18 @@ export default function DesignArtsDashboard({ fixedRole }) {
         />
       )}
     >
+      {loadingYearData && activeTab === "my" && (
+        <div className="appraisal-year-loading-overlay" role="status" aria-live="polite">
+          <div className="appraisal-year-loading-card">
+            <div className="appraisal-year-loading-spinner" />
+            <div className="appraisal-year-loading-textwrap">
+              <div className="appraisal-year-loading-text">Loading {academicYear || "academic year"} data…</div>
+              <div className="appraisal-year-loading-subtext">Fetching your appraisal records</div>
+              <div className="appraisal-year-loading-dots"><span /><span /><span /></div>
+            </div>
+          </div>
+        </div>
+      )}
       {activeTab === "my" && (
       <div style={{ marginBottom: 0, display: "flex", flexDirection: "column", gap: 0 }}>
         <div className="appraisal-page-header" style={{ background: "#fff", borderRadius: 14, padding: "16px 24px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 18, flexWrap: "wrap" }}>

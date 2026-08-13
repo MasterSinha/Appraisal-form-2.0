@@ -1191,6 +1191,7 @@ export default function NonEngineeringDeanDashboard() {
   const [directorList, setDirectorList] = useState([]);
   const [selectedAcademicYear, setSelectedAcademicYear] = useState(() => getActiveAcademicYear());
   const [availableCycles, setAvailableCycles] = useState(() => storedAcademicYearCycles());
+  const [loadingYearData, setLoadingYearData] = useState(false);
 
   const userProfile = profileFromsessionStorage();
   const activeDeanTrack = getDeanTrack(userProfile);
@@ -1218,6 +1219,7 @@ export default function NonEngineeringDeanDashboard() {
     const loadReviewQueue = async () => {
       const schoolValues = activeSchoolCodesKey.split(",").filter(Boolean);
       const reviewerProfile = profileFromsessionStorage();
+      setLoadingYearData(true);
       try {
         const items = await fetchReviewQueueForRole({
           reviewerRole: "dean",
@@ -1237,6 +1239,8 @@ export default function NonEngineeringDeanDashboard() {
         console.error("Could not load Non-Engineering Dean review queue:", err);
         setFacultyList([]);
         setDirectorList([]);
+      } finally {
+        setLoadingYearData(false);
       }
     };
 
@@ -1422,7 +1426,19 @@ export default function NonEngineeringDeanDashboard() {
       )}
 
       {(activeMainTab === "schoolAppraisal" || activeMainTab === "directorApprovals" || activeMainTab === "facultyApprovals") && !reviewingApproval && (
-        <>
+        <div style={{ position: "relative" }}>
+          {loadingYearData && (
+            <div className="appraisal-year-loading-overlay" role="status" aria-live="polite">
+              <div className="appraisal-year-loading-card">
+                <div className="appraisal-year-loading-spinner" />
+                <div className="appraisal-year-loading-textwrap">
+                  <div className="appraisal-year-loading-text">Loading {selectedAcademicYear || "academic year"} data…</div>
+                  <div className="appraisal-year-loading-subtext">Fetching review queue records</div>
+                  <div className="appraisal-year-loading-dots"><span /><span /><span /></div>
+                </div>
+              </div>
+            </div>
+          )}
           {/* Horizontal School Selector Bar */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap", background: "#fff", borderRadius: 14, padding: "16px 24px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 16, minWidth: 0 }}>
@@ -1701,7 +1717,7 @@ export default function NonEngineeringDeanDashboard() {
               </div>
             </div>
           )}
-        </>
+        </div>
       )}
 
       {/* REVIEW PANEL */}

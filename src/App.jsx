@@ -2,10 +2,11 @@ import { lazy, Suspense, useState, useEffect } from "react";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import ProtectedRoute from "./auth/ProtectedRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
-import { getActiveAcademicYear, getSessionItem, normalizeRole, setActiveAcademicYear, storeUserSession } from "./auth/session";
+import { getActiveAcademicYear, normalizeRole, setActiveAcademicYear, storeUserSession } from "./auth/session";
 import { APP_INFO } from "./constants/formConfig";
 import { getMe } from "./services/authService";
 import { api } from "./services/api";
+import { refreshAcademicYearCycles } from "./services/academicYearCycles";
 
 const normalizeAcademicYearCycles = (cyclesData) => {
   const normalizeAcademicYearLabel = (value) => {
@@ -185,39 +186,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
-
-    const refreshAcademicYearCycles = async () => {
-      const token = getSessionItem("accessToken") || getSessionItem("token");
-      if (!token) return;
-
-      try {
-        const cyclesData = await api.get("/appraisal/cycles");
-        if (cancelled) return;
-
-        const cycles = normalizeAcademicYearCycles(cyclesData);
-        if (!cycles.length) return;
-
-        const storedAcademicYear = getActiveAcademicYear();
-        const matchingCycle = cycles.find((cycle) => cycle.academic_year === storedAcademicYear);
-        const openCycle = cycles.find((cycle) => cycle.is_open);
-        const defaultYearCycle = cycles.find((cycle) => cycle.academic_year === APP_INFO.DEFAULT_AY);
-        const fallbackCycle = openCycle || defaultYearCycle || matchingCycle || cycles[0];
-        const ay = fallbackCycle?.academic_year || APP_INFO.DEFAULT_AY;
-
-        sessionStorage.setItem("availableCycles", JSON.stringify(cycles));
-        localStorage.setItem("availableCycles", JSON.stringify(cycles));
-        sessionStorage.setItem("availableCyclesSource", "backend");
-        localStorage.setItem("availableCyclesSource", "backend");
-        setActiveAcademicYear(ay);
-        window.dispatchEvent(new CustomEvent("academicYearChanged", { detail: { academicYear: ay } }));
-      } catch (error) {
-        console.error("Could not refresh academic year cycles:", error);
-      }
-    };
-
     refreshAcademicYearCycles();
-    return () => { cancelled = true; };
   }, []);
 
   return (

@@ -845,6 +845,7 @@ export default function DirectorDashboard() {
  const [hodList, setHodList] = useState([]);
  const [selectedAcademicYear, setSelectedAcademicYear] = useState(() => getActiveAcademicYear());
  const [availableCycles, setAvailableCycles] = useState(() => storedAcademicYearCycles());
+ const [loadingYearData, setLoadingYearData] = useState(false);
  const academicYearOptions = availableCycles.length ? availableCycles : [{ academic_year: selectedAcademicYear || APP_INFO.DEFAULT_AY, is_open: true }];
 
  const handleReviewAcademicYearChange = (academicYear) =>{
@@ -864,6 +865,7 @@ export default function DirectorDashboard() {
 
  useEffect(() =>{
  const loadReviewQueue = async () =>{
+ setLoadingYearData(true);
  try {
  const items = await fetchReviewQueueForRole({
  reviewerRole: "director",
@@ -877,6 +879,8 @@ export default function DirectorDashboard() {
  console.error("Could not load Director review queue:", err);
  setFacultyList([]);
  setHodList([]);
+ } finally {
+ setLoadingYearData(false);
  }
  };
 
@@ -971,7 +975,7 @@ export default function DirectorDashboard() {
  showLogoutModal={showLogoutModal}
  onCancelLogout={() =>setShowLogoutModal(false)}
  containerStyle={{ display: "flex", minHeight: "100vh", fontFamily: "inherit", background: "#f8fafc", color: "#1e293b" }}
- mainStyle={{ flex: 1, padding: "24px 30px", display: "flex", flexDirection: "column", gap: 18, overflowX: "auto" }}
+ mainStyle={{ flex: 1, padding: "24px 30px", display: "flex", flexDirection: "column", gap: 18, overflowX: "auto", position: "relative" }}
  sidebar={(
 <DashboardSidebar
  appInfo={APP_INFO}
@@ -987,6 +991,19 @@ export default function DirectorDashboard() {
 />
  )}
 >
+
+{loadingYearData && activeMainTab !== "myAppraisal" && (
+ <div className="appraisal-year-loading-overlay" role="status" aria-live="polite">
+ <div className="appraisal-year-loading-card">
+ <div className="appraisal-year-loading-spinner" />
+ <div className="appraisal-year-loading-textwrap">
+ <div className="appraisal-year-loading-text">Loading {selectedAcademicYear || "academic year"} data…</div>
+ <div className="appraisal-year-loading-subtext">Fetching review queue records</div>
+ <div className="appraisal-year-loading-dots"><span /><span /><span /></div>
+ </div>
+ </div>
+ </div>
+)}
 
 {activeMainTab === "myAppraisal" && <MyAppraisalSection sectionTab={hodAppraisalTab} onSectionTabChange={handleMyAppraisalSectionChange} defaultDesignation={sessionStorage.getItem("role") === "director" ? "Director" : ""} defaultAcademicYear={sessionStorage.getItem("academicYear") || APP_INFO.DEFAULT_AY} titleNameFallback="Director" subtitleSeparator=" - " />}
 
