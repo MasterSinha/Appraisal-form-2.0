@@ -14,20 +14,124 @@ const initialsFor = (value = "") => {
 
 const hodPrograms = (hod = {}) => (Array.isArray(hod.departments) ? hod.departments.filter(Boolean) : []);
 
-// - Modal shell (reused for "Add Program" and "Create HOD") -
-function Modal({ title, subtitle, onClose, children, width = 440 }) {
+// - Full HOD roster: every existing HOD account for this school, assigned or not. Separate from
+// the program table above since a Director may create several HODs before assigning any of
+// them - this is the only place an unassigned HOD is otherwise visible at all. -
+function HodRoster({ hods, loading, unitLabelLower, onCreateNew }) {
+  const [filter, setFilter] = useState("all"); // "all" | "assigned" | "unassigned"
+  const assigned = hods.filter((h) => hodPrograms(h).length > 0);
+  const unassigned = hods.filter((h) => hodPrograms(h).length === 0);
+  const shown = filter === "assigned" ? assigned : filter === "unassigned" ? unassigned : hods;
+
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 2000, background: "rgba(15,23,42,0.55)", display: "grid", placeItems: "center", padding: 20 }} onClick={onClose}>
-      <div style={{ width: `min(${width}px, 94vw)`, maxHeight: "88vh", overflowY: "auto", background: "#fff", borderRadius: 16, border: "1px solid #e5e7eb", boxShadow: "0 24px 70px rgba(15,23,42,0.28)", padding: 22 }} onClick={(e) => e.stopPropagation()}>
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 14, marginBottom: 16 }}>
-          <div>
-            <div style={{ fontSize: 17, fontWeight: 900, color: "#0f172a" }}>{title}</div>
-            {subtitle && <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>{subtitle}</div>}
+    <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 12px 30px rgba(15,23,42,0.05)", border: "1px solid #e2e8f0", overflow: "hidden" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", padding: "14px 18px", background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 900, color: "#0f172a" }}>All HODs</div>
+          <div style={{ fontSize: 11.5, color: "#64748b", marginTop: 2 }}>Every HOD account created for this school, whether assigned to a {unitLabelLower} yet or not.</div>
+        </div>
+        <div style={{ display: "flex", gap: 6, background: "#eef2f7", borderRadius: 10, padding: 3 }}>
+          {[
+            ["all", `All (${hods.length})`],
+            ["assigned", `Assigned (${assigned.length})`],
+            ["unassigned", `Unassigned (${unassigned.length})`],
+          ].map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setFilter(value)}
+              style={{ border: "none", borderRadius: 8, padding: "6px 11px", fontSize: 11, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", background: filter === value ? "#fff" : "transparent", color: filter === value ? "#0f172a" : "#64748b", boxShadow: filter === value ? "0 1px 4px rgba(15,23,42,0.12)" : "none", whiteSpace: "nowrap" }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ padding: 16 }}>
+        {loading ? (
+          <div style={{ fontSize: 12.5, color: "#64748b", fontWeight: 700, textAlign: "center", padding: "14px 0" }}>Loading HODs...</div>
+        ) : hods.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "18px 0" }}>
+            <div style={{ fontSize: 12.5, color: "#94a3b8", fontWeight: 700, marginBottom: 10 }}>No HOD accounts created for this school yet.</div>
+            <button type="button" onClick={onCreateNew} style={{ border: "1px solid #c7d2fe", background: "#eef2ff", color: "#4338ca", borderRadius: 9, padding: "8px 14px", fontWeight: 800, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
+              + Create your first HOD
+            </button>
           </div>
-          <button type="button" onClick={onClose} style={{ width: 30, height: 30, flexShrink: 0, borderRadius: 9, border: "1px solid #e2e8f0", background: "#f8fafc", color: "#475569", cursor: "pointer", fontWeight: 900, fontFamily: "inherit" }}>X</button>
+        ) : shown.length === 0 ? (
+          <div style={{ fontSize: 12.5, color: "#94a3b8", fontWeight: 700, textAlign: "center", padding: "14px 0" }}>No HODs in this filter.</div>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 10 }}>
+            {shown.map((hod) => {
+              const programs = hodPrograms(hod);
+              const isAssigned = programs.length > 0;
+              return (
+                <div key={hod.email} style={{ display: "flex", alignItems: "flex-start", gap: 10, border: "1px solid #e2e8f0", borderRadius: 12, background: "#fbfcfd", padding: 12, minWidth: 0 }}>
+                  <span style={{ width: 34, height: 34, borderRadius: 999, background: isAssigned ? "#4338ca" : "#94a3b8", color: "#fff", fontSize: 12, fontWeight: 900, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{initialsFor(hod.fullName || hod.email)}</span>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontSize: 12.5, fontWeight: 800, color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{hod.fullName || hod.email}</div>
+                    <div style={{ fontSize: 11, color: "#94a3b8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 1 }}>{hod.email}</div>
+                    <div style={{ marginTop: 7 }}>
+                      {isAssigned ? (
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                          {programs.map((p) => (
+                            <span key={p} style={{ fontSize: 10, fontWeight: 800, color: "#065f46", background: "#dcfce7", border: "1px solid #bbf7d0", borderRadius: 999, padding: "2px 8px" }}>{p}</span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span style={{ fontSize: 10, fontWeight: 800, color: "#991b1b", background: "#fee2e2", border: "1px solid #fecaca", borderRadius: 999, padding: "2px 8px" }}>Unassigned</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// - Modal shell (reused for "Add Program" and "Create HOD") -
+function Modal({ title, subtitle, onClose, children, width = 520, icon, accent = "#4338ca" }) {
+  return (
+    <div
+      style={{ position: "fixed", inset: 0, zIndex: 2000, background: "rgba(15,23,42,0.5)", backdropFilter: "blur(3px)", WebkitBackdropFilter: "blur(3px)", display: "grid", placeItems: "center", padding: 24, boxSizing: "border-box", overflow: "hidden", animation: "mdp-fade 0.16s ease" }}
+      onClick={onClose}
+    >
+      <div
+        style={{ width: `min(${width}px, 94vw)`, maxWidth: "100%", boxSizing: "border-box", maxHeight: "90vh", overflowY: "auto", overflowX: "hidden", background: "#fff", borderRadius: 20, border: "1px solid #eef2f7", boxShadow: "0 30px 80px rgba(15,23,42,0.30)", padding: 32, animation: "mdp-pop 0.18s cubic-bezier(0.2,0.9,0.3,1.1)" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 14, marginBottom: 24 }}>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 14, minWidth: 0 }}>
+            {icon && (
+              <span style={{ width: 46, height: 46, borderRadius: 13, background: `${accent}14`, color: accent, border: `1px solid ${accent}2A`, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                {icon}
+              </span>
+            )}
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 19, fontWeight: 900, color: "#0f172a", letterSpacing: -0.3 }}>{title}</div>
+              {subtitle && <div style={{ fontSize: 12.5, color: "#64748b", marginTop: 5, lineHeight: 1.55 }}>{subtitle}</div>}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="mdp-modal-close"
+            style={{ width: 32, height: 32, flexShrink: 0, borderRadius: 10, border: "1px solid #e2e8f0", background: "#f8fafc", color: "#64748b", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", transition: "background .15s, color .15s" }}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
+          </button>
         </div>
         {children}
       </div>
+      <style>{`
+        @keyframes mdp-fade { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes mdp-pop { from { opacity: 0; transform: scale(0.96) translateY(6px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        .mdp-modal-close:hover { background: #fee2e2 !important; color: #dc2626 !important; }
+      `}</style>
     </div>
   );
 }
@@ -326,9 +430,24 @@ export default function ManageDepartmentsPanel({ school }) {
         )}
       </div>
 
+      {/* All HODs roster - separate from the table above so a HOD created but not yet
+          assigned to any program is still visible somewhere on this page. */}
+      <HodRoster
+        hods={existingHods}
+        loading={loading}
+        unitLabelLower={unitLabelLower}
+        onCreateNew={() => setCreateHodFor("")}
+      />
+
       {/* Add Program modal */}
       {addProgramOpen && (
-        <Modal title={`Add ${unitLabel}`} subtitle={`New ${unitLabelLower}s become available for HOD assignment and Faculty signup immediately.`} onClose={() => setAddProgramOpen(false)}>
+        <Modal
+          title={`Add ${unitLabel}`}
+          subtitle={`New ${unitLabelLower}s become available for HOD assignment and Faculty signup immediately.`}
+          onClose={() => setAddProgramOpen(false)}
+          accent="#0f766e"
+          icon={<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3 9 5-9 5-9-5 9-5Z" /><path d="M5 10.5V16c0 1.5 3.13 3 7 3s7-1.5 7-3v-5.5" /><path d="M21 9v6.5" /></svg>}
+        >
           <form onSubmit={handleAddProgram} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <input
               autoFocus
@@ -352,7 +471,14 @@ export default function ManageDepartmentsPanel({ school }) {
 
       {/* Create HOD modal */}
       {createHodFor !== null && (
-        <Modal title="Create HOD Account" subtitle={createHodFor ? `Will be assigned to ${createHodFor} once created.` : `Create the account, then assign a ${unitLabelLower} from the table.`} onClose={() => setCreateHodFor(null)}>
+        <Modal
+          title="Create HOD Account"
+          subtitle={createHodFor ? `Will be assigned to ${createHodFor} once created.` : `Create the account, then assign a ${unitLabelLower} from the table.`}
+          onClose={() => setCreateHodFor(null)}
+          accent="#4338ca"
+          width={620}
+          icon={<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3.2 19 6v5.2c0 4.4-2.9 7.6-7 8.6-4.1-1-7-4.2-7-8.6V6l7-2.8Z" /><path d="m9.3 12 1.8 1.8 3.6-3.8" /></svg>}
+        >
           <CreateHodForm
             school={school}
             departmentName={createHodFor}

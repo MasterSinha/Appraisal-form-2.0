@@ -3030,7 +3030,7 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
           </button>
         </div>
       )}
-      {(sectionView === "partA" || sectionView === "partB" || sectionView === "partC" || sectionView === "partD") && (
+      {(sectionView === "partA" || sectionView === "partB" || sectionView === "partC" || sectionView === "partD" || sectionView === "partE") && (
         <CreativeSchoolForm
           form={form}
           setForm={() => { }}
@@ -3045,7 +3045,7 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
           sectionView={sectionView}
         />
       )}
-      {(sectionView === "partA" || sectionView === "partB" || sectionView === "partC" || sectionView === "partD") && !panelReadOnly && (
+      {(sectionView === "partA" || sectionView === "partB" || sectionView === "partC" || sectionView === "partD" || sectionView === "partE") && !panelReadOnly && (
         <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, margin: "12px 0 14px", flexWrap: "wrap" }}>
           <span style={{ color: "#64748b", fontSize: 11, fontWeight: 700 }}>{draftStatus}</span>
           <button
