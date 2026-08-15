@@ -81,6 +81,9 @@ import { loadClosedAppraisal } from "../services/appraisalPersistence";
 import { MediaCommunicationPreviousYearView } from "../features/previousYearReport";
 import { isLegacyTwoPartAcademicYear } from "../features/faculty-appraisal/forms/standard/legacyPreviousYearReportUtils";
 import { legacyDashboardMetrics } from "../utils/legacyDashboardMetrics";
+import { listSchoolDepartments } from "../services/departmentsService";
+import { enrichQueueItem } from "../services/reviewWorkflow";
+import LazyVisible from "../components/dashboard/LazyVisible";
 
 function InlineSvgIcon({ paths, size = 16, strokeWidth = 2.2 }) {
  return (
@@ -187,6 +190,9 @@ export default function MediaCommDashboard({ fixedRole }) {
  const [form, setForm] = useState(emptyMediaForm);
  const [docs, setDocs] = useState({});
  const [queue, setQueue] = useState([]);
+ const [queueLoadError, setQueueLoadError] = useState("");
+ const queueLoadRequestRef = useRef(0);
+ const [schoolDepartments, setSchoolDepartments] = useState([]);
  const [filterStatus, setFilterStatus] = useState("All");
  const [reviewing, setReviewing] = useState(null);
  const [reviewLoading, setReviewLoading] = useState(null);
@@ -335,8 +341,12 @@ export default function MediaCommDashboard({ fixedRole }) {
  setDeclaration(declarationRow);
  setReviews(loadedReviews);
  const preferSubmitted = Boolean(declarationRow) && hasActiveRejection(declarationRow, loadedReviews);
+ // fetchSavedAppraisal throws when the submission looks incomplete (meant for reviewers
+ // opening someone else's form); loadClosedAppraisal tries the same submitted fetch first
+ // but falls back to the draft snapshot instead of throwing, which is what a faculty
+ // member's own previous-year self-view needs.
  const loadAppraisal = isLegacyTwoPartYear
- ? fetchSavedAppraisal({ facultyEmail: userEmail, academicYear })
+ ? loadClosedAppraisal({ facultyEmail: userEmail, academicYear, setters })
  : (isSelectedCycleClosed ? loadClosedAppraisal : loadSavedAppraisal)({ facultyEmail: userEmail, academicYear, setters, preferSubmitted });
  const [loadedAppraisal] = await Promise.all([
  loadAppraisal,
@@ -353,25 +363,53 @@ export default function MediaCommDashboard({ fixedRole }) {
 
  const loadQueue = async () =>{
  if (role === "faculty") return;
+ const requestId = ++queueLoadRequestRef.current;
+ const isCurrentRequest = () =>queueLoadRequestRef.current === requestId;
+ const isInScope = (item) =>FORM_SCHOOL_CODES[FORM_TYPES.MEDIA_COMM].includes(getSchoolKey(item.school));
  setLoadingQueue(true);
+ setQueueLoadError("");
  try {
+ // lazy: true - the list renders instantly from the lightweight response; each card's
+ // doc-count/legacy-score is only fetched once that card actually scrolls into view (see
+ // the LazyVisible wrapper around each card below).
  const items = await fetchReviewQueueForRole({
  reviewerRole: role,
  reviewerProfile: { ...profile, appraisal_role: role },
+ academicYear,
  schoolValues: FORM_SCHOOL_CODES[FORM_TYPES.MEDIA_COMM],
+ lazy: true,
  });
- setQueue(items.filter((item) =>FORM_SCHOOL_CODES[FORM_TYPES.MEDIA_COMM].includes(getSchoolKey(item.school))));
+ if (!isCurrentRequest()) return;
+ setQueue(items.filter(isInScope));
  } catch (err) {
+ if (!isCurrentRequest()) return;
  console.error(`Could not load ${currentSchoolCode} review queue:`, err);
+ // A failed fetch used to fall back to an empty list, which looked identical to "nothing is
+ // pending" - a reviewer had no way to tell a real error apart from a genuinely empty queue.
+ setQueueLoadError(err?.message || "Could not load the review queue. Please try again.");
  setQueue([]);
  } finally {
- setLoadingQueue(false);
+ if (isCurrentRequest()) setLoadingQueue(false);
  }
  };
 
  useEffect(() =>{
  loadQueue();
- }, [role, profile.school, profile.department]);
+ // academicYear was previously omitted here, so switching the year selector on the Approvals
+ // tab never actually reloaded the queue - it silently kept showing the active year's items
+ // regardless of what was selected (and never showed a loading state, since nothing re-fetched).
+ }, [role, profile.school, profile.department, academicYear]);
+
+ useEffect(() =>{
+ if (role !== "director") return;
+ const school = sessionStorage.getItem("school");
+ if (!school) return;
+ let cancelled = false;
+ listSchoolDepartments(school)
+ .then((departments) =>{ if (!cancelled) setSchoolDepartments(departments || []); })
+ .catch((err) =>console.error("Could not load school departments:", err));
+ return () =>{ cancelled = true; };
+ }, [role]);
 
  const isSelfSectionOpen = (_section) =>true;
 
@@ -771,18 +809,40 @@ export default function MediaCommDashboard({ fixedRole }) {
     const pendingForRole = isPendingReviewStatusFor([item.status, item.workflowStatus, item.workflow_status], role);
     return !pendingForRole && (isReviewerReviewComplete(item, role) || hasReviewerScoreForRole(item));
   };
-  const pendingCount = queue.filter((item) => !isApprovalReviewed(item)).length;
-  const reviewedCount = queue.filter(isApprovalReviewed).length;
+  // Director's queue used to be one flat list regardless of whether the subject was a Faculty
+  // member or an HOD - once a school has departments (Manage Departments), HOD submissions need
+  // their own section, same as the engineering DirectorDashboard's Faculty's/HOD's Appraisal split.
+  const isHodItem = (item) => (item.appraisalRole || item.appraisal_role || "").toLowerCase() === "hod";
+  const facultyQueue = queue.filter((item) => !isHodItem(item));
+  const hodQueue = queue.filter(isHodItem);
+  const activeQueue = activeTab === "hodApprovals" ? hodQueue : facultyQueue;
+  const facultyPendingCount = facultyQueue.filter((item) => !isApprovalReviewed(item)).length;
+  const hodPendingCount = hodQueue.filter((item) => !isApprovalReviewed(item)).length;
+  const pendingCount = activeTab === "hodApprovals" ? hodPendingCount : facultyPendingCount;
+  const reviewedCount = activeQueue.filter(isApprovalReviewed).length;
   const filteredQueue = filterStatus === "All"
-    ? queue
+    ? activeQueue
     : filterStatus === "Pending Review"
-      ? queue.filter((item) => !isApprovalReviewed(item))
-      : queue.filter(isApprovalReviewed);
+      ? activeQueue.filter((item) => !isApprovalReviewed(item))
+      : activeQueue.filter(isApprovalReviewed);
+
+  // Fetches doc-count/legacy-score for one card only once it actually scrolls into view -
+  // see the lazy: true note on the queue load above.
+  const handleCardVisible = (item) => {
+    enrichQueueItem(item).then((enriched) => {
+      setQueue((prev) => prev.map((row) => (row.email === enriched.email && row.academicYear === enriched.academicYear ? enriched : row)));
+    }).catch(() => {});
+  };
 
   const navItems = [
     ...(canSelfSubmit ? [{ id: "myAppraisal", label: "My Appraisal", sub: "View your self-appraisal form" }] : []),
-    ...(role !== "faculty" ? [{ id: "approvals", label: `Approvals (${pendingCount})`, sub: "Review faculty appraisals" }] : []),
-    ...(role === "director" ? [{ id: "departments", label: "Manage Departments", sub: "HOD departments for your school" }] : []),
+    ...(role !== "faculty" ? [{ id: "approvals", label: `Faculty's Appraisal (${facultyPendingCount})`, sub: "Review faculty appraisals" }] : []),
+    // Always shown for directors, same as Faculty's Appraisal - previously hidden until
+    // hasHodDepartments was true, which made the option itself look missing for schools that
+    // hadn't added a department yet, instead of just showing empty until one exists.
+    ...(role === "director" ? [{ id: "hodApprovals", label: `HOD's Appraisal (${hodPendingCount})`, sub: "Review HOD appraisals" }] : []),
+    // SoMCS/SoHSS are organized into programs, not departments - one HOD can cover multiple programs.
+ ...(role === "director" ? [{ id: "departments", label: "Manage Programs", sub: "HOD programs for your school" }] : []),
   ];
 
   return (
@@ -816,6 +876,18 @@ export default function MediaCommDashboard({ fixedRole }) {
             <div className="appraisal-year-loading-textwrap">
               <div className="appraisal-year-loading-text">Loading {academicYear || "academic year"} data…</div>
               <div className="appraisal-year-loading-subtext">Fetching your appraisal records</div>
+              <div className="appraisal-year-loading-dots"><span /><span /><span /></div>
+            </div>
+          </div>
+        </div>
+      )}
+      {loadingQueue && (activeTab === "approvals" || activeTab === "hodApprovals") && (
+        <div className="appraisal-year-loading-overlay" role="status" aria-live="polite">
+          <div className="appraisal-year-loading-card">
+            <div className="appraisal-year-loading-spinner" />
+            <div className="appraisal-year-loading-textwrap">
+              <div className="appraisal-year-loading-text">Loading {academicYear || "academic year"} queue…</div>
+              <div className="appraisal-year-loading-subtext">Fetching {currentSchoolCode} submissions</div>
               <div className="appraisal-year-loading-dots"><span /><span /><span /></div>
             </div>
           </div>
@@ -1044,13 +1116,13 @@ export default function MediaCommDashboard({ fixedRole }) {
 </div>
   )}
 
- {activeTab === "approvals" && !reviewing && role !== "faculty" && (
+ {(activeTab === "approvals" || activeTab === "hodApprovals") && !reviewing && role !== "faculty" && (
 <div>
 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 18, background: "#fff", borderRadius: 14, padding: "16px 24px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb" }}>
 <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
 <AppraisalHeaderImage logo="dypiu" />
 <div>
-<h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "#0f172a", letterSpacing: -0.5 }}>Faculty's Appraisal</h1>
+<h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "#0f172a", letterSpacing: -0.5 }}>{activeTab === "hodApprovals" ? "HOD's Appraisal" : "Faculty's Appraisal"}</h1>
 <div style={{ marginTop: 5, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", color: "#64748b", fontSize: 11 }}>
 <span>AY</span>
 <select
@@ -1088,16 +1160,15 @@ export default function MediaCommDashboard({ fixedRole }) {
  ))}
 </div>
 
- {/* - Loading indicator - */}
- {loadingQueue && (
-<div style={{ display: "flex", alignItems: "center", gap: 10, padding: "24px 0", color: "#64748b", fontSize: 13 }}>
-<div className="fa-pulse" style={{ width: 8, height: 8, borderRadius: "50%", background: ACCENT }} />
- Loading {currentSchoolCode} queue...
+ {queueLoadError && (
+<div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 9, color: "#991b1b", fontSize: 13, fontWeight: 700, marginBottom: 14 }}>
+ <span aria-hidden="true">!</span>
+ <span>{queueLoadError}</span>
 </div>
  )}
 
  {/* - Empty state - */}
- {!loadingQueue && queue.length === 0 && (
+ {!loadingQueue && !queueLoadError && activeQueue.length === 0 && (
 <div style={{ textAlign: "center", padding: "56px 24px", background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0" }}>
 <div style={{ width: 52, height: 52, borderRadius: "50%", background: "#f0fdf4", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px", fontSize: 24 }}>Done</div>
 <div style={{ fontWeight: 700, fontSize: 15, color: "#0f172a", marginBottom: 6 }}>All caught up!</div>
@@ -1162,7 +1233,8 @@ export default function MediaCommDashboard({ fixedRole }) {
  { label: metricLabelPrefix ? `${metricLabelPrefix} Total` : "Total", val: displayTotals.total, max: maxScores.grand, color: "#059669" },
  ];
  return (
-<div key={item.id} style={{ background: "#fff", borderRadius: 12, padding: "18px 20px", boxShadow: "0 1px 6px rgba(0,0,0,.07)", display: "flex", flexDirection: "column", gap: 14 }}>
+<LazyVisible key={item.id} triggerKey={`${item.email}::${item.academicYear}`} onVisible={() =>handleCardVisible(item)}>
+<div style={{ background: "#fff", borderRadius: 12, padding: "18px 20px", boxShadow: "0 1px 6px rgba(0,0,0,.07)", display: "flex", flexDirection: "column", gap: 14 }}>
 <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
 <Avatar initials={initials} src={item.avatarUrl} color={item.avatarColor} size={58} />
 <div style={{ flex: 1, minWidth: 0 }}>
@@ -1188,6 +1260,7 @@ export default function MediaCommDashboard({ fixedRole }) {
 </button>
 </div>
 </div>
+</LazyVisible>
  );
  })}
 </div>
@@ -1201,7 +1274,7 @@ export default function MediaCommDashboard({ fixedRole }) {
 </div>
  )}
 
-  {activeTab === "approvals" && reviewing && (
+  {(activeTab === "approvals" || activeTab === "hodApprovals") && reviewing && (
 <MediaCommAuthorityReviewPanel
  person={reviewing}
  reviewerRole={role}

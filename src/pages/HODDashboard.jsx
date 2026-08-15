@@ -13,6 +13,8 @@ import { legacyDashboardMetrics } from "../utils/legacyDashboardMetrics";
 import { canReviewerRejectProfile, getDeanTrack, rejectedStatusFor, reviewedStatusFor, profileFromsessionStorage, workflowValidationError, roleLabel, isAppraisalFinalisedByVc, isRejectedStatus, isPendingReviewStatusFor, hasActiveRejection, reviewListFrom, getSchoolKey } from "../utils/hierarchy";
 import { n, pct, grade, reportValue, reportTextValue, reportQualification, reportExperience, RO, TI } from "../features/faculty-appraisal/shared";
 import { FacultyRecordHeader, ScoreTable, VCFinalRemarks, FinalSubmitButton, FACULTY_RECORD_THEME } from "../components/dashboard/FacultyAppraisalRecord";
+import { enrichQueueItem } from "../services/reviewWorkflow";
+import LazyVisible from "../components/dashboard/LazyVisible";
 
 // - Helpers - (n, pct, grade, reportValue, reportTextValue, reportQualification, reportExperience, RO, TI → imported from shared)
 
@@ -496,6 +498,8 @@ export default function HODDashboard({
  const [reviewingFaculty, setReviewingFaculty] = useState(null);
  const [reviewLoading, setReviewLoading] = useState(null);
  const [facultyList, setFacultyList] = useState([]);
+ const [queueLoadError, setQueueLoadError] = useState("");
+ const queueLoadRequestRef = useRef(0);
  const [selectedAcademicYear, setSelectedAcademicYear] = useState(() => getActiveAcademicYear());
  const [availableCycles, setAvailableCycles] = useState(() => storedAcademicYearCycles());
  const [loadingYearData, setLoadingYearData] = useState(false);
@@ -520,21 +524,33 @@ export default function HODDashboard({
  }, []);
 
  useEffect(() =>{
+ const requestId = ++queueLoadRequestRef.current;
+ const isCurrentRequest = () =>queueLoadRequestRef.current === requestId;
  const loadReviewQueue = async () =>{
  setLoadingYearData(true);
+ setQueueLoadError("");
  try {
+ // lazy: true - the list renders instantly from the lightweight response; each card's
+ // doc-count/legacy-score is only fetched once that card actually scrolls into view (see
+ // the LazyVisible wrapper around each card below).
  const items = await fetchReviewQueueForRole({
  reviewerRole,
  reviewerProfile: { ...profileFromsessionStorage(), appraisal_role: reviewerRole, school: hodSchool, department: hodDept },
  academicYear: selectedAcademicYear,
  schoolValues: [hodSchool],
+ lazy: true,
  });
+ if (!isCurrentRequest()) return;
  setFacultyList(items);
  } catch (err) {
+ if (!isCurrentRequest()) return;
  console.error(`Could not load ${reviewerLabel} review queue:`, err);
+ // A failed fetch used to fall back to an empty list, which looked identical to "nothing is
+ // pending" - a reviewer had no way to tell a real error apart from a genuinely empty queue.
+ setQueueLoadError(err?.message || "Could not load the review queue. Please try again.");
  setFacultyList([]);
  } finally {
- setLoadingYearData(false);
+ if (isCurrentRequest()) setLoadingYearData(false);
  }
  };
 
@@ -603,6 +619,14 @@ export default function HODDashboard({
  };
 
  const filtered = filterStatus === "All" ? facultyList : (filterStatus === "Pending Review" ? facultyList.filter(isHodPending) : facultyList.filter(isHodReviewed));
+
+ // Fetches doc-count/legacy-score for one card only once it actually scrolls into view -
+ // see the lazy: true note on the queue load above.
+ const handleCardVisible = (item) =>{
+ enrichQueueItem(item).then((enriched) =>{
+ setFacultyList((prev) =>prev.map((row) =>(row.email === enriched.email && row.academicYear === enriched.academicYear ? enriched : row)));
+ }).catch(() =>{});
+ };
 
 
  const handleMyAppraisalSectionChange = (section) =>{
@@ -691,6 +715,13 @@ export default function HODDashboard({
  ))}
 </div>
 
+ {queueLoadError && (
+<div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 9, color: "#991b1b", fontSize: 13, fontWeight: 700, marginBottom: 14 }}>
+ <span aria-hidden="true">!</span>
+ <span>{queueLoadError}</span>
+</div>
+ )}
+
  {/* Faculty Grid */}
 <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 14 }}>
  {filtered.map(faculty =>{
@@ -737,7 +768,8 @@ export default function HODDashboard({
 
  
 return (
-<div key={faculty.id} style={{ background: "#fff", borderRadius: 12, padding: "18px 20px", boxShadow: "0 1px 6px rgba(0,0,0,.07)", display: "flex", flexDirection: "column", gap: 14 }}>
+<LazyVisible key={faculty.id} triggerKey={`${faculty.email}::${faculty.academicYear}`} onVisible={() =>handleCardVisible(faculty)}>
+<div style={{ background: "#fff", borderRadius: 12, padding: "18px 20px", boxShadow: "0 1px 6px rgba(0,0,0,.07)", display: "flex", flexDirection: "column", gap: 14 }}>
 <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
 <Avatar initials={faculty.avatar} src={faculty.avatarUrl} color={faculty.avatarColor} size={58} />
 <div style={{ flex: 1 }}>
@@ -782,11 +814,12 @@ return (
 </button>
 </div>
 </div>
+</LazyVisible>
  );
  })}
 </div>
 
- {filtered.length === 0 && (
+ {filtered.length === 0 && !queueLoadError && (
 <div style={{ textAlign: "center", padding: "60px 0", color: "#94a3b8" }}>
 <div style={{ fontSize: 32, marginBottom: 8 }}>Done</div>
 <div style={{ fontWeight: 700, color: "#0f172a" }}>All caught up!</div>

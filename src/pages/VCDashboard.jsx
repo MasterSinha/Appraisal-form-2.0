@@ -1977,6 +1977,7 @@ export default function VCDashboard() {
  const [facList, setFacList] = useState([]);
  const [nonTeachingList, setNonTeachingList] = useState([]);
  const [nonTeachingReviewedList, setNonTeachingReviewedList] = useState([]);
+ const [queueLoadError, setQueueLoadError] = useState("");
  const [selectedAcademicYear, setSelectedAcademicYear] = useState(() =>getActiveAcademicYear());
  const [availableCycles, setAvailableCycles] = useState(() =>storedAcademicYearCycles());
  const [loadingYearData, setLoadingYearData] = useState(false);
@@ -2002,11 +2003,27 @@ export default function VCDashboard() {
  return () =>window.removeEventListener("academicYearChanged", syncAcademicYear);
  }, []);
 
+ // fetchReviewQueueForRole's onItemReady lets the (fast) lightweight list render immediately and
+ // patches each row in place as its doc-count/legacy-score enrichment resolves in the background,
+ // instead of blocking the whole queue on hundreds of per-person requests - see the comment on
+ // fetchReviewQueueForRole for why that blocking was the actual cause of "switching year is slow"
+ // (VC's queue spans the whole university, so it paid that cost worst).
+ const applyEnrichedItem = useCallback((enrichedItem) =>{
+ const routed = withVcSchoolId(enrichedItem);
+ const listSetterForRole = { faculty: setFacList, hod: setHodList, center_head: setCenterHeadList, director: setDirList, dean: setDeanList };
+ const setList = listSetterForRole[routed.appraisalRole];
+ if (!setList) return;
+ setList((prev) =>prev.map((item) =>(item.email === routed.email && item.academicYear === routed.academicYear ? routed : item)));
+ }, []);
+
  const loadReviewQueue = useCallback(async (silent = false) =>{
  if (!pollingActiveRef.current) return;
  const requestId = silent ? yearLoadRequestRef.current : ++yearLoadRequestRef.current;
  const isCurrentRequest = () =>yearLoadRequestRef.current === requestId;
- if (!silent) setLoadingYearData(true);
+ if (!silent) {
+ setLoadingYearData(true);
+ setQueueLoadError("");
+ }
  try {
  const items = await fetchReviewQueueForRole({
  reviewerRole: "vc",
@@ -2018,6 +2035,8 @@ export default function VCDashboard() {
  DEAN_TRACKS.ENGINEERING,
  DEAN_TRACKS.NON_ENGINEERING,
  ],
+ isStale: () =>!isCurrentRequest(),
+ onItemReady: applyEnrichedItem,
  });
  let nonTeachingItems = [];
  try {
@@ -2052,6 +2071,9 @@ export default function VCDashboard() {
  if (!silent) {
  console.error("Could not load VC review queue:", err);
  if (!pollingActiveRef.current) return;
+ // A failed fetch used to fall back to an empty list, which looked identical to "nothing is
+ // pending" - a reviewer had no way to tell a real error apart from a genuinely empty queue.
+ setQueueLoadError(err?.message || "Could not load the review queue. Please try again.");
  setFacList([]); setHodList([]); setCenterHeadList([]); setDirList([]); setDeanList([]);
  setNonTeachingList([]);
  setNonTeachingReviewedList([]);
@@ -2059,7 +2081,7 @@ export default function VCDashboard() {
  } finally {
  if (!silent && isCurrentRequest()) setLoadingYearData(false);
  }
- }, [selectedAcademicYear]);
+ }, [selectedAcademicYear, applyEnrichedItem]);
 
  useEffect(() =>{
  pollingActiveRef.current = true;
@@ -2411,6 +2433,13 @@ University Overview
 </button>
  );
  })}
+</div>
+ )}
+
+ {queueLoadError && (
+<div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 9, color: "#991b1b", fontSize: 13, fontWeight: 700, margin: "0 0 14px" }}>
+ <span aria-hidden="true">!</span>
+ <span>{queueLoadError}</span>
 </div>
  )}
 

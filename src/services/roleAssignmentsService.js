@@ -45,3 +45,36 @@ export const transferRole = async ({ roleType, scopeId, incomingEmail }) => {
   });
   return normalizeAssignment(result);
 };
+
+// Vacates the active assignment for this scope without appointing a replacement - e.g. a
+// Director removing an HOD from a program with no immediate successor. See New_backend.md
+// ("Remove HOD from a program") - this endpoint does not exist server-side yet.
+export const removeRoleAssignment = async ({ roleType, scopeId }) => {
+  if (!roleType || !scopeId) {
+    throw new Error("Role and scope are required.");
+  }
+  return await api.post("/role-assignments/remove", {
+    role_type: roleType,
+    scope_id: scopeId,
+  });
+};
+
+const normalizeHodOption = (raw) => ({
+  email: raw?.email ?? raw?.user_email ?? raw?.userEmail ?? "",
+  fullName: raw?.full_name ?? raw?.fullName ?? raw?.name ?? "",
+  departments: Array.isArray(raw?.departments) ? raw.departments : (raw?.department ? [raw.department] : []),
+});
+
+// Lists existing HOD accounts already registered for this school, so a Director can add another
+// program to someone who's already an HOD there instead of typing their email blind. See
+// New_backend.md ("List HODs for a school") - this endpoint does not exist server-side yet; the
+// UI falls back to manual email entry when it 404s.
+export const fetchSchoolHods = async (schoolCode) => {
+  if (!schoolCode) return [];
+  try {
+    const result = await api.get(`/schools/${encodeURIComponent(schoolCode)}/hods`);
+    return (Array.isArray(result) ? result : []).map(normalizeHodOption).filter((hod) => hod.email);
+  } catch {
+    return [];
+  }
+};

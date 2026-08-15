@@ -20,6 +20,40 @@ import {
 import { standardReviewSummary, standardSubmittedScoreSummary } from "../utils/reviewSummaryTotals";
 import { isLegacyTwoPartAcademicYear, legacySubmittedTotals } from "../features/faculty-appraisal/forms/standard/legacyPreviousYearReportUtils";
 
+// enrichQueueItemDocs fans out up to 2 requests per queue item. For a small department that's
+// fine in parallel, but VC's queue spans the whole university (100+ people) - firing all of them
+// at once floods the backend and each individual request slows down waiting behind the pile-up.
+// Capping concurrency lets requests actually complete at normal speed instead of queueing.
+const ENRICHMENT_CONCURRENCY = 6;
+const mapWithConcurrency = async (items, limit, worker) => {
+  const results = new Array(items.length);
+  let cursor = 0;
+  const lane = async () => {
+    while (cursor < items.length) {
+      const index = cursor++;
+      results[index] = await worker(items[index], index);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) || 1 }, lane));
+  return results;
+};
+
+// Short-lived cache for the two enrichment calls (doc list, full submitted appraisal). VC's
+// dashboard polls the same queue every few seconds to stay live - without this, every poll
+// re-fetched every person's documents and submission from scratch, even when nothing changed.
+const ENRICHMENT_CACHE_TTL_MS = 60000;
+const enrichmentCache = new Map();
+const withEnrichmentCache = async (kind, email, academicYear, fetcher) => {
+  const key = `${kind}::${academicYear}::${email}`;
+  const cached = enrichmentCache.get(key);
+  if (cached && Date.now() - cached.time < ENRICHMENT_CACHE_TTL_MS) {
+    return cached.value;
+  }
+  const value = await fetcher();
+  enrichmentCache.set(key, { value, time: Date.now() });
+  return value;
+};
+
 const n = (value) => parseFloat(value) || 0;
 const clean = (value) => String(value ?? "").trim();
 const lower = (value) => clean(value).toLowerCase();
@@ -208,12 +242,14 @@ const enrichQueueItemDocs = async (item = {}) => {
 
   if (currentDocCount === 0) {
     try {
-      const rows = await api.get("/appraisal-documents", {
-        params: {
-          academic_year: item.academicYear,
-          faculty_email: item.email,
-        },
-      });
+      const rows = await withEnrichmentCache("docs", item.email, item.academicYear, () =>
+        api.get("/appraisal-documents", {
+          params: {
+            academic_year: item.academicYear,
+            faculty_email: item.email,
+          },
+        })
+      );
       const fetchedCount = docCountFromValue(rows);
       if (fetchedCount > 0 && fetchedCount !== currentDocCount) {
         enrichedItem = { ...enrichedItem, docs: rows, docCount: fetchedCount };
@@ -228,10 +264,12 @@ const enrichQueueItemDocs = async (item = {}) => {
   }
 
   try {
-    const submitted = await fetchSavedAppraisal({
-      facultyEmail: item.email,
-      academicYear: item.academicYear,
-    });
+    const submitted = await withEnrichmentCache("submitted", item.email, item.academicYear, () =>
+      fetchSavedAppraisal({
+        facultyEmail: item.email,
+        academicYear: item.academicYear,
+      })
+    );
     const bestSubmittedDocs = docsForQueueCard(submitted);
     const submittedCount = docCountFromValue(bestSubmittedDocs, submitted);
     const currentCount = docCountFromValue(enrichedItem.docs, enrichedItem);
@@ -786,11 +824,23 @@ const normalizeQueueItem = (item = {}) => {
   };
 };
 
+// enrichQueueItemDocs does up to 2 extra network round trips per person (see its own comment).
+// Blocking the whole queue on Promise.all-ing that for every item is fine for a department-sized
+// list, but for a role like VC whose queue spans the entire university (100+ people, worst on a
+// legacy year where most items still need the fallback), it turns "load the queue" into hundreds
+// of requests racing each other before a single row can render - which is what actually made
+// switching to the 2025-2026 academic year feel stuck. When callers pass onItemReady, this returns
+// the lightweight (fast) list immediately and enriches each item in the background, calling
+// onItemReady as each one resolves so the caller can patch just that row in place. Callers that
+// don't pass onItemReady keep the original blocking behavior unchanged.
 export const fetchReviewQueueForRole = async ({
   reviewerRole,
   reviewerProfile = profileFromsessionStorage(),
   academicYear,
   schoolValues = [],
+  onItemReady,
+  isStale,
+  lazy = false,
 } = {}) => {
   const role = normalizeRoleForWorkflow(reviewerRole || reviewerProfile.appraisal_role || reviewerProfile.role);
   if (!role || role === "faculty") return [];
@@ -809,11 +859,34 @@ export const fetchReviewQueueForRole = async ({
     const normalizedItems = (items || [])
       .map(normalizeQueueItem)
       .filter((item) => isReviewableForRole(item, role, reviewerProfile));
-    return await Promise.all(normalizedItems.map(enrichQueueItemDocs));
+
+    // lazy: don't enrich anything up front - the caller enriches one card at a time via
+    // enrichQueueItem, triggered as each card actually scrolls into view (see LazyVisible).
+    // For a queue spanning the whole university, this is the only way to avoid paying the
+    // enrichment cost for people the reviewer never scrolls down to.
+    if (lazy) return normalizedItems;
+
+    if (onItemReady) {
+      mapWithConcurrency(normalizedItems, ENRICHMENT_CONCURRENCY, async (item) => {
+        try {
+          const enriched = await enrichQueueItemDocs(item);
+          if (!isStale?.()) onItemReady(enriched);
+        } catch {
+          // enrichQueueItemDocs already falls back internally on its own errors.
+        }
+      });
+      return normalizedItems;
+    }
+
+    return await mapWithConcurrency(normalizedItems, ENRICHMENT_CONCURRENCY, enrichQueueItemDocs);
   } catch (err) {
     throw new Error(err?.message || "Could not load review queue.", { cause: err });
   }
 };
+
+// Enriches a single queue item on demand (doc count, and for legacy years, reviewer totals).
+// Used by dashboards for viewport-triggered (lazy) enrichment - see LazyVisible.
+export const enrichQueueItem = (item) => enrichQueueItemDocs(item);
 
 // Part D (Leave & Attendance) is scored only by the Registrar, for every teaching-staff
 // originator (Faculty/HOD/Director/Dean/Center Head, any school) - independent of the

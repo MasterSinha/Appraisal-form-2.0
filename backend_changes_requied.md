@@ -330,3 +330,72 @@ through them, but that form variant's **reviewer-facing display** of Part D has 
 updated to gate on `part_d_status` the way the standard form's dashboards were. This is a
 frontend follow-up, not a backend gap — flagging it here so the backend contract above isn't
 assumed to be exercised end-to-end for those four schools yet.
+
+---
+
+## 6. Program model — SoEMR's departments vs. every other school's programs (extends Section 1)
+
+**Why:** Section 1's `Department` entity assumed a uniform one-HOD-per-unit model across every
+school. That's correct for SoEMR — Mechanical Engineering, Civil Engineering, etc. are genuinely
+one-HOD units — but every other teaching school (SoCSEA, SoBB, SoCE, SoCM, SoMCS, SoHSS, SoD,
+SoAA) is organized by **program** instead, and one HOD there can be responsible for several
+programs at once (e.g. one HOD covering both "B.Tech Computer Science" and "B.Tech AI/ML"). The
+frontend now labels this panel "Manage Programs" for those 7 schools and keeps "Manage
+Departments" only for SoEMR (`isSoemrSchool(school)` picks the label — see
+`ManageDepartmentsPanel.jsx`). The underlying entity doesn't need to change shape, just gain one
+field, and the multi-assignment behavior falls out of the existing Role Ownership Transfer model
+in Section 2 with no new table.
+
+### Schema change: one new column on the existing `Department` table
+
+```
+Department
+├── ...(all fields from Section 1, unchanged)
+└── unit_type   ("department" | "program")   -- "department" only where school_code = "SoEMR",
+                                                 "program" for every other school_code
+```
+
+No rename of the table/endpoints — `GET/POST/DELETE /schools/{school_code}/departments` from
+Section 1 work as-is for both kinds; `unit_type` is informational only (e.g. for an admin view
+that lists every unit across schools and needs to label them correctly). The frontend already
+decides "Department" vs "Program" wording purely from `school_code`, so it doesn't strictly need
+`unit_type` in the API response — include it anyway for consistency with any future
+non-frontend consumer (reports, admin tools).
+
+### Multi-program HOD assignment: no new table needed
+
+One HOD covering multiple programs is already representable in Section 2's `RoleAssignment`
+model **as long as the uniqueness constraint is scoped correctly**:
+
+- The unique-active-assignment constraint must be `(role_type, scope_id)` where
+  `status = "active"` — **not** `(role_type, user_id)`. The same `user_id` legitimately holding
+  the active HOD `RoleAssignment` for several different `scope_id`s (several `Department`/program
+  rows) at once is the expected, valid shape of "one HOD, multiple programs" — not a conflict to
+  reject.
+- A Director assigns Program A to `hod@example.com` via `POST /role-assignments/transfer`
+  (`scope_id` = Program A's `Department.id`), then separately assigns Program B to the same
+  `hod@example.com` (`scope_id` = Program B's `Department.id`). These are two independent
+  `RoleAssignment` rows that happen to share a `user_id` — both calls use the exact same endpoint
+  from Section 2, no new endpoint required.
+- Faculty routing is unchanged from Section 2's resolution rule: "Faculty's HOD = the active
+  `RoleAssignment` where `role_type = HOD` and `scope_id = faculty.department_id`" already
+  resolves correctly regardless of how many *other* programs that HOD also covers — a faculty
+  member's routing only depends on their own `department_id`, never on what else is assigned to
+  the person it resolves to.
+
+### Optional convenience endpoint (not required for the core capability)
+
+- `GET /users/{email}/role-assignments?role_type=HOD` — returns every `scope_id` (program or
+  department) this person currently holds as HOD. Lets the frontend show "this HOD also covers:
+  Program B, Program C" inline on one program's card, instead of a Director having to open each
+  program individually to discover overlapping assignments. Purely a UX nicety — skip if not
+  worth the effort; the transfer flow works correctly without it.
+
+### Status of the endpoints this depends on
+
+This section builds entirely on Section 2's `RoleAssignment` model and its two endpoints
+(`GET /role-assignments/active`, `POST /role-assignments/transfer`) — as noted there, neither
+exists server-side yet, which is why the "Manage Programs"/"Manage Departments" panel's
+"Current HOD" lookup and "Transfer" action currently 404. No additional endpoint work beyond
+Section 2 is needed to unblock this — building Section 2 as specified already supports the
+multi-program case described here.

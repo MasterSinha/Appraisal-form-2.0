@@ -278,10 +278,18 @@ export const canAuthorityReviewProfile = (reviewerProfile = {}, subjectProfile =
   }
 
   if (reviewerRole === "hod") {
+    // An HOD can be assigned several programs/departments at once (see New_backend.md), all
+    // within their own school - reviewerProfile.departments (array) is the source of truth once
+    // populated; reviewerProfile.department (single) is the fallback for an HOD who's only ever
+    // had one assignment. Same-school-only is still enforced by the getSchoolKey check below,
+    // independent of how many entries reviewerDepartments has.
+    const reviewerDepartments = Array.isArray(reviewerProfile.departments) && reviewerProfile.departments.length
+      ? reviewerProfile.departments
+      : [reviewerProfile.department];
     return subjectRole === "faculty" &&
       departmentHasHod(subjectProfile.school, subjectProfile.department) &&
       getSchoolKey(reviewerProfile.school) === getSchoolKey(subjectProfile.school) &&
-      normalizeText(reviewerProfile.department) === normalizeText(subjectProfile.department);
+      reviewerDepartments.some((department) => normalizeText(department) === normalizeText(subjectProfile.department));
   }
 
   if (reviewerRole === "center_head") {
@@ -301,6 +309,14 @@ export const profileFromsessionStorage = () => ({
   appraisal_role: getItem("role") || "",
   school: getItem("school") || "",
   department: getItem("department") || "",
+  departments: (() => {
+    try {
+      const parsed = JSON.parse(getItem("departments") || "[]");
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  })(),
   designation: getItem("designation") || "",
   qualification: getItem("qualification") || "",
   teaching_experience: getItem("experience") || "",

@@ -13,6 +13,8 @@ import { DEAN_TRACKS, getSchoolKey, getSchoolsByDeanTrack } from "../constants/u
 import { canReviewerRejectProfile, rejectedStatusFor, reviewedStatusFor, profileFromsessionStorage, workflowValidationError, roleLabel, isAppraisalFinalisedByVc, isRejectedStatus, isPendingReviewStatusFor, hasActiveRejection, reviewListFrom, getDeanTrack } from "../utils/hierarchy";
 import { n, pct, grade, RO, TI } from "../features/faculty-appraisal/shared";
 import { FacultyRecordHeader, ScoreTable, VCFinalRemarks, FinalSubmitButton, FACULTY_RECORD_THEME } from "../components/dashboard/FacultyAppraisalRecord";
+import { enrichQueueItem } from "../services/reviewWorkflow";
+import LazyVisible from "../components/dashboard/LazyVisible";
 import { legacyDashboardMetrics } from "../utils/legacyDashboardMetrics";
 
 const NON_ENGINEERING_SCHOOLS = getSchoolsByDeanTrack(DEAN_TRACKS.NON_ENGINEERING);
@@ -1193,6 +1195,8 @@ export default function NonEngineeringDeanDashboard() {
 
   const [facultyList, setFacultyList] = useState([]);
   const [directorList, setDirectorList] = useState([]);
+  const [queueLoadError, setQueueLoadError] = useState("");
+  const queueLoadRequestRef = useRef(0);
   const [selectedAcademicYear, setSelectedAcademicYear] = useState(() => getActiveAcademicYear());
   const [availableCycles, setAvailableCycles] = useState(() => storedAcademicYearCycles());
   const [loadingYearData, setLoadingYearData] = useState(false);
@@ -1220,31 +1224,41 @@ export default function NonEngineeringDeanDashboard() {
   }, []);
 
   useEffect(() => {
+    const requestId = ++queueLoadRequestRef.current;
+    const isCurrentRequest = () => queueLoadRequestRef.current === requestId;
+    const schoolOf = (item) => getSchoolKey(item.school || item.school_name || item.schoolName || "");
+    const roleOf = (item) => (item.appraisalRole || item.appraisal_role || "").toLowerCase();
     const loadReviewQueue = async () => {
       const schoolValues = activeSchoolCodesKey.split(",").filter(Boolean);
       const reviewerProfile = profileFromsessionStorage();
+      const isInScope = (item) => schoolValues.includes(schoolOf(item)) || schoolValues.includes(item.school);
       setLoadingYearData(true);
+      setQueueLoadError("");
       try {
+        // lazy: true - the list renders instantly from the lightweight response; each card's
+        // doc-count/legacy-score is only fetched once that card actually scrolls into view (see
+        // the LazyVisible wrapper around each card below).
         const items = await fetchReviewQueueForRole({
           reviewerRole: "dean",
           reviewerProfile,
           academicYear: selectedAcademicYear,
           schoolValues,
+          lazy: true,
         });
-        const schoolOf = (item) => getSchoolKey(item.school || item.school_name || item.schoolName || "");
-        const roleOf = (item) => (item.appraisalRole || item.appraisal_role || "").toLowerCase();
-        const scopedItems = items.filter((item) => {
-          const code = schoolOf(item);
-          return schoolValues.includes(code) || schoolValues.includes(item.school);
-        });
+        if (!isCurrentRequest()) return;
+        const scopedItems = items.filter(isInScope);
         setFacultyList(scopedItems.filter((item) => roleOf(item) === "faculty"));
         setDirectorList(scopedItems.filter((item) => roleOf(item) === "director"));
       } catch (err) {
+        if (!isCurrentRequest()) return;
         console.error("Could not load Non-Engineering Dean review queue:", err);
+        // A failed fetch used to fall back to an empty list, which looked identical to "nothing
+        // is pending" - a reviewer had no way to tell a real error apart from a genuinely empty queue.
+        setQueueLoadError(err?.message || "Could not load the review queue. Please try again.");
         setFacultyList([]);
         setDirectorList([]);
       } finally {
-        setLoadingYearData(false);
+        if (isCurrentRequest()) setLoadingYearData(false);
       }
     };
 
@@ -1287,6 +1301,16 @@ export default function NonEngineeringDeanDashboard() {
     : (filterStatus === "Pending Review"
     ? activeSchoolApprovalList.filter(isDeanPending)
     : activeSchoolApprovalList.filter(isDeanReviewed));
+
+  // Fetches doc-count/legacy-score for one card only once it actually scrolls into view -
+  // see the lazy: true note on the queue load above.
+  const handleCardVisible = (item) => {
+    enrichQueueItem(item).then((enriched) => {
+      const role = (enriched.appraisalRole || enriched.appraisal_role || "").toLowerCase();
+      const setList = role === "faculty" ? setFacultyList : role === "director" ? setDirectorList : null;
+      setList?.((prev) => prev.map((row) => (row.email === enriched.email && row.academicYear === enriched.academicYear ? enriched : row)));
+    }).catch(() => {});
+  };
 
   const schoolCards = activeSchools.map((school) => {
     const visual = SCHOOL_VISUALS[school.code] || {};
@@ -1632,6 +1656,13 @@ export default function NonEngineeringDeanDashboard() {
             </div>
           </div>
 
+          {queueLoadError && (
+            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 9, color: "#991b1b", fontSize: 13, fontWeight: 700, marginBottom: 14 }}>
+              <span aria-hidden="true">!</span>
+              <span>{queueLoadError}</span>
+            </div>
+          )}
+
           {/* Submissions Grid or Empty State */}
           {filtered.length > 0 ? (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 14 }}>
@@ -1659,7 +1690,8 @@ export default function NonEngineeringDeanDashboard() {
                 const docCount = uploadedDocCount(faculty.docs, faculty);
 
                 return (
-                  <div key={faculty.id} style={{ background: "#fff", borderRadius: 12, padding: "18px 20px", boxShadow: "0 1px 6px rgba(0,0,0,.07)", display: "flex", flexDirection: "column", gap: 14, border: "1px solid #e2e8f0" }}>
+                  <LazyVisible key={faculty.id} triggerKey={`${faculty.email}::${faculty.academicYear}`} onVisible={() => handleCardVisible(faculty)}>
+                  <div style={{ background: "#fff", borderRadius: 12, padding: "18px 20px", boxShadow: "0 1px 6px rgba(0,0,0,.07)", display: "flex", flexDirection: "column", gap: 14, border: "1px solid #e2e8f0" }}>
                     <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
                       <Avatar initials={faculty.avatar} src={faculty.avatarUrl} color={faculty.avatarColor} size={58} />
                       <div style={{ flex: 1 }}>
@@ -1705,10 +1737,11 @@ export default function NonEngineeringDeanDashboard() {
                       </button>
                     </div>
                   </div>
+                  </LazyVisible>
                 );
               })}
             </div>
-          ) : (
+          ) : !queueLoadError ? (
             <div style={{ background: "#ffffff", borderRadius: 14, padding: "64px 24px", border: "1.5px dashed #cbd5e1", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
               <div style={{ background: "#f5f3ff", border: "1.5px dashed #c7d2fe", color: "#6366f1", padding: "8px 20px", borderRadius: 12, fontWeight: 800, fontSize: 15, marginBottom: 16, display: "inline-block" }}>
                 {activeSchoolInfo.code}
@@ -1720,7 +1753,7 @@ export default function NonEngineeringDeanDashboard() {
                 New appraisal forms will appear here automatically.
               </div>
             </div>
-          )}
+          ) : null}
         </div>
       )}
 
