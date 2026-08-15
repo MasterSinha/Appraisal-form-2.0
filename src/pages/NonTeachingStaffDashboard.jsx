@@ -40,6 +40,7 @@ import { SectionCard } from "../features/faculty-appraisal/components/formPrimit
 import { WORKFLOW_STATUSES, currentWorkflowStep, isWorkflowComplete } from "../utils/workflow";
 import { T, TH, TD, TDC } from "../features/faculty-appraisal/components/formPrimitiveStyles";
 import { Avatar, ScoreBar, ReviewMetricsStrip, LogoutConfirmModal } from "../components/dashboard/dashboardPrimitives";
+import TeachingPartDReviewDashboard from "./TeachingPartDReviewDashboard";
 
 const ACCENT = "#1d4ed8";
 const REG_ACCENT = "#155e75";
@@ -1596,7 +1597,7 @@ function NonTeachingStatusBadge({ status }) {
   );
 }
 
-function NonTeachingReviewCard({ item, reviewerRole, onOpen }) {
+function NonTeachingReviewCard({ item, reviewerRole, accent = ACCENT, onOpen }) {
   const role = normalizeNonTeachingRole(reviewerRole, reviewerRole);
   const reviewed = isCurrentNonTeachingReviewApproved(item, role);
   const selfTotals = calculateNonTeachingTotals(item.form, "self");
@@ -1607,35 +1608,43 @@ function NonTeachingReviewCard({ item, reviewerRole, onOpen }) {
   const metrics = [
     { label: `${prefix}Part A`, val: metricsTotals.partA, max: NON_TEACHING_MAX.partA, color: "#6366f1" },
     { label: `${prefix}Part B`, val: metricsTotals.partB, max: NON_TEACHING_MAX.partB, color: "#0ea5e9" },
-    { label: `${prefix}Total`, val: metricsTotals.total, max: NON_TEACHING_MAX.grand, color: "#4338ca" },
+    { label: `${prefix}Total`, val: metricsTotals.total, max: NON_TEACHING_MAX.grand, color: accent },
   ];
   const submittedOn = item.submittedOn || (item.submitted_at ? new Date(item.submitted_at).toLocaleDateString() : "");
 
   return (
-    <div style={{ background: "#fff", borderRadius: 12, padding: "18px 20px", boxShadow: "0 1px 6px rgba(0,0,0,.07)", display: "flex", flexDirection: "column", gap: 14 }}>
+    <div className="ntq-card" style={{ background: "#fff", borderRadius: 16, padding: "20px 22px", boxShadow: "0 6px 18px rgba(15,23,42,0.06)", border: "1px solid #eef1f6", display: "flex", flexDirection: "column", gap: 14 }}>
       <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-        <Avatar initials={initials(item.name)} src={item.avatarUrl} color={item.avatarColor || ACCENT} size={58} />
+        <div style={{ borderRadius: 999, padding: 2, background: `linear-gradient(135deg, ${accent}55, transparent)`, flexShrink: 0 }}>
+          <Avatar initials={initials(item.name)} src={item.avatarUrl} color={item.avatarColor || accent} size={54} />
+        </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", marginBottom: 2 }}>{item.name}</div>
-          <div style={{ fontSize: 11, color: "#475569", marginBottom: 2 }}>{item.designation}</div>
-          <div style={{ fontSize: 10, color: "#94a3b8", fontFamily: "monospace" }}>{item.employeeId}</div>
+          <div style={{ fontSize: 14.5, fontWeight: 800, color: "#0f172a", marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</div>
+          <div style={{ fontSize: 11, color: "#475569", fontWeight: 600, marginBottom: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.designation}</div>
+          <div style={{ display: "inline-flex", fontSize: 9.5, color: "#94a3b8", fontFamily: "monospace", background: "#f8fafc", border: "1px solid #eef2f7", borderRadius: 5, padding: "1px 6px" }}>{item.employeeId}</div>
         </div>
         <NonTeachingStatusBadge status={item.status} />
       </div>
 
       <ReviewMetricsStrip metrics={metrics} docs={item.form?.docs} item={item} />
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #f1f5f9", paddingTop: 12 }}>
-        <div style={{ fontSize: 10, color: "#94a3b8" }}>Submitted: {submittedOn || "-"}</div>
-        <button type="button" onClick={onOpen} style={{ fontSize: 11, padding: "7px 18px", background: reviewed ? "#1e293b" : "#312e81", color: "#f1f5f9", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 700, fontFamily: "inherit" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #f1f5f9", paddingTop: 13 }}>
+        <div style={{ fontSize: 10.5, color: "#94a3b8", fontWeight: 600 }}>Submitted: {submittedOn || "-"}</div>
+        <button
+          type="button"
+          className="ntq-open-btn"
+          onClick={onOpen}
+          style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11.5, padding: "8px 18px", background: reviewed ? "#1e293b" : accent, color: "#f8fafc", border: "none", borderRadius: 8, cursor: "pointer", fontWeight: 800, fontFamily: "inherit", boxShadow: `0 8px 18px ${reviewed ? "rgba(15,23,42,0.18)" : `${accent}38`}`, transition: "filter .15s, transform .15s" }}
+        >
           {reviewed ? "View Review" : "Review Form"}
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
         </button>
       </div>
     </div>
   );
 }
 
-export function NonTeachingReviewDashboard({ reviewerRole, title, subtitle, accent = ACCENT }) {
+export function NonTeachingReviewDashboard({ reviewerRole, title, subtitle, accent = ACCENT, showPartD = false }) {
   const navigate = useNavigate();
   const [tab, setTab] = useState("review");
   const [items, setItems] = useState([]);
@@ -1713,6 +1722,7 @@ export function NonTeachingReviewDashboard({ reviewerRole, title, subtitle, acce
           {[
             { id: "self", label: "My Staff Appraisal", sub: "View your self-appraisal form", icon: <SelfNavIcon /> },
             { id: "review", label: "Non Teaching Approval", sub: `${pendingCount} awaiting review`, icon: <ReviewNavIcon />, badge: pendingCount },
+            ...(showPartD ? [{ id: "partD", label: "Part D - Teaching Staff", sub: "Score teaching-staff leave & attendance", icon: <PartDNavIcon /> }] : []),
           ].map((navItem) => {
             const isActive = tab === navItem.id;
             return (
@@ -1785,6 +1795,8 @@ export function NonTeachingReviewDashboard({ reviewerRole, title, subtitle, acce
       <main style={{ flex: 1, minWidth: 0, marginLeft: 272, padding: "22px 26px", overflowX: "auto", position: "relative" }}>
         {tab === "self" ? (
           <NonTeachingAppraisalForm role={reviewerRole} embedded />
+        ) : tab === "partD" ? (
+          <TeachingPartDReviewDashboard accent={accent} />
         ) : loadError ? (
           <div style={{ color: "#991b1b", background: "#fee2e2", border: "1px solid #fecaca", borderRadius: 10, padding: "16px 18px", fontSize: 13, marginTop: 28 }}>
             Unable to load the review queue. {loadError}
@@ -1803,20 +1815,30 @@ export function NonTeachingReviewDashboard({ reviewerRole, title, subtitle, acce
                 </div>
               </div>
             )}
-            <div className="appraisal-page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 18, background: "#fff", borderRadius: 14, padding: "16px 24px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb", marginBottom: 16 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                <AppraisalHeaderImage logo="dypiu" />
+            <style>{`
+              .ntq-card { transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease; }
+              .ntq-card:hover { transform: translateY(-3px); box-shadow: 0 18px 36px rgba(15,23,42,0.10); border-color: #dbeafe; }
+              .ntq-open-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+              .ntq-ay-select:hover { border-color: rgba(255,255,255,0.4) !important; }
+            `}</style>
+            <div className="appraisal-page-header" style={{ position: "relative", overflow: "hidden", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 18, background: `linear-gradient(135deg, ${accent} 0%, #0f172a 130%)`, borderRadius: 18, padding: "20px 26px", boxShadow: "0 18px 40px rgba(15,23,42,0.16)", border: "1px solid rgba(255,255,255,0.08)", marginBottom: 18 }}>
+              <div style={{ position: "absolute", top: -60, right: -40, width: 200, height: 200, borderRadius: "50%", background: "rgba(255,255,255,0.06)", pointerEvents: "none" }} />
+              <div style={{ display: "flex", alignItems: "center", gap: 16, position: "relative", zIndex: 1 }}>
+                <div style={{ background: "#fff", borderRadius: 14, padding: "6px 10px", display: "flex", alignItems: "center", boxShadow: "0 8px 18px rgba(0,0,0,0.14)" }}>
+                  <AppraisalHeaderImage logo="dypiu" height={44} />
+                </div>
                 <div>
-                  <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "#0f172a", letterSpacing: -0.5 }}>Non Teaching Approval</h1>
-                  <div style={{ marginTop: 5, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", color: "#64748b", fontSize: 11 }}>
-                    <span>AY</span>
+                  <h1 style={{ margin: 0, fontSize: 21, fontWeight: 900, color: "#fff", letterSpacing: -0.4 }}>Non-Teaching Approval</h1>
+                  <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    <span style={{ color: "rgba(255,255,255,0.65)", fontSize: 10.5, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em" }}>Academic Year</span>
                     <select
+                      className="ntq-ay-select"
                       value={selectedAcademicYear}
                       onChange={(event) => handleAcademicYearChange(event.target.value)}
-                      style={{ height: 28, display: "inline-flex", alignItems: "center", border: "1px solid #cbd5e1", borderRadius: 7, background: "#fff", color: "#0f172a", fontSize: 11, fontWeight: 800, padding: "0 10px", fontFamily: "inherit", outline: "none", cursor: "pointer" }}
+                      style={{ height: 28, display: "inline-flex", alignItems: "center", border: "1px solid rgba(255,255,255,0.22)", borderRadius: 7, background: "rgba(255,255,255,0.12)", color: "#fff", fontSize: 11, fontWeight: 800, padding: "0 10px", fontFamily: "inherit", outline: "none", cursor: "pointer" }}
                     >
                       {academicYearOptions.map((cycle) => (
-                        <option key={cycle.academic_year} value={cycle.academic_year}>
+                        <option key={cycle.academic_year} value={cycle.academic_year} style={{ color: "#0f172a" }}>
                           {cycle.academic_year} {cycle.is_open ? "(Active)" : "(Closed)"}
                         </option>
                       ))}
@@ -1824,22 +1846,33 @@ export function NonTeachingReviewDashboard({ reviewerRole, title, subtitle, acce
                   </div>
                 </div>
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, padding: "5px 12px", borderRadius: 20, background: "#fef3c7", color: "#92400e" }}>{pendingCount} Pending</div>
-                <div style={{ fontSize: 11, fontWeight: 700, padding: "5px 12px", borderRadius: 20, background: "#d1fae5", color: "#065f46" }}>{reviewedCount} Reviewed</div>
-                <AppraisalHeaderImage logo="iqas" />
+              <div style={{ display: "flex", alignItems: "center", gap: 10, position: "relative", zIndex: 1 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, fontWeight: 800, padding: "8px 14px", borderRadius: 999, background: "rgba(251,191,36,0.16)", color: "#fde68a", border: "1px solid rgba(251,191,36,0.3)" }}>
+                  <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#fbbf24", display: "inline-block" }} />
+                  {pendingCount} Pending
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, fontWeight: 800, padding: "8px 14px", borderRadius: 999, background: "rgba(52,211,153,0.16)", color: "#a7f3d0", border: "1px solid rgba(52,211,153,0.3)" }}>
+                  <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#34d399", display: "inline-block" }} />
+                  {reviewedCount} Reviewed
+                </div>
+                <div style={{ background: "#fff", borderRadius: 14, padding: "6px 10px", display: "flex", alignItems: "center", boxShadow: "0 8px 18px rgba(0,0,0,0.14)" }}>
+                  <AppraisalHeaderImage logo="iqas" height={44} />
+                </div>
               </div>
             </div>
 
             {items.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "60px 0", color: "#94a3b8" }}>
-                <div style={{ fontWeight: 700, color: "#0f172a" }}>All caught up!</div>
-                <div style={{ color: "#64748b", fontSize: 12 }}>No appraisals in your queue right now.</div>
+              <div style={{ textAlign: "center", padding: "70px 20px", background: "#fff", borderRadius: 16, border: "1px dashed #e2e8f0" }}>
+                <div style={{ width: 52, height: 52, borderRadius: 16, background: "#f0fdf4", color: "#16a34a", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: 14 }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+                </div>
+                <div style={{ fontWeight: 800, color: "#0f172a", fontSize: 15 }}>All caught up!</div>
+                <div style={{ color: "#64748b", fontSize: 12.5, marginTop: 4 }}>No appraisals in your queue right now.</div>
               </div>
             ) : (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 14 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 16 }}>
                 {items.map((item) => (
-                  <NonTeachingReviewCard key={item.id} item={item} reviewerRole={reviewerRole} onOpen={() => setSelectedId(item.id)} />
+                  <NonTeachingReviewCard key={item.id} item={item} reviewerRole={reviewerRole} accent={accent} onOpen={() => setSelectedId(item.id)} />
                 ))}
               </div>
             )}
@@ -1910,6 +1943,17 @@ function ReviewNavIcon() {
       <path d="M9 11 11 13 15 9" />
       <path d="M7 3h7l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" />
       <path d="M14 3v4h4" />
+    </svg>
+  );
+}
+
+function PartDNavIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="4" y="3" width="16" height="18" rx="2" />
+      <path d="M9 8h6" />
+      <path d="M9 12h6" />
+      <path d="M9 16h3" />
     </svg>
   );
 }
