@@ -25,7 +25,7 @@ import {
 import { n, RO } from "../../../features/faculty-appraisal/shared";
 import { DirectorInput as DirInput } from "../common/ReviewerInput";
 export default function DirectorResearchProposals({ ctx }) {
- const { faculty, docs, lectures, courseFile, projects, quals, feedback, deptActs, uniActs, society, industry, acr, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, rows, getDir, setDir, getInnovDir, setInnovDir, innovativeRows } = ctx;
+ const { faculty, docs, lectures, courseFile, projects, quals, feedback, deptActs, uniActs, society, industry, acr, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, rows, sectionEmpty, emptySectionRow, getDir, setDir, getInnovDir, setInnovDir, innovativeRows } = ctx;
  return (
 <>
 {/* B7: Proposals */}
@@ -37,7 +37,7 @@ export default function DirectorResearchProposals({ ctx }) {
 <th style={TH}>View Docs</th><th style={TH}>Faculty Score</th><th style={TH_DIR}>Director Score</th>
 </tr></thead>
 <tbody>
- {rows(proposals).map((r, i) =>(
+ {sectionEmpty("proposals") ? emptySectionRow(7) : rows(proposals).map((r, i) =>(
 <tr key={i}>
 <td style={TDC}>{i + 1}</td>
 <td style={TD}><RO val={r.agency || r.title} /></td>

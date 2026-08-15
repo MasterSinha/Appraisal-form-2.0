@@ -261,6 +261,10 @@ export default function DashboardSidebar({
 
   return (
     <aside className="appraisal-sidebar" style={sidebarShellStyle}>
+      <div
+        className="appraisal-sidebar-scroll"
+        style={{ flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden", display: "flex", flexDirection: "column", gap: 14, scrollbarWidth: "thin", scrollbarColor: "rgba(148,163,184,0.35) transparent" }}
+      >
       <div style={{ display: "flex", alignItems: "center", gap: 11, padding: "2px 2px 4px" }}>
         <div style={{ width: 44, height: 44, borderRadius: 14, background: "linear-gradient(135deg,#6366f1 0%,#4338ca 100%)", border: "1px solid rgba(199,210,254,0.35)", display: "flex", alignItems: "center", justifyContent: "center", color: "#f8fafc", fontWeight: 900, fontSize: 13, boxShadow: "0 10px 22px rgba(79,70,229,0.38), 0 0 0 3px rgba(99,102,241,0.10)", letterSpacing: 0, flexShrink: 0 }}>FA</div>
         <div style={{ minWidth: 0 }}>
@@ -400,8 +404,8 @@ export default function DashboardSidebar({
           </div>
         </div>
       )}
+      </div>
 
-      <div style={{ flex: 1 }} />
       <div style={{ height: 1, background: "linear-gradient(90deg,transparent,rgba(148,163,184,0.22) 20%,rgba(148,163,184,0.22) 80%,transparent)" }} />
       <div style={{ padding: 10, borderRadius: 20, background: "linear-gradient(180deg,rgba(30,41,59,0.86),rgba(15,23,42,0.92))", border: "1px solid rgba(148,163,184,0.18)", boxShadow: "0 18px 34px rgba(2,6,23,0.28), inset 0 1px 0 rgba(255,255,255,0.05)", display: "grid", gap: 8 }}>
         <button

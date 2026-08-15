@@ -1,4 +1,4 @@
-﻿import JournalTable from "./JournalTable";
+import JournalTable from "./JournalTable";
 import BooksTable from "./BooksTable";
 import ICTTable from "./ICTTable";
 import ResearchGuidance from "./ResearchGuidance";

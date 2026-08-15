@@ -25,7 +25,7 @@ import {
 import { n, RO } from "../../../features/faculty-appraisal/shared";
 import { DirectorInput as DirInput } from "../common/ReviewerInput";
 export default function DepartmentActivities({ ctx }) {
- const { faculty, docs, lectures, courseFile, projects, quals, feedback, deptActs, uniActs, society, industry, acr, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, rows, get, set, reviewerLabel, reviewerScoreLabel, innovativeRows, getInnovHod, setInnovHod } = ctx;
+ const { faculty, docs, lectures, courseFile, projects, quals, feedback, deptActs, uniActs, society, industry, acr, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, rows, sectionEmpty, emptySectionRow, get, set, reviewerLabel, reviewerScoreLabel, innovativeRows, getInnovHod, setInnovHod } = ctx;
  return (
 <>
 {/* C2: School administration */}
@@ -36,7 +36,7 @@ export default function DepartmentActivities({ ctx }) {
 <th style={TH}>View Docs</th><th style={TH}>Faculty Score</th><th style={TH_HOD}>{reviewerScoreLabel}</th>
 </tr></thead>
 <tbody>
- {rows(deptActs).map((r, i) =>(
+ {sectionEmpty("deptActs") ? emptySectionRow(7) : rows(deptActs).map((r, i) =>(
 <tr key={i} style={i % 2 ? { background: "#f8fafc" } : {}}>
 <td style={TDC}>{i + 1}</td>
 <td style={TD}><RO val={r.activity} /></td>

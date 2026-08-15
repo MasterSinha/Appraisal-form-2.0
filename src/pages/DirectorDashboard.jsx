@@ -10,10 +10,12 @@ import { getActiveAcademicYear, getSessionItem, normalizeAcademicYearLabel, setA
 import { PreviousYearReportViewer } from "../features/previousYearReport";
 import { isLegacyTwoPartAcademicYear } from "../features/faculty-appraisal/forms/standard/legacyPreviousYearReportUtils";
 import { legacyDashboardMetrics } from "../utils/legacyDashboardMetrics";
-import { canReviewerRejectProfile, getDeanTrack, rejectedStatusFor, reviewedStatusFor, profileFromsessionStorage, workflowValidationError, roleLabel, getSchoolKey, isAppraisalFinalisedByVc, isRejectedStatus, isPendingReviewStatusFor, hasActiveRejection, reviewListFrom } from "../utils/hierarchy";
+import { canReviewerRejectProfile, departmentHasHod, getDeanTrack, rejectedStatusFor, reviewedStatusFor, profileFromsessionStorage, workflowValidationError, roleLabel, isAppraisalFinalisedByVc, isRejectedStatus, isPendingReviewStatusFor, hasActiveRejection, reviewListFrom } from "../utils/hierarchy";
 import { n, pct, grade, RO, TI } from "../features/faculty-appraisal/shared";
 import { FacultyRecordHeader, ScoreTable, VCFinalRemarks, FinalSubmitButton, FACULTY_RECORD_THEME } from "../components/dashboard/FacultyAppraisalRecord";
 import { fetchImageAsDataUrl } from "../utils/fullFormReport";
+import ManageDepartmentsPanel from "../components/dashboard/ManageDepartmentsPanel";
+import { listSchoolDepartments } from "../services/departmentsService";
 
 // - Helpers - (n, pct, grade, RO, TI → imported from shared)
 const docsCount = (docs = {}, item = {}) => uploadedDocCount(docs, item);
@@ -564,9 +566,9 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
  }
  };
 
- const handleSaveAndNext = async () => {
-    await handleSaveDraft();
-    const NEXT_SECTION_MAP = { partA: "partB", partB: "partC", partC: "partD", partD: "partE", partE: "summary" };
+ const NEXT_SECTION_MAP = { partA: "partB", partB: "partC", partC: "partD", partD: "partE", partE: "summary" };
+
+ const handleNextSection = () => {
     const nextSection = NEXT_SECTION_MAP[sectionView];
     if (nextSection) {
       setSectionView(nextSection);
@@ -574,6 +576,11 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
         window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
       });
     }
+  };
+
+ const handleSaveAndNext = async () => {
+    await handleSaveDraft();
+    handleNextSection();
   };
 
  const generateDirectorReport = async () =>{
@@ -680,7 +687,7 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
  partB: faculty.journals?.reduce((a, r) =>a + n(r.score), 0) || 0,
  });
  const directorSubjectRole = (faculty.appraisalRole || faculty.appraisal_role || faculty.role || "faculty").toLowerCase();
- const showHodSummaryCard = directorSubjectRole === "faculty" && getSchoolKey(faculty.school || faculty.schoolName || faculty.info?.school || "") === "SoEMR";
+ const showHodSummaryCard = directorSubjectRole === "faculty" && departmentHasHod(faculty.school || faculty.schoolName || faculty.info?.school || "", faculty.department || faculty.info?.department || "");
  const directorRecordSchoolTrack = getDeanTrack({ school: faculty.school || faculty.info?.school, department: faculty.department, designation: faculty.designation });
  const directorRecordSchoolGroupLabel = { engineering: "Engineering", non_engineering: "Non-Engineering", direct_vc: "CISR" }[directorRecordSchoolTrack] || faculty.school || faculty.info?.school || APP_INFO.UNIVERSITY_NAME;
  const directorRecordScoreRows = [
@@ -764,6 +771,18 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
 </div>
  )}
 
+ {sectionView === "partD" && (
+<div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, margin: "12px 0 14px", flexWrap: "wrap" }}>
+<button
+ type="button"
+ onClick={handleNextSection}
+ style={{ padding: "10px 22px", background: "#2563eb", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 700, fontSize: 13, fontFamily: "inherit" }}
+>
+ Next
+</button>
+</div>
+ )}
+
  {sectionView === "summary" && (
 <div className="far-wrap" style={{ width: "100%" }}>
 <div className="far-card" style={{ width: "100%", boxSizing: "border-box", background: FACULTY_RECORD_THEME.card, border: `1px solid ${FACULTY_RECORD_THEME.borderStrong}`, borderRadius: 16, padding: "22px 24px", display: "grid", gap: 18, boxShadow: "0 10px 30px rgba(15,23,42,0.08)" }}>
@@ -841,7 +860,16 @@ export default function DirectorDashboard() {
  const [reviewLoading, setReviewLoading] = useState(null);
 
  const dirSchool = sessionStorage.getItem("school");
- const isSoemrDirector = getSchoolKey(dirSchool) === "SoEMR";
+ const [schoolDepartments, setSchoolDepartments] = useState([]);
+ const hasHodDepartments = schoolDepartments.length >0;
+ const refreshSchoolDepartments = async () =>{
+ if (!dirSchool) return;
+ try {
+ setSchoolDepartments(await listSchoolDepartments(dirSchool));
+ } catch (err) {
+ console.error("Could not load school departments:", err);
+ }
+ };
 
  const [facultyList, setFacultyList] = useState([]);
  const [hodList, setHodList] = useState([]);
@@ -889,6 +917,12 @@ export default function DirectorDashboard() {
  loadReviewQueue();
  }, [dirSchool, selectedAcademicYear]);
 
+ useEffect(() =>{
+ const timer = setTimeout(refreshSchoolDepartments, 0);
+ return () =>clearTimeout(timer);
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ }, [dirSchool]);
+
  const [filterStatus, setFilterStatus] = useState("All");
  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
@@ -913,7 +947,8 @@ export default function DirectorDashboard() {
  const navItems = [
  { id: "myAppraisal", icon: "", label: "My Appraisal", sub: "View your self-appraisal form" },
  { id: "facultyApprovals", icon: "", label: "Faculty's Appraisal", sub: `${facultyPendingCount} awaiting review`, badge: facultyPendingCount },
- ...(isSoemrDirector ? [{ id: "hodApprovals", icon: "", label: "HOD's Appraisal", sub: `${hodPendingCount} awaiting review`, badge: hodPendingCount }] : []),
+ ...(hasHodDepartments ? [{ id: "hodApprovals", icon: "", label: "HOD's Appraisal", sub: `${hodPendingCount} awaiting review`, badge: hodPendingCount }] : []),
+ { id: "departments", icon: "", label: "Manage Departments", sub: `${schoolDepartments.length} department${schoolDepartments.length === 1 ? "" : "s"}` },
  ];
  const handleSubmitReview = async (type, id, scores, remarks, sectionScores, reviewConfirmed = false, decision = "approved") =>{
  if (!reviewConfirmed) {
@@ -1008,6 +1043,8 @@ export default function DirectorDashboard() {
 )}
 
 {activeMainTab === "myAppraisal" && <MyAppraisalSection sectionTab={hodAppraisalTab} onSectionTabChange={handleMyAppraisalSectionChange} defaultDesignation={sessionStorage.getItem("role") === "director" ? "Director" : ""} defaultAcademicYear={sessionStorage.getItem("academicYear") || APP_INFO.DEFAULT_AY} titleNameFallback="Director" subtitleSeparator=" - " />}
+
+{activeMainTab === "departments" && <ManageDepartmentsPanel school={dirSchool} />}
 
  {(activeMainTab === "facultyApprovals" || activeMainTab === "hodApprovals") && !reviewingFaculty && !reviewingHod && (
 <>

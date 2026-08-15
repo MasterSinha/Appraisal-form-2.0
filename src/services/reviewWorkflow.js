@@ -8,6 +8,8 @@ import {
   getSchoolKey,
   getReviewChain,
   isRejectedStatus,
+  partDReleaseGateApplies,
+  PART_D_STATUSES,
   pendingStatusFor,
   rejectedStatusFor,
   profileFromsessionStorage,
@@ -775,6 +777,12 @@ const normalizeQueueItem = (item = {}) => {
     vcPartC: numberValue(reviewSummary.vcPartC),
     vcPartD: numberValue(reviewSummary.vcPartD),
     vcRemarks: firstValue(reviewSummary.vcRemarks),
+    // Part D routes to the Registrar independently of the A/B/C/E chain above - see
+    // partDReleaseGateApplies in utils/hierarchy.js and backend_changes_requied.md.
+    partDStatus: firstValue(item.part_d_status, item.partDStatus),
+    registrarPartDScore: numberValue(firstValue(item.registrar_part_d_score, item.registrarPartDScore)),
+    registrarPartDRemarks: firstValue(item.registrar_part_d_remarks, item.registrarPartDRemarks),
+    registrarPartDReviewedAt: firstValue(item.registrar_part_d_reviewed_at, item.registrarPartDReviewedAt),
   };
 };
 
@@ -807,6 +815,48 @@ export const fetchReviewQueueForRole = async ({
   }
 };
 
+// Part D (Leave & Attendance) is scored only by the Registrar, for every teaching-staff
+// originator (Faculty/HOD/Director/Dean/Center Head, any school) - independent of the
+// A/B/C/E chain, which never routes Part D to HOD/Director/Dean. See
+// partDReleaseGateApplies / PART_D_STATUSES in utils/hierarchy.js and backend_changes_requied.md.
+export const fetchPartDRegistrarQueue = async ({ academicYear } = {}) => {
+  try {
+    const params = {
+      academic_year: academicYear || getActiveAcademicYear() || APP_INFO.DEFAULT_AY || "2026-2027",
+      part_d_status: PART_D_STATUSES.PENDING_REGISTRAR,
+    };
+    const items = await api.get("/dashboard/part-d-queue", { params });
+    const normalizedItems = (items || []).map(normalizeQueueItem);
+    return await Promise.all(normalizedItems.map(enrichQueueItemDocs));
+  } catch (err) {
+    throw new Error(err?.message || "Could not load Part D review queue.", { cause: err });
+  }
+};
+
+export const submitPartDRegistrarReview = async ({
+  subjectEmail,
+  academicYear,
+  score = 0,
+  remarks = "",
+  subjectProfile = {},
+}) => {
+  if (!subjectEmail) {
+    throw new Error("Missing subject email for Part D review.");
+  }
+
+  const partDStatus = partDReleaseGateApplies(subjectProfile)
+    ? PART_D_STATUSES.REGISTRAR_APPROVED_PENDING_RELEASE
+    : PART_D_STATUSES.RELEASED_TO_VC;
+
+  return await api.put(`/appraisal-remarks/registrar-part-d/${encodeURIComponent(subjectEmail)}`, {
+    academic_year: academicYear,
+    part_d_score: n(score),
+    remarks,
+    part_d_status: partDStatus,
+    partDStatus,
+  });
+};
+
 const workflowForwardingFor = (role, subjectProfile = {}) => {
   const chain = getReviewChain(subjectProfile);
   const reviewerIndex = chain.indexOf(role);
@@ -818,6 +868,9 @@ const workflowForwardingFor = (role, subjectProfile = {}) => {
   }[role] || "";
   const nextReviewer = reviewerIndex >= 0 ? chain[reviewerIndex + 1] : fallbackNextReviewer;
   const status = nextReviewer ? pendingStatusFor(nextReviewer) : reviewedStatusFor(role);
+  // Dean/Center Head is always the last stage before VC when present (see getReviewChain) -
+  // their approval is what the Part D release gate waits on (see PART_D_STATUSES).
+  const isFinalPreVcStage = (role === "dean" || role === "center_head") && nextReviewer === "vc";
 
   return {
     status,
@@ -825,6 +878,7 @@ const workflowForwardingFor = (role, subjectProfile = {}) => {
     review_status: reviewedStatusFor(role),
     next_reviewer: nextReviewer,
     next_reviewer_role: nextReviewer,
+    ...(isFinalPreVcStage ? { release_part_d_if_pending: true } : {}),
   };
 };
 

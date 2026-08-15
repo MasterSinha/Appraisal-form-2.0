@@ -596,6 +596,27 @@ export function SectionCard({ title, subtitle, accent = "#4f46e5", scoreBadge, c
   );
 }
 
+export function EmptySectionRow({ colSpan, message = "User did not fill anything in this section." }) {
+  return (
+    <tr>
+      <td
+        colSpan={colSpan}
+        style={{
+          padding: "22px 16px",
+          textAlign: "center",
+          color: "#64748b",
+          background: "#f8fafc",
+          borderBottom: "1px solid #edf0f7",
+          fontSize: 13,
+          fontWeight: 800,
+        }}
+      >
+        {message}
+      </td>
+    </tr>
+  );
+}
+
 export function RowButtons({ onAdd, onDel, canDel = true, canAdd = true, addLabel = "+ Add Row", deleteLabel = "- Delete Last" }) {
   return (
     <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}>

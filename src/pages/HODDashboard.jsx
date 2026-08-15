@@ -301,9 +301,9 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false, revi
  }
  };
 
-  const handleSaveAndNext = async () => {
-    await handleSaveDraft();
-    const NEXT_SECTION_MAP = { partA: "partB", partB: "partC", partC: "partD", partD: "partE", partE: "summary" };
+  const NEXT_SECTION_MAP = { partA: "partB", partB: "partC", partC: "partD", partD: "partE", partE: "summary" };
+
+  const handleNextSection = () => {
     const nextSection = NEXT_SECTION_MAP[sectionView];
     if (nextSection) {
       setSectionView(nextSection);
@@ -311,6 +311,11 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false, revi
         window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
       });
     }
+  };
+
+  const handleSaveAndNext = async () => {
+    await handleSaveDraft();
+    handleNextSection();
   };
  const facultySummary = standardSubmittedScoreSummary(faculty, {
  partA: faculty.lectures?.reduce((a, r) =>a + n(r.score), 0) || 0,
@@ -395,6 +400,18 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false, revi
  style={{ padding: "10px 22px", background: savingDraft ? "#94a3b8" : "#2563eb", color: "#fff", border: "none", borderRadius: 7, cursor: savingDraft ? "not-allowed" : "pointer", fontWeight: 700, fontSize: 13, fontFamily: "inherit" }}
 >
  {savingDraft ? "Saving..." : "Save & Next"}
+</button>
+</div>
+ )}
+
+ {sectionView === "partD" && (
+<div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, margin: "12px 0 14px", flexWrap: "wrap" }}>
+<button
+ type="button"
+ onClick={handleNextSection}
+ style={{ padding: "10px 22px", background: "#2563eb", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 700, fontSize: 13, fontFamily: "inherit" }}
+>
+ Next
 </button>
 </div>
  )}

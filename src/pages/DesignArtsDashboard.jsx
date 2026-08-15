@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { getActiveAcademicYear, getSessionItem, setActiveAcademicYear } from "../auth/session";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import DashboardSidebar from "../components/dashboard/DashboardSidebar";
+import ManageDepartmentsPanel from "../components/dashboard/ManageDepartmentsPanel";
 import { Avatar, LogoutConfirmModal, ScoreBar, StatusBadge, ReviewMetricsStrip } from "../components/dashboard/dashboardPrimitives";
 import { getSchoolByValue, getSchoolKey } from "../constants/universityHierarchy";
 import { api } from "../services/api";
@@ -762,6 +763,7 @@ export default function DesignArtsDashboard({ fixedRole }) {
   const navItems = [
     ...(canSelfSubmit ? [{ id: "myAppraisal", label: "My Appraisal", sub: "View your self-appraisal form" }] : []),
     ...(role !== "faculty" ? [{ id: "approvals", label: `Approvals (${pendingCount})`, sub: "Review faculty appraisals" }] : []),
+    ...(role === "director" ? [{ id: "departments", label: "Manage Departments", sub: "HOD departments for your school" }] : []),
   ];
 
   return (
@@ -775,10 +777,10 @@ export default function DesignArtsDashboard({ fixedRole }) {
         <DashboardSidebar
           appInfo={APP_INFO}
           navItems={navItems}
-          activeTab={activeTab === "my" ? "myAppraisal" : "approvals"}
+          activeTab={activeTab === "my" ? "myAppraisal" : activeTab}
           onTabSelect={(tabId) => {
             if (tabId === "myAppraisal") { setActiveTab("my"); setReviewing(null); }
-            else { setActiveTab("approvals"); setReviewing(null); }
+            else { setActiveTab(tabId); setReviewing(null); }
           }}
           showSectionSelector={activeTab === "my"}
           sectionTab={selfSectionView}
@@ -835,6 +837,10 @@ export default function DesignArtsDashboard({ fixedRole }) {
           <AppraisalHeaderImage logo="iqas" height={78} />
         </div>
       </div>
+      )}
+
+      {activeTab === "departments" && role === "director" && (
+        <ManageDepartmentsPanel school={currentSchoolValue} />
       )}
 
       {activeTab === "approvals" && !reviewing && role !== "faculty" && (

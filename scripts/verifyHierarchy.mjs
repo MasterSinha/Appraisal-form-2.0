@@ -193,9 +193,31 @@ for (const school of UNIVERSITY_SCHOOLS) {
   assert.equal(canAuthorityReviewProfile(roles.vc, faculty), true, `VC must review ${school.code}`);
 }
 
-assert.ok(
+// Department is now a Director-managed per-school list rather than a SoEMR-only fixed enum
+// (see backend_changes_requied.md) - Faculty without a department is allowed and simply
+// routes straight to Director, same as any other school with no departments configured yet.
+assert.equal(
   workflowValidationError({ appraisal_role: "faculty", school: SOEMR_SCHOOL.label, department: "" }),
-  "SoEMR faculty without one of the four departments must be rejected"
+  "",
+  "SoEMR faculty without a department must still be allowed to submit - they route to Director"
 );
+assert.ok(
+  workflowValidationError({ appraisal_role: "hod", school: SOEMR_SCHOOL.label, department: "" }),
+  "HOD without a department must always be rejected, since a department is the position itself"
+);
+
+// HOD-per-department routing is no longer SoEMR-specific - any non-CISR school with a
+// department set must route Faculty through HOD the same way SoEMR always has.
+const socseaFacultyWithDept = { appraisal_role: "faculty", school: "SoCSEA", department: "Computer Engineering" };
+assert.deepEqual(
+  getReviewChain(socseaFacultyWithDept),
+  ["hod", "director", "dean", "vc"],
+  "Non-SoEMR faculty with a department set must route HOD -> Director -> Dean -> VC"
+);
+const socseaMatchingHod = { appraisal_role: "hod", school: "SoCSEA", department: "Computer Engineering" };
+const socseaOtherHod = { appraisal_role: "hod", school: "SoCSEA", department: "Electronics Engineering" };
+assert.equal(canAuthorityReviewProfile(socseaMatchingHod, socseaFacultyWithDept), true, "Non-SoEMR HOD must see own-department faculty");
+assert.equal(canAuthorityReviewProfile(socseaOtherHod, socseaFacultyWithDept), false, "Non-SoEMR HOD must not see other-department faculty");
+assert.equal(workflowValidationError({ appraisal_role: "hod", school: "SoCSEA", department: "Computer Engineering" }), "", "Non-SoEMR HOD with a department must be allowed");
 
 console.log("Hierarchy verification passed.");

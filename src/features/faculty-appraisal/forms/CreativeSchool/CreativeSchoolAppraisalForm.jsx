@@ -66,7 +66,7 @@ import {
   RowButtons as RowBtns,
   SectionCard as SC,
 } from "../../index";
-import { canReviewerRejectProfile, getDeanTrack, getReviewChain, pendingStatusFor, profileFromsessionStorage, reviewedStatusFor, roleLabel, visiblePreviousReviewRoles, workflowValidationError, isAppraisalFinalisedByVc, isRejectedStatus, isPendingReviewStatusFor, hasActiveRejection, reviewListFrom } from "../../../../utils/hierarchy";
+import { canReviewerRejectProfile, departmentHasHod, getDeanTrack, getReviewChain, pendingStatusFor, profileFromsessionStorage, reviewedStatusFor, roleLabel, visiblePreviousReviewRoles, workflowValidationError, isAppraisalFinalisedByVc, isRejectedStatus, isPendingReviewStatusFor, hasActiveRejection, reviewListFrom } from "../../../../utils/hierarchy";
 import { n, pct, RO, TI } from "../../shared";
 import SectionShell from "./common/SectionShell";
 import { tableStyle, thStyle, tdStyle, tdCenter } from "./common/TableStyles";
@@ -2581,12 +2581,15 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
   const subjectRole = person?.appraisalRole || person?.appraisal_role || person?.role || "faculty";
   const normalizedSubjectRole = String(subjectRole || "").trim().toLowerCase();
   const subjectSchoolKey = getSchoolKey(person?.school || form.info?.school || person?.info?.school || "");
-  const isSoemrFacultyReview = normalizedSubjectRole === "faculty" && subjectSchoolKey === "SoEMR";
+  const facultyHasHodInChain = normalizedSubjectRole === "faculty" && departmentHasHod(
+    person?.school || form.info?.school || person?.info?.school || "",
+    person?.department || form.info?.department || person?.info?.department || ""
+  );
   const visibleSummaryRoles = reviewerRole === "vc" ? (() => {
     if (normalizedSubjectRole === "faculty") {
       const roles = [];
       if (visiblePreviousRoles.includes("center_head")) roles.push("center_head");
-      else if (isSoemrFacultyReview && visiblePreviousRoles.includes("hod")) roles.push("hod");
+      else if (visiblePreviousRoles.includes("hod")) roles.push("hod");
       if (visiblePreviousRoles.includes("director")) roles.push("director");
       if (visiblePreviousRoles.includes("dean")) roles.push("dean");
       return roles;
@@ -2610,13 +2613,13 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
     if (reviewerRole === "dean") {
       const roles = [];
       if (workflowPreviousRoles.includes("center_head")) roles.push("center_head");
-      else if (isSoemrFacultyReview && workflowPreviousRoles.includes("hod")) roles.push("hod");
+      else if (workflowPreviousRoles.includes("hod")) roles.push("hod");
       if (workflowPreviousRoles.includes("director")) roles.push("director");
       return roles;
     }
     if (reviewerRole === "director") {
       if (visiblePreviousRoles.includes("center_head")) return ["center_head"];
-      return isSoemrFacultyReview && visiblePreviousRoles.includes("hod") ? ["hod"] : [];
+      return visiblePreviousRoles.includes("hod") ? ["hod"] : [];
     }
     return [];
   })();
@@ -2777,8 +2780,8 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
           }),
     },
   ];
-  const splitAuthorityDirectorFacultyRows = reviewerRole === "director" && normalizedSubjectRole === "faculty" && !isSoemrFacultyReview;
-  const splitAuthorityDeanFacultyRows = reviewerRole === "dean" && normalizedSubjectRole === "faculty" && !isSoemrFacultyReview;
+  const splitAuthorityDirectorFacultyRows = reviewerRole === "director" && normalizedSubjectRole === "faculty" && !facultyHasHodInChain;
+  const splitAuthorityDeanFacultyRows = reviewerRole === "dean" && normalizedSubjectRole === "faculty" && !facultyHasHodInChain;
   const splitAuthorityDeanDirectorRows = reviewerRole === "dean" && normalizedSubjectRole === "director";
   const authorityDirectorFacultySelfCards = splitAuthorityDirectorFacultyRows
     ? authoritySummaryCards.filter((card) => card.key === "self")

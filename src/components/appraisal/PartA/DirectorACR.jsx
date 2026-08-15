@@ -27,7 +27,7 @@ import { n, RO } from "../../../features/faculty-appraisal/shared";
 import { DirectorInput as DirInput } from "../common/ReviewerInput";
 
 export default function DirectorACR({ ctx }) {
- const { faculty, docs, lectures, courseFile, projects, quals, feedback, deptActs, uniActs, society, industry, acr, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, rows, getDir, setDir, getInnovDir, setInnovDir, innovativeRows } = ctx;
+ const { faculty, docs, lectures, courseFile, projects, quals, feedback, deptActs, uniActs, society, industry, acr, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, rows, sectionEmpty, emptySectionRow, getDir, setDir, getInnovDir, setInnovDir, innovativeRows } = ctx;
  const acrRows = createAcrRows(acr);
  return (
 <>

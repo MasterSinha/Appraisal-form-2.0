@@ -1,5 +1,8 @@
-I need this flow of form with transparency in my frontend as per the hierarchy given below: 
+# New Appraisal Flow — Updated
 
+## Updated Hierarchy
+
+```
 Vice Chancellor (VC)
 │
 ├── Teaching Staff
@@ -7,15 +10,19 @@ Vice Chancellor (VC)
 │   ├── Dean of Engineering
 │   │   ├── SoCSEA — School of Computer Science, Engineering & Applications
 │   │   │   ├── Director
-│   │   │   └── Faculty
+│   │   │   └── HOD (multiple, one per department)
+│   │   │       └── Faculty
 │   │   ├── SoBB — School of Bio-Engineering & Bio Science
 │   │   │   ├── Director
-│   │   │   └── Faculty
+│   │   │   └── HOD (multiple, one per department)
+│   │   │       └── Faculty
 │   │   ├── SoCE — School of Continual Education
 │   │   │   ├── Director
-│   │   │   └── Faculty
+│   │   │   └── HOD (multiple, one per department)
+│   │   │       └── Faculty
 │   │   └── SoEMR — School of Engineering Management & Research
-│   │       └── Director
+│   │       ├── Director
+│   │       └── HOD (multiple, one per department)
 │   │           ├── HOD — Mechanical Engineering → Faculty
 │   │           ├── HOD — Civil Engineering → Faculty
 │   │           ├── HOD — Chemical Engineering → Faculty
@@ -24,143 +31,189 @@ Vice Chancellor (VC)
 │   ├── Dean of Non-Engineering
 │   │   ├── SoC — School of Commerce & Management
 │   │   │   ├── Director
-│   │   │   └── Faculty
+│   │   │   └── HOD (multiple, one per department)
+│   │   │       └── Faculty
 │   │   ├── SoMCS — School of Media & Communication Studies
 │   │   │   ├── Director
-│   │   │   └── Faculty
+│   │   │   └── HOD (multiple, one per department)
+│   │   │       └── Faculty
 │   │   ├── SoD — School of Design
 │   │   │   ├── Director
-│   │   │   └── Faculty
-│   │   └── SoAA — School of Applied Arts
+│   │   │   └── HOD (multiple, one per department)
+│   │   │       └── Faculty
+│   │   ├── SoAA — School of Applied Arts
+│   │   │   ├── Director
+│   │   │   └── HOD (multiple, one per department)
+│   │   │       └── Faculty
+│   │   └── SoHSS — School of Humanities & Social Sciences  ⟵ NEW
 │   │       ├── Director
-│   │       └── Faculty
+│   │       └── HOD (multiple, one per department)
+│   │           └── Faculty
 │   │
 │   └── Center for Interdisciplinary Studies and Research (CISR)
 │       └── Center Head
 │           └── Faculty
 │
 └── Non-Teaching Staff
-└── Registrar
-└── Reporting Officer
-└── Staff
+    └── Registrar
+        └── Reporting Officer
+            └── Staff
+```
 
-The flow and transparency I want:
+**What's new here:** SoHSS is added under Dean of Non-Engineering. It follows the exact same flow as SoEMR — a Director, with multiple HODs underneath it (one per department), each HOD owning only the faculty in their own department. I haven't invented specific department names for SoHSS (unlike SoEMR's four named departments) since none were given — send those over and I'll slot them in the same way SoEMR's are listed.
 
-### 1) For the school SoEMR:
+Every teaching-staff form (Faculty, HOD, Director, Dean) is split into 5 parts — A, B, C, D, and E — all filled by the person submitting the form. Parts A, B, C, and E move through the normal hierarchy chain described below. Part E is the ACR portion and behaves exactly as the ACR process did before — it simply travels with A, B, C through the normal chain.
+
+### Part D — routing and the release gate
+
+Part D always goes straight to the **Registrar**, bypassing every level between the originator and the Registrar. The Registrar scores and approves it. But approval by the Registrar does **not** mean Part D goes straight to the VC anymore:
+
+- **If the form's originator is Faculty, HOD, or Director** (i.e. anyone with a Dean — or, for CISR, a Center Head — sitting above them in the chain): once the Registrar approves Part D, it does **not** release to the VC immediately. It **waits** until the Dean (Engineering or Non-Engineering, matching the school) — or, for CISR, the Center Head — approves Parts A, B, C, and E of that same form. Only once that Dean/Center Head-level approval lands does Part D release to the VC, together with Parts A, B, C, and E.
+- **If the form's originator is a Dean (or the Center Head for CISR)** — the top of the chain below the VC — there's no Dean/Center Head-level stage left to wait for. Part D releases to the VC as soon as the Registrar approves it, exactly as before.
+
+Part D still never routes through the HOD, Director, or Dean for **scoring** at any point — the wait only holds up *release to the VC*, it doesn't change who scores Part D (only the Registrar ever does).
+
+**Implementation note:** this means Part D needs its own status beyond "approved" — something like `registrar_approved_pending_release`, which flips to `released_to_vc` only when the corresponding Dean/Center Head-stage approval event fires on that same form's main chain.
+
+CISR now follows this same Part A–E structure — see section 3 below, where the Center Head plays the role the Dean plays elsewhere (the final reviewer before the VC). **Non-Teaching Staff is not affected by any of this** and keeps its original single-track flow and transparency rules exactly as before.
+
+---
+
+### 1) For the Engineering Schools — SoCSEA, SoBB, SoCE, SoEMR
 
 #### For Faculty:
 
-When the faculty fills the form and submits it, the form should go to the HOD. If the faculty belongs to the Mechanical department, then the form should go only to the HOD of the Mechanical department. Then the HOD will insert a score into the faculty form and submit it. After that, the form gets forwarded to the Director, and the form should go only to the Director of SoEMR. Then the Director inserts a score into the faculty form and submits it. After that, the form gets forwarded to the Dean, and the form should go only to the Dean of Engineering. Then the Dean inserts a score into the faculty form and submits it. Finally, the form goes to the VC, and the VC inserts a score into the faculty form and submits it.
+When the faculty fills the form and submits it, Parts A, B, C, and E should go to the HOD. The form should go only to the HOD of the faculty's own department. Then the HOD inserts a score into Parts A, B, C, and E of the faculty form and submits it. After that, these parts get forwarded to the Director, and the form should go only to the Director of the faculty's own school. Then the Director inserts a score into Parts A, B, C, and E and submits it. After that, these parts get forwarded to the Dean, and the form should go only to the Dean of Engineering. Then the Dean inserts a score into Parts A, B, C, and E and submits it. Finally, these parts go to the VC, and the VC inserts a score into Parts A, B, C, and E and submits it.
+
+Separately, Part D of the faculty form should go directly to the Registrar, bypassing the HOD, Director, and Dean entirely. The Registrar inserts a score into Part D and submits it. Once the Registrar approves Part D, it waits until the Dean of Engineering approves Parts A, B, C, and E of this same faculty form — only then does Part D release to the VC, together with Parts A, B, C, and E. Part D still never passes through the HOD or Director for scoring at any point.
 
 #### For HOD:
 
-When the HOD fills the form and submits it, the form gets forwarded to the Director, and the form should go only to the Director of SoEMR. Then the Director inserts a score into the HOD form and submits it. After that, the form gets forwarded to the Dean, and the form should go only to the Dean of Engineering. Then the Dean inserts a score into the HOD form and submits it. Finally, the form goes to the VC, and the VC inserts a score into the HOD form and submits it.
+When the HOD fills the form and submits it, Parts A, B, C, and E get forwarded to the Director, and the form should go only to the Director of the HOD's own school. Then the Director inserts a score into Parts A, B, C, and E of the HOD form and submits it. After that, these parts get forwarded to the Dean, and the form should go only to the Dean of Engineering. Then the Dean inserts a score into Parts A, B, C, and E and submits it. Finally, these parts go to the VC, and the VC inserts a score into Parts A, B, C, and E and submits it.
+
+Separately, Part D of the HOD form should go directly to the Registrar, bypassing the Director and Dean. The Registrar inserts a score into Part D and submits it. Once the Registrar approves Part D, it waits until the Dean of Engineering approves Parts A, B, C, and E of this same HOD form — only then does Part D release to the VC, together with Parts A, B, C, and E.
 
 #### For Director:
 
-When the Director fills the form and submits it, the form gets forwarded to the Dean, and the form should go only to the Dean of Engineering. Then the Dean inserts a score into the Director form and submits it. Finally, the form goes to the VC, and the VC inserts a score into the Director form and submits it.
+When the Director fills the form and submits it, Parts A, B, C, and E get forwarded to the Dean, and the form should go only to the Dean of Engineering. Then the Dean inserts a score into Parts A, B, C, and E of the Director form and submits it. Finally, these parts go to the VC, and the VC inserts a score into Parts A, B, C, and E and submits it.
+
+Separately, Part D of the Director form should go directly to the Registrar, bypassing the Dean. The Registrar inserts a score into Part D and submits it. Once the Registrar approves Part D, it waits until the Dean of Engineering approves Parts A, B, C, and E of this same Director form — only then does Part D release to the VC, together with Parts A, B, C, and E.
 
 #### For Dean:
 
-When the Dean fills the form and submits it, the form gets forwarded to the VC, and the VC inserts a score into the Dean form and submits it.
+When the Dean fills the form and submits it, Parts A, B, C, and E get forwarded to the VC, and the VC inserts a score into Parts A, B, C, and E of the Dean form and submits it.
+
+Separately, Part D of the Dean form goes directly to the Registrar. The Registrar inserts a score into Part D and submits it. After the Registrar approves it, Part D goes directly to the VC.
 
 ### Transparency in Flow:
 
-In the VC dashboard, teaching appraisal cards and the opened VC review form show an "Average Score" before the VC score. This value is calculated from the available scores submitted before the VC stage: the self/faculty score and the applicable prior reviewer scores in that chain, such as HOD or Center Head, Director, and Dean. The score summary in the opened VC review header is displayed to one decimal place. In the VC review form's Personal Information section, the rows ExpDyp, ExpPrev, and ExpTotal are hidden for display clarity.
+In the VC dashboard, teaching appraisal cards and the opened VC review form show an "Average Score" before the VC score, calculated from the available Parts A, B, C, and E scores submitted before the VC stage (the self/faculty score and the applicable prior reviewer scores — HOD, Director, Dean — in that chain). This score summary is displayed to one decimal place. In the VC review form's Personal Information section, ExpDyp, ExpPrev, and ExpTotal remain hidden for display clarity.
 
 #### For Faculty:
 
-When the faculty fills the form and submits it, the form should go to the HOD. If the faculty belongs to the Mechanical department, then the form should go only to the HOD of the Mechanical department. Then the HOD inserts a score into the faculty form and submits it. After that, the form gets forwarded to the Director, and the Director should not be able to see the score given by the HOD. The Director should only be able to see the self-score given by the faculty. Then the Director inserts a score into the faculty form and submits it. After that, the form gets forwarded to the Dean, and the Dean should not be able to see the scores given by the HOD and Director. The Dean should only be able to see the self-score given by the faculty. Then the Dean inserts a score into the faculty form and submits it. Finally, the form goes to the VC, and the VC will be able to see the scores given by the Faculty, HOD, Director, and Dean. Then the VC inserts a score into the faculty form and submits it.
+When the faculty fills the form and submits it, Parts A, B, C, and E should go to the HOD — only the HOD of the faculty's own department. The HOD inserts a score into Parts A, B, C, and E and submits it. After that, these parts get forwarded to the Director, and the Director should not be able to see the scores given by the HOD — the Director should only be able to see the faculty's self-scores. Then the Director inserts a score and submits it. After that, these parts get forwarded to the Dean, and the Dean should not be able to see the scores given by the HOD and Director — the Dean should only be able to see the faculty's self-scores. Then the Dean inserts a score and submits it. Finally, these parts go to the VC, and the VC will be able to see the scores given by the Faculty, HOD, Director, and Dean on Parts A, B, C, and E.
+
+Part D follows its own track directly to the Registrar, then waits for the Dean's approval of Parts A, B, C, and E before releasing to the VC together with them. Unlike Parts A, B, C, and E, Part D is not hidden from higher authorities while it waits — the HOD, Director, and Dean can all see Part D and the Registrar's action on it, even though it never routes to them for scoring.
 
 #### For HOD:
 
-When the HOD fills the form and submits it, the form gets forwarded to the Director. Then the Director inserts a score into the HOD form and submits it. After that, the form gets forwarded to the Dean, and the Dean should not be able to see the score given by the Director. The Dean should only be able to see the self-score given by the HOD. Then the Dean inserts a score into the HOD form and submits it. Finally, the form goes to the VC, and the VC will be able to see the scores given by the HOD, Director, and Dean. Then the VC inserts a score into the HOD form and submits it.
+When the HOD fills the form and submits it, Parts A, B, C, and E get forwarded to the Director, who inserts a score and submits it. After that, these parts get forwarded to the Dean, and the Dean should not be able to see the score given by the Director — the Dean should only be able to see the HOD's self-scores. Then the Dean inserts a score and submits it. Finally, these parts go to the VC, and the VC will be able to see the scores given by the HOD, Director, and Dean.
+
+Part D of the HOD form goes directly to the Registrar, then waits for the Dean's approval of Parts A, B, C, and E before releasing to the VC together with them — visible throughout to the Director and Dean even though they don't score it.
 
 #### For Director:
 
-When the Director fills the form and submits it, the form gets forwarded to the Dean. Then the Dean inserts a score into the Director form and submits it. Finally, the form goes to the VC, and the VC will be able to see the scores given by the Director and Dean. Then the VC inserts a score into the Director form and submits it.
+When the Director fills the form and submits it, Parts A, B, C, and E get forwarded to the Dean, who inserts a score and submits it. Finally, these parts go to the VC, and the VC will be able to see the scores given by the Director and Dean.
+
+Part D of the Director form goes directly to the Registrar, then waits for the Dean's approval of Parts A, B, C, and E before releasing to the VC together with them — visible to the Dean throughout even though the Dean doesn't score it.
 
 #### For Dean:
 
-When the Dean fills the form and submits it, the form gets forwarded to the VC, and the VC inserts a score into the Dean form and submits it.
+When the Dean fills the form and submits it, Parts A, B, C, and E get forwarded to the VC, who inserts a score and submits it. Part D goes directly to the Registrar and then to the VC.
 
-### 2) For the schools SoCSEA, SoBB, and SoCE:
+---
+
+### 2) For the Non-Engineering Schools — SoC, SoMCS, SoD, SoAA, SoHSS ⟵ UPDATED (SoHSS added)
 
 #### For Faculty:
 
-When the faculty fills the form and submits it, the form gets forwarded to the Director. The form should go only to the Director of the respective school of the faculty. Then the Director inserts a score into the faculty form and submits it. After that, the form gets forwarded to the Dean, and the form should go only to the Dean of Engineering. The Dean should not be able to see the score given by the Director and should only be able to see the self-score given by the faculty. Then the Dean inserts a score into the faculty form and submits it. Finally, the form goes to the VC, and the VC will be able to see the scores given by the Faculty, Director, and Dean. Then the VC inserts a score into the faculty form and submits it.
+When the faculty fills the form and submits it, Parts A, B, C, and E should go to the HOD, only the HOD of the faculty's own department. Then the HOD inserts a score and submits it. After that, these parts get forwarded to the Director, only the Director of the faculty's own school. Then the Director inserts a score and submits it. After that, these parts get forwarded to the Dean, only the Dean of Non-Engineering. Then the Dean inserts a score and submits it. Finally, these parts go to the VC, and the VC inserts a score and submits it.
+
+Separately, Part D of the faculty form goes directly to the Registrar, bypassing the HOD, Director, and Dean. The Registrar inserts a score and submits it. Once the Registrar approves Part D, it waits until the Dean of Non-Engineering approves Parts A, B, C, and E of this same faculty form — only then does Part D release to the VC, together with Parts A, B, C, and E.
+
+#### For HOD:
+
+When the HOD fills the form and submits it, Parts A, B, C, and E get forwarded to the Director, only the Director of the HOD's own school. Then the Director inserts a score and submits it. After that, these parts get forwarded to the Dean, only the Dean of Non-Engineering. Then the Dean inserts a score and submits it. Finally, these parts go to the VC, and the VC inserts a score and submits it.
+
+Separately, Part D of the HOD form goes directly to the Registrar, bypassing the Director and Dean. Once the Registrar approves Part D, it waits until the Dean of Non-Engineering approves Parts A, B, C, and E of this same HOD form — only then does Part D release to the VC, together with Parts A, B, C, and E.
 
 #### For Director:
 
-When the Director fills the form and submits it, the form gets forwarded to the Dean, and the form should go only to the Dean of Engineering. Then the Dean inserts a score into the Director form and submits it. Finally, the form goes to the VC, and the VC inserts a score into the Director form and submits it.
+When the Director fills the form and submits it, Parts A, B, C, and E get forwarded to the Dean, only the Dean of Non-Engineering. Then the Dean inserts a score and submits it. Finally, these parts go to the VC, and the VC inserts a score and submits it.
+
+Separately, Part D of the Director form goes directly to the Registrar, bypassing the Dean. Once the Registrar approves Part D, it waits until the Dean of Non-Engineering approves Parts A, B, C, and E of this same Director form — only then does Part D release to the VC, together with Parts A, B, C, and E.
 
 #### For Dean:
 
-When the Dean fills the form and submits it, the form gets forwarded to the VC, and the VC inserts a score into the Dean form and submits it.
+When the Dean fills the form and submits it, Parts A, B, C, and E get forwarded to the VC, and the VC inserts a score and submits it. Part D goes directly to the Registrar and then to the VC.
 
 ### Transparency in Flow:
 
 #### For Faculty:
 
-When the faculty fills the form and submits it, the form gets forwarded to the Director. The form should go only to the Director of the respective school of the faculty. Then the Director inserts a score into the faculty form and submits it. After that, the form gets forwarded to the Dean, and the Dean inserts a score into the faculty form and submits it. Finally, the form goes to the VC, and the VC inserts a score into the faculty form and submits it.
+When the faculty fills the form and submits it, Parts A, B, C, and E should go to the HOD — only the HOD of the faculty's own department. The HOD inserts a score and submits it. After that, these parts get forwarded to the Director, and the Director should not be able to see the score given by the HOD — only the faculty's self-scores. Then the Director inserts a score and submits it. After that, these parts get forwarded to the Dean, and the Dean should not be able to see the scores given by the HOD and Director — only the faculty's self-scores. Then the Dean inserts a score and submits it. Finally, these parts go to the VC, and the VC will be able to see the scores given by the Faculty, HOD, Director, and Dean.
+
+Part D follows its own track directly to the Registrar, then waits for the Dean's approval of Parts A, B, C, and E before releasing to the VC together with them. It remains visible to the HOD, Director, and Dean throughout, even though it never routes to them for scoring.
+
+#### For HOD:
+
+When the HOD fills the form and submits it, Parts A, B, C, and E get forwarded to the Director, who inserts a score and submits it. After that, these parts get forwarded to the Dean, and the Dean should not be able to see the score given by the Director — only the HOD's self-scores. Then the Dean inserts a score and submits it. Finally, these parts go to the VC, and the VC will be able to see the scores given by the HOD, Director, and Dean.
+
+Part D of the HOD form goes directly to the Registrar, then waits for the Dean's approval of Parts A, B, C, and E before releasing to the VC together with them — visible to the Director and Dean throughout.
 
 #### For Director:
 
-When the Director fills the form and submits it, the form gets forwarded to the Dean, and the form should go only to the Dean of Engineering. Then the Dean inserts a score into the Director form and submits it. Finally, the form goes to the VC, and the VC will be able to see the scores given by the Director and Dean. Then the VC inserts a score into the Director form and submits it.
+When the Director fills the form and submits it, Parts A, B, C, and E get forwarded to the Dean, who inserts a score and submits it. Finally, these parts go to the VC, and the VC will be able to see the scores given by the Director and Dean.
+
+Part D of the Director form goes directly to the Registrar, then waits for the Dean's approval of Parts A, B, C, and E before releasing to the VC together with them — visible to the Dean throughout.
 
 #### For Dean:
 
-When the Dean fills the form and submits it, the form gets forwarded to the VC, and the VC inserts a score into the Dean form and submits it.
+When the Dean fills the form and submits it, Parts A, B, C, and E get forwarded to the VC, who inserts a score and submits it. Part D goes directly to the Registrar and then the VC.
 
-### 3) For the schools SoC, SoMCS, SoD, and SoAA:
+---
 
-#### For Faculty:
+### 3) For the Center for Interdisciplinary Studies and Research (CISR) — UPDATED, now follows the Part A–E structure
 
-When the faculty fills the form and submits it, the form gets forwarded to the Director. The form should go only to the Director of the respective school of the faculty. Then the Director inserts a score into the faculty form and submits it. After that, the form gets forwarded to the Dean, and the form should go only to the Dean of Non-Engineering. Then the Dean inserts a score into the faculty form and submits it. Finally, the form goes to the VC, and the VC inserts a score into the faculty form and submits it.
-
-#### For Director:
-
-When the Director fills the form and submits it, the form gets forwarded to the Dean, and the form should go only to the Dean of Non-Engineering. Then the Dean inserts a score into the Director form and submits it. Finally, the form goes to the VC, and the VC inserts a score into the Director form and submits it.
-
-#### For Dean:
-
-When the Dean fills the form and submits it, the form gets forwarded to the VC, and the VC inserts a score into the Dean form and submits it.
-
-### Transparency in Flow:
+CISR previously ran on a single unsplit track. It now follows the same Part A–E structure as the schools — the Center Head plays the role the Dean plays elsewhere: the final reviewer before the VC.
 
 #### For Faculty:
 
-When the faculty fills the form and submits it, the form gets forwarded to the Director. The form should go only to the Director of the respective school of the faculty. Then the Director inserts a score into the faculty form and submits it. After that, the form gets forwarded to the Dean, and the Dean inserts a score into the faculty form and submits it. Finally, the form goes to the VC, and the VC inserts a score into the faculty form and submits it.
+When the faculty fills the form and submits it, Parts A, B, C, and E get forwarded to the Center Head. The Center Head inserts a score into Parts A, B, C, and E and submits it. Finally, these parts go to the VC, and the VC inserts a score into Parts A, B, C, and E and submits it.
 
-#### For Director:
-
-When the Director fills the form and submits it, the form gets forwarded to the Dean, and the form should go only to the Dean of Non-Engineering. Then the Dean inserts a score into the Director form and submits it. Finally, the form goes to the VC, and the VC will be able to see the scores given by the Director and Dean. Then the VC inserts a score into the Director form and submits it.
-
-#### For Dean:
-
-When the Dean fills the form and submits it, the form gets forwarded to the VC, and the VC inserts a score into the Dean form and submits it.
-
-### 4) For the Center for Interdisciplinary Studies and Research (CISR):
-
-#### For Faculty:
-
-When the faculty fills the form and submits it, the form gets forwarded to the Center Head. Then the Center Head inserts a score into the faculty form and submits it. Finally, the form gets forwarded to the VC, and the VC inserts a score into the faculty form and submits it.
+Separately, Part D of the faculty form goes directly to the Registrar, bypassing the Center Head entirely. The Registrar inserts a score into Part D and submits it. Once the Registrar approves Part D, it waits until the Center Head approves Parts A, B, C, and E of this same faculty form — only then does Part D release to the VC, together with Parts A, B, C, and E.
 
 #### For Center Head:
 
-When the Center Head fills the form and submits it, the form gets forwarded to the VC, and the VC inserts a score into the Center Head form and submits it.
+When the Center Head fills the form and submits it, Parts A, B, C, and E get forwarded to the VC, and the VC inserts a score into Parts A, B, C, and E of the Center Head form and submits it.
+
+Separately, Part D of the Center Head form goes directly to the Registrar. The Registrar inserts a score into Part D and submits it. After the Registrar approves it, Part D goes directly to the VC — there is no stage above the Center Head's own form to wait for, so Part D releases as soon as the Registrar approves it.
 
 ### Transparency in Flow:
 
 #### For Faculty:
 
-When the faculty fills the form and submits it, the form gets forwarded to the Center Head. Then the Center Head inserts a score into the faculty form and submits it. Finally, the form gets forwarded to the VC, and the VC inserts a score into the faculty form and submits it.
+When the faculty fills the form and submits it, Parts A, B, C, and E get forwarded to the Center Head, who inserts a score into Parts A, B, C, and E and submits it. Finally, these parts go to the VC, and the VC will be able to see the scores given by the Faculty and the Center Head.
+
+Part D follows its own track directly to the Registrar, then waits for the Center Head's approval of Parts A, B, C, and E before releasing to the VC together with them. Part D is visible to the Center Head throughout, even though the Center Head never scores it.
 
 #### For Center Head:
 
-When the Center Head fills the form and submits it, the form gets forwarded to the VC, and the VC inserts a score into the Center Head form and submits it.
+When the Center Head fills the form and submits it, Parts A, B, C, and E get forwarded to the VC, who inserts a score into Parts A, B, C, and E and submits it. Part D goes directly to the Registrar and then to the VC.
 
-### 5) Non-Teaching Staff:
+---
+
+### 4) Non-Teaching Staff — unchanged (no Part A–E split, no Part D, no release-gate logic — confirmed untouched by this update)
 
 #### For Staff:
 
@@ -187,3 +240,87 @@ When the Reporting Officer fills the form and submits it, the form gets forwarde
 #### For Registrar:
 
 When the Registrar fills the form and submits it, the form gets forwarded to the VC, and the VC inserts a score into the Registrar form and submits it.
+
+---
+
+## 5) NEW — Role Ownership Transfer (HOD, Director, Dean)
+
+**What this covers:** an authority-role holder (HOD, Director, or Dean) can be replaced by a newly appointed person mid-cycle. When this happens, the outgoing person's ownership of that role is transferred to the incoming person, and the outgoing person reverts to being a Faculty member (submitting their own appraisal as Faculty going forward, routed to whichever HOD/Director/Dean now covers them).
+
+This is a **backend/data-model change only** — no UI changes are implied or required by this section; it's about how role assignment is represented and resolved under the hood so that whatever admin action eventually triggers a transfer has the right structure to write to.
+
+### Core principle: a role is an assignable position, not a fixed attribute of a person
+
+Today, if "HOD of Mechanical Engineering" is just a field directly on a person's account, transferring ownership means editing that person's account — which is fragile and loses history. Instead, treat each authority role as its own **assignable position** with a start/end record, and have a person "hold" that position for a period of time.
+
+### Data model
+
+```
+RoleAssignment
+├── assignment_id
+├── role_type         ("HOD" | "Director" | "Dean")
+├── scope_type         ("department" | "school" | "dean_type")
+├── scope_id            (department_id, school_id, or "Engineering"/"Non-Engineering")
+├── user_id             (the person currently holding this position)
+├── status              ("active" | "transferred")
+├── start_date
+└── end_date            (null while active)
+```
+
+Department, School, and Dean-type records no longer store a direct `hod_id` / `director_id` / `dean_id` foreign key to a user. Instead, routing always resolves through the **currently active** `RoleAssignment` row for that scope:
+
+- Faculty's HOD = the active `RoleAssignment` where `role_type = "HOD"` and `scope_id = faculty.department_id`
+- Department's Director = the active `RoleAssignment` where `role_type = "Director"` and `scope_id = department.school_id`
+- School's Dean = the active `RoleAssignment` where `role_type = "Dean"` and `scope_id = school.dean_type`
+
+### What happens on a transfer
+
+1. An admin action (whatever surface triggers it later) specifies: `role_type`, `scope_id`, outgoing `user_id`, incoming `user_id`.
+2. The outgoing person's `RoleAssignment` row is closed: `status = "transferred"`, `end_date = now()`.
+3. A new `RoleAssignment` row is created for the incoming person: same `role_type`/`scope_id`, `status = "active"`, `start_date = now()`.
+4. The outgoing person's account role reverts to **Faculty** — this only removes their approval/write permission for that position going forward. Their own future appraisal forms now route through whichever HOD/Director/Dean currently holds authority over them. Their historical activity (own past appraisals, and forms they reviewed while holding the role) is untouched and remains permanently accessible to them in read-only form — see the dedicated rule below.
+5. Any faculty/department previously routed to the outgoing person now automatically routes to the incoming person, because routing always resolves via the *active* `RoleAssignment`, not a static link.
+
+### Rules that must hold regardless of implementation details
+
+- **Only one active `RoleAssignment` per scope at a time** — enforce with a unique constraint on `(role_type, scope_id)` where `status = "active"`.
+- **Historical integrity is untouched.** Any appraisal form already scored by the outgoing person keeps that person's name/ID as the reviewer of record. A transfer never rewrites who reviewed a past form — it only changes who reviews *future* ones.
+- **Snapshot the reviewer at submission time.** Every appraisal form should store the specific `user_id` (not just the role) who acted at each stage, resolved from the active `RoleAssignment` at the moment the form reached that stage. This is what protects historical records from a later transfer.
+- **The outgoing person's own faculty appraisal chain must be re-resolved.** The moment they revert to Faculty, they need a department assignment (if they don't already have one from before they were promoted) so their own future appraisal form routes correctly.
+- **Demotion removes write/approval permission only — it never deletes or alters historical data.** See the dedicated rule below.
+
+### Confirmed rule: historical data is never deleted, moved, or edited on transfer — read-only access survives demotion
+
+When a person is transferred out of a role (HOD, Director, or Dean), what actually changes is narrow: **their permission to act as an approver in that role going forward is revoked.** Nothing about their past activity is touched.
+
+**What stays exactly as it was, forever, regardless of any later transfer:**
+- Every appraisal form they scored while holding that role — same scores, same comments, same reviewer name, same timestamp, same academic year, same form status. A transfer event never deletes, rewrites, reassigns, or re-attributes a single field on a historical form.
+- Their name/identity as "reviewer of record" on every stage they acted on, in every academic year, permanently — this was already required by the "Snapshot the reviewer at submission time" rule above, and it's exactly what makes the guarantee in this section possible.
+
+**What the demoted person can still do, indefinitely, after becoming Faculty again:**
+- Look up and view (read-only) every appraisal form tied to their own identity from any previous academic year — whether they were the *originator* (their own self-appraisal from that year) or the *reviewer* (forms they scored as HOD/Director/Dean that year).
+- This lookup is keyed by **email ID + academic year** — given their email and a chosen academic year, the system returns every record tied to that email for that year, regardless of what role they held back then or what role (Faculty) they hold now.
+- This is a strictly **read-only** view. Once demoted, they cannot edit, re-score, comment on, resubmit, or in any way modify a historical form — not their own past self-appraisals, and not forms they previously reviewed as HOD/Director/Dean. The write/approval permission is exactly what was revoked; the read/history permission is exactly what was preserved.
+
+**Why this must not depend on the `RoleAssignment` table:** `RoleAssignment` only tracks *who currently* holds a position — after a transfer, the outgoing person's row is `status = "transferred"`, so re-deriving "what did this person review" by looking at *today's* RoleAssignment state would silently lose their history. That's why each form's stage record must independently store the acting `reviewer_user_id` and `academic_year` at the time it was scored (per the snapshot rule above) — historical lookups query these stored fields directly on the form records themselves, never by re-resolving current role ownership.
+
+**Minimum fields each form/review-stage record needs to make this work:**
+
+```
+FormReviewStage
+├── form_id
+├── stage_role         ("HOD" | "Director" | "Dean" | "Registrar" | "VC" | ... )
+├── reviewer_user_id    (snapshot — who actually acted, permanent, never rewritten)
+├── academic_year
+├── score / status
+└── acted_at
+```
+
+A query like *"show me every form where `reviewer_user_id` = this person's ID, for `academic_year` = 2024–25"* is then all that's needed to serve the demoted person's history — completely independent of whatever role they hold today, and independent of whoever holds that position now.
+
+### Confirmed rule: in-progress forms at the moment of transfer
+
+If a form is sitting unscored in the outgoing HOD/Director/Dean's queue at the moment of transfer, it **moves immediately to the newly appointed person** — the position owns the queue, not the individual. Concretely:
+
+- Any form in `pending` or `in_review` status at that scope, where the current stage's reviewer resolves to the outgoing person's `RoleAssignment`, is automatically re-resolved to the incoming person's new `RoleAssignment` as soon as it goes active — no manual reassignment step needed, since routing already resolves via the active `RoleAssignment` rather than a static user reference (see "What happens on a transfer" above).
+- This applies only to forms **not yet scored** at that stage. Anything the outgoing person already scored and submitted before the transfer keeps their name as reviewer of record, per the historical-integrity rule above — a transfer never rewrites completed work, only reassigns what's still pending.

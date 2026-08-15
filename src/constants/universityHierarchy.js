@@ -235,21 +235,13 @@ export const isSoemrSchool = (school) => getSchoolKey(school) === "SoEMR";
 
 export const isCisrSchool = (school) => getSchoolKey(school) === "CISR";
 
-export const getDepartmentByValue = (department) => {
-  const normalized = normalizeHierarchyText(department);
-  if (!normalized) return "";
+// Department names are now a Director-managed list per school (see departmentsService.js),
+// not a fixed enum — validity is enforced at signup time against that list, so this is just
+// a display/storage normalizer, not a lookup.
+export const canonicalDepartmentValue = (department) => String(department || "").trim();
 
-  return SOEMR_DEPARTMENTS.find((item) => {
-    const candidate = normalizeHierarchyText(item);
-    return normalized === candidate ||
-      normalized.startsWith(`${candidate} `) ||
-      candidate.startsWith(`${normalized} `);
-  }) || "";
-};
-
-export const canonicalDepartmentValue = (department) =>
-  getDepartmentByValue(department) || "";
-
+// Retained only as backend migration seed data for SoEMR's pre-existing departments
+// (see backend_changes_requied.md) - no longer used by routing logic.
 export const isValidSoemrDepartment = (department) =>
   SOEMR_DEPARTMENTS.includes(department);
 

@@ -3,6 +3,7 @@ import {
   UNIVERSITY_SCHOOLS,
   canonicalDepartmentValue,
   getSchoolKey as getConfiguredSchoolKey,
+  isCisrSchool,
   normalizeHierarchyText,
 } from "../constants/universityHierarchy.js";
 import { isNonTeachingRole, normalizeNonTeachingRole } from "../constants/nonTeachingHierarchy.js";
@@ -69,12 +70,11 @@ export const getDeanTrack = (profile = {}) => {
   return ENGINEERING;
 };
 
-export const departmentHasHod = (school, department) => {
-  const config = getSchoolHierarchy(school);
-  if (!config?.hodDepartments?.length) return false;
-
-  return Boolean(canonicalDepartmentValue(department));
-};
+// Any non-CISR school with a department assigned has an HOD for that department.
+// Department names come from the Director-managed per-school list (departmentsService.js) -
+// validity is enforced there at signup time, not re-checked here.
+export const departmentHasHod = (school, department) =>
+  !isCisrSchool(school) && Boolean(canonicalDepartmentValue(department));
 
 export const getReviewChain = (profile = {}) => {
   const role = normalizeRoleForWorkflow(profile.appraisal_role || profile.appraisalRole || profile.role);
@@ -96,14 +96,22 @@ export const getReviewChain = (profile = {}) => {
     return ["center_head", "vc"];
   }
 
-  if (getSchoolKey(profile.school) === "SoEMR") {
-    return ["hod", "director", "dean", "vc"];
-  }
-
   return departmentHasHod(profile.school, profile.department)
     ? ["hod", "director", "dean", "vc"]
     : ["director", "dean", "vc"];
 };
+
+// Part D (Leave & Attendance) always goes to the Registrar, bypassing the review chain above -
+// but its release to VC is gated on the chain's final pre-VC stage (Dean/Center Head) approving
+// Parts A/B/C/E, unless the originator *is* that final stage (a Dean/Center Head's own form),
+// in which case there's nothing to wait for.
+export const PART_D_STATUSES = {
+  PENDING_REGISTRAR: "pending_registrar",
+  REGISTRAR_APPROVED_PENDING_RELEASE: "registrar_approved_pending_release",
+  RELEASED_TO_VC: "released_to_vc",
+};
+
+export const partDReleaseGateApplies = (subjectProfile = {}) => getReviewChain(subjectProfile).length > 1;
 
 export const visiblePreviousReviewRoles = (reviewerRole, subjectProfile = {}) => {
   const role = normalizeRoleForWorkflow(reviewerRole);
@@ -218,16 +226,19 @@ export const workflowValidationError = (profile = {}) => {
     return "Please select one of the approved schools or centers before submitting.";
   }
 
-  if (role === "hod" && schoolKey !== "SoEMR") {
-    return "HOD submissions are allowed only for SoEMR departments.";
+  if (role === "hod" && schoolKey === "CISR") {
+    return "HOD submissions are not applicable for CISR.";
   }
 
   if (role === "center_head" && schoolKey !== "CISR") {
     return "Center Head submissions are allowed only for CISR.";
   }
 
-  if (schoolKey === "SoEMR" && (role === "faculty" || role === "hod") && !canonicalDepartmentValue(profile.department)) {
-    return "Please select a valid SoEMR department before submitting.";
+  // HOD accounts always need a department (that's the position they hold). Faculty may or
+  // may not have one yet - if unset they simply route straight to Director, same as before
+  // departments existed for their school.
+  if (schoolKey && schoolKey !== "CISR" && role === "hod" && !canonicalDepartmentValue(profile.department)) {
+    return "Please select a valid department before submitting.";
   }
 
   return "";
@@ -270,7 +281,7 @@ export const canAuthorityReviewProfile = (reviewerProfile = {}, subjectProfile =
     return subjectRole === "faculty" &&
       departmentHasHod(subjectProfile.school, subjectProfile.department) &&
       getSchoolKey(reviewerProfile.school) === getSchoolKey(subjectProfile.school) &&
-      canonicalDepartmentValue(reviewerProfile.department) === canonicalDepartmentValue(subjectProfile.department);
+      normalizeText(reviewerProfile.department) === normalizeText(subjectProfile.department);
   }
 
   if (reviewerRole === "center_head") {

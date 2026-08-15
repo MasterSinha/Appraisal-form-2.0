@@ -15,11 +15,14 @@ import {
   TDV,
   ViewDocsCell,
   rowHasReviewableData,
+  isSectionEmpty,
+  EmptySectionRow,
 } from "../../../features/faculty-appraisal";
 import { RO } from "../../../features/faculty-appraisal/shared";
 
 function SimplePartCTable({ title, rows, rowKey, docs, docPrefix, columns, get, set, reviewerScoreLabel, max }) {
-  const safeRows = rows && rows.length > 0 ? rows : [{}];
+  const safeRows = Array.isArray(rows) ? rows : [];
+  const sectionEmpty = isSectionEmpty(rowKey, safeRows, docs);
   const displayValue = (row, column) => {
     const keys = Array.isArray(column.key) ? column.key : [column.key];
     const foundKey = keys.find((key) => String(row?.[key] ?? "").trim() !== "");
@@ -38,7 +41,9 @@ function SimplePartCTable({ title, rows, rowKey, docs, docPrefix, columns, get, 
           </tr>
         </thead>
         <tbody>
-          {safeRows.map((row, index) => (
+          {sectionEmpty ? (
+            <EmptySectionRow colSpan={columns.length + 4} />
+          ) : safeRows.map((row, index) => (
             <tr key={index} style={index % 2 ? { background: "#f8fafc" } : {}}>
               <td style={TDC}>{index + 1}</td>
               {columns.map((column) => <td key={Array.isArray(column.key) ? column.key.join("-") : column.key} style={TD}><RO val={displayValue(row, column)} /></td>)}

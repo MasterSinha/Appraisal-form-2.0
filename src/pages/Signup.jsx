@@ -1,19 +1,17 @@
 ﻿/* eslint-disable no-unused-vars */
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { APP_INFO } from "../constants/formConfig";
 import {
   SCHOOL_OPTIONS,
-  SOEMR_DEPARTMENTS,
   canonicalDepartmentValue,
   canonicalSchoolValue,
   isCisrSchool,
-  isSoemrSchool,
   isValidSchool,
-  isValidSoemrDepartment,
 } from "../constants/universityHierarchy";
 import { isNonTeachingRole } from "../constants/nonTeachingHierarchy";
 import { register } from "../services/authService";
+import { listSchoolDepartments } from "../services/departmentsService";
 import { buildProfilePayload, normalizeRole } from "../auth/session";
 import {
   isValidEmail, isValidPhone, isStrongPassword, passwordRequirements,
@@ -68,24 +66,55 @@ export default function Signup() {
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [schoolDepartments, setSchoolDepartments] = useState([]);
+  const [departmentsLoading, setDepartmentsLoading] = useState(false);
   const selectedSchool = canonicalSchoolValue(formData.school);
   const selectedRole = normalizeRole(formData.role, "");
   const isNonTeachingType = formData.staffType === "non_teaching";
   const isTeachingType = formData.staffType === "teaching";
   const requiresSchool = isTeachingType && selectedRole !== "vc";
-  const schoolNeedsDepartment = isSoemrSchool(selectedSchool);
   const isCisr = isCisrSchool(selectedSchool);
-  const needsDepartment = isTeachingType && schoolNeedsDepartment;
+  const schoolHasDepartments = schoolDepartments.length > 0;
+  // HOD always needs a department (that's the position). Faculty only needs to pick one once
+  // the school actually has departments configured - otherwise they simply route to Director.
+  const needsDepartment = isTeachingType && !isCisr && selectedSchool &&
+    (formData.role === "hod" || schoolHasDepartments);
   const roleOptions = BASE_ROLE_OPTIONS.filter((role) => {
     const roleIsNonTeaching = isNonTeachingRole(role.value);
 
     if (isNonTeachingType) return roleIsNonTeaching;
     if (roleIsNonTeaching) return false;
-    if (role.value === "hod") return schoolNeedsDepartment;
+    if (role.value === "hod") return !isCisr && selectedSchool && schoolHasDepartments;
     if (role.value === "center_head") return isCisr;
     if (isCisr && (role.value === "director" || role.value === "dean")) return false;
     return true;
   });
+
+  useEffect(() => {
+    let active = true;
+    const load = () => {
+      if (!isTeachingType || !selectedSchool || isCisr) {
+        setSchoolDepartments([]);
+        return;
+      }
+      setDepartmentsLoading(true);
+      listSchoolDepartments(selectedSchool)
+        .then((departments) => {
+          if (active) setSchoolDepartments(departments);
+        })
+        .catch(() => {
+          if (active) setSchoolDepartments([]);
+        })
+        .finally(() => {
+          if (active) setDepartmentsLoading(false);
+        });
+    };
+    const timer = setTimeout(load, 0);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [isTeachingType, selectedSchool, isCisr]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -186,13 +215,23 @@ export default function Signup() {
       return;
     }
 
-    if (isSoemrSchool(school) && (!department || !isValidSoemrDepartment(department))) {
-      setError("Please select the correct SoEMR department from the dropdown.");
+    const departmentOptions = schoolDepartments.map((dept) => dept.name);
+    const departmentIsValid = department && departmentOptions.some(
+      (name) => canonicalDepartmentValue(name) === department
+    );
+
+    if (formData.role === "hod" && !isCisrSchool(school) && !departmentIsValid) {
+      setError("Please select a valid department from the dropdown.");
       return;
     }
 
-    if (formData.role === "hod" && !isSoemrSchool(school)) {
-      setError("HOD accounts are allowed only for SoEMR departments in this hierarchy.");
+    if (formData.role !== "hod" && department && !isCisrSchool(school) && !departmentIsValid) {
+      setError("Please select a valid department from the dropdown.");
+      return;
+    }
+
+    if (formData.role === "hod" && isCisrSchool(school)) {
+      setError("HOD accounts are not applicable for CISR.");
       return;
     }
 
@@ -223,7 +262,7 @@ export default function Signup() {
         school: nonTeaching ? "" : school,
         department: nonTeaching
           ? sanitizeText(formData.department)
-          : isSoemrSchool(school)
+          : !isCisrSchool(school)
             ? department
             : "",
       };
@@ -340,13 +379,21 @@ export default function Signup() {
 
               {needsDepartment && (
                 <div style={s.inputGroup}>
-                  <label style={s.label}>SoEMR Department *</label>
-                  <select className="dyp-input" name="department" value={formData.department} onChange={handleChange} required>
-                    <option value="">Select department</option>
-                    {SOEMR_DEPARTMENTS.map((department) => (
-                      <option key={department} value={department}>{department}</option>
+                  <label style={s.label}>Department *</label>
+                  <select className="dyp-input" name="department" value={formData.department} onChange={handleChange} required disabled={departmentsLoading}>
+                    <option value="">{departmentsLoading ? "Loading departments..." : "Select department"}</option>
+                    {schoolDepartments.map((department) => (
+                      <option key={department.id || department.name} value={department.name}>{department.name}</option>
                     ))}
                   </select>
+                </div>
+              )}
+
+              {isTeachingType && !isCisr && selectedSchool && formData.role === "faculty" && !schoolHasDepartments && !departmentsLoading && (
+                <div style={{ ...s.inputGroup, gridColumn: "1 / -1" }}>
+                  <p style={{ fontSize: 12, color: "#64748b", margin: 0 }}>
+                    No departments are configured yet for this school - your account will route directly to the Director until your Director adds one.
+                  </p>
                 </div>
               )}
 

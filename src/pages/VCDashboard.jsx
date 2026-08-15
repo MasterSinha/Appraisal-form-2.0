@@ -3,17 +3,19 @@
 import { useNavigate } from "react-router-dom";
 import { Avatar, LogoutConfirmModal, ScoreCard, ReviewMetricsStrip } from "../components/dashboard/dashboardPrimitives";
 import { fetchNonTeachingQueueForRole, isNonTeachingReviewComplete } from "../services/nonTeachingWorkflow";
-import { fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, fetchSavedAppraisal, mergeFacultyInfo, ACR_DETAIL_POINTS, MAX_SCORES, APP_INFO, createAcrRows, buildReviewRemarks, openFullFormReport, SummaryOtherInfoField, summaryOtherInfoValueFrom, SCORE_LIMITS, clampScore, clampReviewScore, effectiveMaxScore, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewRowMaxForSection, reviewSectionScore, rowHasReviewableData, isSectionEmpty, selfEffectivePartAMax, societyRowLocked, societyRowScore, standardReviewSummary, standardSubmittedScoreSummary, qualificationRowDescription, AppraisalHeaderImage, ViewDocsCell, SectionCard as SC, CreativeSchoolAuthorityReviewPanel, isCreativeSchool, isDesignArtsSchool, isMediaCommSchool } from "../features/faculty-appraisal";
+import { fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, fetchSavedAppraisal, mergeFacultyInfo, ACR_DETAIL_POINTS, MAX_SCORES, APP_INFO, createAcrRows, buildReviewRemarks, openFullFormReport, SummaryOtherInfoField, summaryOtherInfoValueFrom, SCORE_LIMITS, clampScore, clampReviewScore, effectiveMaxScore, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewRowMaxForSection, reviewSectionScore, rowHasReviewableData, isSectionEmpty, selfEffectivePartAMax, societyRowLocked, societyRowScore, standardReviewSummary, standardSubmittedScoreSummary, qualificationRowDescription, AppraisalHeaderImage, ViewDocsCell, SectionCard as SC, EmptySectionRow, CreativeSchoolAuthorityReviewPanel, isCreativeSchool, isDesignArtsSchool, isMediaCommSchool } from "../features/faculty-appraisal";
 import { clearUserSession, getActiveAcademicYear, getSessionItem, normalizeAcademicYearLabel, setActiveAcademicYear } from "../auth/session";
 import { PreviousYearReportViewer } from "../features/previousYearReport";
 import { isLegacyTwoPartAcademicYear } from "../features/faculty-appraisal/forms/standard/legacyPreviousYearReportUtils";
 
 import { DEAN_TRACKS, UNIVERSITY_SCHOOLS, normalizeHierarchyText } from "../constants/universityHierarchy";
-import { canReviewerRejectProfile, getDeanTrack, getSchoolKey, profileFromsessionStorage, rejectedStatusFor, visiblePreviousReviewRoles, isAppraisalFinalisedByVc, isPendingReviewStatusFor, reviewListFrom } from "../utils/hierarchy";
+import { canReviewerRejectProfile, departmentHasHod, getDeanTrack, getSchoolKey, profileFromsessionStorage, rejectedStatusFor, visiblePreviousReviewRoles, isAppraisalFinalisedByVc, isPendingReviewStatusFor, reviewListFrom } from "../utils/hierarchy";
 import { NonTeachingAuthorityReviewPanel } from "./NonTeachingStaffDashboard";
 import { n, pct, grade, RO } from "../features/faculty-appraisal/shared";
 import FacultyInfoSection from "../components/appraisal/common/FacultyInfoSection";
 import { FacultyRecordHeader, ScoreTable, VCFinalRemarks, FinalSubmitButton, FACULTY_RECORD_THEME } from "../components/dashboard/FacultyAppraisalRecord";
+import LeaveManagementReadOnly from "../components/appraisal/PartD/LeaveManagementReadOnly";
+import RoleTransferPanel from "../components/dashboard/RoleTransferPanel";
 
 // --- Helpers ------------------------------------------------------------------
 const oneDecimal = (value) =>(Math.trunc(n(value) * 10) / 10).toFixed(1);
@@ -342,8 +344,6 @@ const vcTotalForRole = (person = {}, role) =>{
 };
 const vcSelfTotalForPerson = (person = {}) =>
  n(person.declaration?.grand_total ?? person.grandTotal ?? person.grand_total ?? person.totalScore ?? person.total ?? person.selfTotal);
-const rawVcSelfTotalForPerson = (person = {}) =>
- person.declaration?.grand_total ?? person.grandTotal ?? person.grand_total ?? person.totalScore ?? person.total ?? person.selfTotal;
 const rawVcTotalForRole = (person = {}, role) =>{
  if (role === "hod" || role === "center_head") return person.hodTotal ?? person.hodScore;
  if (role === "director") return person.directorTotal ?? person.directorScore;
@@ -571,11 +571,16 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
  return person[section]?.[idx]?.[field] ?? "";
  };
  const { docs } = person;
- const rows = (arr) =>arr && arr.length >0 ? arr : [{}];
+ const rows = (arr) =>Array.isArray(arr) ? arr : [];
+ const scoreColumnCount = reviewRoles.length + 2;
+ const emptyRow = (colSpan) => <EmptySectionRow colSpan={colSpan} />;
+ const sectionRows = (key) => rows(person[key]);
+ const sectionEmpty = (key) => isSectionEmpty(key, sectionRows(key), docs);
  const vcRowMax = (section, row = {}) => isSectionEmpty(section, person[section], person.docs) ? 0 : reviewRowMaxForSection(section, row, section === "lectures" ? 10 : getVcSectionMax(section, person));
  const innovativeRows = Array.isArray(person.innovRows) && person.innovRows.length
  ? person.innovRows
  : [{ method: person.innovDetails || "Innovative / participatory teaching methods used", details: person.innovDetails || "", score: person.innovScore || "" }];
+ const innovativeSectionEmpty = isSectionEmpty("innovRows", Array.isArray(person.innovRows) ? person.innovRows : [], docs);
  const getInnovVc = (index) =>vcData.innovRows?.[index]?.vc ?? innovativeRows[index]?.vc ?? "";
  const setInnovVc = (index, value) =>{
  const sourceRow = innovativeRows[index] || {};
@@ -654,7 +659,7 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
 <th style={TH}>Classes (as per course structure)</th><th style={TH}>Classes Actually Conducted</th><th style={TH}>Docs</th>
  {renderScoreHeaders()}
 </tr></thead>
-<tbody>{rows(person.lectures).map((r, i) =>(
+<tbody>{sectionEmpty("lectures") ? emptyRow(6 + scoreColumnCount) : sectionRows("lectures").map((r, i) =>(
 <tr key={i} style={i % 2 ? { background: "#f8fafc" } : {}}>
 <td style={TDC}>{i + 1}</td><td style={TD}><RO val={r.sem} /></td><td style={TD}><RO val={r.code} /></td>
 <td style={TDC}><RO val={r.planned} center /></td><td style={TDC}><RO val={r.conducted} center /></td>
@@ -671,7 +676,7 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
 <th style={TH}>SN</th><th style={TH}>Course</th><th style={TH}>Title</th><th style={TH}>IQAC Index Compliance (Yes/No, with proof)</th>
  {renderScoreHeaders()}
 </tr></thead>
-<tbody>{rows(person.courseFile).map((r, i) =>(
+<tbody>{sectionEmpty("courseFile") ? emptyRow(4 + scoreColumnCount) : sectionRows("courseFile").map((r, i) =>(
 <tr key={i} style={i % 2 ? { background: "#f8fafc" } : {}}>
 <td style={TDC}>{i + 1}</td>
 <td style={TD}><RO val={r.course} /></td>
@@ -689,7 +694,7 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
 <th style={TH}>View Docs</th>
  {renderScoreHeaders()}
 </tr></thead>
-<tbody>{innovativeRows.map((row, index) =>{
+<tbody>{innovativeSectionEmpty ? emptyRow(4 + scoreColumnCount) : innovativeRows.map((row, index) =>{
  const rowReviewable = rowHasReviewableData("innovRows", row);
  const previousInnovScore = (role) =>{
  const value = row[role] ?? "";
@@ -718,7 +723,7 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
 <th style={TH}>SN</th><th style={TH}>Course</th><th style={TH}>First Feedback(%)</th><th style={TH}>Second Feedback(%)</th><th style={TH}>Average</th>
  {renderScoreHeaders()}
 </tr></thead>
-<tbody>{rows(person.feedback).map((r, i) =>(
+<tbody>{sectionEmpty("feedback") ? emptyRow(5 + scoreColumnCount) : sectionRows("feedback").map((r, i) =>(
 <tr key={i} style={i % 2 ? { background: "#f8fafc" } : {}}>
 <td style={TDC}>{i + 1}</td><td style={TD}><RO val={r.code} /></td>
 <td style={TDC}><RO val={r.fb1} center /></td><td style={TDC}><RO val={r.fb2} center /></td>
@@ -740,7 +745,7 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
 <th style={TH}>SN</th>{fields.map(([, label]) =><th key={label} style={TH}>{label}</th>)}<th style={TH}>Docs</th>
  {renderScoreHeaders()}
 </tr></thead>
-<tbody>{rows(person[key]).map((r, i) =>(
+<tbody>{sectionEmpty(key) ? emptyRow(2 + fields.length + scoreColumnCount) : sectionRows(key).map((r, i) =>(
 <tr key={i} style={i % 2 ? { background: "#f8fafc" } : {}}>
 <td style={TDC}>{i + 1}</td>
  {fields.map(([field]) =><td key={field} style={TD}><RO val={key === "quals" && field === "label" ? qualificationRowDescription(r) : key === "eventRows" && (field === "fromDate" || field === "toDate") ? (r[field] || r.date) : r[field]} /></td>)}
@@ -768,7 +773,7 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
 <th style={TH}>SN</th>{fields.map(([, label]) =><th key={label} style={TH}>{label}</th>)}<th style={TH}>Docs</th>
  {renderScoreHeaders()}
 </tr></thead>
-<tbody>{rows(person[key]).map((r, i) =>(
+<tbody>{sectionEmpty(key) ? emptyRow(2 + fields.length + scoreColumnCount) : sectionRows(key).map((r, i) =>(
 <tr key={i} style={key === "society" && societyRowLocked(r) ? { background: "#f1f5f9", opacity: 0.65 } : i % 2 ? { background: "#f8fafc" } : {}}>
 <td style={TDC}>{i + 1}</td>
  {fields.map(([field]) =><td key={field} style={TD}><RO val={key === "eventRows" && (field === "fromDate" || field === "toDate") ? (r[field] || r.date) : r[field]} /></td>)}
@@ -780,23 +785,25 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
  ))}
 </div>)}
 
- {sectionView === "partD" && (<div className="review-part-stack">
+ {sectionView === "partD" && (
+ person.partDStatus === "released_to_vc" ? (
+<>
+<LeaveManagementReadOnly ctx={{ leaveManagement: person.leaveManagement }} registrarInfo={{ status: person.partDStatus, score: person.registrarPartDScore, remarks: person.registrarPartDRemarks }} />
+<div style={{ marginTop: 10, padding: "10px 14px", borderRadius: 8, background: "#ecfeff", color: "#0e7490", fontSize: 12, fontWeight: 700 }}>
+ VC view - Part D score (Registrar): {person.registrarPartDScore ?? 0}/25
+</div>
+</>
+ ) : (
+<div className="review-part-stack">
 <div className="review-part-stack__title">PART D - Leave &amp; Attendance Management</div>
-<SC title="Part D - Leave & Attendance Management (Max 25)" accent="#0891b2">
-<div style={{ fontSize: 11, color: "#64748b", marginBottom: 8 }}>Faculty-submitted data - view only.</div>
-{(Array.isArray(person.leaveManagement) && person.leaveManagement.length ? person.leaveManagement : [{}]).map((r, i) => (
-<table key={i} style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, marginBottom: 12 }}>
-<tbody>
-<tr><td style={{ padding: 6, border: "1px solid #e2e8f0", fontWeight: 700 }}>CL / ML / OD / C-Off taken</td><td style={{ padding: 6, border: "1px solid #e2e8f0" }}>{r.clTaken || "-"} / {r.mlTaken || "-"} / {r.odTaken || "-"} / {r.coffTaken || "-"}</td></tr>
-<tr><td style={{ padding: 6, border: "1px solid #e2e8f0", fontWeight: 700 }}>Out of</td><td style={{ padding: 6, border: "1px solid #e2e8f0" }}>{r.clOutOf || "-"} / {r.mlOutOf || "-"} / {r.odOutOf || "-"} / {r.coffOutOf || "-"}</td></tr>
-<tr><td style={{ padding: 6, border: "1px solid #e2e8f0", fontWeight: 700 }}>Late Remarks</td><td style={{ padding: 6, border: "1px solid #e2e8f0" }}>{r.lateRemarks || "-"}</td></tr>
-<tr><td style={{ padding: 6, border: "1px solid #e2e8f0", fontWeight: 700 }}>Working Days</td><td style={{ padding: 6, border: "1px solid #e2e8f0" }}>{r.workingDays || "-"}</td></tr>
-<tr><td style={{ padding: 6, border: "1px solid #e2e8f0", fontWeight: 700 }}>Management of Leaves</td><td style={{ padding: 6, border: "1px solid #e2e8f0" }}>{r.managementRating || "-"} ({r.score || 0}/25)</td></tr>
-</tbody>
-</table>
-))}
-</SC>
-</div>)}
+<div style={{ padding: "16px 18px", borderRadius: 10, background: "#fef3c7", color: "#92400e", fontSize: 13, fontWeight: 700 }}>
+ Part D is not yet released to VC. {person.partDStatus === "registrar_approved_pending_release"
+ ? "The Registrar has scored it, but it is waiting on the Dean/Center Head's approval of Parts A, B, C and E on this form before it releases."
+ : "It is still awaiting the Registrar's review."}
+</div>
+</div>
+ )
+ )}
 
  {sectionView === "partE" && (<div className="review-part-stack">
 <div className="review-part-stack__title">PART E - Annual Confidential Report</div>
@@ -832,7 +839,7 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
 <th style={TH}>ISSN</th><th style={TH}>Impact Factor</th><th style={TH}>Author Position</th><th style={TH}>Docs</th>
  {renderScoreHeaders()}
 </tr></thead>
-<tbody>{rows(person.journals).map((r, i) =>(
+<tbody>{sectionEmpty("journals") ? emptyRow(7 + scoreColumnCount) : sectionRows("journals").map((r, i) =>(
 <tr key={i} style={i % 2 ? { background: "#f8fafc" } : {}}>
 <td style={TDC}>{i + 1}</td><td style={TD}><RO val={r.title} /></td><td style={TD}><RO val={r.journal} /></td>
 <td style={TDC}><RO val={r.issn} center /></td><td style={TDC}><RO val={r.impactFactor || r.impact} center /></td><td style={TDC}><RO val={r.authorPosition || r.position} center /></td>
@@ -874,7 +881,7 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
  {renderScoreHeaders()}
 </tr>
 </thead>
-<tbody>{rows(person[key]).map((r, i) =>{
+<tbody>{sectionEmpty(key) ? emptyRow(2 + columns.length + scoreColumnCount) : sectionRows(key).map((r, i) =>{
  return (
 <tr key={i} style={i % 2 ? { background: "#f8fafc" } : {}}>
 <td style={TDC}>{i + 1}</td>
@@ -1048,12 +1055,12 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  };
  };
  const personSchoolKey = getSchoolKey(person.school || person.schoolName || person.info?.school || "");
- const isSoemrFacultyReview = personMode === "faculty" && personSchoolKey === "SoEMR";
+ const facultyHasHodReview = personMode === "faculty" && departmentHasHod(person.school || person.schoolName || person.info?.school || "", person.department || person.info?.department || "");
  const vcSummaryRoles = (() =>{
  const roles = [];
  if (personMode === "faculty") {
  if (previousRoles.includes("center_head")) roles.push("center_head");
- else if (isSoemrFacultyReview && previousRoles.includes("hod")) roles.push("hod");
+ else if (facultyHasHodReview && previousRoles.includes("hod")) roles.push("hod");
  if (previousRoles.includes("director")) roles.push("director");
  if (previousRoles.includes("dean")) roles.push("dean");
  return roles;
@@ -1129,9 +1136,9 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  }
  };
 
-  const handleSaveAndNext = async () => {
-    await handleSaveDraft();
-    const NEXT_SECTION_MAP = { partA: "partB", partB: "partC", partC: "partD", partD: "partE", partE: "summary" };
+  const NEXT_SECTION_MAP = { partA: "partB", partB: "partC", partC: "partD", partD: "partE", partE: "summary" };
+
+  const handleNextSection = () => {
     const nextSection = NEXT_SECTION_MAP[sectionView];
     if (nextSection) {
       setSectionView(nextSection);
@@ -1139,6 +1146,11 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
         window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
       });
     }
+  };
+
+  const handleSaveAndNext = async () => {
+    await handleSaveDraft();
+    handleNextSection();
   };
 
  const generateVcReport = () =>{
@@ -1375,6 +1387,15 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
 </div>
  )}
 
+ {sectionView === "partD" && (
+<div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, margin: "12px 0 14px", flexWrap: "wrap" }}>
+<button type="button" onClick={handleNextSection}
+ style={{ padding: "8px 14px", background: "#2563eb", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 800, fontSize: 12, fontFamily: "inherit" }}>
+ Next
+</button>
+</div>
+ )}
+
  {/* Summary */}
  {sectionView === "summary" && (
 <div style={{ display: "grid", gap: 14 }}>
@@ -1459,8 +1480,8 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
 </>
 ) : (
 <div
- className={`vc-summary-card-grid ${isSoemrFacultyReview ? "vc-summary-card-grid--soemr-faculty" : ""} ${personMode === "dean" ? "vc-summary-card-grid--dean" : ""}`}
- style={{ display: "grid", gap: 16, gridTemplateColumns: (personMode === "dean" || isSoemrFacultyReview) ? "repeat(2, minmax(330px, 1fr))" : undefined }}
+ className={`vc-summary-card-grid ${facultyHasHodReview ? "vc-summary-card-grid--soemr-faculty" : ""} ${personMode === "dean" ? "vc-summary-card-grid--dean" : ""}`}
+ style={{ display: "grid", gap: 16, gridTemplateColumns: (personMode === "dean" || facultyHasHodReview) ? "repeat(2, minmax(330px, 1fr))" : undefined }}
 >
 {vcSummaryCards.map((card) =>(
 <ScoreCard key={card.key} {...card} />
@@ -1948,6 +1969,7 @@ export default function VCDashboard() {
  const [reviewing, setReviewing] = useState(null);
  const [reviewLoading, setReviewLoading] = useState(null);
  const [showLogoutModal, setShowLogoutModal] = useState(false);
+ const [showRoleTransfers, setShowRoleTransfers] = useState(false);
  const [deanList, setDeanList] = useState([]);
  const [dirList, setDirList] = useState([]);
  const [hodList, setHodList] = useState([]);
@@ -2151,6 +2173,7 @@ export default function VCDashboard() {
 
  {/* -- Sidebar -- */}
 <aside className="vc-sidebar" style={{ width: 264, height: "100vh", minHeight: "100vh", boxSizing: "border-box", overflow: "hidden", background: "linear-gradient(180deg,#111827 0%,#111827 54%,#0f172a 100%)", display: "flex", flexDirection: "column", padding: "18px 13px", gap: 11, position: "sticky", top: 0, alignSelf: "flex-start", flexShrink: 0, borderRight: "1px solid rgba(148,163,184,0.14)", boxShadow: "10px 0 28px rgba(15,23,42,0.20)" }}>
+<div className="vc-sidebar-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden", display: "flex", flexDirection: "column", gap: 11, scrollbarWidth: "thin", scrollbarColor: "rgba(148,163,184,0.35) transparent" }}>
 <div className="vc-sidebar-brand" style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 2, padding: "0 1px" }}>
 <div className="vc-brand-mark" style={{ width: 42, height: 42, borderRadius: 13, background: "linear-gradient(135deg,#0ea5e9 0%,#7c3aed 100%)", border: "1px solid rgba(224,242,254,0.35)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 900, fontSize: 13, boxShadow: "0 10px 22px rgba(124,58,237,0.38), 0 0 0 3px rgba(124,58,237,0.10)" }}>FA</div>
 <div style={{ minWidth: 0 }}>
@@ -2183,20 +2206,33 @@ export default function VCDashboard() {
 
 <div style={{ height: 1, background: "rgba(148,163,184,0.16)" }} />
 
-<button className="vc-sidebar-nav" onClick={() =>setReviewing(null)}
+<button className="vc-sidebar-nav" onClick={() =>{ setReviewing(null); setShowRoleTransfers(false); }}
  onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-1px)"; }}
  onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; }}
- style={{ position: "relative", background: "#f8fafc", border: "1px solid #f8fafc", borderRadius: 15, padding: "10px 11px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, width: "100%", fontFamily: "inherit", transition: "transform 0.15s ease, background 0.15s ease", boxShadow: "0 10px 24px rgba(0,0,0,0.30), 0 0 0 3px rgba(248,250,252,0.08)" }}>
-<span style={{ width: 31, height: 31, borderRadius: 10, background: "rgba(15,23,42,0.07)", border: "1px solid rgba(15,23,42,0.10)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-<VcIcon name="school" size={17} color="#0f172a" />
+ style={{ position: "relative", background: showRoleTransfers ? "transparent" : "#f8fafc", border: showRoleTransfers ? "1px solid rgba(248,250,252,0.18)" : "1px solid #f8fafc", borderRadius: 15, padding: "10px 11px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, width: "100%", fontFamily: "inherit", transition: "transform 0.15s ease, background 0.15s ease", boxShadow: showRoleTransfers ? "none" : "0 10px 24px rgba(0,0,0,0.30), 0 0 0 3px rgba(248,250,252,0.08)" }}>
+<span style={{ width: 31, height: 31, borderRadius: 10, background: showRoleTransfers ? "rgba(255,255,255,0.06)" : "rgba(15,23,42,0.07)", border: "1px solid rgba(15,23,42,0.10)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+<VcIcon name="school" size={17} color={showRoleTransfers ? "#f8fafc" : "#0f172a"} />
 </span>
 <div style={{ flex: 1, textAlign: "left", minWidth: 0 }}>
-<div style={{ color: "#0f172a", fontWeight: 900, fontSize: 12.5 }}>School Reviews</div>
-<div style={{ color: "#475569", fontSize: 10, marginTop: 1 }}>{totalPending} awaiting</div>
+<div style={{ color: showRoleTransfers ? "#e2e8f0" : "#0f172a", fontWeight: 900, fontSize: 12.5 }}>School Reviews</div>
+<div style={{ color: showRoleTransfers ? "#94a3b8" : "#475569", fontSize: 10, marginTop: 1 }}>{totalPending} awaiting</div>
 </div>
  {totalPending >0 && (
-<div style={{ background: "#0f172a", color: "#f8fafc", fontWeight: 900, fontSize: 10, minWidth: 20, height: 20, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 5px", flexShrink: 0 }}>{totalPending}</div>
+<div style={{ background: showRoleTransfers ? "rgba(255,255,255,0.12)" : "#0f172a", color: "#f8fafc", fontWeight: 900, fontSize: 10, minWidth: 20, height: 20, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 5px", flexShrink: 0 }}>{totalPending}</div>
  )}
+</button>
+
+<button className="vc-sidebar-nav" onClick={() =>{ setReviewing(null); setShowRoleTransfers(true); }}
+ onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-1px)"; }}
+ onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; }}
+ style={{ position: "relative", background: showRoleTransfers ? "#f8fafc" : "transparent", border: showRoleTransfers ? "1px solid #f8fafc" : "1px solid rgba(248,250,252,0.18)", borderRadius: 15, padding: "10px 11px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, width: "100%", fontFamily: "inherit", transition: "transform 0.15s ease, background 0.15s ease", boxShadow: showRoleTransfers ? "0 10px 24px rgba(0,0,0,0.30), 0 0 0 3px rgba(248,250,252,0.08)" : "none" }}>
+<span style={{ width: 31, height: 31, borderRadius: 10, background: showRoleTransfers ? "rgba(15,23,42,0.07)" : "rgba(255,255,255,0.06)", border: "1px solid rgba(15,23,42,0.10)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+<VcIcon name="profile" size={17} color={showRoleTransfers ? "#0f172a" : "#f8fafc"} />
+</span>
+<div style={{ flex: 1, textAlign: "left", minWidth: 0 }}>
+<div style={{ color: showRoleTransfers ? "#0f172a" : "#e2e8f0", fontWeight: 900, fontSize: 12.5 }}>Role Transfers</div>
+<div style={{ color: showRoleTransfers ? "#475569" : "#94a3b8", fontSize: 10, marginTop: 1 }}>Director &amp; Dean</div>
+</div>
 </button>
 
  {/* University summary */}
@@ -2226,8 +2262,8 @@ University Overview
 </div>
 </div>
 </div>
+</div>
 
-<div style={{ flex: 1 }} />
 <div style={{ height: 1, background: "rgba(148,163,184,0.16)" }} />
 <div style={{ padding: 10, borderRadius: 20, background: "linear-gradient(180deg,rgba(30,41,59,0.86),rgba(15,23,42,0.92))", border: "1px solid rgba(148,163,184,0.18)", boxShadow: "0 18px 34px rgba(2,6,23,0.28), inset 0 1px 0 rgba(255,255,255,0.05)", display: "grid", gap: 8 }}>
 <button
@@ -2287,7 +2323,9 @@ University Overview
  </div>
 )}
 
- {!reviewing && (
+ {!reviewing && showRoleTransfers && <RoleTransferPanel />}
+
+ {!reviewing && !showRoleTransfers && (
 <>
  {/* Hero */}
 <div className="vc-dashboard-hero fa-slide-top" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#fff", borderRadius: 14, padding: "16px 24px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb", flexWrap: "wrap" }}>
