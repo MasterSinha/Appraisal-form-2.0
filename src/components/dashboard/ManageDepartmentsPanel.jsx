@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { listSchoolDepartments, addSchoolDepartment, removeSchoolDepartment } from "../../services/departmentsService";
 import { fetchSchoolHods, transferRole, removeRoleAssignment, fetchActiveRoleAssignments } from "../../services/roleAssignmentsService";
-import { isSoemrSchool } from "../../constants/universityHierarchy";
+import { isSoemrSchool, SOEMR_DEPARTMENTS } from "../../constants/universityHierarchy";
 import CreateHodForm from "./CreateHodForm";
 
 const initialsFor = (value = "") => {
@@ -327,7 +327,14 @@ export default function ManageDepartmentsPanel({ school }) {
     if (!school) return;
     setLoading(true);
     try {
-      const [departmentList, hodList] = await Promise.all([listSchoolDepartments(school), fetchSchoolHods(school)]);
+      let [departmentList, hodList] = await Promise.all([listSchoolDepartments(school), fetchSchoolHods(school)]);
+      // SoEMR previously ran on 4 hardcoded departments (SOEMR_DEPARTMENTS) before departments
+      // became Director-managed. Seed them once so existing SoEMR HOD/faculty routing keeps
+      // working the first time this panel loads against a school with zero departments on record.
+      if (isDepartmentSchool && departmentList.length === 0) {
+        await Promise.all(SOEMR_DEPARTMENTS.map((name) => addSchoolDepartment(school, name).catch(() => null)));
+        departmentList = await listSchoolDepartments(school);
+      }
       setDepartments(departmentList);
       setExistingHods(hodList);
     } catch (err) {
@@ -335,7 +342,7 @@ export default function ManageDepartmentsPanel({ school }) {
     } finally {
       setLoading(false);
     }
-  }, [school, unitLabelLower]);
+  }, [school, unitLabelLower, isDepartmentSchool]);
 
   useEffect(() => {
     const timer = setTimeout(refresh, 0);
