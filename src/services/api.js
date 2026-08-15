@@ -108,6 +108,9 @@ export const resolveRelativeUrls = (data) => {
 // Backend detail fields are developer-facing; show user_message when present.
 // 401 clears the session and redirects to /login automatically, except while
 // the user is already using an auth form or on file uploads with fallback.
+// Guards against showing multiple stacked "session expired" alerts when several requests
+// fail in parallel (e.g. a dashboard's initial data load) - see interceptor below.
+let sessionExpiredHandled = false;
 apiClient.interceptors.response.use(
   (response) => {
     if (response.data) {
@@ -155,7 +158,13 @@ apiClient.interceptors.response.use(
     const isUpload = error?.config?.url?.includes("/upload");
     const suppressRedirect = Boolean(error?.config?.suppressAuthRedirect);
 
-    if (status === 401 && !isAuthFormRequest(error?.config?.url) && !isUpload && !suppressRedirect) {
+    // A dashboard mount can fire several requests in parallel; if the session is invalid, each
+    // one 401s independently. Without this guard, every single one would pop its own blocking
+    // alert() (each freezing the page until dismissed) and redirect - so the user sees several
+    // stacked "session expired" dialogs in a row instead of one, which looks like the page has
+    // frozen/gone blank. Only the first 401 in a burst gets to alert + redirect.
+    if (status === 401 && !isAuthFormRequest(error?.config?.url) && !isUpload && !suppressRedirect && !sessionExpiredHandled) {
+      sessionExpiredHandled = true;
       clearUserSession();
       if (typeof window !== "undefined" && window.location.pathname !== "/login") {
         alert("Your session has expired. Please log in again.");

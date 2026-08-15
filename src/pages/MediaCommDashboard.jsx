@@ -252,6 +252,10 @@ export default function MediaCommDashboard({ fixedRole }) {
  const isSelectedCycleClosed = selectedCycle ? !selectedCycle.is_open : false;
  const isSelectedCycleOpen = selectedCycle ? Boolean(selectedCycle.is_open) : false;
  const isLegacyTwoPartYear = isLegacyTwoPartAcademicYear(academicYear);
+ // The latest cycle (newest-first list) stays on the normal form, locked read-only, when
+ // closed - it only becomes the compact historical report once a newer cycle exists above it.
+ // Mirrors the Non-Teaching isLatestCycle/showAsHistorical rule in NonTeachingStaffDashboard.jsx.
+ const isLatestCycle = (academicYearOptions[0]?.academic_year || academicYear) === academicYear;
  const workflowRejected = hasActiveRejection(declaration, reviews);
  const appraisalWindowLocked = !isSelectedCycleOpen && !canEditSelfAppraisal(appraisalWindowStatus, { declaration });
  const locked = appraisalWindowLocked || isSelectedCycleClosed || (Boolean(declaration) && !workflowRejected);
@@ -924,7 +928,7 @@ export default function MediaCommDashboard({ fixedRole }) {
       profile={profile}
       reviews={reviews}
     />
-  ) : isSelectedCycleClosed ? (
+  ) : isSelectedCycleClosed && !isLatestCycle ? (
     <div className="fa-section-card appraisal-section-card" style={{ background: "#fff", borderRadius: 14, boxShadow: "0 18px 50px rgba(17,24,39,0.08)", padding: 24, border: "1px solid #e5e7eb", borderTop: "3px solid #4c1d95" }}>
       <div style={{ fontWeight: 800, fontSize: 18, color: "#4c1d95", marginBottom: 16 }}>Closed Appraisal Report — {academicYear}</div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>

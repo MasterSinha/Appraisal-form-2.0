@@ -327,13 +327,19 @@ export default function Signup() {
       {/* - Top bar - */}
       <div style={s.topBar}>
         <div style={s.logoWrap}>
-          <img src="/image.png" alt="University Logo" style={s.uniLogo} />
+          <picture>
+            <source srcSet="/image.webp" type="image/webp" />
+            <img src="/image.png" alt="University Logo" style={s.uniLogo} />
+          </picture>
           <div>
             <div style={s.portalName}>PBAS Portal</div>
             <div style={s.uniSub}>D.Y. Patil International University, Akurdi, Pune</div>
           </div>
         </div>
-        <img src="/IQAS.png" alt="IQAC Logo" style={s.iqacLogo} />
+        <picture>
+          <source srcSet="/IQAS.webp" type="image/webp" />
+          <img src="/IQAS.png" alt="IQAC Logo" style={s.iqacLogo} />
+        </picture>
       </div>
 
       {/* - Form container - */}
