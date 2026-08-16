@@ -506,6 +506,7 @@ export default function HODDashboard({
 
  const hodSchool = sessionStorage.getItem("school");
  const hodDept = sessionStorage.getItem("department");
+ const hodDepartmentsList = profileFromsessionStorage().departments;
  const academicYearOptions = availableCycles.length ? availableCycles : [{ academic_year: selectedAcademicYear || APP_INFO.DEFAULT_AY, is_open: true }];
 
  const handleReviewAcademicYearChange = (academicYear) => {
@@ -651,7 +652,11 @@ export default function HODDashboard({
  showSectionSelector={activeMainTab === "myAppraisal"}
  sectionTab={hodAppraisalTab}
  onSectionChange={handleMyAppraisalSectionChange}
- profileSubtitle={`HOD - ${sessionStorage.getItem("department")?.split(" ")[0] || ""}`}
+ profileSubtitle={`HOD - ${
+   hodDepartmentsList.length > 1
+     ? `${hodDepartmentsList.length} Programs`
+     : (hodDepartmentsList[0] || hodDept || "").split(" ")[0] || ""
+ }`}
  onLogout={() =>setShowLogoutModal(true)}
  showLogoutSpacer
 />

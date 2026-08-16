@@ -853,7 +853,10 @@ export const fetchReviewQueueForRole = async ({
     };
     if (schoolValues?.length) params.schools = schoolValues.join(",");
     if (reviewerProfile?.school) params.reviewer_school = reviewerProfile.school;
-    if (reviewerProfile?.department) params.reviewer_department = reviewerProfile.department;
+    // HOD can be assigned multiple departments/programs at once (see New_backend.md), so a single
+    // reviewer_department would wrongly narrow the server-side query to just their first one -
+    // fetch school-wide instead and let isReviewableForRole's array-aware check (below) filter.
+    if (role !== "hod" && reviewerProfile?.department) params.reviewer_department = reviewerProfile.department;
 
     const items = await api.get("/dashboard/subordinates", { params });
     const normalizedItems = (items || [])
