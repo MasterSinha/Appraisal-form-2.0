@@ -1,18 +1,49 @@
-import { SectionCard as SC, T, TH, TD, TDC, TDS } from "../../../features/faculty-appraisal";
+import { EmptySectionRow, isSectionEmpty, SectionCard as SC, T, TH, TD, TDC, TDS } from "../../../features/faculty-appraisal";
+import { PART_D_STATUSES } from "../../../utils/hierarchy";
 
 const PART_D_MAX = 25;
 
-export default function LeaveManagementReadOnly({ ctx }) {
-  const rows = Array.isArray(ctx.leaveManagement) && ctx.leaveManagement.length ? ctx.leaveManagement : [{}];
+const REGISTRAR_STATUS_META = {
+  [PART_D_STATUSES.PENDING_REGISTRAR]: { label: "Pending Registrar review", bg: "#fef3c7", color: "#92400e" },
+  [PART_D_STATUSES.REGISTRAR_APPROVED_PENDING_RELEASE]: { label: "Registrar approved - awaiting release to VC", bg: "#e0f2fe", color: "#075985" },
+  [PART_D_STATUSES.RELEASED_TO_VC]: { label: "Released to VC", bg: "#d1fae5", color: "#065f46" },
+};
+
+// Part D always routes to the Registrar (never HOD/Director/Dean) for scoring, but stays
+// visible - along with the Registrar's action on it - to everyone in the main A/B/C/E chain.
+function RegistrarStatusBanner({ registrarInfo }) {
+  if (!registrarInfo?.status) return null;
+  const meta = REGISTRAR_STATUS_META[registrarInfo.status] || { label: registrarInfo.status, bg: "#f1f5f9", color: "#475569" };
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: 8, background: meta.bg, color: meta.color, fontSize: 12, fontWeight: 700, marginBottom: 10 }}>
+      <span>Registrar: {meta.label}</span>
+      {registrarInfo.score !== undefined && registrarInfo.score !== null && registrarInfo.score !== "" && (
+        <span style={{ fontWeight: 800 }}>Score: {registrarInfo.score}/{PART_D_MAX}</span>
+      )}
+      {registrarInfo.remarks && <span style={{ fontWeight: 400 }}>- {registrarInfo.remarks}</span>}
+    </div>
+  );
+}
+
+export default function LeaveManagementReadOnly({ ctx, registrarInfo }) {
+  const rows = Array.isArray(ctx.leaveManagement) ? ctx.leaveManagement : [];
+  const sectionEmpty = isSectionEmpty("leaveManagement", rows);
 
   return (
     <div className="review-part-stack">
       <div className="review-part-stack__title">PART D - Leave &amp; Attendance Management</div>
       <SC title={`Part D - Leave & Attendance Management (Max ${PART_D_MAX})`} accent="#0891b2">
+        <RegistrarStatusBanner registrarInfo={registrarInfo} />
         <div style={{ fontSize: 11, color: "#64748b", marginBottom: 8 }}>
           Faculty-submitted data - view only. This section is not editable by reviewers.
         </div>
-        {rows.map((r = {}, i) => (
+        {sectionEmpty ? (
+          <table style={{ ...T, minWidth: 0, tableLayout: "fixed" }}>
+            <tbody>
+              <EmptySectionRow colSpan={5} />
+            </tbody>
+          </table>
+        ) : rows.map((r = {}, i) => (
           <div key={i} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <table style={{ ...T, minWidth: 0, tableLayout: "fixed" }}>
               <colgroup>

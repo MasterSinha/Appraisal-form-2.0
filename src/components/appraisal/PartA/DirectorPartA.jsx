@@ -1,4 +1,4 @@
-﻿import DirectorLecturesTable from "./DirectorLecturesTable";
+import DirectorLecturesTable from "./DirectorLecturesTable";
 import DirectorCourseFileTable from "./DirectorCourseFileTable";
 import DirectorInnovativeTeaching from "./DirectorInnovativeTeaching";
 import DirectorProjects from "./DirectorProjects";

@@ -1,4 +1,4 @@
-﻿import LecturesTable from "./LecturesTable";
+import LecturesTable from "./LecturesTable";
 import CourseFileTable from "./CourseFileTable";
 import EvidenceScoreTable from "./EvidenceScoreTable";
 import InnovativeTeaching from "./InnovativeTeaching";

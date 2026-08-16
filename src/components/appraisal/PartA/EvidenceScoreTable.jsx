@@ -16,7 +16,7 @@ import {
 import { RO } from "../../../features/faculty-appraisal/shared";
 
 export default function EvidenceScoreTable({ ctx, title, accent, sectionKey, docPrefix, labelKey, labelHeader, max }) {
- const { docs, rows, get, set, reviewerScoreLabel } = ctx;
+ const { docs, rows, sectionEmpty, emptySectionRow, get, set, reviewerScoreLabel } = ctx;
  const sectionRows = rows(ctx[sectionKey]);
 
  return (
@@ -33,7 +33,7 @@ export default function EvidenceScoreTable({ ctx, title, accent, sectionKey, doc
 </tr>
 </thead>
 <tbody>
- {sectionRows.map((row, index) =>{
+ {sectionEmpty(sectionKey) ? emptySectionRow(6) : sectionRows.map((row, index) =>{
  const rowMax = row.max || max;
  return (
 <tr key={index} style={index % 2 ? { background: "#f8fafc" } : {}}>

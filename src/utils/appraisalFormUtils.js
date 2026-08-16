@@ -460,6 +460,11 @@ const IGNORED_METADATA_KEYS = new Set([
   "label", "code", "isStatic", "defaultLabel", "max"
 ]);
 
+const INNOVATIVE_METHOD_PLACEHOLDER = "innovative / participatory teaching methods used";
+
+const isPlaceholderInnovativeMethod = (value) =>
+  String(value || "").trim().toLowerCase() === INNOVATIVE_METHOD_PLACEHOLDER;
+
 export const rowHasFacultyData = (sectionKey, row = {}) => {
   if (!row || typeof row !== "object") return false;
   if (sectionKey === "acr") return true;
@@ -499,6 +504,10 @@ export const rowHasFacultyData = (sectionKey, row = {}) => {
   }
   if (sectionKey === "projects") {
     return isFilled(row.details) || isFilled(row.studentsCount);
+  }
+  if (sectionKey === "innovRows") {
+    if (isFilled(row.methodOther) || isFilled(row.details)) return true;
+    return isFilled(row.method) && !isPlaceholderInnovativeMethod(row.method);
   }
 
   return Object.entries(row).some(([key, value]) => !IGNORED_METADATA_KEYS.has(key) && isFilled(value));

@@ -105,9 +105,15 @@ export default function ResetPassword() {
 
       <div style={s.wrap}>
         {/* Top Left Logo */}
-        <img src="/image.png" alt="University Logo" style={s.topLeftLogo} />
+        <picture>
+          <source srcSet="/image.webp" type="image/webp" />
+          <img src="/image.png" alt="University Logo" style={s.topLeftLogo} />
+        </picture>
         {/* Top Right Logo */}
-        <img src="/IQAS.png" alt="IQAC Logo" style={s.topRightLogo} />
+        <picture>
+          <source srcSet="/IQAS.webp" type="image/webp" />
+          <img src="/IQAS.png" alt="IQAC Logo" style={s.topRightLogo} />
+        </picture>
 
         <div style={s.overlay} />
 

@@ -810,7 +810,11 @@ export default function StandardMyAppraisal({
   const formLocked = appraisalLocked || appraisalWindowLocked;
   const closedAppraisalCycleMessage = `Appraisal cycle for Academic Year ${info.ay} is closed. The next appraisal cycle form will be available soon. For any queries, please contact appraisal@dypiu.ac.in.`;
   const appraisalWindowLockMessage = isSelectedCycleOpen || isSelectedCycleClosed ? "" : appraisalWindowError || (appraisalWindowLocked ? appraisalWindowMessage(appraisalWindowStatus, info.ay) : "");
-  const showClosedReportOnly = isSelectedCycleClosed && !isLegacyTwoPartYear;
+  // The latest cycle (newest-first list) stays on the normal form, locked read-only, when
+  // closed - it only becomes the compact historical report once a newer cycle exists above it.
+  // Mirrors the Non-Teaching isLatestCycle/showAsHistorical rule in NonTeachingStaffDashboard.jsx.
+  const isLatestCycle = (availableCyclesState[0]?.academic_year || info.ay) === info.ay;
+  const showClosedReportOnly = isSelectedCycleClosed && !isLegacyTwoPartYear && !isLatestCycle;
   const sectionOptions = isLegacyTwoPartYear
     ? [
         ["partA", "Part A"],
@@ -1015,7 +1019,10 @@ export default function StandardMyAppraisal({
         (...args) => {
           if (!isCurrentLoad()) return undefined;
           const targetTab = SETTER_TO_TAB[key];
-          if (!targetTab || targetTab === (hodAppraisalTab || "partA")) {
+          // Legacy two-part years render every section (Part A + Part B) in one report with
+          // no tab selector to switch to (hidden at showSectionSelector && !isLegacyTwoPartYear),
+          // so the lazy per-tab hydration below would never fire and Part B would stay empty.
+          if (!targetTab || targetTab === (hodAppraisalTab || "partA") || isLegacyTwoPartYear) {
             return setter?.(...args);
           }
           if (!snapshotCacheRef.current) snapshotCacheRef.current = {};

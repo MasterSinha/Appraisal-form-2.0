@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { Avatar } from "./dashboardPrimitives";
 
@@ -229,6 +230,8 @@ export default function DashboardSidebar({
 }) {
   const navigate = useNavigate();
   const [sectionMenuOpen, setSectionMenuOpen] = useState(false);
+  const [menuRect, setMenuRect] = useState(null);
+  const sectionTriggerRef = useRef(null);
   const [currentAcademicYear, setCurrentAcademicYear] = useState(() => sessionStorage.getItem("academicYear") || "");
   const isLegacyTwoPartYear = isLegacyTwoPartAcademicYear(currentAcademicYear);
   const showCurrentYearSectionSelector = showSectionSelector && !isLegacyTwoPartYear;
@@ -259,8 +262,44 @@ export default function DashboardSidebar({
     };
   }, []);
 
+  // The section dropdown used to render inline inside .appraisal-sidebar-scroll, which has
+  // overflow-y: auto for the nav list above it - that clips the expanded options list the
+  // moment it extends past the scroll container's own viewport, instead of floating on top of
+  // it. Rendering it through a portal (positioned from the trigger button's live screen rect)
+  // escapes that clipping entirely, regardless of the sidebar's scroll position.
+  useEffect(() => {
+    if (!sectionMenuOpen) return undefined;
+    const updateRect = () => {
+      const rect = sectionTriggerRef.current?.getBoundingClientRect();
+      if (rect) setMenuRect(rect);
+    };
+    updateRect();
+    const scrollHost = document.querySelector(".appraisal-sidebar-scroll");
+    scrollHost?.addEventListener("scroll", updateRect);
+    window.addEventListener("resize", updateRect);
+    return () => {
+      scrollHost?.removeEventListener("scroll", updateRect);
+      window.removeEventListener("resize", updateRect);
+    };
+  }, [sectionMenuOpen]);
+
+  useEffect(() => {
+    if (!sectionMenuOpen) return undefined;
+    const handleClickOutside = (event) => {
+      if (sectionTriggerRef.current?.contains(event.target)) return;
+      if (event.target.closest?.('[data-section-dropdown="true"]')) return;
+      setSectionMenuOpen(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [sectionMenuOpen]);
+
   return (
     <aside className="appraisal-sidebar" style={sidebarShellStyle}>
+      <div
+        className="appraisal-sidebar-scroll"
+        style={{ flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden", display: "flex", flexDirection: "column", gap: 14, scrollbarWidth: "thin", scrollbarColor: "rgba(148,163,184,0.35) transparent" }}
+      >
       <div style={{ display: "flex", alignItems: "center", gap: 11, padding: "2px 2px 4px" }}>
         <div style={{ width: 44, height: 44, borderRadius: 14, background: "linear-gradient(135deg,#6366f1 0%,#4338ca 100%)", border: "1px solid rgba(199,210,254,0.35)", display: "flex", alignItems: "center", justifyContent: "center", color: "#f8fafc", fontWeight: 900, fontSize: 13, boxShadow: "0 10px 22px rgba(79,70,229,0.38), 0 0 0 3px rgba(99,102,241,0.10)", letterSpacing: 0, flexShrink: 0 }}>FA</div>
         <div style={{ minWidth: 0 }}>
@@ -358,6 +397,7 @@ export default function DashboardSidebar({
           </div>
           <div style={{ position: "relative" }}>
             <button
+              ref={sectionTriggerRef}
               type="button"
               onClick={() => setSectionMenuOpen((open) => !open)}
               aria-haspopup="listbox"
@@ -368,40 +408,43 @@ export default function DashboardSidebar({
               <span style={{ flex: 1, textAlign: "left", fontSize: 12.5 }}>{selectedSectionLabel}</span>
               <Icon name="chevron" size={15} />
             </button>
-            {sectionMenuOpen && (
-              <div
-                role="listbox"
-                style={{ position: "absolute", zIndex: 30, top: "calc(100% + 7px)", left: 0, right: 0, padding: 6, background: "#141d33", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 12, boxShadow: "0 18px 34px rgba(2,6,23,0.45)", display: "grid", gap: 3 }}
-              >
-                {sectionOptions.map(([value, label]) => {
-                  const disabled = !isSectionOpen(value);
-                  const selected = value === sectionTab;
-                  return (
-                    <button
-                      key={value}
-                      type="button"
-                      role="option"
-                      aria-selected={selected}
-                      disabled={disabled}
-                      onClick={() => {
-                        if (disabled) return;
-                        onSectionChange?.(value);
-                        setSectionMenuOpen(false);
-                      }}
-                      style={{ minHeight: 34, border: "1px solid transparent", borderRadius: 9, background: selected ? "rgba(255,255,255,0.10)" : "transparent", color: disabled ? "#4b5563" : selected ? "#f8fafc" : "#c7cedb", cursor: disabled ? "not-allowed" : "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: selected ? 900 : 750, display: "flex", alignItems: "center", gap: 8, padding: "0 9px", textAlign: "left" }}
-                    >
-                      <SectionIcon section={value} />
-                      <span>{label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
           </div>
         </div>
       )}
+      </div>
 
-      <div style={{ flex: 1 }} />
+      {sectionMenuOpen && menuRect && createPortal(
+        <div
+          data-section-dropdown="true"
+          role="listbox"
+          style={{ position: "fixed", zIndex: 2000, top: menuRect.bottom + 7, left: menuRect.left, width: menuRect.width, padding: 6, background: "#141d33", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 12, boxShadow: "0 18px 34px rgba(2,6,23,0.45)", display: "grid", gap: 3 }}
+        >
+          {sectionOptions.map(([value, label]) => {
+            const disabled = !isSectionOpen(value);
+            const selected = value === sectionTab;
+            return (
+              <button
+                key={value}
+                type="button"
+                role="option"
+                aria-selected={selected}
+                disabled={disabled}
+                onClick={() => {
+                  if (disabled) return;
+                  onSectionChange?.(value);
+                  setSectionMenuOpen(false);
+                }}
+                style={{ minHeight: 34, border: "1px solid transparent", borderRadius: 9, background: selected ? "rgba(255,255,255,0.10)" : "transparent", color: disabled ? "#4b5563" : selected ? "#f8fafc" : "#c7cedb", cursor: disabled ? "not-allowed" : "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: selected ? 900 : 750, display: "flex", alignItems: "center", gap: 8, padding: "0 9px", textAlign: "left" }}
+              >
+                <SectionIcon section={value} />
+                <span>{label}</span>
+              </button>
+            );
+          })}
+        </div>,
+        document.body
+      )}
+
       <div style={{ height: 1, background: "linear-gradient(90deg,transparent,rgba(148,163,184,0.22) 20%,rgba(148,163,184,0.22) 80%,transparent)" }} />
       <div style={{ padding: 10, borderRadius: 20, background: "linear-gradient(180deg,rgba(30,41,59,0.86),rgba(15,23,42,0.92))", border: "1px solid rgba(148,163,184,0.18)", boxShadow: "0 18px 34px rgba(2,6,23,0.28), inset 0 1px 0 rgba(255,255,255,0.05)", display: "grid", gap: 8 }}>
         <button

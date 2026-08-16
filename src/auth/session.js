@@ -144,11 +144,18 @@ export const buildProfilePayload = (formData, academicYear = "2026-2027") => {
   const role = normalizeRole(formData.role);
   const nonTeachingRole = isNonTeachingRole(role);
   const school = profileSchoolValue(role, formData.school, formData);
+  // Every teaching school can have Director-managed departments/programs now, not just SoEMR.
+  // This used to gate on isSoemrSchool and silently force department to "" for every other
+  // school - even when the caller (Signup/EditProfile) had already correctly resolved one from
+  // its own department dropdown, that value never actually reached the saved profile.
   const department = nonTeachingRole
     ? String(formData.department || "").trim()
-    : isSoemrSchool(school)
-      ? canonicalDepartmentValue(formData.department)
-      : "";
+    : canonicalDepartmentValue(formData.department);
+  // HOD can be assigned multiple departments/programs at once (see New_backend.md). Faculty and
+  // every other teaching role still use the single `department` value above.
+  const departments = role === "hod" && Array.isArray(formData.departments)
+    ? formData.departments.map((value) => canonicalDepartmentValue(value)).filter(Boolean)
+    : undefined;
 
   return {
     email: String(formData.email || "").trim().toLowerCase(),
@@ -157,6 +164,7 @@ export const buildProfilePayload = (formData, academicYear = "2026-2027") => {
     qualification: String(formData.qualification || "").trim() || null,
     designation: String(formData.designation || "").trim() || null,
     department: department || null,
+    ...(departments ? { departments } : {}),
     school: school || null,
     teaching_experience: String(formData.experience || "").trim() || null,
     phone: String(formData.phone || "").trim() || null,
@@ -217,11 +225,21 @@ export const storeUserSession = ({ token, profile = {}, fallbackEmail = "" }) =>
     sessionStorage.setItem(k, v);
   });
 
+  // HOD's list of assigned departments/programs (see New_backend.md) - stored as JSON since
+  // sessionStorage only holds strings. Falls back to the single `department` value so an HOD
+  // who's only ever had one assignment still resolves correctly before this array is populated.
+  const departmentsList = role === "hod"
+    ? (Array.isArray(safeProfile.departments) && safeProfile.departments.length
+        ? safeProfile.departments
+        : (normalizedDepartment ? [normalizedDepartment] : []))
+    : [];
+  sessionStorage.setItem("departments", JSON.stringify(departmentsList));
+
   const hasHod = departmentHasHod(school, normalizedDepartment);
   sessionStorage.setItem("hasHod", hasHod ? "true" : "false");
   sessionStorage.setItem("hasHOD", hasHod ? "true" : "false");
 
-  return { email, role, school, department: normalizedDepartment, reports_to_registrar: reportsToRegistrar };
+  return { email, role, school, department: normalizedDepartment, departments: departmentsList, reports_to_registrar: reportsToRegistrar };
 };
 
 export const getSessionItem = (key) => {

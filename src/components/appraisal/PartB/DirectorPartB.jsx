@@ -1,4 +1,4 @@
-﻿import DirectorJournalTable from "./DirectorJournalTable";
+import DirectorJournalTable from "./DirectorJournalTable";
 import DirectorBooksTable from "./DirectorBooksTable";
 import DirectorICTTable from "./DirectorICTTable";
 import DirectorResearchGuidance from "./DirectorResearchGuidance";

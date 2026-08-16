@@ -8,6 +8,8 @@ import {
   getSchoolKey,
   getReviewChain,
   isRejectedStatus,
+  partDReleaseGateApplies,
+  PART_D_STATUSES,
   pendingStatusFor,
   rejectedStatusFor,
   profileFromsessionStorage,
@@ -17,6 +19,40 @@ import {
 } from "../utils/hierarchy";
 import { standardReviewSummary, standardSubmittedScoreSummary } from "../utils/reviewSummaryTotals";
 import { isLegacyTwoPartAcademicYear, legacySubmittedTotals } from "../features/faculty-appraisal/forms/standard/legacyPreviousYearReportUtils";
+
+// enrichQueueItemDocs fans out up to 2 requests per queue item. For a small department that's
+// fine in parallel, but VC's queue spans the whole university (100+ people) - firing all of them
+// at once floods the backend and each individual request slows down waiting behind the pile-up.
+// Capping concurrency lets requests actually complete at normal speed instead of queueing.
+const ENRICHMENT_CONCURRENCY = 6;
+const mapWithConcurrency = async (items, limit, worker) => {
+  const results = new Array(items.length);
+  let cursor = 0;
+  const lane = async () => {
+    while (cursor < items.length) {
+      const index = cursor++;
+      results[index] = await worker(items[index], index);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) || 1 }, lane));
+  return results;
+};
+
+// Short-lived cache for the two enrichment calls (doc list, full submitted appraisal). VC's
+// dashboard polls the same queue every few seconds to stay live - without this, every poll
+// re-fetched every person's documents and submission from scratch, even when nothing changed.
+const ENRICHMENT_CACHE_TTL_MS = 60000;
+const enrichmentCache = new Map();
+const withEnrichmentCache = async (kind, email, academicYear, fetcher) => {
+  const key = `${kind}::${academicYear}::${email}`;
+  const cached = enrichmentCache.get(key);
+  if (cached && Date.now() - cached.time < ENRICHMENT_CACHE_TTL_MS) {
+    return cached.value;
+  }
+  const value = await fetcher();
+  enrichmentCache.set(key, { value, time: Date.now() });
+  return value;
+};
 
 const n = (value) => parseFloat(value) || 0;
 const clean = (value) => String(value ?? "").trim();
@@ -206,12 +242,14 @@ const enrichQueueItemDocs = async (item = {}) => {
 
   if (currentDocCount === 0) {
     try {
-      const rows = await api.get("/appraisal-documents", {
-        params: {
-          academic_year: item.academicYear,
-          faculty_email: item.email,
-        },
-      });
+      const rows = await withEnrichmentCache("docs", item.email, item.academicYear, () =>
+        api.get("/appraisal-documents", {
+          params: {
+            academic_year: item.academicYear,
+            faculty_email: item.email,
+          },
+        })
+      );
       const fetchedCount = docCountFromValue(rows);
       if (fetchedCount > 0 && fetchedCount !== currentDocCount) {
         enrichedItem = { ...enrichedItem, docs: rows, docCount: fetchedCount };
@@ -226,10 +264,12 @@ const enrichQueueItemDocs = async (item = {}) => {
   }
 
   try {
-    const submitted = await fetchSavedAppraisal({
-      facultyEmail: item.email,
-      academicYear: item.academicYear,
-    });
+    const submitted = await withEnrichmentCache("submitted", item.email, item.academicYear, () =>
+      fetchSavedAppraisal({
+        facultyEmail: item.email,
+        academicYear: item.academicYear,
+      })
+    );
     const bestSubmittedDocs = docsForQueueCard(submitted);
     const submittedCount = docCountFromValue(bestSubmittedDocs, submitted);
     const currentCount = docCountFromValue(enrichedItem.docs, enrichedItem);
@@ -775,14 +815,32 @@ const normalizeQueueItem = (item = {}) => {
     vcPartC: numberValue(reviewSummary.vcPartC),
     vcPartD: numberValue(reviewSummary.vcPartD),
     vcRemarks: firstValue(reviewSummary.vcRemarks),
+    // Part D routes to the Registrar independently of the A/B/C/E chain above - see
+    // partDReleaseGateApplies in utils/hierarchy.js and backend_changes_requied.md.
+    partDStatus: firstValue(item.part_d_status, item.partDStatus),
+    registrarPartDScore: numberValue(firstValue(item.registrar_part_d_score, item.registrarPartDScore)),
+    registrarPartDRemarks: firstValue(item.registrar_part_d_remarks, item.registrarPartDRemarks),
+    registrarPartDReviewedAt: firstValue(item.registrar_part_d_reviewed_at, item.registrarPartDReviewedAt),
   };
 };
 
+// enrichQueueItemDocs does up to 2 extra network round trips per person (see its own comment).
+// Blocking the whole queue on Promise.all-ing that for every item is fine for a department-sized
+// list, but for a role like VC whose queue spans the entire university (100+ people, worst on a
+// legacy year where most items still need the fallback), it turns "load the queue" into hundreds
+// of requests racing each other before a single row can render - which is what actually made
+// switching to the 2025-2026 academic year feel stuck. When callers pass onItemReady, this returns
+// the lightweight (fast) list immediately and enriches each item in the background, calling
+// onItemReady as each one resolves so the caller can patch just that row in place. Callers that
+// don't pass onItemReady keep the original blocking behavior unchanged.
 export const fetchReviewQueueForRole = async ({
   reviewerRole,
   reviewerProfile = profileFromsessionStorage(),
   academicYear,
   schoolValues = [],
+  onItemReady,
+  isStale,
+  lazy = false,
 } = {}) => {
   const role = normalizeRoleForWorkflow(reviewerRole || reviewerProfile.appraisal_role || reviewerProfile.role);
   if (!role || role === "faculty") return [];
@@ -801,10 +859,75 @@ export const fetchReviewQueueForRole = async ({
     const normalizedItems = (items || [])
       .map(normalizeQueueItem)
       .filter((item) => isReviewableForRole(item, role, reviewerProfile));
-    return await Promise.all(normalizedItems.map(enrichQueueItemDocs));
+
+    // lazy: don't enrich anything up front - the caller enriches one card at a time via
+    // enrichQueueItem, triggered as each card actually scrolls into view (see LazyVisible).
+    // For a queue spanning the whole university, this is the only way to avoid paying the
+    // enrichment cost for people the reviewer never scrolls down to.
+    if (lazy) return normalizedItems;
+
+    if (onItemReady) {
+      mapWithConcurrency(normalizedItems, ENRICHMENT_CONCURRENCY, async (item) => {
+        try {
+          const enriched = await enrichQueueItemDocs(item);
+          if (!isStale?.()) onItemReady(enriched);
+        } catch {
+          // enrichQueueItemDocs already falls back internally on its own errors.
+        }
+      });
+      return normalizedItems;
+    }
+
+    return await mapWithConcurrency(normalizedItems, ENRICHMENT_CONCURRENCY, enrichQueueItemDocs);
   } catch (err) {
     throw new Error(err?.message || "Could not load review queue.", { cause: err });
   }
+};
+
+// Enriches a single queue item on demand (doc count, and for legacy years, reviewer totals).
+// Used by dashboards for viewport-triggered (lazy) enrichment - see LazyVisible.
+export const enrichQueueItem = (item) => enrichQueueItemDocs(item);
+
+// Part D (Leave & Attendance) is scored only by the Registrar, for every teaching-staff
+// originator (Faculty/HOD/Director/Dean/Center Head, any school) - independent of the
+// A/B/C/E chain, which never routes Part D to HOD/Director/Dean. See
+// partDReleaseGateApplies / PART_D_STATUSES in utils/hierarchy.js and backend_changes_requied.md.
+export const fetchPartDRegistrarQueue = async ({ academicYear } = {}) => {
+  try {
+    const params = {
+      academic_year: academicYear || getActiveAcademicYear() || APP_INFO.DEFAULT_AY || "2026-2027",
+      part_d_status: PART_D_STATUSES.PENDING_REGISTRAR,
+    };
+    const items = await api.get("/dashboard/part-d-queue", { params });
+    const normalizedItems = (items || []).map(normalizeQueueItem);
+    return await Promise.all(normalizedItems.map(enrichQueueItemDocs));
+  } catch (err) {
+    throw new Error(err?.message || "Could not load Part D review queue.", { cause: err });
+  }
+};
+
+export const submitPartDRegistrarReview = async ({
+  subjectEmail,
+  academicYear,
+  score = 0,
+  remarks = "",
+  subjectProfile = {},
+}) => {
+  if (!subjectEmail) {
+    throw new Error("Missing subject email for Part D review.");
+  }
+
+  const partDStatus = partDReleaseGateApplies(subjectProfile)
+    ? PART_D_STATUSES.REGISTRAR_APPROVED_PENDING_RELEASE
+    : PART_D_STATUSES.RELEASED_TO_VC;
+
+  return await api.put(`/appraisal-remarks/registrar-part-d/${encodeURIComponent(subjectEmail)}`, {
+    academic_year: academicYear,
+    part_d_score: n(score),
+    remarks,
+    part_d_status: partDStatus,
+    partDStatus,
+  });
 };
 
 const workflowForwardingFor = (role, subjectProfile = {}) => {
@@ -818,6 +941,9 @@ const workflowForwardingFor = (role, subjectProfile = {}) => {
   }[role] || "";
   const nextReviewer = reviewerIndex >= 0 ? chain[reviewerIndex + 1] : fallbackNextReviewer;
   const status = nextReviewer ? pendingStatusFor(nextReviewer) : reviewedStatusFor(role);
+  // Dean/Center Head is always the last stage before VC when present (see getReviewChain) -
+  // their approval is what the Part D release gate waits on (see PART_D_STATUSES).
+  const isFinalPreVcStage = (role === "dean" || role === "center_head") && nextReviewer === "vc";
 
   return {
     status,
@@ -825,6 +951,7 @@ const workflowForwardingFor = (role, subjectProfile = {}) => {
     review_status: reviewedStatusFor(role),
     next_reviewer: nextReviewer,
     next_reviewer_role: nextReviewer,
+    ...(isFinalPreVcStage ? { release_part_d_if_pending: true } : {}),
   };
 };
 

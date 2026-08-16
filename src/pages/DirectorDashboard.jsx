@@ -10,10 +10,15 @@ import { getActiveAcademicYear, getSessionItem, normalizeAcademicYearLabel, setA
 import { PreviousYearReportViewer } from "../features/previousYearReport";
 import { isLegacyTwoPartAcademicYear } from "../features/faculty-appraisal/forms/standard/legacyPreviousYearReportUtils";
 import { legacyDashboardMetrics } from "../utils/legacyDashboardMetrics";
-import { canReviewerRejectProfile, getDeanTrack, rejectedStatusFor, reviewedStatusFor, profileFromsessionStorage, workflowValidationError, roleLabel, getSchoolKey, isAppraisalFinalisedByVc, isRejectedStatus, isPendingReviewStatusFor, hasActiveRejection, reviewListFrom } from "../utils/hierarchy";
+import { canReviewerRejectProfile, departmentHasHod, getDeanTrack, rejectedStatusFor, reviewedStatusFor, profileFromsessionStorage, workflowValidationError, roleLabel, isAppraisalFinalisedByVc, isRejectedStatus, isPendingReviewStatusFor, hasActiveRejection, reviewListFrom } from "../utils/hierarchy";
 import { n, pct, grade, RO, TI } from "../features/faculty-appraisal/shared";
 import { FacultyRecordHeader, ScoreTable, VCFinalRemarks, FinalSubmitButton, FACULTY_RECORD_THEME } from "../components/dashboard/FacultyAppraisalRecord";
 import { fetchImageAsDataUrl } from "../utils/fullFormReport";
+import ManageDepartmentsPanel from "../components/dashboard/ManageDepartmentsPanel";
+import { listSchoolDepartments } from "../services/departmentsService";
+import { enrichQueueItem } from "../services/reviewWorkflow";
+import LazyVisible from "../components/dashboard/LazyVisible";
+import { isSoemrSchool } from "../constants/universityHierarchy";
 
 // - Helpers - (n, pct, grade, RO, TI → imported from shared)
 const docsCount = (docs = {}, item = {}) => uploadedDocCount(docs, item);
@@ -564,9 +569,9 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
  }
  };
 
- const handleSaveAndNext = async () => {
-    await handleSaveDraft();
-    const NEXT_SECTION_MAP = { partA: "partB", partB: "partC", partC: "partD", partD: "partE", partE: "summary" };
+ const NEXT_SECTION_MAP = { partA: "partB", partB: "partC", partC: "partD", partD: "partE", partE: "summary" };
+
+ const handleNextSection = () => {
     const nextSection = NEXT_SECTION_MAP[sectionView];
     if (nextSection) {
       setSectionView(nextSection);
@@ -574,6 +579,11 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
         window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
       });
     }
+  };
+
+ const handleSaveAndNext = async () => {
+    await handleSaveDraft();
+    handleNextSection();
   };
 
  const generateDirectorReport = async () =>{
@@ -680,7 +690,7 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
  partB: faculty.journals?.reduce((a, r) =>a + n(r.score), 0) || 0,
  });
  const directorSubjectRole = (faculty.appraisalRole || faculty.appraisal_role || faculty.role || "faculty").toLowerCase();
- const showHodSummaryCard = directorSubjectRole === "faculty" && getSchoolKey(faculty.school || faculty.schoolName || faculty.info?.school || "") === "SoEMR";
+ const showHodSummaryCard = directorSubjectRole === "faculty" && departmentHasHod(faculty.school || faculty.schoolName || faculty.info?.school || "", faculty.department || faculty.info?.department || "");
  const directorRecordSchoolTrack = getDeanTrack({ school: faculty.school || faculty.info?.school, department: faculty.department, designation: faculty.designation });
  const directorRecordSchoolGroupLabel = { engineering: "Engineering", non_engineering: "Non-Engineering", direct_vc: "CISR" }[directorRecordSchoolTrack] || faculty.school || faculty.info?.school || APP_INFO.UNIVERSITY_NAME;
  const directorRecordScoreRows = [
@@ -764,6 +774,18 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
 </div>
  )}
 
+ {sectionView === "partD" && (
+<div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, margin: "12px 0 14px", flexWrap: "wrap" }}>
+<button
+ type="button"
+ onClick={handleNextSection}
+ style={{ padding: "10px 22px", background: "#2563eb", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 700, fontSize: 13, fontFamily: "inherit" }}
+>
+ Next
+</button>
+</div>
+ )}
+
  {sectionView === "summary" && (
 <div className="far-wrap" style={{ width: "100%" }}>
 <div className="far-card" style={{ width: "100%", boxSizing: "border-box", background: FACULTY_RECORD_THEME.card, border: `1px solid ${FACULTY_RECORD_THEME.borderStrong}`, borderRadius: 16, padding: "22px 24px", display: "grid", gap: 18, boxShadow: "0 10px 30px rgba(15,23,42,0.08)" }}>
@@ -841,10 +863,20 @@ export default function DirectorDashboard() {
  const [reviewLoading, setReviewLoading] = useState(null);
 
  const dirSchool = sessionStorage.getItem("school");
- const isSoemrDirector = getSchoolKey(dirSchool) === "SoEMR";
+ const [schoolDepartments, setSchoolDepartments] = useState([]);
+ const refreshSchoolDepartments = async () =>{
+ if (!dirSchool) return;
+ try {
+ setSchoolDepartments(await listSchoolDepartments(dirSchool));
+ } catch (err) {
+ console.error("Could not load school departments:", err);
+ }
+ };
 
  const [facultyList, setFacultyList] = useState([]);
  const [hodList, setHodList] = useState([]);
+ const [queueLoadError, setQueueLoadError] = useState("");
+ const queueLoadRequestRef = useRef(0);
  const [selectedAcademicYear, setSelectedAcademicYear] = useState(() => getActiveAcademicYear());
  const [availableCycles, setAvailableCycles] = useState(() => storedAcademicYearCycles());
  const [loadingYearData, setLoadingYearData] = useState(false);
@@ -866,28 +898,47 @@ export default function DirectorDashboard() {
  }, []);
 
  useEffect(() =>{
+ const requestId = ++queueLoadRequestRef.current;
+ const isCurrentRequest = () =>queueLoadRequestRef.current === requestId;
  const loadReviewQueue = async () =>{
  setLoadingYearData(true);
+ setQueueLoadError("");
  try {
+ // lazy: true - the list renders instantly from the lightweight response; each card's
+ // doc-count/legacy-score is only fetched once that card actually scrolls into view (see
+ // the LazyVisible wrapper around each card below), instead of enriching the whole queue
+ // up front. See fetchReviewQueueForRole's comment for why that eager pass was slow.
  const items = await fetchReviewQueueForRole({
  reviewerRole: "director",
  reviewerProfile: { ...profileFromsessionStorage(), school: dirSchool },
  academicYear: selectedAcademicYear,
  schoolValues: [dirSchool],
+ lazy: true,
  });
+ if (!isCurrentRequest()) return;
  setFacultyList(items.filter((item) =>item.appraisalRole === "faculty"));
  setHodList(items.filter((item) =>item.appraisalRole === "hod"));
  } catch (err) {
+ if (!isCurrentRequest()) return;
  console.error("Could not load Director review queue:", err);
+ // A failed fetch used to fall back to an empty list, which looked identical to "nothing is
+ // pending" - a reviewer had no way to tell a real error apart from a genuinely empty queue.
+ setQueueLoadError(err?.message || "Could not load the review queue. Please try again.");
  setFacultyList([]);
  setHodList([]);
  } finally {
- setLoadingYearData(false);
+ if (isCurrentRequest()) setLoadingYearData(false);
  }
  };
 
  loadReviewQueue();
  }, [dirSchool, selectedAcademicYear]);
+
+ useEffect(() =>{
+ const timer = setTimeout(refreshSchoolDepartments, 0);
+ return () =>clearTimeout(timer);
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ }, [dirSchool]);
 
  const [filterStatus, setFilterStatus] = useState("All");
  const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -913,7 +964,11 @@ export default function DirectorDashboard() {
  const navItems = [
  { id: "myAppraisal", icon: "", label: "My Appraisal", sub: "View your self-appraisal form" },
  { id: "facultyApprovals", icon: "", label: "Faculty's Appraisal", sub: `${facultyPendingCount} awaiting review`, badge: facultyPendingCount },
- ...(isSoemrDirector ? [{ id: "hodApprovals", icon: "", label: "HOD's Appraisal", sub: `${hodPendingCount} awaiting review`, badge: hodPendingCount }] : []),
+ // Always shown, same as Faculty's Appraisal - previously hidden until hasHodDepartments was
+ // true, which made the option itself look missing for schools that hadn't added a
+ // department yet, instead of just showing empty until one exists.
+ { id: "hodApprovals", icon: "", label: "HOD's Appraisal", sub: `${hodPendingCount} awaiting review`, badge: hodPendingCount },
+ { id: "departments", icon: "", label: isSoemrSchool(dirSchool) ? "Manage Departments" : "Manage Programs", sub: `${schoolDepartments.length} ${isSoemrSchool(dirSchool) ? "department" : "program"}${schoolDepartments.length === 1 ? "" : "s"}` },
  ];
  const handleSubmitReview = async (type, id, scores, remarks, sectionScores, reviewConfirmed = false, decision = "approved") =>{
  if (!reviewConfirmed) {
@@ -964,6 +1019,15 @@ export default function DirectorDashboard() {
  ? (filterStatus === "All" ? hodList : (filterStatus === "Pending Review" ? hodList.filter(isDirectorPending) : hodList.filter(isDirectorReviewed)))
  : (filterStatus === "All" ? facultyList : (filterStatus === "Pending Review" ? facultyList.filter(isDirectorPending) : facultyList.filter(isDirectorReviewed)));
 
+ // Fetches doc-count/legacy-score for one card only once it actually scrolls into view -
+ // see the lazy: true note on the queue load above.
+ const handleCardVisible = (item) =>{
+ enrichQueueItem(item).then((enriched) =>{
+ const setList = enriched.appraisalRole === "hod" ? setHodList : enriched.appraisalRole === "faculty" ? setFacultyList : null;
+ setList?.((prev) =>prev.map((row) =>(row.email === enriched.email && row.academicYear === enriched.academicYear ? enriched : row)));
+ }).catch(() =>{});
+ };
+
 
  const handleMyAppraisalSectionChange = (section) =>{
  setHodAppraisalTab(section);
@@ -1008,6 +1072,8 @@ export default function DirectorDashboard() {
 )}
 
 {activeMainTab === "myAppraisal" && <MyAppraisalSection sectionTab={hodAppraisalTab} onSectionTabChange={handleMyAppraisalSectionChange} defaultDesignation={sessionStorage.getItem("role") === "director" ? "Director" : ""} defaultAcademicYear={sessionStorage.getItem("academicYear") || APP_INFO.DEFAULT_AY} titleNameFallback="Director" subtitleSeparator=" - " />}
+
+{activeMainTab === "departments" && <ManageDepartmentsPanel school={dirSchool} />}
 
  {(activeMainTab === "facultyApprovals" || activeMainTab === "hodApprovals") && !reviewingFaculty && !reviewingHod && (
 <>
@@ -1057,6 +1123,13 @@ export default function DirectorDashboard() {
  ))}
 </div>
 
+ {queueLoadError && (
+<div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 9, color: "#991b1b", fontSize: 13, fontWeight: 700 }}>
+ <span aria-hidden="true">!</span>
+ <span>{queueLoadError}</span>
+</div>
+ )}
+
 <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 14 }}>
  {filtered.map(item =>{
  const itemSummary = standardSubmittedScoreSummary(item);
@@ -1089,7 +1162,8 @@ export default function DirectorDashboard() {
  const docCount = docsCount(item.docs, item);
 
  return (
-<div key={item.id} style={{ background: "#fff", borderRadius: 12, padding: "18px 20px", boxShadow: "0 1px 6px rgba(0,0,0,.07)", display: "flex", flexDirection: "column", gap: 14 }}>
+<LazyVisible key={item.id} triggerKey={`${item.email}::${item.academicYear}`} onVisible={() =>handleCardVisible(item)}>
+<div style={{ background: "#fff", borderRadius: 12, padding: "18px 20px", boxShadow: "0 1px 6px rgba(0,0,0,.07)", display: "flex", flexDirection: "column", gap: 14 }}>
 <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
 <Avatar initials={item.avatar} src={item.avatarUrl} color={item.avatarColor} size={58} />
 <div style={{ flex: 1 }}>
@@ -1177,11 +1251,12 @@ item={item}
 </button>
 </div>
 </div>
+</LazyVisible>
  );
  })}
 </div>
 
- {filtered.length === 0 && (
+ {filtered.length === 0 && !queueLoadError && (
 <div style={{ textAlign: "center", padding: "60px 0", color: "#94a3b8" }}>
 <div style={{ fontSize: 32, marginBottom: 8 }}>Done</div>
 <div style={{ fontWeight: 700, color: "#0f172a" }}>All caught up!</div>

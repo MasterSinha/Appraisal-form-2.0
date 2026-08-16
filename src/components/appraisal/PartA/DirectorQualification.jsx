@@ -25,7 +25,7 @@ import {
 import { n, RO } from "../../../features/faculty-appraisal/shared";
 import { DirectorInput as DirInput } from "../common/ReviewerInput";
 export default function DirectorQualification({ ctx }) {
- const { faculty, docs, lectures, courseFile, projects, quals, feedback, deptActs, uniActs, society, industry, acr, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, rows, getDir, setDir, getInnovDir, setInnovDir, innovativeRows } = ctx;
+ const { faculty, docs, lectures, courseFile, projects, quals, feedback, deptActs, uniActs, society, industry, acr, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, rows, sectionEmpty, emptySectionRow, getDir, setDir, getInnovDir, setInnovDir, innovativeRows } = ctx;
  const qTitle = (row = {}) => row.title || row.label || row.qualification || row.qualificationTitle || row.certification || row.certificationTitle || row.name || "";
  const qBody = (row = {}) => row.body || row.awardingBody || row.awarding_body || row.agency || row.institution || row.institute || row.university || row.details || "";
  const qDate = (row = {}) => row.date || row.completionDate || row.awardDate || "";
@@ -44,7 +44,7 @@ export default function DirectorQualification({ ctx }) {
 <th style={TH_DIR}>Director Score</th>
 </tr></thead>
 <tbody>
- {rows(quals).map((r, i) =>(
+ {sectionEmpty("quals") ? emptySectionRow(7) : rows(quals).map((r, i) =>(
 <tr key={i} style={i % 2 ? { background: "#f8fafc" } : {}}>
 <td style={TDC}>{i + 1}</td>
 <td style={TD}><RO val={qTitle(r)} /></td>

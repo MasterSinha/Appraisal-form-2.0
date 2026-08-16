@@ -5,15 +5,18 @@ import { api } from "../services/api";
 import { Avatar, ScoreCard, ScoreBar, StatusBadge, ReviewMetricsStrip, uploadedDocCount } from "../components/dashboard/dashboardPrimitives";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import DashboardSidebar from "../components/dashboard/DashboardSidebar";
-import { ACR_DETAIL_POINTS, SOCIETY_LABELS, MAX_SCORES, APP_INFO, createAcrRows, fetchSavedAppraisal, loadAppraisalDocuments, loadSavedAppraisal, mergeFacultyInfo, saveAppraisalDraftSection, submitAppraisal, fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, INNOVATIVE_METHODS, SCORE_LIMITS, averageSectionScore, clampScore, clampReviewScore, courseFileAverageScore, courseFileRowScore, effectiveMaxScore, feedbackAverage, feedbackRowScore, feedbackSectionScore, innovativeSelectionsFromDetails, innovativeTeachingScore, isAllowedAttachmentFile, isValidDDMMYYYY, maskDateDDMMYYYY, normalizeAutoScores, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewSectionScore, rowHasReviewableData, isSectionEmpty, scoreRemaining, selfEffectivePartAMax, societyRowLocked, societyRowScore, sumSectionScore, toggleInnovativeMethod, validateCompleteRows, generateStandardReport, standardSubmittedScoreSummary, qualificationRowDescription, AppraisalHeaderImage, SummaryOtherInfoField, summaryOtherInfoValueFrom, RejectionNotice, DocCell, ViewCell, ViewDocsCell, RowButtons as RowBtns, SectionSaveFooter, SectionCard as SC, T, TH, TH_HOD, TH_DIR, TH_DEAN, TD, TDC, TDS, TDS_HOD, TDS_DIR, TDS_DEAN, TDV, MyAppraisalSection, CreativeSchoolAuthorityReviewPanel, isCreativeSchool, isDesignArtsSchool, isMediaCommSchool } from "../features/faculty-appraisal";
+import { ACR_DETAIL_POINTS, SOCIETY_LABELS, MAX_SCORES, APP_INFO, createAcrRows, fetchSavedAppraisal, loadAppraisalDocuments, loadSavedAppraisal, mergeFacultyInfo, saveAppraisalDraftSection, submitAppraisal, fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, INNOVATIVE_METHODS, SCORE_LIMITS, averageSectionScore, clampScore, clampReviewScore, courseFileAverageScore, courseFileRowScore, effectiveMaxScore, feedbackAverage, feedbackRowScore, feedbackSectionScore, innovativeSelectionsFromDetails, innovativeTeachingScore, isAllowedAttachmentFile, isValidDDMMYYYY, maskDateDDMMYYYY, normalizeAutoScores, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewSectionScore, rowHasReviewableData, isSectionEmpty, scoreRemaining, selfEffectivePartAMax, societyRowLocked, societyRowScore, sumSectionScore, toggleInnovativeMethod, validateCompleteRows, generateStandardReport, standardSubmittedScoreSummary, qualificationRowDescription, AppraisalHeaderImage, SummaryOtherInfoField, summaryOtherInfoValueFrom, RejectionNotice, DocCell, ViewCell, ViewDocsCell, RowButtons as RowBtns, SectionSaveFooter, SectionCard as SC, EmptySectionRow, T, TH, TH_HOD, TH_DIR, TH_DEAN, TD, TDC, TDS, TDS_HOD, TDS_DIR, TDS_DEAN, TDV, MyAppraisalSection, CreativeSchoolAuthorityReviewPanel, isCreativeSchool, isDesignArtsSchool, isMediaCommSchool } from "../features/faculty-appraisal";
 import { getActiveAcademicYear, getSessionItem, normalizeAcademicYearLabel, setActiveAcademicYear } from "../auth/session";
 import { PreviousYearReportViewer } from "../features/previousYearReport";
 import { isLegacyTwoPartAcademicYear } from "../features/faculty-appraisal/forms/standard/legacyPreviousYearReportUtils";
 import { legacyDashboardMetrics } from "../utils/legacyDashboardMetrics";
 import { DEAN_TRACKS, getSchoolKey, getSchoolsByDeanTrack } from "../constants/universityHierarchy";
-import { canReviewerRejectProfile, rejectedStatusFor, reviewedStatusFor, profileFromsessionStorage, workflowValidationError, roleLabel, isAppraisalFinalisedByVc, isRejectedStatus, isPendingReviewStatusFor, hasActiveRejection, reviewListFrom, getDeanTrack } from "../utils/hierarchy";
+import { canReviewerRejectProfile, departmentHasHod, rejectedStatusFor, reviewedStatusFor, profileFromsessionStorage, workflowValidationError, roleLabel, isAppraisalFinalisedByVc, isRejectedStatus, isPendingReviewStatusFor, hasActiveRejection, reviewListFrom, getDeanTrack } from "../utils/hierarchy";
 import { n, pct, grade, RO, TI } from "../features/faculty-appraisal/shared";
 import { FacultyRecordHeader, ScoreTable, VCFinalRemarks, FinalSubmitButton, FACULTY_RECORD_THEME } from "../components/dashboard/FacultyAppraisalRecord";
+import { enrichQueueItem } from "../services/reviewWorkflow";
+import LazyVisible from "../components/dashboard/LazyVisible";
+import LeaveManagementReadOnly from "../components/appraisal/PartD/LeaveManagementReadOnly";
 
 const ENGINEERING_SCHOOLS = getSchoolsByDeanTrack(DEAN_TRACKS.ENGINEERING);
 const ENGINEERING_SCHOOL_VALUES = ENGINEERING_SCHOOLS.flatMap((school) => [
@@ -401,9 +404,10 @@ function ReviewTable({ title, accent = "#4338ca", sectionKey, columns, docPrefix
   const ctx = useContext(DeanReviewTableContext);
   if (!ctx) return null;
   const dataRows = sectionRows || ctx.rows(sectionKey);
-  const visibleRows = dataRows.length ? dataRows : [{}];
   const hasDocs = Boolean(docPrefix);
   const showPreviousScoreColumn = sectionKey !== "acr";
+  const colSpan = 1 + columns.length + (hasDocs ? 1 : 0) + (showPreviousScoreColumn ? 1 : 0) + 1;
+  const sectionEmpty = isSectionEmpty(sectionKey, dataRows, ctx.docs);
   const previousScoreLabel = "Faculty Score";
   const previousScoreFor = (row) => {
     if (sectionKey === "research") return row.degree || row.name || row.thesis || row.score ? researchGuidanceScore(row).toFixed(1) : "";
@@ -427,7 +431,9 @@ function ReviewTable({ title, accent = "#4338ca", sectionKey, columns, docPrefix
             </tr>
           </thead>
           <tbody>
-            {visibleRows.map((row, index) => (
+            {sectionEmpty ? (
+              <EmptySectionRow colSpan={colSpan} />
+            ) : dataRows.map((row, index) => (
               <tr key={`${sectionKey}-${index}`} style={sectionKey === "society" && societyRowLocked(row) ? { background: "#f1f5f9", opacity: 0.65 } : index % 2 ? { background: "#f8fafc" } : {}}>
                 <td style={TDC}>{index + 1}</td>
                 {columns.map((column) => (
@@ -697,21 +703,7 @@ function DeanReviewScoreForm({ approval, deanData, setDeanData, sectionView = "p
  />
 </div>)}
 
- {sectionView === "partD" && (<div className="review-part-stack">
-<div className="review-part-stack__title">Part D - Leave &amp; Attendance Management</div>
-<div style={{ fontSize: 11, color: "#64748b", margin: "8px 0 12px" }}>Faculty-submitted data - view only.</div>
-{(Array.isArray(approval.leaveManagement) && approval.leaveManagement.length ? approval.leaveManagement : [{}]).map((r, i) =>(
-<table key={i} style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, marginBottom: 12 }}>
-<tbody>
-<tr><td style={{ padding: 6, border: "1px solid #e2e8f0", fontWeight: 700 }}>CL / ML / OD / C-Off taken</td><td style={{ padding: 6, border: "1px solid #e2e8f0" }}>{r.clTaken || "-"} / {r.mlTaken || "-"} / {r.odTaken || "-"} / {r.coffTaken || "-"}</td></tr>
-<tr><td style={{ padding: 6, border: "1px solid #e2e8f0", fontWeight: 700 }}>Out of</td><td style={{ padding: 6, border: "1px solid #e2e8f0" }}>{r.clOutOf || "-"} / {r.mlOutOf || "-"} / {r.odOutOf || "-"} / {r.coffOutOf || "-"}</td></tr>
-<tr><td style={{ padding: 6, border: "1px solid #e2e8f0", fontWeight: 700 }}>Late Remarks</td><td style={{ padding: 6, border: "1px solid #e2e8f0" }}>{r.lateRemarks || "-"}</td></tr>
-<tr><td style={{ padding: 6, border: "1px solid #e2e8f0", fontWeight: 700 }}>Working Days</td><td style={{ padding: 6, border: "1px solid #e2e8f0" }}>{r.workingDays || "-"}</td></tr>
-<tr><td style={{ padding: 6, border: "1px solid #e2e8f0", fontWeight: 700 }}>Management of Leaves</td><td style={{ padding: 6, border: "1px solid #e2e8f0" }}>{r.managementRating || "-"} ({r.score || 0}/25)</td></tr>
-</tbody>
-</table>
-))}
-</div>)}
+ {sectionView === "partD" && <LeaveManagementReadOnly ctx={{ leaveManagement: approval.leaveManagement }} registrarInfo={{ status: approval.partDStatus, score: approval.registrarPartDScore, remarks: approval.registrarPartDRemarks }} />}
 
  {sectionView === "partE" && (<div className="review-part-stack">
 <div className="review-part-stack__title">Part E - Annual Confidential Report</div>
@@ -942,8 +934,8 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
  };
  const selfSummary = standardSubmittedScoreSummary(approval);
  const subjectRole = (approval.appraisalRole || approval.appraisal_role || approval.role || "faculty").toLowerCase();
- const isSoemrFaculty = subjectRole === "faculty" && getSchoolKey(approval.school || approval.schoolName || approval.info?.school || "") === "SoEMR";
- const useTwoCardDeanSummary = subjectRole === "hod" || (subjectRole === "faculty" && !isSoemrFaculty);
+ const facultyHasHod = subjectRole === "faculty" && departmentHasHod(approval.school || approval.schoolName || approval.info?.school || "", approval.department || approval.info?.department || "");
+ const useTwoCardDeanSummary = subjectRole === "hod" || (subjectRole === "faculty" && !facultyHasHod);
  const useDirectorDeanSummaryRow = subjectRole === "director";
  const selfScoreTitle = subjectRole === "faculty" ? "Faculty Score" : `${subjectRole === "hod" ? "HOD" : subjectRole === "director" ? "Director" : "Self"} Self Score`;
  const roleTotalsFor = (prefix) =>({
@@ -963,7 +955,7 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
  accent: "#0ea5e9",
  extraContent: <SummaryOtherInfoField value={summaryOtherInfoValueFrom(approval)} readOnly rows={4} />,
  }] : []),
- ...(isSoemrFaculty ? [{
+ ...(facultyHasHod ? [{
  key: "hod",
  title: "HOD Score",
  subtitle: "HOD score for the engineering appraisal form.",
@@ -1037,9 +1029,9 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
  }
  };
 
- const handleSaveAndNext = async () => {
-    await handleSaveDraft();
-    const NEXT_SECTION_MAP = { partA: "partB", partB: "partC", partC: "partD", partD: "partE", partE: "summary" };
+ const NEXT_SECTION_MAP = { partA: "partB", partB: "partC", partC: "partD", partD: "partE", partE: "summary" };
+
+ const handleNextSection = () => {
     const nextSection = NEXT_SECTION_MAP[sectionView];
     if (nextSection) {
       setSectionView(nextSection);
@@ -1047,6 +1039,11 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
         window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
       });
     }
+  };
+
+ const handleSaveAndNext = async () => {
+    await handleSaveDraft();
+    handleNextSection();
   };
 
  return (
@@ -1121,6 +1118,18 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
  style={{ padding: "10px 22px", background: savingDraft ? "#94a3b8" : "#2563eb", color: "#fff", border: "none", borderRadius: 7, cursor: savingDraft ? "not-allowed" : "pointer", fontWeight: 700, fontSize: 13, fontFamily: "inherit" }}
 >
  {savingDraft ? "Saving..." : "Save & Next"}
+</button>
+</div>
+ )}
+
+ {sectionView === "partD" && (
+<div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, margin: "12px 0 14px", flexWrap: "wrap" }}>
+<button
+ type="button"
+ onClick={handleNextSection}
+ style={{ padding: "10px 22px", background: "#2563eb", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 700, fontSize: 13, fontFamily: "inherit" }}
+>
+ Next
 </button>
 </div>
  )}
@@ -1204,6 +1213,8 @@ export default function DeanDashboard() {
   const [facultyList, setFacultyList] = useState([]);
   const [hodList, setHodList] = useState([]);
   const [directorList, setDirectorList] = useState([]);
+  const [queueLoadError, setQueueLoadError] = useState("");
+  const queueLoadRequestRef = useRef(0);
   const [selectedAcademicYear, setSelectedAcademicYear] = useState(() => getActiveAcademicYear());
   const [availableCycles, setAvailableCycles] = useState(() => storedAcademicYearCycles());
   const [loadingYearData, setLoadingYearData] = useState(false);
@@ -1231,33 +1242,43 @@ export default function DeanDashboard() {
   }, []);
 
   useEffect(() => {
+    const requestId = ++queueLoadRequestRef.current;
+    const isCurrentRequest = () => queueLoadRequestRef.current === requestId;
+    const schoolOf = (item) => getSchoolKey(item.school || item.school_name || item.schoolName || "");
+    const roleOf = (item) => (item.appraisalRole || item.appraisal_role || "").toLowerCase();
     const loadReviewQueue = async () => {
       const schoolValues = activeSchoolCodesKey.split(",").filter(Boolean);
       const reviewerProfile = profileFromsessionStorage();
+      const isInScope = (item) => schoolValues.includes(schoolOf(item)) || schoolValues.includes(item.school);
       setLoadingYearData(true);
+      setQueueLoadError("");
       try {
+        // lazy: true - the list renders instantly from the lightweight response; each card's
+        // doc-count/legacy-score is only fetched once that card actually scrolls into view (see
+        // the LazyVisible wrapper around each card below).
         const items = await fetchReviewQueueForRole({
           reviewerRole: "dean",
           reviewerProfile,
           academicYear: selectedAcademicYear,
           schoolValues,
+          lazy: true,
         });
-        const schoolOf = (item) => getSchoolKey(item.school || item.school_name || item.schoolName || "");
-        const roleOf = (item) => (item.appraisalRole || item.appraisal_role || "").toLowerCase();
-        const scopedItems = items.filter((item) => {
-          const code = schoolOf(item);
-          return schoolValues.includes(code) || schoolValues.includes(item.school);
-        });
+        if (!isCurrentRequest()) return;
+        const scopedItems = items.filter(isInScope);
         setFacultyList(scopedItems.filter((item) => roleOf(item) === "faculty"));
-        setHodList(scopedItems.filter((item) => roleOf(item) === "hod" && (schoolOf(item) === "SoEMR" || item.school === "SoEMR")));
+        setHodList(scopedItems.filter((item) => roleOf(item) === "hod"));
         setDirectorList(scopedItems.filter((item) => roleOf(item) === "director"));
       } catch (err) {
+        if (!isCurrentRequest()) return;
         console.error("Could not load Dean review queue:", err);
+        // A failed fetch used to fall back to an empty list, which looked identical to "nothing
+        // is pending" - a reviewer had no way to tell a real error apart from a genuinely empty queue.
+        setQueueLoadError(err?.message || "Could not load the review queue. Please try again.");
         setFacultyList([]);
         setHodList([]);
         setDirectorList([]);
       } finally {
-        setLoadingYearData(false);
+        if (isCurrentRequest()) setLoadingYearData(false);
       }
     };
 
@@ -1324,6 +1345,16 @@ export default function DeanDashboard() {
     ? activeSchoolApprovalList.filter(isDeanPending)
     : activeSchoolApprovalList.filter(isDeanReviewed));
 
+  // Fetches doc-count/legacy-score for one card only once it actually scrolls into view -
+  // see the lazy: true note on the queue load above.
+  const handleCardVisible = (item) => {
+    enrichQueueItem(item).then((enriched) => {
+      const role = (enriched.appraisalRole || enriched.appraisal_role || "").toLowerCase();
+      const setList = role === "faculty" ? setFacultyList : role === "hod" ? setHodList : role === "director" ? setDirectorList : null;
+      setList?.((prev) => prev.map((row) => (row.email === enriched.email && row.academicYear === enriched.academicYear ? enriched : row)));
+    }).catch(() => {});
+  };
+
   const schoolCards = activeSchools.map((school) => {
     const visual = SCHOOL_VISUALS[school.code] || {};
     return {
@@ -1345,7 +1376,7 @@ export default function DeanDashboard() {
       label: "Faculty's Appraisal",
       count: facultyList.filter((item) => (selectedSchoolCode === "all" || selectedSchoolCode === "DEAN-ENGG") ? true : (getSchoolKey(item.school) === selectedSchoolCode || item.school === selectedSchoolCode)).filter(isDeanPending).length,
     },
-    ...(selectedSchoolCode === "SoEMR" || selectedSchoolCode === "DEAN-ENGG" || selectedSchoolCode === "all" || hodList.some((item) => getSchoolKey(item.school) === selectedSchoolCode || item.school === selectedSchoolCode)
+    ...(selectedSchoolCode === "DEAN-ENGG" || selectedSchoolCode === "all" || hodList.some((item) => getSchoolKey(item.school) === selectedSchoolCode || item.school === selectedSchoolCode)
       ? [{
           id: "hodApprovals",
           label: "HOD's Appraisal",
@@ -1659,6 +1690,13 @@ export default function DeanDashboard() {
             </div>
           </div>
 
+          {queueLoadError && (
+            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 9, color: "#991b1b", fontSize: 13, fontWeight: 700, marginBottom: 14 }}>
+              <span aria-hidden="true">!</span>
+              <span>{queueLoadError}</span>
+            </div>
+          )}
+
           {/* Submissions Grid or Empty State */}
           {filtered.length > 0 ? (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 14 }}>
@@ -1686,7 +1724,8 @@ export default function DeanDashboard() {
                 const docCount = uploadedDocCount(faculty.docs, faculty);
 
                 return (
-                  <div key={faculty.id} style={{ background: "#fff", borderRadius: 12, padding: "18px 20px", boxShadow: "0 1px 6px rgba(0,0,0,.07)", display: "flex", flexDirection: "column", gap: 14, border: "1px solid #e2e8f0" }}>
+                  <LazyVisible key={faculty.id} triggerKey={`${faculty.email}::${faculty.academicYear}`} onVisible={() => handleCardVisible(faculty)}>
+                  <div style={{ background: "#fff", borderRadius: 12, padding: "18px 20px", boxShadow: "0 1px 6px rgba(0,0,0,.07)", display: "flex", flexDirection: "column", gap: 14, border: "1px solid #e2e8f0" }}>
                     <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
                       <Avatar initials={faculty.avatar} src={faculty.avatarUrl} color={faculty.avatarColor} size={58} />
                       <div style={{ flex: 1 }}>
@@ -1732,10 +1771,11 @@ export default function DeanDashboard() {
                       </button>
                     </div>
                   </div>
+                  </LazyVisible>
                 );
               })}
             </div>
-          ) : (
+          ) : !queueLoadError ? (
             <div style={{ background: "#ffffff", borderRadius: 14, padding: "64px 24px", border: "1.5px dashed #cbd5e1", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
               <div style={{ background: "#f5f3ff", border: "1.5px dashed #c7d2fe", color: "#6366f1", padding: "8px 20px", borderRadius: 12, fontWeight: 800, fontSize: 15, marginBottom: 16, display: "inline-block" }}>
                 {activeSchoolInfo.code}
@@ -1747,7 +1787,7 @@ export default function DeanDashboard() {
                 New appraisal forms will appear here automatically.
               </div>
             </div>
-          )}
+          ) : null}
         </>
       )}
 

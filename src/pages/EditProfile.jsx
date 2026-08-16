@@ -4,17 +4,16 @@ import { useNavigate } from "react-router-dom";
 import { APP_INFO } from "../constants/formConfig";
 import {
   SCHOOL_OPTIONS,
-  SOEMR_DEPARTMENTS,
   canonicalDepartmentValue,
   canonicalSchoolValue,
   isCisrSchool,
   isSoemrSchool,
   isValidSchool,
-  isValidSoemrDepartment,
 } from "../constants/universityHierarchy";
 import { isNonTeachingRole } from "../constants/nonTeachingHierarchy";
 import { buildProfilePayload, normalizeRole, storeUserSession } from "../auth/session";
 import { updateProfile } from "../services/authService";
+import { listSchoolDepartments } from "../services/departmentsService";
 import {
   isValidPhone, isValidName, isValidEmployeeId, isValidExperience,
   sanitizeText, filterNumeric, filterPhone,
@@ -337,6 +336,14 @@ export default function EditProfile() {
   const initialDepartment = isNonTeachingRole(initialRole)
     ? sessionStorage.getItem("department") || ""
     : canonicalDepartmentValue(sessionStorage.getItem("department"));
+  const initialDepartments = (() => {
+    try {
+      const parsed = JSON.parse(sessionStorage.getItem("departments") || "[]");
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  })();
 
   const [formData, setFormData] = useState({
     staffType: isNonTeachingRole(initialRole) ? "non_teaching" : "teaching",
@@ -350,6 +357,9 @@ export default function EditProfile() {
     profilePictureUrl: sessionStorage.getItem("profilePictureUrl") || sessionStorage.getItem("profile_picture_url") || sessionStorage.getItem("avatarUrl") || "",
     school: initialSchool,
     department: initialDepartment,
+    // HOD can be assigned multiple departments/programs (see New_backend.md); every other
+    // teaching role keeps using the single `department` field above.
+    departments: initialDepartments,
     role: initialRole,
   });
   const [error, setError] = useState("");
@@ -357,19 +367,45 @@ export default function EditProfile() {
   const [saving, setSaving] = useState(false);
   const [pendingPhotoSrc, setPendingPhotoSrc] = useState("");
   const [photoAdjust, setPhotoAdjust] = useState({ zoom: 1, x: 0, y: 0 });
+  const [schoolDepartments, setSchoolDepartments] = useState([]);
+  const [departmentsLoading, setDepartmentsLoading] = useState(false);
 
   const selectedSchool = useMemo(() => canonicalSchoolValue(formData.school), [formData.school]);
   const selectedRole = normalizeRole(formData.role, "");
   const isNonTeaching = formData.staffType === "non_teaching";
   const requiresSchool = !isNonTeaching && selectedRole !== "vc";
-  const schoolNeedsDepartment = isSoemrSchool(selectedSchool);
   const isCisr = isCisrSchool(selectedSchool);
-  const needsDepartment = !isNonTeaching && schoolNeedsDepartment;
+  // Every teaching school can have Director-managed departments/programs now, not just SoEMR -
+  // SoEMR is the only one that calls them "departments", everyone else calls them "programs",
+  // but the underlying mechanism (a director-managed list, one HOD assignable per faculty,
+  // multiple assignable per HOD) is the same for all of them. See New_backend.md.
+  const schoolHasDepartments = schoolDepartments.length > 0;
+  const isDepartmentSchool = isSoemrSchool(selectedSchool);
+  const unitLabel = isDepartmentSchool ? "Department" : "Program";
+  const needsDepartment = !isNonTeaching && !isCisr && schoolHasDepartments;
+
+  useEffect(() => {
+    let active = true;
+    const load = () => {
+      if (isNonTeaching || isCisr || !selectedSchool) {
+        setSchoolDepartments([]);
+        return;
+      }
+      setDepartmentsLoading(true);
+      listSchoolDepartments(selectedSchool)
+        .then((departments) => { if (active) setSchoolDepartments(departments || []); })
+        .catch(() => { if (active) setSchoolDepartments([]); })
+        .finally(() => { if (active) setDepartmentsLoading(false); });
+    };
+    const timer = setTimeout(load, 0);
+    return () => { active = false; clearTimeout(timer); };
+  }, [selectedSchool, isNonTeaching, isCisr]);
+
   const roleOptions = BASE_ROLE_OPTIONS.filter((role) => {
     const optionIsNonTeaching = isNonTeachingRole(role.value);
     if (isNonTeaching) return optionIsNonTeaching;
     if (optionIsNonTeaching) return false;
-    if (role.value === "hod") return schoolNeedsDepartment;
+    if (role.value === "hod") return schoolHasDepartments;
     if (role.value === "center_head") return isCisr;
     if (isCisr && (role.value === "director" || role.value === "dean")) return false;
     return true;
@@ -378,7 +414,8 @@ export default function EditProfile() {
   const handleChange = (event) => {
     const { name, value } = event.target;
     setFormData((prev) => {
-      if (name === "school") return { ...prev, school: value, role: "", department: "" };
+      if (name === "school") return { ...prev, school: value, role: "", department: "", departments: [] };
+      if (name === "role") return { ...prev, role: value, department: "", departments: [] };
       if (name === "experience") return { ...prev, experience: filterNumeric(value) };
       if (name === "phone") return { ...prev, phone: filterPhone(value) };
       return { ...prev, [name]: value };
@@ -453,9 +490,12 @@ export default function EditProfile() {
       const role = normalizeRole(formData.role, "");
       const nonTeaching = formData.staffType === "non_teaching";
       const school = canonicalSchoolValue(formData.school);
+      // HOD's department/program assignment is Director-controlled (via "Manage Programs" ->
+      // Transfer HOD), not something an HOD edits on their own profile - this form never sends
+      // `departments` for HOD, so it can't race with or overwrite a Director's assignment.
       const department = nonTeaching
         ? String(formData.department || "").trim()
-        : isSoemrSchool(school) ? canonicalDepartmentValue(formData.department) : "";
+        : role === "hod" || isCisr ? "" : canonicalDepartmentValue(formData.department);
 
       const cleanFormData = {
         ...formData,
@@ -470,6 +510,7 @@ export default function EditProfile() {
         role,
         school: nonTeaching ? "" : school,
         department,
+        departments: undefined,
       };
       const profilePayload = buildProfilePayload(cleanFormData, APP_INFO.DEFAULT_AY);
       const savedProfile = await updateProfile(profilePayload);
@@ -640,12 +681,43 @@ export default function EditProfile() {
                 {!isNonTeaching && (
                   <FrozenField label="School" value={formData.school} wide />
                 )}
-                {(needsDepartment || isNonTeaching) && (
-                  <FrozenField
-                    label={isNonTeaching ? "Department / Office" : "SoEMR Department"}
-                    value={formData.department}
-                  />
+                {isNonTeaching && (
+                  <FrozenField label="Department / Office" value={formData.department} />
                 )}
+
+                {needsDepartment && selectedRole === "faculty" && (
+                  <InputField label={unitLabel} hint={schoolHasDepartments ? `Managed by your school's Director` : "No options yet - ask your Director to add one"}>
+                    <IconInput icon="building">
+                      <select name="department" value={formData.department} onChange={handleChange} disabled={departmentsLoading}>
+                        <option value="">{departmentsLoading ? `Loading ${unitLabel.toLowerCase()}s...` : `Select ${unitLabel.toLowerCase()}`}</option>
+                        {schoolDepartments.map((dept) => (
+                          <option key={dept.id || dept.name} value={dept.name}>{dept.name}</option>
+                        ))}
+                      </select>
+                    </IconInput>
+                  </InputField>
+                )}
+
+                {needsDepartment && selectedRole === "hod" && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 5, gridColumn: "1 / -1" }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.06em" }}>{unitLabel}s Assigned</span>
+                    {(formData.departments || []).length === 0 ? (
+                      <div style={{ minHeight: 40, display: "flex", alignItems: "center", background: "#f9fafb", border: "1.5px solid #e5e7eb", borderRadius: 8, padding: "0 13px", fontSize: 13, color: "#c4c9d4" }}>
+                        None yet - your Director assigns {unitLabel.toLowerCase()}s from "Manage {unitLabel}s".
+                      </div>
+                    ) : (
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, background: "#f9fafb", border: "1.5px solid #e5e7eb", borderRadius: 8, padding: "10px 12px" }}>
+                        {formData.departments.map((name) => (
+                          <span key={name} style={{ fontSize: 12.5, fontWeight: 700, color: "#4b5563", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 999, padding: "5px 12px" }}>
+                            {name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <span style={{ fontSize: 10, color: "#9ca3af" }}>Only your Director can change which {unitLabel.toLowerCase()}s you're assigned to.</span>
+                  </div>
+                )}
+
                 <FrozenField label="Email Address" value={formData.email} />
                 <FrozenField label="Full Name" value={formData.name} />
               </div>

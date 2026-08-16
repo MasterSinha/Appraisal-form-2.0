@@ -25,7 +25,7 @@ import {
 import { n, RO } from "../../../features/faculty-appraisal/shared";
 import { DirectorInput as DirInput } from "../common/ReviewerInput";
 export default function DirectorFDP({ ctx }) {
- const { faculty, docs, lectures, courseFile, projects, quals, feedback, deptActs, uniActs, society, industry, acr, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, rows, getDir, setDir, getInnovDir, setInnovDir, innovativeRows } = ctx;
+ const { faculty, docs, lectures, courseFile, projects, quals, feedback, deptActs, uniActs, society, industry, acr, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, rows, sectionEmpty, emptySectionRow, getDir, setDir, getInnovDir, setInnovDir, innovativeRows } = ctx;
  return (
 <>
 <SC title="B8. Conference / FDP / Industry Training - Attended (Max 20)" accent="#10b981">
@@ -35,7 +35,7 @@ export default function DirectorFDP({ ctx }) {
 <th style={TH}>View Docs</th><th style={TH}>Faculty Score</th><th style={TH_DIR}>Director Score</th>
 </tr></thead>
 <tbody>
- {rows(fdps).map((r, i) =>(
+ {sectionEmpty("fdps") ? emptySectionRow(8) : rows(fdps).map((r, i) =>(
 <tr key={i}>
 <td style={TDC}>{i + 1}</td>
 <td style={TD}><RO val={r.program} /></td>

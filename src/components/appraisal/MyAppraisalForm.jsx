@@ -4,6 +4,7 @@ import {
   clampScore,
   clampReviewScore,
   isSectionEmpty,
+  EmptySectionRow,
   createAcrRows,
   mergeFacultyInfo,
   reviewSectionScore,
@@ -137,7 +138,9 @@ export default function MyAppraisalForm({ faculty, hodData, setHodData, reviewer
 
  const info = mergeFacultyInfo(faculty.info, faculty);
  const { lectures, courseFile, obeRows, projects, mentoringRows, quals, feedback, deptActs, uniActs, eventRows, society, industry, alumniRows, placementRows, acr, leaveManagement, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, docs } = faculty;
- const rows = (arr) =>arr && arr.length >0 ? arr : [{}];
+ const rows = (arr) =>Array.isArray(arr) ? arr : [];
+ const sectionEmpty = (sectionKey) => isSectionEmpty(sectionKey, faculty[sectionKey], docs);
+ const emptySectionRow = (colSpan) => <EmptySectionRow colSpan={colSpan} />;
  const reviewerScoreLabel = `${reviewerLabel} Score`;
  const innovativeRows = Array.isArray(faculty.innovRows) && faculty.innovRows.length
  ? faculty.innovRows
@@ -154,7 +157,7 @@ export default function MyAppraisalForm({ faculty, hodData, setHodData, reviewer
   return { ...prev, innovRows: nextRows, innovHod: total ? String(total) : "" };
   });
   };
- const ctx = { faculty, docs, lectures, courseFile, obeRows, projects, mentoringRows, quals, feedback, deptActs, uniActs, eventRows, society, industry, alumniRows, placementRows, acr, leaveManagement, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, rows, get, set, reviewerLabel, reviewerScoreLabel, innovativeRows: innovativeRows.map((row) => ({ ...row, max: row.max || STANDARD_INNOVATIVE_ROW_MAX })), getInnovHod, setInnovHod, innovativeRowMax: STANDARD_INNOVATIVE_ROW_MAX, innovativeSectionMax: STANDARD_INNOVATIVE_SECTION_MAX };
+ const ctx = { faculty, docs, lectures, courseFile, obeRows, projects, mentoringRows, quals, feedback, deptActs, uniActs, eventRows, society, industry, alumniRows, placementRows, acr, leaveManagement, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, rows, sectionEmpty, emptySectionRow, get, set, reviewerLabel, reviewerScoreLabel, innovativeRows: innovativeRows.map((row) => ({ ...row, max: row.max || STANDARD_INNOVATIVE_ROW_MAX })), getInnovHod, setInnovHod, innovativeRowMax: STANDARD_INNOVATIVE_ROW_MAX, innovativeSectionMax: STANDARD_INNOVATIVE_SECTION_MAX };
 
  return (
 <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
@@ -168,7 +171,7 @@ export default function MyAppraisalForm({ faculty, hodData, setHodData, reviewer
 {sectionView === "partA" && <PartA ctx={ctx} />}
 {sectionView === "partB" && <PartB ctx={ctx} />}
 {sectionView === "partC" && <PartC ctx={ctx} />}
-{sectionView === "partD" && <LeaveManagementReadOnly ctx={ctx} />}
+{sectionView === "partD" && <LeaveManagementReadOnly ctx={ctx} registrarInfo={{ status: faculty.partDStatus, score: faculty.registrarPartDScore, remarks: faculty.registrarPartDRemarks }} />}
 {sectionView === "partE" && <PartD ctx={ctx} />}
 </div>
  );
@@ -239,7 +242,9 @@ export function DirectorFacultyReviewForm({ faculty, hodData, setHodData, dirDat
 
  const info = mergeFacultyInfo(faculty.info, faculty);
  const { lectures, courseFile, obeRows, projects, mentoringRows, quals, feedback, deptActs, uniActs, eventRows, society, industry, alumniRows, placementRows, acr, leaveManagement, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, docs } = faculty;
- const rows = (arr) =>arr && arr.length >0 ? arr : [{}];
+ const rows = (arr) =>Array.isArray(arr) ? arr : [];
+ const sectionEmpty = (sectionKey) => isSectionEmpty(sectionKey, faculty[sectionKey], docs);
+ const emptySectionRow = (colSpan) => <EmptySectionRow colSpan={colSpan} />;
  const innovativeRows = Array.isArray(faculty.innovRows) && faculty.innovRows.length
  ? faculty.innovRows
  : [{ method: faculty.innovDetails || "Innovative / participatory teaching methods used", details: faculty.innovDetails || "", score: faculty.innovScore || "" }];
@@ -257,7 +262,7 @@ export function DirectorFacultyReviewForm({ faculty, hodData, setHodData, dirDat
   };
  const setDirector = (section, idx, _field, val) => setDir(section, idx, "dir", val);
  const getDirector = (section, idx, field) => getDir(section, idx, field === "hod" ? "dir" : field);
- const ctx = { faculty, docs, lectures, courseFile, obeRows, projects, mentoringRows, quals, feedback, deptActs, uniActs, eventRows, society, industry, alumniRows, placementRows, acr, leaveManagement, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, rows, get: getDirector, set: setDirector, getDir, setDir, getInnovDir, setInnovDir, innovativeRows: innovativeRows.map((row) => ({ ...row, max: row.max || STANDARD_INNOVATIVE_ROW_MAX })), reviewerScoreLabel: "Director Score", reviewerLabel: "Director", innovativeRowMax: STANDARD_INNOVATIVE_ROW_MAX, innovativeSectionMax: STANDARD_INNOVATIVE_SECTION_MAX };
+ const ctx = { faculty, docs, lectures, courseFile, obeRows, projects, mentoringRows, quals, feedback, deptActs, uniActs, eventRows, society, industry, alumniRows, placementRows, acr, leaveManagement, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, rows, sectionEmpty, emptySectionRow, get: getDirector, set: setDirector, getDir, setDir, getInnovDir, setInnovDir, innovativeRows: innovativeRows.map((row) => ({ ...row, max: row.max || STANDARD_INNOVATIVE_ROW_MAX })), reviewerScoreLabel: "Director Score", reviewerLabel: "Director", innovativeRowMax: STANDARD_INNOVATIVE_ROW_MAX, innovativeSectionMax: STANDARD_INNOVATIVE_SECTION_MAX };
 
  return (
 <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
@@ -271,7 +276,7 @@ export function DirectorFacultyReviewForm({ faculty, hodData, setHodData, dirDat
 {sectionView === "partA" && <DirectorPartA ctx={ctx} />}
 {sectionView === "partB" && <DirectorPartB ctx={ctx} />}
 {sectionView === "partC" && <PartC ctx={ctx} />}
-{sectionView === "partD" && <LeaveManagementReadOnly ctx={ctx} />}
+{sectionView === "partD" && <LeaveManagementReadOnly ctx={ctx} registrarInfo={{ status: faculty.partDStatus, score: faculty.registrarPartDScore, remarks: faculty.registrarPartDRemarks }} />}
 {sectionView === "partE" && <PartD ctx={ctx} />}
 </div>
  );
