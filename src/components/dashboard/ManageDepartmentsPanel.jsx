@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { listSchoolDepartments, addSchoolDepartment, removeSchoolDepartment } from "../../services/departmentsService";
-import { fetchSchoolHods, transferRole, removeRoleAssignment, fetchActiveRoleAssignments } from "../../services/roleAssignmentsService";
+import { fetchSchoolHods, transferRole, removeRoleAssignment, deactivateHodAccount } from "../../services/roleAssignmentsService";
+import { fetchSchoolFaculty, assignFacultyToProgram } from "../../services/facultyAssignmentService";
 import { isSoemrSchool, SOEMR_DEPARTMENTS } from "../../constants/universityHierarchy";
 import CreateHodForm from "./CreateHodForm";
 
@@ -14,86 +15,9 @@ const initialsFor = (value = "") => {
 
 const hodPrograms = (hod = {}) => (Array.isArray(hod.departments) ? hod.departments.filter(Boolean) : []);
 
-// - Full HOD roster: every existing HOD account for this school, assigned or not. Separate from
-// the program table above since a Director may create several HODs before assigning any of
-// them - this is the only place an unassigned HOD is otherwise visible at all. -
-function HodRoster({ hods, loading, unitLabelLower, onCreateNew }) {
-  const [filter, setFilter] = useState("all"); // "all" | "assigned" | "unassigned"
-  const assigned = hods.filter((h) => hodPrograms(h).length > 0);
-  const unassigned = hods.filter((h) => hodPrograms(h).length === 0);
-  const shown = filter === "assigned" ? assigned : filter === "unassigned" ? unassigned : hods;
+const selectStyle = { padding: "8px 10px", border: "1.5px solid #e2e8f0", borderRadius: 8, fontSize: 12.5, fontFamily: "inherit", outline: "none", background: "#fff", color: "#0f172a" };
 
-  return (
-    <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 12px 30px rgba(15,23,42,0.05)", border: "1px solid #e2e8f0", overflow: "hidden" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", padding: "14px 18px", background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
-        <div>
-          <div style={{ fontSize: 14, fontWeight: 900, color: "#0f172a" }}>All HODs</div>
-          <div style={{ fontSize: 11.5, color: "#64748b", marginTop: 2 }}>Every HOD account created for this school, whether assigned to a {unitLabelLower} yet or not.</div>
-        </div>
-        <div style={{ display: "flex", gap: 6, background: "#eef2f7", borderRadius: 10, padding: 3 }}>
-          {[
-            ["all", `All (${hods.length})`],
-            ["assigned", `Assigned (${assigned.length})`],
-            ["unassigned", `Unassigned (${unassigned.length})`],
-          ].map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => setFilter(value)}
-              style={{ border: "none", borderRadius: 8, padding: "6px 11px", fontSize: 11, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", background: filter === value ? "#fff" : "transparent", color: filter === value ? "#0f172a" : "#64748b", boxShadow: filter === value ? "0 1px 4px rgba(15,23,42,0.12)" : "none", whiteSpace: "nowrap" }}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div style={{ padding: 16 }}>
-        {loading ? (
-          <div style={{ fontSize: 12.5, color: "#64748b", fontWeight: 700, textAlign: "center", padding: "14px 0" }}>Loading HODs...</div>
-        ) : hods.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "18px 0" }}>
-            <div style={{ fontSize: 12.5, color: "#94a3b8", fontWeight: 700, marginBottom: 10 }}>No HOD accounts created for this school yet.</div>
-            <button type="button" onClick={onCreateNew} style={{ border: "1px solid #c7d2fe", background: "#eef2ff", color: "#4338ca", borderRadius: 9, padding: "8px 14px", fontWeight: 800, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
-              + Create your first HOD
-            </button>
-          </div>
-        ) : shown.length === 0 ? (
-          <div style={{ fontSize: 12.5, color: "#94a3b8", fontWeight: 700, textAlign: "center", padding: "14px 0" }}>No HODs in this filter.</div>
-        ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 10 }}>
-            {shown.map((hod) => {
-              const programs = hodPrograms(hod);
-              const isAssigned = programs.length > 0;
-              return (
-                <div key={hod.email} style={{ display: "flex", alignItems: "flex-start", gap: 10, border: "1px solid #e2e8f0", borderRadius: 12, background: "#fbfcfd", padding: 12, minWidth: 0 }}>
-                  <span style={{ width: 34, height: 34, borderRadius: 999, background: isAssigned ? "#4338ca" : "#94a3b8", color: "#fff", fontSize: 12, fontWeight: 900, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{initialsFor(hod.fullName || hod.email)}</span>
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ fontSize: 12.5, fontWeight: 800, color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{hod.fullName || hod.email}</div>
-                    <div style={{ fontSize: 11, color: "#94a3b8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 1 }}>{hod.email}</div>
-                    <div style={{ marginTop: 7 }}>
-                      {isAssigned ? (
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                          {programs.map((p) => (
-                            <span key={p} style={{ fontSize: 10, fontWeight: 800, color: "#065f46", background: "#dcfce7", border: "1px solid #bbf7d0", borderRadius: 999, padding: "2px 8px" }}>{p}</span>
-                          ))}
-                        </div>
-                      ) : (
-                        <span style={{ fontSize: 10, fontWeight: 800, color: "#991b1b", background: "#fee2e2", border: "1px solid #fecaca", borderRadius: 999, padding: "2px 8px" }}>Unassigned</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// - Modal shell (reused for "Add Program" and "Create HOD") -
+// - Modal shell (reused for "Create HOD") -
 function Modal({ title, subtitle, onClose, children, width = 520, icon, accent = "#4338ca" }) {
   return (
     <div
@@ -136,192 +60,498 @@ function Modal({ title, subtitle, onClose, children, width = 520, icon, accent =
   );
 }
 
-// - Inline "assign HOD" popover for one program row -
-function AssignPopover({ availableHods, onPick, onCreateNew, onClose }) {
-  const [query, setQuery] = useState("");
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return availableHods;
-    return availableHods.filter((h) => (h.fullName || "").toLowerCase().includes(q) || (h.email || "").toLowerCase().includes(q));
-  }, [availableHods, query]);
+// - Step indicator bar shared by all 3 steps -
+function StepBar({ step, onStepChange, unitLabel }) {
+  const steps = [
+    { id: 1, label: `Create ${unitLabel}` },
+    { id: 2, label: "Create HOD" },
+    { id: 3, label: "Assign Faculty" },
+  ];
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#fff", borderRadius: 16, padding: "16px 20px", boxShadow: "0 12px 32px rgba(15,23,42,0.06)", border: "1px solid #e5e7eb", flexWrap: "wrap" }}>
+      {steps.map((s, idx) => (
+        <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <button
+            type="button"
+            onClick={() => onStepChange(s.id)}
+            style={{ display: "flex", alignItems: "center", gap: 10, border: "none", background: step === s.id ? "#eef2ff" : "transparent", cursor: "pointer", fontFamily: "inherit", padding: "8px 12px", borderRadius: 11, transition: "background .15s" }}
+          >
+            <span style={{ width: 28, height: 28, borderRadius: 999, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 12.5, fontWeight: 900, flexShrink: 0, background: step === s.id ? "#4338ca" : step > s.id ? "#dcfce7" : "#f1f5f9", color: step === s.id ? "#fff" : step > s.id ? "#16a34a" : "#94a3b8", transition: "background .15s, color .15s" }}>
+              {step > s.id ? "✓" : s.id}
+            </span>
+            <span style={{ fontSize: 13, fontWeight: 800, color: step === s.id ? "#0f172a" : "#64748b" }}>{s.label}</span>
+          </button>
+          {idx < steps.length - 1 && <span style={{ width: 28, height: 2, background: step > s.id ? "#bbf7d0" : "#e2e8f0", borderRadius: 2 }} />}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ============================== STEP 1: Create Program ==============================
+function StepPrograms({ school, unitLabel, unitLabelLower, isDepartmentSchool, departments, loading, error, onRefresh, onNext }) {
+  const [newName, setNewName] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [localError, setLocalError] = useState("");
+
+  const handleAdd = async (e) => {
+    e.preventDefault();
+    if (!newName.trim()) return;
+    setSaving(true);
+    setLocalError("");
+    try {
+      await addSchoolDepartment(school, newName.trim());
+      setNewName("");
+      await onRefresh();
+    } catch (err) {
+      setLocalError(err?.message || `Could not add ${unitLabelLower}.`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRemove = async (department) => {
+    if (!window.confirm(`Remove "${department.name}"? Faculty/HOD already assigned to it will be affected.`)) return;
+    setLocalError("");
+    try {
+      await removeSchoolDepartment(school, department.id);
+      await onRefresh();
+    } catch (err) {
+      setLocalError(err?.message || `Could not remove ${unitLabelLower}.`);
+    }
+  };
 
   return (
-    <div
-      style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, zIndex: 30, width: 300, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, boxShadow: "0 18px 44px rgba(15,23,42,0.16)", padding: 10 }}
-      onClick={(e) => e.stopPropagation()}
-    >
-      <input
-        autoFocus
-        type="text"
-        placeholder="Search HODs by name or email..."
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", border: "1.5px solid #e2e8f0", borderRadius: 8, fontSize: 12.5, fontFamily: "inherit", outline: "none", marginBottom: 8 }}
-      />
-      <div style={{ maxHeight: 220, overflowY: "auto", display: "flex", flexDirection: "column", gap: 3 }}>
-        {filtered.length === 0 ? (
-          <div style={{ fontSize: 12, color: "#94a3b8", padding: "10px 6px", textAlign: "center" }}>
-            {availableHods.length === 0 ? "No HOD accounts yet." : "No match."}
-          </div>
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 12px 30px rgba(15,23,42,0.05)", border: "1px solid #e2e8f0", padding: 20 }}>
+        <div style={{ fontSize: 14, fontWeight: 900, color: "#0f172a", marginBottom: 2 }}>Step 1 · Create {unitLabel}</div>
+        <div style={{ fontSize: 12, color: "#64748b", marginBottom: 16 }}>
+          {isDepartmentSchool ? "Add every department this school is organized into." : "Add every program this school offers - one HOD can later be assigned to several of them."}
+        </div>
+        <form onSubmit={handleAdd} style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <input
+            type="text"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder={isDepartmentSchool ? "e.g. Computer Science" : "e.g. B.Tech Computer Science"}
+            maxLength={100}
+            style={{ flex: "1 1 260px", padding: "11px 13px", border: "1.5px solid #dbe3ef", borderRadius: 10, fontSize: 13.5, fontFamily: "inherit", outline: "none" }}
+          />
+          <button
+            type="submit"
+            disabled={saving || !newName.trim()}
+            style={{ padding: "10px 20px", background: "#0f766e", color: "#fff", border: "none", borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: saving || !newName.trim() ? "not-allowed" : "pointer", opacity: saving || !newName.trim() ? 0.6 : 1, fontFamily: "inherit" }}
+          >
+            {saving ? "Adding..." : `+ Add ${unitLabel}`}
+          </button>
+        </form>
+        {(localError || error) && (
+          <div style={{ marginTop: 12, background: "#fef2f2", border: "1px solid #fecaca", color: "#991b1b", padding: "10px 14px", borderRadius: 10, fontSize: 12.5, fontWeight: 700 }}>{localError || error}</div>
+        )}
+      </div>
+
+      <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 12px 30px rgba(15,23,42,0.05)", border: "1px solid #e2e8f0" }}>
+        {loading ? (
+          <div style={{ padding: "26px 16px", fontSize: 13, color: "#64748b", fontWeight: 700, textAlign: "center" }}>Loading {unitLabelLower}s...</div>
+        ) : departments.length === 0 ? (
+          <div style={{ padding: "30px 16px", fontSize: 13, color: "#94a3b8", fontWeight: 700, textAlign: "center" }}>No {unitLabelLower}s added yet - use the form above.</div>
         ) : (
-          filtered.map((hod) => (
-            <button
-              key={hod.email}
-              type="button"
-              onClick={() => onPick(hod.email)}
-              style={{ display: "flex", alignItems: "center", gap: 8, textAlign: "left", border: "none", background: "transparent", borderRadius: 8, padding: "7px 8px", cursor: "pointer", fontFamily: "inherit" }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = "#f8fafc"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
-            >
-              <span style={{ width: 26, height: 26, borderRadius: 999, background: "#4338ca", color: "#fff", fontSize: 10, fontWeight: 900, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{initialsFor(hod.fullName || hod.email)}</span>
-              <span style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 12.5, fontWeight: 800, color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{hod.fullName || hod.email}</div>
-                {hodPrograms(hod).length > 0 && (
-                  <div style={{ fontSize: 10.5, color: "#94a3b8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>also: {hodPrograms(hod).join(", ")}</div>
-                )}
-              </span>
-            </button>
+          departments.map((dept, idx) => (
+            <div key={dept.id || dept.name} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, padding: "13px 16px", borderBottom: idx < departments.length - 1 ? "1px solid #f1f5f9" : "none" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                <span style={{ width: 30, height: 30, borderRadius: 9, background: "#ecfeff", color: "#0891b2", border: "1px solid #cffafe", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 900, flexShrink: 0 }}>{dept.name.slice(0, 1).toUpperCase()}</span>
+                <span style={{ fontSize: 13.5, fontWeight: 800, color: "#0f172a", overflowWrap: "anywhere" }}>{dept.name}</span>
+              </div>
+              <button type="button" onClick={() => handleRemove(dept)} style={{ border: "1px solid #fecaca", background: "#fff5f5", color: "#dc2626", borderRadius: 8, padding: "7px 10px", fontWeight: 800, fontSize: 11.5, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>
+                Remove
+              </button>
+            </div>
           ))
         )}
       </div>
-      <div style={{ borderTop: "1px solid #eef2f7", marginTop: 8, paddingTop: 8, display: "flex", gap: 8 }}>
-        <button type="button" onClick={onCreateNew} style={{ flex: 1, border: "1px dashed #c7d2fe", background: "#eef2ff", color: "#4338ca", borderRadius: 8, padding: "7px 8px", fontSize: 11.5, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}>
-          + Create new HOD
-        </button>
-        <button type="button" onClick={onClose} style={{ border: "1px solid #e2e8f0", background: "#fff", color: "#64748b", borderRadius: 8, padding: "7px 10px", fontSize: 11.5, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}>
-          Cancel
+
+      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+        <button type="button" onClick={onNext} disabled={departments.length === 0} style={{ padding: "11px 22px", background: departments.length === 0 ? "#cbd5e1" : "#4338ca", color: "#fff", border: "none", borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: departments.length === 0 ? "not-allowed" : "pointer", fontFamily: "inherit" }}>
+          Next: Create HOD →
         </button>
       </div>
     </div>
   );
 }
 
-// - One program row: name, assigned-HOD cell, actions -
-function ProgramRow({ dept, unitLabelLower, availableHods, onRemoveProgram, onDirectoryRefresh, onCreateNewFor }) {
-  const [holders, setHolders] = useState([]);
-  const [loadingHolders, setLoadingHolders] = useState(true);
-  const [popoverOpen, setPopoverOpen] = useState(false);
+// ============================== STEP 2: Create HOD ==============================
+function HodCard({ hod, availableDeptsForHod, onAssignProgram, onRemoveProgram, onRemoveHod, onBusyChange }) {
+  const [pickedDept, setPickedDept] = useState("");
   const [busy, setBusy] = useState(false);
+  const [removing, setRemoving] = useState(false);
   const [error, setError] = useState("");
+  const programs = hodPrograms(hod);
 
-  const refreshHolders = useCallback(async () => {
-    setLoadingHolders(true);
+  const handleAssign = async () => {
+    if (!pickedDept) return;
+    setBusy(true);
+    onBusyChange?.(true);
+    setError("");
     try {
-      setHolders(await fetchActiveRoleAssignments({ roleType: "HOD", scopeId: dept.id }));
+      await onAssignProgram(hod, pickedDept);
+      setPickedDept("");
+    } catch (err) {
+      setError(err?.message || "Could not assign program.");
     } finally {
-      setLoadingHolders(false);
+      setBusy(false);
+      onBusyChange?.(false);
     }
-  }, [dept.id]);
+  };
 
-  useEffect(() => {
-    const t = setTimeout(refreshHolders, 0);
-    return () => clearTimeout(t);
-  }, [refreshHolders]);
-
-  const handlePick = async (email) => {
+  const handleRemove = async (deptName) => {
     setBusy(true);
     setError("");
     try {
-      await transferRole({ roleType: "HOD", scopeId: dept.id, incomingEmail: email });
-      setPopoverOpen(false);
-      await refreshHolders();
-      await onDirectoryRefresh?.();
+      await onRemoveProgram(hod, deptName);
     } catch (err) {
-      setError(err?.message || "Could not assign HOD.");
+      setError(err?.message || "Could not remove program.");
     } finally {
       setBusy(false);
     }
   };
 
-  const handleRemoveHod = async (holder) => {
-    if (!window.confirm(`Remove ${holder.fullName || holder.email} from ${dept.name}?`)) return;
+  const handleRemoveHod = async () => {
+    if (!window.confirm(`Remove ${hod.fullName || hod.email}'s HOD account entirely? This clears all their program assignments and deactivates the account.`)) return;
+    setRemoving(true);
     setError("");
     try {
-      await removeRoleAssignment({ roleType: "HOD", scopeId: dept.id });
-      await refreshHolders();
-      await onDirectoryRefresh?.();
+      await onRemoveHod(hod);
     } catch (err) {
-      setError(err?.message || "Could not remove HOD.");
+      setError(err?.message || "Could not remove HOD account.");
+    } finally {
+      setRemoving(false);
     }
   };
 
   return (
-    <div style={{ position: "relative", display: "grid", gridTemplateColumns: "minmax(0,1.3fr) minmax(0,1.4fr) auto", alignItems: "center", gap: 14, padding: "13px 16px", borderBottom: "1px solid #f1f5f9" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-        <span style={{ width: 30, height: 30, borderRadius: 9, background: "#ecfeff", color: "#0891b2", border: "1px solid #cffafe", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 900, flexShrink: 0 }}>{dept.name.slice(0, 1).toUpperCase()}</span>
-        <span style={{ fontSize: 13.5, fontWeight: 800, color: "#0f172a", overflowWrap: "anywhere" }}>{dept.name}</span>
+    <div className="mdp-hod-card" style={{ display: "flex", flexDirection: "column", gap: 12, border: "1px solid #eef1f6", borderRadius: 16, background: "#fff", padding: 16, minWidth: 0, boxShadow: "0 4px 14px rgba(15,23,42,0.04)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <span style={{ borderRadius: 999, padding: 2, background: programs.length ? "linear-gradient(135deg,#a5b4fc,#4338ca)" : "linear-gradient(135deg,#e2e8f0,#94a3b8)", flexShrink: 0, display: "inline-flex" }}>
+          <span style={{ width: 42, height: 42, borderRadius: 999, background: programs.length ? "#4338ca" : "#94a3b8", color: "#fff", fontSize: 13, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid #fff" }}>{initialsFor(hod.fullName || hod.email)}</span>
+        </span>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{ fontSize: 13.5, fontWeight: 800, color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{hod.fullName || hod.email}</div>
+          <div style={{ fontSize: 11, color: "#94a3b8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 1 }}>{hod.email}</div>
+        </div>
+        <button
+          type="button"
+          onClick={handleRemoveHod}
+          disabled={removing}
+          title="Remove this HOD account"
+          style={{ width: 28, height: 28, flexShrink: 0, border: "1px solid #fecaca", background: "#fff5f5", color: "#dc2626", borderRadius: 8, cursor: removing ? "wait" : "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", fontFamily: "inherit" }}
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6" /><path d="M14 11v6" /></svg>
+        </button>
       </div>
 
-      <div>
-        {loadingHolders ? (
-          <span style={{ fontSize: 12, color: "#94a3b8", fontWeight: 700 }}>Loading...</span>
-        ) : holders.length === 0 ? (
-          <span style={{ display: "inline-flex", alignItems: "center", borderRadius: 999, padding: "5px 11px", background: "#f1f5f9", color: "#94a3b8", border: "1px solid #e2e8f0", fontSize: 11.5, fontWeight: 800 }}>Unassigned</span>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+        {programs.length === 0 ? (
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 10.5, fontWeight: 800, color: "#991b1b", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 999, padding: "3px 9px" }}>
+            <span style={{ width: 5, height: 5, borderRadius: 999, background: "#dc2626", flexShrink: 0 }} />
+            Unassigned
+          </span>
         ) : (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-            {holders.map((holder) => (
-              <span key={holder.assignmentId || holder.email} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#eef2ff", border: "1px solid #c7d2fe", borderRadius: 999, padding: "3px 6px 3px 3px" }}>
-                <span style={{ width: 20, height: 20, borderRadius: 999, background: "#4338ca", color: "#fff", fontSize: 9, fontWeight: 900, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{initialsFor(holder.fullName || holder.email)}</span>
-                <span style={{ fontSize: 11.5, fontWeight: 800, color: "#1e293b" }}>{holder.fullName || holder.email}</span>
-                <button type="button" onClick={() => handleRemoveHod(holder)} title="Remove" style={{ border: "none", background: "transparent", color: "#94a3b8", cursor: "pointer", fontWeight: 900, fontSize: 12, padding: "0 2px", fontFamily: "inherit" }}>X</button>
-              </span>
+          programs.map((p) => (
+            <span key={p} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 10.5, fontWeight: 800, color: "#065f46", background: "#ecfdf5", border: "1px solid #bbf7d0", borderRadius: 999, padding: "3px 6px 3px 10px" }}>
+              {p}
+              <button type="button" onClick={() => handleRemove(p)} disabled={busy} title="Remove this program" style={{ border: "none", background: "rgba(6,95,70,0.12)", color: "#065f46", cursor: busy ? "wait" : "pointer", fontWeight: 900, fontSize: 10, width: 15, height: 15, borderRadius: 999, display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 0, fontFamily: "inherit", lineHeight: 1, flexShrink: 0 }}>×</button>
+            </span>
+          ))
+        )}
+      </div>
+
+      {availableDeptsForHod.length > 0 && (
+        <div style={{ display: "flex", gap: 6, borderTop: "1px solid #f1f5f9", paddingTop: 12 }}>
+          <select value={pickedDept} onChange={(e) => setPickedDept(e.target.value)} style={{ ...selectStyle, flex: 1, minWidth: 0, background: "#f8fafc", border: "1.5px solid #e2e8f0", height: 34 }}>
+            <option value="">+ Assign a program...</option>
+            {availableDeptsForHod.map((d) => (
+              <option key={d.id} value={d.name}>{d.name}</option>
+            ))}
+          </select>
+          <button type="button" onClick={handleAssign} disabled={!pickedDept || busy} style={{ border: "none", background: !pickedDept || busy ? "#e2e8f0" : "#4338ca", color: !pickedDept || busy ? "#94a3b8" : "#fff", borderRadius: 8, padding: "0 14px", fontWeight: 800, fontSize: 11.5, cursor: !pickedDept || busy ? "not-allowed" : "pointer", fontFamily: "inherit", boxShadow: !pickedDept || busy ? "none" : "0 6px 14px rgba(67,56,202,0.25)", transition: "filter .15s" }}>
+            {busy ? "..." : "Add"}
+          </button>
+        </div>
+      )}
+      {error && <div style={{ fontSize: 11, color: "#991b1b", fontWeight: 700 }}>{error}</div>}
+    </div>
+  );
+}
+
+function StepHods({ school, departments, existingHods, loading, unitLabelLower, onRefresh, onBack, onNext }) {
+  const [createHodOpen, setCreateHodOpen] = useState(false);
+  const [filter, setFilter] = useState("all");
+  const assigned = existingHods.filter((h) => hodPrograms(h).length > 0);
+  const unassigned = existingHods.filter((h) => hodPrograms(h).length === 0);
+  const shown = filter === "assigned" ? assigned : filter === "unassigned" ? unassigned : existingHods;
+
+  const handleAssignProgram = async (hod, deptName) => {
+    const dept = departments.find((d) => d.name === deptName);
+    if (!dept) throw new Error("Program not found.");
+    await transferRole({ roleType: "HOD", scopeId: dept.id, incomingEmail: hod.email });
+    await onRefresh();
+  };
+
+  const handleRemoveProgram = async (hod, deptName) => {
+    const dept = departments.find((d) => d.name === deptName);
+    if (!dept) throw new Error("Program not found.");
+    if (!window.confirm(`Remove ${hod.fullName || hod.email} from ${deptName}?`)) return;
+    await removeRoleAssignment({ roleType: "HOD", scopeId: dept.id });
+    await onRefresh();
+  };
+
+  // Clears every program this HOD currently holds, then deactivates the account itself -
+  // confirmation already happened in HodCard before this runs.
+  const handleRemoveHod = async (hod) => {
+    const programs = hodPrograms(hod);
+    for (const programName of programs) {
+      const dept = departments.find((d) => d.name === programName);
+      if (dept) await removeRoleAssignment({ roleType: "HOD", scopeId: dept.id });
+    }
+    await deactivateHodAccount({ schoolCode: school, email: hod.email });
+    await onRefresh();
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={{ position: "relative", overflow: "hidden", background: "linear-gradient(135deg, #4338ca 0%, #0f172a 130%)", borderRadius: 16, padding: "20px 24px", boxShadow: "0 16px 36px rgba(67,56,202,0.18)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+        <div style={{ position: "absolute", top: -50, right: -30, width: 180, height: 180, borderRadius: "50%", background: "rgba(255,255,255,0.06)", pointerEvents: "none" }} />
+        <div style={{ display: "flex", alignItems: "center", gap: 14, position: "relative", zIndex: 1 }}>
+          <span style={{ width: 42, height: 42, borderRadius: 13, background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.18)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: "#fff" }}>
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21a8 8 0 0 0-16 0" /><circle cx="12" cy="11" r="4" /><path d="M22 21v-1a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+          </span>
+          <div>
+            <div style={{ fontSize: 14.5, fontWeight: 900, color: "#fff" }}>Step 2 · Create HOD</div>
+            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.68)", marginTop: 2 }}>Create HOD accounts, then assign each one to one or more {unitLabelLower}s.</div>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setCreateHodOpen(true)}
+          style={{ position: "relative", zIndex: 1, border: "none", background: "#fff", color: "#4338ca", borderRadius: 10, padding: "11px 18px", fontWeight: 800, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit", boxShadow: "0 10px 22px rgba(0,0,0,0.18)" }}
+        >
+          + Create HOD
+        </button>
+      </div>
+
+      <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 12px 30px rgba(15,23,42,0.05)", border: "1px solid #e2e8f0", padding: 18 }}>
+        <div style={{ display: "flex", gap: 6, background: "#f1f3f9", borderRadius: 10, padding: 3, width: "fit-content", marginBottom: 16 }}>
+          {[
+            ["all", `All (${existingHods.length})`],
+            ["assigned", `Assigned (${assigned.length})`],
+            ["unassigned", `Unassigned (${unassigned.length})`],
+          ].map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setFilter(value)}
+              style={{ border: "none", borderRadius: 8, padding: "7px 13px", fontSize: 11.5, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", background: filter === value ? "#fff" : "transparent", color: filter === value ? "#0f172a" : "#64748b", boxShadow: filter === value ? "0 2px 8px rgba(15,23,42,0.10)" : "none", whiteSpace: "nowrap", transition: "background .15s, box-shadow .15s" }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {loading ? (
+          <div style={{ fontSize: 12.5, color: "#64748b", fontWeight: 700, textAlign: "center", padding: "14px 0" }}>Loading HODs...</div>
+        ) : existingHods.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "18px 0" }}>
+            <div style={{ fontSize: 12.5, color: "#94a3b8", fontWeight: 700, marginBottom: 10 }}>No HOD accounts created for this school yet.</div>
+            <button type="button" onClick={() => setCreateHodOpen(true)} style={{ border: "1px solid #c7d2fe", background: "#eef2ff", color: "#4338ca", borderRadius: 9, padding: "8px 14px", fontWeight: 800, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
+              + Create your first HOD
+            </button>
+          </div>
+        ) : shown.length === 0 ? (
+          <div style={{ fontSize: 12.5, color: "#94a3b8", fontWeight: 700, textAlign: "center", padding: "14px 0" }}>No HODs in this filter.</div>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 14 }}>
+            {shown.map((hod) => (
+              <HodCard
+                key={hod.email}
+                hod={hod}
+                availableDeptsForHod={departments.filter((d) => !hodPrograms(hod).includes(d.name))}
+                onAssignProgram={handleAssignProgram}
+                onRemoveProgram={handleRemoveProgram}
+                onRemoveHod={handleRemoveHod}
+              />
             ))}
           </div>
         )}
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 8, justifySelf: "end" }}>
-        <button
-          type="button"
-          onClick={() => setPopoverOpen((v) => !v)}
-          disabled={busy}
-          style={{ border: `1px solid #c7d2fe`, background: "#eef2ff", color: "#4338ca", borderRadius: 8, padding: "7px 12px", fontWeight: 800, fontSize: 11.5, cursor: busy ? "wait" : "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
-        >
-          {holders.length > 0 ? "Change" : "Assign"}
+      <div style={{ display: "flex", justifyContent: "space-between" }}>
+        <button type="button" onClick={onBack} style={{ padding: "11px 22px", background: "#fff", color: "#475569", border: "1px solid #e2e8f0", borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+          ← Back
         </button>
-        <button
-          type="button"
-          onClick={() => onRemoveProgram(dept)}
-          style={{ border: "1px solid #fecaca", background: "#fff5f5", color: "#dc2626", borderRadius: 8, padding: "7px 10px", fontWeight: 800, fontSize: 11.5, cursor: "pointer", fontFamily: "inherit" }}
-          title={`Remove this ${unitLabelLower}`}
-        >
-          Remove
+        <button type="button" onClick={onNext} disabled={existingHods.length === 0} style={{ padding: "11px 22px", background: existingHods.length === 0 ? "#cbd5e1" : "#4338ca", color: "#fff", border: "none", borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: existingHods.length === 0 ? "not-allowed" : "pointer", fontFamily: "inherit" }}>
+          Next: Assign Faculty →
         </button>
       </div>
-      {error && (
-        <div style={{ gridColumn: "1 / -1", fontSize: 11.5, color: "#991b1b", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 7, padding: "6px 10px", marginTop: 6 }}>{error}</div>
-      )}
-      {popoverOpen && (
-        <AssignPopover
-          availableHods={availableHods}
-          onPick={handlePick}
-          onCreateNew={() => { setPopoverOpen(false); onCreateNewFor(dept.name); }}
-          onClose={() => setPopoverOpen(false)}
-        />
+
+      {createHodOpen && (
+        <Modal
+          title="Create HOD Account"
+          subtitle={`Pick any number of ${unitLabelLower}s to assign right away, or skip and assign later from the HOD's card.`}
+          onClose={() => setCreateHodOpen(false)}
+          accent="#4338ca"
+          width={620}
+          icon={<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3.2 19 6v5.2c0 4.4-2.9 7.6-7 8.6-4.1-1-7-4.2-7-8.6V6l7-2.8Z" /><path d="m9.3 12 1.8 1.8 3.6-3.8" /></svg>}
+        >
+          <CreateHodForm
+            school={school}
+            departments={departments}
+            accent="#4338ca"
+            onCreated={async () => {
+              setCreateHodOpen(false);
+              await onRefresh();
+            }}
+          />
+        </Modal>
       )}
     </div>
   );
 }
 
-// Director-only panel for managing the department/program list of their own school, and which
-// HOD (if any) owns each one. SoEMR is organized into departments (one HOD per department);
-// every other school is organized into programs, where one HOD can be assigned to several
-// programs at once - see backend_changes_requied.md / New_backend.md.
+// ============================== STEP 3: Assign Faculty ==============================
+function StepFaculty({ school, existingHods, unitLabelLower, onBack }) {
+  const [faculty, setFaculty] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const refreshFaculty = useCallback(async () => {
+    if (!school) return;
+    setLoading(true);
+    setError("");
+    try {
+      setFaculty(await fetchSchoolFaculty(school));
+    } catch (err) {
+      setError(err?.message || "Could not load faculty.");
+    } finally {
+      setLoading(false);
+    }
+  }, [school]);
+
+  useEffect(() => {
+    const t = setTimeout(refreshFaculty, 0);
+    return () => clearTimeout(t);
+  }, [refreshFaculty]);
+
+  // Flatten every HOD's programs into individually pickable "HOD - Program" options, since one
+  // HOD covering several programs still needs a single unambiguous choice per faculty member.
+  const hodProgramOptions = existingHods.flatMap((hod) =>
+    hodPrograms(hod).map((programName) => ({
+      key: `${hod.email}::${programName}`,
+      hodEmail: hod.email,
+      hodName: hod.fullName || hod.email,
+      programName,
+    }))
+  );
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 12px 30px rgba(15,23,42,0.05)", border: "1px solid #e2e8f0", padding: 20 }}>
+        <div style={{ fontSize: 14, fontWeight: 900, color: "#0f172a" }}>Step 3 · Assign Faculty</div>
+        <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>Pick which HOD each faculty member reports to. This sets their {unitLabelLower} to match that HOD's.</div>
+      </div>
+
+      {error && (
+        <div style={{ background: "#fef2f2", border: "1px solid #fecaca", color: "#991b1b", padding: "10px 14px", borderRadius: 10, fontSize: 12.5, fontWeight: 700 }}>{error}</div>
+      )}
+
+      {hodProgramOptions.length === 0 && (
+        <div style={{ background: "#fffbeb", border: "1px solid #fde68a", color: "#92400e", padding: "10px 14px", borderRadius: 10, fontSize: 12.5, fontWeight: 700 }}>
+          No HOD is assigned to a {unitLabelLower} yet - go back to Step 2 and assign at least one before you can assign faculty here.
+        </div>
+      )}
+
+      <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 12px 30px rgba(15,23,42,0.05)", border: "1px solid #e2e8f0" }}>
+        {loading ? (
+          <div style={{ padding: "26px 16px", fontSize: 13, color: "#64748b", fontWeight: 700, textAlign: "center" }}>Loading faculty...</div>
+        ) : faculty.length === 0 ? (
+          <div style={{ padding: "30px 16px", fontSize: 13, color: "#94a3b8", fontWeight: 700, textAlign: "center" }}>No faculty accounts found for this school yet.</div>
+        ) : (
+          faculty.map((person, idx) => (
+            <FacultyRow key={person.email} person={person} isLast={idx === faculty.length - 1} options={hodProgramOptions} school={school} onAssigned={refreshFaculty} />
+          ))
+        )}
+      </div>
+
+      <div>
+        <button type="button" onClick={onBack} style={{ padding: "11px 22px", background: "#fff", color: "#475569", border: "1px solid #e2e8f0", borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+          ← Back
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function FacultyRow({ person, isLast, options, school, onAssigned }) {
+  const currentOption = options.find((o) => o.programName === person.department);
+  const [picked, setPicked] = useState(currentOption?.key || "");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleAssign = async () => {
+    const option = options.find((o) => o.key === picked);
+    if (!option) return;
+    setBusy(true);
+    setError("");
+    try {
+      await assignFacultyToProgram({ schoolCode: school, facultyEmail: person.email, departmentName: option.programName });
+      await onAssigned?.();
+    } catch (err) {
+      setError(err?.message || "Could not assign faculty.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, padding: "12px 16px", borderBottom: isLast ? "none" : "1px solid #f1f5f9", flexWrap: "wrap" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, flex: "1 1 220px" }}>
+        <span style={{ width: 30, height: 30, borderRadius: 999, background: "#e2e8f0", color: "#475569", fontSize: 11, fontWeight: 900, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{initialsFor(person.fullName || person.email)}</span>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 800, color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{person.fullName || person.email}</div>
+          <div style={{ fontSize: 11, color: "#94a3b8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{person.email}{person.department ? ` · ${person.department}` : ""}</div>
+        </div>
+      </div>
+      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+        <select value={picked} onChange={(e) => setPicked(e.target.value)} disabled={options.length === 0} style={{ ...selectStyle, minWidth: 220 }}>
+          <option value="">Select HOD...</option>
+          {options.map((o) => (
+            <option key={o.key} value={o.key}>{o.hodName} — {o.programName}</option>
+          ))}
+        </select>
+        <button type="button" onClick={handleAssign} disabled={!picked || busy} style={{ border: "1px solid #c7d2fe", background: "#eef2ff", color: "#4338ca", borderRadius: 8, padding: "8px 14px", fontWeight: 800, fontSize: 11.5, cursor: !picked || busy ? "not-allowed" : "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+          {busy ? "Assigning..." : "Assign"}
+        </button>
+      </div>
+      {error && <div style={{ width: "100%", fontSize: 11.5, color: "#991b1b" }}>{error}</div>}
+    </div>
+  );
+}
+
+// Director-only panel for managing the department/program list of their own school, which HOD
+// (if any) owns each one, and which faculty individually report to which HOD. SoEMR is
+// organized into departments (one HOD per department); every other school is organized into
+// programs, where one HOD can be assigned to several programs at once - see
+// backend_changes_requied.md / New_backend.md. Built as a 3-step wizard: Create Program ->
+// Create HOD -> Assign Faculty, since each step depends on the previous one's data existing.
 export default function ManageDepartmentsPanel({ school }) {
   const isDepartmentSchool = isSoemrSchool(school);
   const unitLabel = isDepartmentSchool ? "Department" : "Program";
   const unitLabelLower = unitLabel.toLowerCase();
 
+  const [step, setStep] = useState(1);
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [existingHods, setExistingHods] = useState([]);
   const [error, setError] = useState("");
-
-  const [addProgramOpen, setAddProgramOpen] = useState(false);
-  const [newName, setNewName] = useState("");
-  const [savingProgram, setSavingProgram] = useState(false);
-
-  const [createHodFor, setCreateHodFor] = useState(null); // null | "" (unassigned) | program name
 
   const refresh = useCallback(async () => {
     if (!school) return;
@@ -349,153 +579,64 @@ export default function ManageDepartmentsPanel({ school }) {
     return () => clearTimeout(timer);
   }, [refresh]);
 
-  const handleAddProgram = async (e) => {
-    e.preventDefault();
-    if (!newName.trim()) return;
-    setSavingProgram(true);
-    setError("");
-    try {
-      await addSchoolDepartment(school, newName.trim());
-      setNewName("");
-      setAddProgramOpen(false);
-      await refresh();
-    } catch (err) {
-      setError(err?.message || `Could not add ${unitLabelLower}.`);
-    } finally {
-      setSavingProgram(false);
-    }
-  };
-
-  const handleRemoveProgram = async (department) => {
-    if (!window.confirm(`Remove "${department.name}"? Faculty/HOD already assigned to it will be affected.`)) return;
-    setError("");
-    try {
-      await removeSchoolDepartment(school, department.id);
-      await refresh();
-    } catch (err) {
-      setError(err?.message || `Could not remove ${unitLabelLower}.`);
-    }
-  };
-
   const assignedHodCount = existingHods.filter((h) => hodPrograms(h).length > 0).length;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, width: "100%", boxSizing: "border-box" }}>
-      {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap", background: "#fff", borderRadius: 16, padding: "18px 22px", boxShadow: "0 12px 32px rgba(15,23,42,0.06)", border: "1px solid #e5e7eb" }}>
-        <div>
-          <div style={{ fontSize: 20, fontWeight: 900, color: "#0f172a" }}>{unitLabel}s & HODs</div>
-          <div style={{ fontSize: 12.5, color: "#64748b", marginTop: 3 }}>
-            {departments.length} {unitLabelLower}{departments.length === 1 ? "" : "s"} · {existingHods.length} HOD{existingHods.length === 1 ? "" : "s"} · {assignedHodCount} assigned
+      <style>{`
+        .mdp-hod-card { transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease; }
+        .mdp-hod-card:hover { transform: translateY(-3px); box-shadow: 0 16px 32px rgba(15,23,42,0.08); border-color: #dbeafe; }
+      `}</style>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg,#ede9fe,#ddd6fe)", color: "#6d28d9", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3 9 5-9 5-9-5 9-5Z" /><path d="M5 10.5V16c0 1.5 3.13 3 7 3s7-1.5 7-3v-5.5" /><path d="M21 9v6.5" /></svg>
+          </span>
+          <div>
+            <div style={{ fontSize: 20, fontWeight: 900, color: "#0f172a" }}>{unitLabel}s & HODs</div>
+            <div style={{ fontSize: 12.5, color: "#64748b", marginTop: 3 }}>
+              {departments.length} {unitLabelLower}{departments.length === 1 ? "" : "s"} · {existingHods.length} HOD{existingHods.length === 1 ? "" : "s"} · {assignedHodCount} assigned
+            </div>
           </div>
-        </div>
-        <div style={{ display: "flex", gap: 10 }}>
-          <button type="button" onClick={() => setCreateHodFor("")} style={{ border: "1px solid #c7d2fe", background: "#eef2ff", color: "#4338ca", borderRadius: 10, padding: "10px 16px", fontWeight: 800, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" }}>
-            + Create HOD
-          </button>
-          <button type="button" onClick={() => setAddProgramOpen(true)} style={{ border: "none", background: "#0f766e", color: "#fff", borderRadius: 10, padding: "10px 16px", fontWeight: 800, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit", boxShadow: "0 10px 20px rgba(15,118,110,0.2)" }}>
-            + Add {unitLabel}
-          </button>
         </div>
       </div>
 
-      {error && (
-        <div style={{ background: "#fef2f2", border: "1px solid #fecaca", color: "#991b1b", padding: "10px 14px", borderRadius: 10, fontSize: 12.5, fontWeight: 700 }}>{error}</div>
+      <StepBar step={step} onStepChange={setStep} unitLabel={unitLabel} />
+
+      {step === 1 && (
+        <StepPrograms
+          school={school}
+          unitLabel={unitLabel}
+          unitLabelLower={unitLabelLower}
+          isDepartmentSchool={isDepartmentSchool}
+          departments={departments}
+          loading={loading}
+          error={error}
+          onRefresh={refresh}
+          onNext={() => setStep(2)}
+        />
       )}
 
-      {/* Table - overflow left visible (not hidden) so each row's "Assign" popover can escape
-          the table bounds instead of being clipped; the header/rows already sit on the same
-          white background as the wrapper so the square corners this trades away aren't visible. */}
-      <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 12px 30px rgba(15,23,42,0.05)", border: "1px solid #e2e8f0" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.3fr) minmax(0,1.4fr) auto", gap: 14, padding: "11px 16px", background: "#f8fafc", borderBottom: "1px solid #e2e8f0", borderRadius: "14px 14px 0 0" }}>
-          <span style={{ fontSize: 10.5, fontWeight: 900, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.5px" }}>{unitLabel}</span>
-          <span style={{ fontSize: 10.5, fontWeight: 900, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.5px" }}>Assigned HOD</span>
-          <span />
-        </div>
-
-        {loading ? (
-          <div style={{ padding: "26px 16px", fontSize: 13, color: "#64748b", fontWeight: 700, textAlign: "center" }}>Loading {unitLabelLower}s...</div>
-        ) : departments.length === 0 ? (
-          <div style={{ padding: "36px 16px", textAlign: "center" }}>
-            <div style={{ fontSize: 13, color: "#64748b", fontWeight: 800, marginBottom: 10 }}>No {unitLabelLower}s added yet.</div>
-            <button type="button" onClick={() => setAddProgramOpen(true)} style={{ border: "none", background: "#0f766e", color: "#fff", borderRadius: 9, padding: "9px 16px", fontWeight: 800, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" }}>
-              + Add your first {unitLabelLower}
-            </button>
-          </div>
-        ) : (
-          departments.map((dept) => (
-            <ProgramRow
-              key={dept.id || dept.name}
-              dept={dept}
-              unitLabelLower={unitLabelLower}
-              availableHods={existingHods}
-              onRemoveProgram={handleRemoveProgram}
-              onDirectoryRefresh={refresh}
-              onCreateNewFor={(name) => setCreateHodFor(name)}
-            />
-          ))
-        )}
-      </div>
-
-      {/* All HODs roster - separate from the table above so a HOD created but not yet
-          assigned to any program is still visible somewhere on this page. */}
-      <HodRoster
-        hods={existingHods}
-        loading={loading}
-        unitLabelLower={unitLabelLower}
-        onCreateNew={() => setCreateHodFor("")}
-      />
-
-      {/* Add Program modal */}
-      {addProgramOpen && (
-        <Modal
-          title={`Add ${unitLabel}`}
-          subtitle={`New ${unitLabelLower}s become available for HOD assignment and Faculty signup immediately.`}
-          onClose={() => setAddProgramOpen(false)}
-          accent="#0f766e"
-          icon={<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3 9 5-9 5-9-5 9-5Z" /><path d="M5 10.5V16c0 1.5 3.13 3 7 3s7-1.5 7-3v-5.5" /><path d="M21 9v6.5" /></svg>}
-        >
-          <form onSubmit={handleAddProgram} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <input
-              autoFocus
-              type="text"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              placeholder={isDepartmentSchool ? "e.g. Computer Science" : "e.g. B.Tech Computer Science"}
-              maxLength={100}
-              style={{ padding: "11px 13px", border: "1.5px solid #dbe3ef", borderRadius: 10, fontSize: 13.5, fontFamily: "inherit", outline: "none" }}
-            />
-            <button
-              type="submit"
-              disabled={savingProgram || !newName.trim()}
-              style={{ alignSelf: "flex-start", padding: "10px 20px", background: "#0f766e", color: "#fff", border: "none", borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: savingProgram || !newName.trim() ? "not-allowed" : "pointer", opacity: savingProgram || !newName.trim() ? 0.6 : 1, fontFamily: "inherit" }}
-            >
-              {savingProgram ? "Adding..." : `Add ${unitLabel}`}
-            </button>
-          </form>
-        </Modal>
+      {step === 2 && (
+        <StepHods
+          school={school}
+          departments={departments}
+          existingHods={existingHods}
+          loading={loading}
+          unitLabelLower={unitLabelLower}
+          onRefresh={refresh}
+          onBack={() => setStep(1)}
+          onNext={() => setStep(3)}
+        />
       )}
 
-      {/* Create HOD modal */}
-      {createHodFor !== null && (
-        <Modal
-          title="Create HOD Account"
-          subtitle={createHodFor ? `Will be assigned to ${createHodFor} once created.` : `Create the account, then assign a ${unitLabelLower} from the table.`}
-          onClose={() => setCreateHodFor(null)}
-          accent="#4338ca"
-          width={620}
-          icon={<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3.2 19 6v5.2c0 4.4-2.9 7.6-7 8.6-4.1-1-7-4.2-7-8.6V6l7-2.8Z" /><path d="m9.3 12 1.8 1.8 3.6-3.8" /></svg>}
-        >
-          <CreateHodForm
-            school={school}
-            departmentName={createHodFor}
-            accent="#4338ca"
-            onCreated={async () => {
-              setCreateHodFor(null);
-              await refresh();
-            }}
-          />
-        </Modal>
+      {step === 3 && (
+        <StepFaculty
+          school={school}
+          existingHods={existingHods}
+          unitLabelLower={unitLabelLower}
+          onBack={() => setStep(2)}
+        />
       )}
     </div>
   );

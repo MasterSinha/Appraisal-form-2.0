@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { register } from "../../services/authService";
 import { buildProfilePayload } from "../../auth/session";
+import { transferRole } from "../../services/roleAssignmentsService";
 import { isValidEmail, isValidEmployeeId, isValidName, passwordRequirements, sanitizeText, normalizeEmail } from "../../utils/validation";
 
 function FieldIcon({ paths, size = 16 }) {
@@ -21,6 +22,8 @@ const ICONS = {
   eyeOff: ["M9.9 4.24A9.4 9.4 0 0 1 12 4c7 0 11 7 11 7a13.6 13.6 0 0 1-2.9 3.9M6.6 6.6A13.5 13.6 0 0 0 1 11s4 7 11 7a9.5 9.5 0 0 0 5.1-1.5", "M9.9 9.9a3 3 0 0 0 4.2 4.2", "M2 2l20 20"],
   check: ["M20 6 9 17l-5-5"],
   sparkle: ["M12 3v4", "M12 17v4", "M3 12h4", "M17 12h4", "m5.6 5.6 2.8 2.8", "m15.6 15.6 2.8 2.8", "m18.4 5.6-2.8 2.8", "m8.4 15.6-2.8 2.8"],
+  layers: ["m12 2 9 5-9 5-9-5 9-5Z", "m3 12 9 5 9-5", "m3 17 9 5 9-5"],
+  chevronDown: ["m6 9 6 6 6-6"],
 };
 
 function Field({ icon, label, children }) {
@@ -39,11 +42,79 @@ function Field({ icon, label, children }) {
 
 const inputStyle = { flex: "1 1 0%", width: "100%", height: "100%", border: "none", outline: "none", padding: "0 13px", fontSize: 13.5, fontFamily: "inherit", color: "#0f172a", background: "transparent", minWidth: 0, boxSizing: "border-box" };
 
+// Closed-by-default dropdown that expands into a checkbox list - lets a Director pick any
+// number of programs without the picker eating vertical space until they actually open it.
+function ProgramMultiSelectDropdown({ departments, selectedDeptIds, onToggle, accent }) {
+  const [open, setOpen] = useState(false);
+  const selectedNames = departments.filter((d) => selectedDeptIds.includes(d.id)).map((d) => d.name);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
+      <span style={{ fontSize: 10.5, fontWeight: 800, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em", display: "flex", alignItems: "center", gap: 6 }}>
+        <FieldIcon paths={ICONS.layers} size={13} />
+        Assign to programs (optional)
+      </span>
+
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, width: "100%", boxSizing: "border-box", height: 46, padding: "0 14px", border: `1.5px solid ${open ? accent : "#e2e8f0"}`, borderRadius: 11, background: "#fff", cursor: "pointer", fontFamily: "inherit", boxShadow: open ? `0 0 0 3px ${accent}1F` : "none", transition: "border-color .15s, box-shadow .15s" }}
+      >
+        <span style={{ fontSize: 13.5, fontWeight: 700, color: selectedNames.length ? "#0f172a" : "#94a3b8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "left", minWidth: 0 }}>
+          {selectedNames.length === 0 ? "Select programs..." : selectedNames.length === 1 ? selectedNames[0] : `${selectedNames.length} programs selected`}
+        </span>
+        <span style={{ color: "#94a3b8", flexShrink: 0, display: "inline-flex", transform: open ? "rotate(180deg)" : "none", transition: "transform .15s" }}>
+          <FieldIcon paths={ICONS.chevronDown} size={15} />
+        </span>
+      </button>
+
+      {/* In normal document flow (not position:absolute) so opening it grows the modal's own
+          scroll area instead of floating a fixed-height panel that can spill past the modal's
+          rounded card - the modal already scrolls (see Modal's overflowY: auto), so this just
+          participates in that instead of fighting it. */}
+      {open && (
+        <div style={{ background: "#fbfcfd", border: "1px solid #e2e8f0", borderRadius: 12, padding: 8, maxHeight: 280, overflowY: "auto", overflowX: "hidden" }}>
+          {departments.map((dept) => {
+            const checked = selectedDeptIds.includes(dept.id);
+            return (
+              <label
+                key={dept.id}
+                style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 10px", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 700, color: "#1e293b" }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "#f8fafc"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+              >
+                <input type="checkbox" checked={checked} onChange={() => onToggle(dept.id)} style={{ display: "none" }} />
+                <span style={{ width: 17, height: 17, borderRadius: 5, border: `1.5px solid ${checked ? accent : "#cbd5e1"}`, background: checked ? accent : "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "background .15s, border-color .15s" }}>
+                  {checked && <FieldIcon paths={ICONS.check} size={11} />}
+                </span>
+                {dept.name}
+              </label>
+            );
+          })}
+          <div style={{ borderTop: "1px solid #eef2f7", marginTop: 6, paddingTop: 6 }}>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              style={{ width: "100%", border: "none", background: "transparent", color: accent, fontWeight: 800, fontSize: 12.5, padding: "7px 8px", cursor: "pointer", fontFamily: "inherit", borderRadius: 8 }}
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Lets a Director create a brand-new HOD account for their school instead of requiring that
-// person to self-register via Signup first. Reuses the same
-// POST /auth/register endpoint Signup already calls - no new backend endpoint needed.
-export default function CreateHodForm({ school, departmentName = "", onCreated, accent = "#0f766e" }) {
+// person to self-register via Signup first. Account creation reuses the same
+// POST /auth/register endpoint Signup already calls - no new backend endpoint needed there.
+// Assigning the chosen programs afterward reuses POST /role-assignments/transfer, the same
+// call the "Assign a program" control on each HOD's card uses - one call per selected program,
+// since a single HOD can cover several at once.
+export default function CreateHodForm({ school, departments = [], onCreated, accent = "#0f766e" }) {
   const [form, setForm] = useState({ name: "", email: "", employeeId: "", designation: "", password: "" });
+  const [selectedDeptIds, setSelectedDeptIds] = useState([]);
   const [showPassword, setShowPassword] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -52,6 +123,10 @@ export default function CreateHodForm({ school, departmentName = "", onCreated, 
   const handleChange = (event) => {
     const { name, value } = event.target;
     setForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const toggleDept = (id) => {
+    setSelectedDeptIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
   const pwChecks = useMemo(() => {
@@ -78,19 +153,41 @@ export default function CreateHodForm({ school, departmentName = "", onCreated, 
 
     setSaving(true);
     try {
+      const email = normalizeEmail(form.email);
+      const chosenDepts = departments.filter((d) => selectedDeptIds.includes(d.id));
       const profilePayload = buildProfilePayload({
-        email: normalizeEmail(form.email),
+        email,
         name: sanitizeText(form.name),
         employeeId: sanitizeText(form.employeeId),
         designation: sanitizeText(form.designation),
         role: "hod",
         school,
-        department: departmentName,
-        departments: departmentName ? [departmentName] : [],
+        department: chosenDepts[0]?.name || "",
+        departments: chosenDepts.map((d) => d.name),
       });
       await register(profilePayload, form.password);
+
+      // Account creation succeeding doesn't guarantee every assignment call below does too -
+      // run them independently and report any that failed, rather than losing the whole
+      // picture behind a single try/catch (the account itself is already created either way).
+      const failedAssignments = [];
+      for (const dept of chosenDepts) {
+        try {
+          await transferRole({ roleType: "HOD", scopeId: dept.id, incomingEmail: email });
+        } catch {
+          failedAssignments.push(dept.name);
+        }
+      }
+
       setForm({ name: "", email: "", employeeId: "", designation: "", password: "" });
-      setMessage(departmentName ? `HOD account created and assigned to ${departmentName}.` : "HOD account created. Assign a program from the list below.");
+      setSelectedDeptIds([]);
+      if (failedAssignments.length > 0) {
+        setMessage(`HOD account created. Could not assign: ${failedAssignments.join(", ")} - try assigning ${failedAssignments.length === 1 ? "it" : "them"} from the HOD's card.`);
+      } else if (chosenDepts.length > 0) {
+        setMessage(`HOD account created and assigned to ${chosenDepts.map((d) => d.name).join(", ")}.`);
+      } else {
+        setMessage("HOD account created. Assign a program from the HOD's card below.");
+      }
       onCreated?.();
     } catch (err) {
       setError(err?.message || "Could not create HOD account.");
@@ -149,11 +246,22 @@ export default function CreateHodForm({ school, departmentName = "", onCreated, 
         </div>
       </div>
 
+      {departments.length > 0 && (
+        <ProgramMultiSelectDropdown
+          departments={departments}
+          selectedDeptIds={selectedDeptIds}
+          onToggle={toggleDept}
+          accent={accent}
+        />
+      )}
+
       <div style={{ fontSize: 11, color: "#94a3b8", display: "flex", alignItems: "flex-start", gap: 6, lineHeight: 1.5 }}>
         <span style={{ marginTop: 1, flexShrink: 0 }}><FieldIcon paths={ICONS.sparkle} size={13} /></span>
         <span>
           The account is created for <strong style={{ color: "#64748b" }}>{school}</strong> only.
-          {departmentName ? <> They'll be immediately assigned to <strong style={{ color: "#64748b" }}>{departmentName}</strong>.</> : " Assign a program separately after creation."}
+          {selectedDeptIds.length > 0
+            ? <> They'll be immediately assigned to <strong style={{ color: "#64748b" }}>{departments.filter((d) => selectedDeptIds.includes(d.id)).map((d) => d.name).join(", ")}</strong>.</>
+            : " You can assign a program now above, or later from the HOD's card."}
         </span>
       </div>
 
@@ -183,7 +291,7 @@ export default function CreateHodForm({ school, departmentName = "", onCreated, 
           </>
         ) : (
           <>
-            {departmentName ? "Create & assign HOD" : "Create HOD account"}
+            {selectedDeptIds.length > 0 ? "Create & assign HOD" : "Create HOD account"}
             <FieldIcon paths={["M5 12h14", "m12 5 7 7-7 7"]} size={14} />
           </>
         )}

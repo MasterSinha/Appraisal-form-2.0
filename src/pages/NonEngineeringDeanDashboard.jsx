@@ -1194,6 +1194,7 @@ export default function NonEngineeringDeanDashboard() {
   const [reviewLoading, setReviewLoading] = useState(null);
 
   const [facultyList, setFacultyList] = useState([]);
+  const [hodList, setHodList] = useState([]);
   const [directorList, setDirectorList] = useState([]);
   const [queueLoadError, setQueueLoadError] = useState("");
   const queueLoadRequestRef = useRef(0);
@@ -1248,6 +1249,7 @@ export default function NonEngineeringDeanDashboard() {
         if (!isCurrentRequest()) return;
         const scopedItems = items.filter(isInScope);
         setFacultyList(scopedItems.filter((item) => roleOf(item) === "faculty"));
+        setHodList(scopedItems.filter((item) => roleOf(item) === "hod"));
         setDirectorList(scopedItems.filter((item) => roleOf(item) === "director"));
       } catch (err) {
         if (!isCurrentRequest()) return;
@@ -1256,6 +1258,7 @@ export default function NonEngineeringDeanDashboard() {
         // is pending" - a reviewer had no way to tell a real error apart from a genuinely empty queue.
         setQueueLoadError(err?.message || "Could not load the review queue. Please try again.");
         setFacultyList([]);
+        setHodList([]);
         setDirectorList([]);
       } finally {
         if (isCurrentRequest()) setLoadingYearData(false);
@@ -1282,10 +1285,13 @@ export default function NonEngineeringDeanDashboard() {
   };
 
   const facultyPendingCount = facultyList.filter(isDeanPending).length;
+  const hodPendingCount = hodList.filter(isDeanPending).length;
   const directorPendingCount = directorList.filter(isDeanPending).length;
-  const totalSchoolPendingCount = facultyPendingCount + directorPendingCount;
+  const totalSchoolPendingCount = facultyPendingCount + hodPendingCount + directorPendingCount;
 
-  const activeApprovalList = activeRoleTab === "directorApprovals"
+  const activeApprovalList = activeRoleTab === "hodApprovals"
+    ? hodList
+    : activeRoleTab === "directorApprovals"
     ? directorList
     : facultyList;
 
@@ -1307,7 +1313,7 @@ export default function NonEngineeringDeanDashboard() {
   const handleCardVisible = (item) => {
     enrichQueueItem(item).then((enriched) => {
       const role = (enriched.appraisalRole || enriched.appraisal_role || "").toLowerCase();
-      const setList = role === "faculty" ? setFacultyList : role === "director" ? setDirectorList : null;
+      const setList = role === "faculty" ? setFacultyList : role === "hod" ? setHodList : role === "director" ? setDirectorList : null;
       setList?.((prev) => prev.map((row) => (row.email === enriched.email && row.academicYear === enriched.academicYear ? enriched : row)));
     }).catch(() => {});
   };
@@ -1317,10 +1323,13 @@ export default function NonEngineeringDeanDashboard() {
     const facPending = facultyList
       .filter((item) => getSchoolKey(item.school) === school.code || item.school === school.code)
       .filter(isDeanPending).length;
+    const hodPending = hodList
+      .filter((item) => getSchoolKey(item.school) === school.code || item.school === school.code)
+      .filter(isDeanPending).length;
     const dirPending = directorList
       .filter((item) => getSchoolKey(item.school) === school.code || item.school === school.code)
       .filter(isDeanPending).length;
-    const pendingCount = facPending + dirPending;
+    const pendingCount = facPending + hodPending + dirPending;
 
     return {
       code: school.code,
@@ -1340,6 +1349,8 @@ export default function NonEngineeringDeanDashboard() {
   const firstPendingRoleTabForSchool = (schoolCode) => {
     const facPending = facultyList.filter((item) => getSchoolKey(item.school) === schoolCode || item.school === schoolCode).filter(isDeanPending).length;
     if (facPending > 0) return "facultyApprovals";
+    const hodPending = hodList.filter((item) => getSchoolKey(item.school) === schoolCode || item.school === schoolCode).filter(isDeanPending).length;
+    if (hodPending > 0) return "hodApprovals";
     const dirPending = directorList.filter((item) => getSchoolKey(item.school) === schoolCode || item.school === schoolCode).filter(isDeanPending).length;
     if (dirPending > 0) return "directorApprovals";
     return activeRoleTab;
@@ -1350,6 +1361,11 @@ export default function NonEngineeringDeanDashboard() {
       id: "facultyApprovals",
       label: "Faculty's Appraisal",
       count: facultyList.filter((item) => (selectedSchoolCode === "all" || selectedSchoolCode === "DEAN-NONENGG") ? true : (getSchoolKey(item.school) === selectedSchoolCode || item.school === selectedSchoolCode)).filter(isDeanPending).length,
+    },
+    {
+      id: "hodApprovals",
+      label: "HOD's Appraisal",
+      count: hodList.filter((item) => (selectedSchoolCode === "all" || selectedSchoolCode === "DEAN-NONENGG") ? true : (getSchoolKey(item.school) === selectedSchoolCode || item.school === selectedSchoolCode)).filter(isDeanPending).length,
     },
     {
       id: "directorApprovals",
@@ -1374,6 +1390,8 @@ export default function NonEngineeringDeanDashboard() {
     }
     const sourceList = activeRoleTab === "facultyApprovals"
       ? facultyList
+      : activeRoleTab === "hodApprovals"
+      ? hodList
       : directorList;
     const item = sourceList.find((entry) => entry.id === id);
     if (!item) return;
@@ -1401,6 +1419,9 @@ export default function NonEngineeringDeanDashboard() {
 
       if (activeRoleTab === "facultyApprovals") {
         setFacultyList((prev) => prev.map(markReviewed));
+      }
+      if (activeRoleTab === "hodApprovals") {
+        setHodList((prev) => prev.map(markReviewed));
       }
       if (activeRoleTab === "directorApprovals") {
         setDirectorList((prev) => prev.map(markReviewed));
@@ -1453,7 +1474,7 @@ export default function NonEngineeringDeanDashboard() {
         />
       )}
 
-      {(activeMainTab === "schoolAppraisal" || activeMainTab === "directorApprovals" || activeMainTab === "facultyApprovals") && !reviewingApproval && (
+      {(activeMainTab === "schoolAppraisal" || activeMainTab === "hodApprovals" || activeMainTab === "directorApprovals" || activeMainTab === "facultyApprovals") && !reviewingApproval && (
         <div style={{ position: "relative", display: "flex", flexDirection: "column", gap: 18 }}>
           {loadingYearData && (
             <div className="appraisal-year-loading-overlay" role="status" aria-live="polite">
@@ -1758,7 +1779,7 @@ export default function NonEngineeringDeanDashboard() {
       )}
 
       {/* REVIEW PANEL */}
-      {(activeMainTab === "schoolAppraisal" || activeMainTab === "directorApprovals" || activeMainTab === "facultyApprovals") && reviewingApproval && (
+      {(activeMainTab === "schoolAppraisal" || activeMainTab === "hodApprovals" || activeMainTab === "directorApprovals" || activeMainTab === "facultyApprovals") && reviewingApproval && (
         reviewingApproval.previousYearResultOnly ? (
         <PreviousYearAuthorityResult item={reviewingApproval} onBack={() => setReviewingApproval(null)} />
         ) : (

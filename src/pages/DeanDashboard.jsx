@@ -1376,13 +1376,11 @@ export default function DeanDashboard() {
       label: "Faculty's Appraisal",
       count: facultyList.filter((item) => (selectedSchoolCode === "all" || selectedSchoolCode === "DEAN-ENGG") ? true : (getSchoolKey(item.school) === selectedSchoolCode || item.school === selectedSchoolCode)).filter(isDeanPending).length,
     },
-    ...(selectedSchoolCode === "DEAN-ENGG" || selectedSchoolCode === "all" || hodList.some((item) => getSchoolKey(item.school) === selectedSchoolCode || item.school === selectedSchoolCode)
-      ? [{
-          id: "hodApprovals",
-          label: "HOD's Appraisal",
-          count: hodList.filter((item) => (selectedSchoolCode === "all" || selectedSchoolCode === "DEAN-ENGG") ? true : (getSchoolKey(item.school) === selectedSchoolCode || item.school === selectedSchoolCode)).filter(isDeanPending).length,
-        }]
-      : []),
+    {
+      id: "hodApprovals",
+      label: "HOD's Appraisal",
+      count: hodList.filter((item) => (selectedSchoolCode === "all" || selectedSchoolCode === "DEAN-ENGG") ? true : (getSchoolKey(item.school) === selectedSchoolCode || item.school === selectedSchoolCode)).filter(isDeanPending).length,
+    },
     {
       id: "directorApprovals",
       label: "Director's Appraisal",

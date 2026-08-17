@@ -78,3 +78,16 @@ export const fetchSchoolHods = async (schoolCode) => {
     return [];
   }
 };
+
+// Deactivates an HOD account entirely (not just one program assignment) - e.g. a test/mistaken
+// account, or someone who's left the role and isn't being replaced. Callers should clear the
+// person's program assignments (removeRoleAssignment, one call per program) before calling this,
+// so nothing is left pointing at a deactivated account. New endpoint - needs backend support
+// (DELETE /schools/{school_code}/hods/{email}, soft-delete via is_active=false, Director-of-that-
+// school-or-Admin auth, same pattern as the department/HOD endpoints in New_backend.md).
+export const deactivateHodAccount = async ({ schoolCode, email }) => {
+  if (!schoolCode || !email) {
+    throw new Error("School and email are required.");
+  }
+  return await api.delete(`/schools/${encodeURIComponent(schoolCode)}/hods/${encodeURIComponent(email)}`);
+};
