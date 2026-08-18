@@ -1613,28 +1613,26 @@ function NonTeachingReviewCard({ item, reviewerRole, accent = ACCENT, onOpen }) 
   const submittedOn = item.submittedOn || (item.submitted_at ? new Date(item.submitted_at).toLocaleDateString() : "");
 
   return (
-    <div className="ntq-card" style={{ background: "#fff", borderRadius: 16, padding: "20px 22px", boxShadow: "0 6px 18px rgba(15,23,42,0.06)", border: "1px solid #eef1f6", display: "flex", flexDirection: "column", gap: 14 }}>
+    <div className="vc-review-card ntq-card fa-fade-up" style={{ background: "#fff", borderRadius: 16, padding: "18px 20px", boxShadow: "0 4px 16px rgba(15,23,42,0.06)", border: "1px solid #eef1f6", display: "flex", flexDirection: "column", gap: 14 }}>
       <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-        <div style={{ borderRadius: 999, padding: 2, background: `linear-gradient(135deg, ${accent}55, transparent)`, flexShrink: 0 }}>
-          <Avatar initials={initials(item.name)} src={item.avatarUrl} color={item.avatarColor || accent} size={54} />
-        </div>
+        <Avatar initials={initials(item.name)} src={item.avatarUrl} color={item.avatarColor || accent} size={52} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 14.5, fontWeight: 800, color: "#0f172a", marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</div>
-          <div style={{ fontSize: 11, color: "#475569", fontWeight: 600, marginBottom: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.designation}</div>
-          <div style={{ display: "inline-flex", fontSize: 9.5, color: "#94a3b8", fontFamily: "monospace", background: "#f8fafc", border: "1px solid #eef2f7", borderRadius: 5, padding: "1px 6px" }}>{item.employeeId}</div>
+          <div style={{ fontSize: 16, fontWeight: 900, color: "#0f172a", letterSpacing: -0.2, marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</div>
+          <div style={{ fontSize: 11, color: "#64748b", fontWeight: 600, marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.designation}</div>
+          <div style={{ display: "inline-flex", fontSize: 9, color: "#94a3b8", fontFamily: "monospace", background: "#f8fafc", border: "1px solid #eef2f7", borderRadius: 5, padding: "1px 6px" }}>{item.employeeId}</div>
         </div>
         <NonTeachingStatusBadge status={item.status} />
       </div>
 
       <ReviewMetricsStrip metrics={metrics} docs={item.form?.docs} item={item} />
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #f1f5f9", paddingTop: 13 }}>
-        <div style={{ fontSize: 10.5, color: "#94a3b8", fontWeight: 600 }}>Submitted: {submittedOn || "-"}</div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #f1f5f9", paddingTop: 12 }}>
+        <div style={{ fontSize: 9.5, color: "#94a3b8", fontWeight: 600 }}>Submitted: {submittedOn || "-"}</div>
         <button
           type="button"
-          className="ntq-open-btn"
+          className="vc-action-button ntq-open-btn"
           onClick={onOpen}
-          style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11.5, padding: "8px 18px", background: reviewed ? "#1e293b" : accent, color: "#f8fafc", border: "none", borderRadius: 8, cursor: "pointer", fontWeight: 800, fontFamily: "inherit", boxShadow: `0 8px 18px ${reviewed ? "rgba(15,23,42,0.18)" : `${accent}38`}`, transition: "filter .15s, transform .15s" }}
+          style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11.5, padding: "8px 18px", background: reviewed ? "#ecfdf5" : "#0f172a", color: reviewed ? "#047857" : "#fff", border: reviewed ? "1px solid #a7f3d0" : "none", borderRadius: 9, cursor: "pointer", fontWeight: 800, fontFamily: "inherit", letterSpacing: 0.2, boxShadow: reviewed ? "0 2px 8px rgba(5,150,105,0.12)" : "0 6px 14px rgba(15,23,42,0.22)", transition: "filter .15s, transform .15s" }}
         >
           {reviewed ? "View Review" : "Review Form"}
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>

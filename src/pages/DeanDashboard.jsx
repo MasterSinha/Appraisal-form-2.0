@@ -1723,13 +1723,13 @@ export default function DeanDashboard() {
 
                 return (
                   <LazyVisible key={faculty.id} triggerKey={`${faculty.email}::${faculty.academicYear}`} onVisible={() => handleCardVisible(faculty)}>
-                  <div style={{ background: "#fff", borderRadius: 12, padding: "18px 20px", boxShadow: "0 1px 6px rgba(0,0,0,.07)", display: "flex", flexDirection: "column", gap: 14, border: "1px solid #e2e8f0" }}>
+                  <div className="vc-review-card fa-fade-up" style={{ background: "#fff", borderRadius: 16, boxShadow: "0 4px 16px rgba(15,23,42,0.06)", border: "1px solid #eef1f6", padding: "18px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
                     <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-                      <Avatar initials={faculty.avatar} src={faculty.avatarUrl} color={faculty.avatarColor} size={58} />
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", marginBottom: 2 }}>{faculty.name}</div>
-                        <div style={{ fontSize: 11, color: "#475569", marginBottom: 2 }}>{faculty.designation}</div>
-                        <div style={{ fontSize: 10, color: "#94a3b8", fontFamily: "monospace" }}>{faculty.employeeId}</div>
+                      <Avatar initials={faculty.avatar} src={faculty.avatarUrl} color={faculty.avatarColor} size={52} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 16, fontWeight: 900, color: "#0f172a", letterSpacing: -0.2, marginBottom: 4 }}>{faculty.name}</div>
+                        <div style={{ fontSize: 11, color: "#64748b", fontWeight: 600, marginBottom: 2 }}>{faculty.designation}</div>
+                        <div style={{ fontSize: 9, color: "#94a3b8", fontFamily: "monospace" }}>{faculty.employeeId}</div>
                       </div>
                       <StatusBadge status={faculty.status} />
                     </div>
@@ -1740,8 +1740,9 @@ export default function DeanDashboard() {
                     />
 
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #f1f5f9", paddingTop: 12 }}>
-                      <div style={{ fontSize: 10, color: "#94a3b8" }}>Submitted: {faculty.submittedOn}</div>
+                      <div style={{ fontSize: 9.5, color: "#94a3b8", fontWeight: 600 }}>Submitted: {faculty.submittedOn}</div>
                       <button
+                        className="vc-action-button"
                         disabled={reviewLoading === faculty.id}
                         onClick={async () => {
                           setReviewLoading(faculty.id);
@@ -1763,7 +1764,7 @@ export default function DeanDashboard() {
                             setReviewLoading(null);
                           }
                         }}
-                        style={{ fontSize: 11, padding: "7px 18px", background: isDeanReviewed(faculty) ? "#1e293b" : "#312e81", color: "#f1f5f9", border: "none", borderRadius: 6, cursor: reviewLoading === faculty.id ? "wait" : "pointer", fontWeight: 700, fontFamily: "inherit", opacity: reviewLoading === faculty.id ? 0.7 : 1 }}
+                        style={{ fontSize: 11.5, padding: "8px 18px", background: reviewLoading === faculty.id ? "#94a3b8" : isDeanReviewed(faculty) ? "#ecfdf5" : "#0f172a", color: reviewLoading === faculty.id ? "#fff" : isDeanReviewed(faculty) ? "#047857" : "#fff", border: reviewLoading !== faculty.id && isDeanReviewed(faculty) ? "1px solid #a7f3d0" : "none", borderRadius: 9, cursor: reviewLoading === faculty.id ? "wait" : "pointer", fontWeight: 800, fontFamily: "inherit", letterSpacing: 0.2, boxShadow: reviewLoading === faculty.id ? "none" : isDeanReviewed(faculty) ? "0 2px 8px rgba(5,150,105,0.12)" : "0 6px 14px rgba(15,23,42,0.22)" }}
                       >
                         {reviewLoading === faculty.id ? "Loading..." : isDeanReviewed(faculty) ? "View Review" : "Review Form"}
                       </button>

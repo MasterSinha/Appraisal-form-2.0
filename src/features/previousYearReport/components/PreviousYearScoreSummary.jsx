@@ -28,15 +28,20 @@ export default function PreviousYearScoreSummary({ report, compact = false, visi
     const totals = report.totals?.[level] || {};
     if (level !== "faculty" && !hasScore(totals.partA) && !hasScore(totals.partB) && !hasScore(totals.grand)) return [];
     const grand = totals.grand ?? ((parseFloat(totals.partA) || 0) + (parseFloat(totals.partB) || 0));
+    const partAMax = totals.partAMax || report.partA.max;
+    const partBMax = totals.partBMax || report.partB.max;
+    // Grand max is always the sum of the two part maxes above - a separately-stored grand/max
+    // field has been observed stale/inconsistent with the record's actual part maxes, so it's
+    // never trusted here even as a fallback.
     return [{
       level,
       label: REVIEW_LABELS[level] || level,
       partA: totals.partA,
       partB: totals.partB,
       grand,
-      partAMax: totals.partAMax || report.partA.max,
-      partBMax: totals.partBMax || report.partB.max,
-      grandMax: totals.grandMax || totals.max || report.totals?.faculty?.grandMax || report.totals?.faculty?.max || report.partA.max + report.partB.max,
+      partAMax,
+      partBMax,
+      grandMax: partAMax + partBMax,
     }];
   });
 

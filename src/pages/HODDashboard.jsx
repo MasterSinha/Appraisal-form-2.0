@@ -11,6 +11,7 @@ import { PreviousYearReportViewer } from "../features/previousYearReport";
 import { isLegacyTwoPartAcademicYear } from "../features/faculty-appraisal/forms/standard/legacyPreviousYearReportUtils";
 import { legacyDashboardMetrics } from "../utils/legacyDashboardMetrics";
 import { canReviewerRejectProfile, getDeanTrack, rejectedStatusFor, reviewedStatusFor, profileFromsessionStorage, workflowValidationError, roleLabel, isAppraisalFinalisedByVc, isRejectedStatus, isPendingReviewStatusFor, hasActiveRejection, reviewListFrom, getSchoolKey } from "../utils/hierarchy";
+import { normalizeHierarchyText } from "../constants/universityHierarchy.js";
 import { n, pct, grade, reportValue, reportTextValue, reportQualification, reportExperience, RO, TI } from "../features/faculty-appraisal/shared";
 import { FacultyRecordHeader, ScoreTable, VCFinalRemarks, FinalSubmitButton, FACULTY_RECORD_THEME } from "../components/dashboard/FacultyAppraisalRecord";
 import { enrichQueueItem } from "../services/reviewWorkflow";
@@ -559,6 +560,7 @@ export default function HODDashboard({
  }, [hodDept, hodSchool, reviewerLabel, reviewerRole, selectedAcademicYear]);
 
  const [filterStatus, setFilterStatus] = useState("All");
+ const [selectedDepartment, setSelectedDepartment] = useState("All");
  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
 
@@ -619,7 +621,10 @@ export default function HODDashboard({
  }
  };
 
- const filtered = filterStatus === "All" ? facultyList : (filterStatus === "Pending Review" ? facultyList.filter(isHodPending) : facultyList.filter(isHodReviewed));
+ const departmentScoped = hodDepartmentsList.length > 1 && selectedDepartment !== "All"
+ ? facultyList.filter((item) => normalizeHierarchyText(item.department) === normalizeHierarchyText(selectedDepartment))
+ : facultyList;
+ const filtered = filterStatus === "All" ? departmentScoped : (filterStatus === "Pending Review" ? departmentScoped.filter(isHodPending) : departmentScoped.filter(isHodReviewed));
 
  // Fetches doc-count/legacy-score for one card only once it actually scrolls into view -
  // see the lazy: true note on the queue load above.
@@ -686,7 +691,7 @@ export default function HODDashboard({
 <div>
 <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "#0f172a", letterSpacing: -0.5 }}>Faculty's Appraisal</h1>
 <div style={{ marginTop: 5, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", color: "#64748b", fontSize: 11 }}>
-<span>{sessionStorage.getItem("department") || ""}</span>
+<span>{hodDepartmentsList.length > 1 ? `${hodDepartmentsList.length} Programs Assigned` : (sessionStorage.getItem("department") || "")}</span>
 <span>AY</span>
 <select
  value={selectedAcademicYear}
@@ -710,7 +715,8 @@ export default function HODDashboard({
 </div>
 
  {/* Filter */}
-<div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 16px", background: "#fff", borderRadius: 9, boxShadow: "0 1px 4px rgba(0,0,0,.05)" }}>
+<div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", padding: "10px 16px", background: "#fff", borderRadius: 9, boxShadow: "0 1px 4px rgba(0,0,0,.05)" }}>
+<div style={{ display: "flex", alignItems: "center", gap: 8 }}>
 <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b" }}>Filter:</span>
  {["All", "Pending Review", "Reviewed"].map(f =>(
 <button key={f} onClick={() =>setFilterStatus(f)}
@@ -718,6 +724,22 @@ export default function HODDashboard({
  {f}
 </button>
  ))}
+</div>
+ {hodDepartmentsList.length > 1 && (
+<div style={{ display: "flex", alignItems: "center", gap: 8, paddingLeft: 14, borderLeft: "1px solid #e2e8f0" }}>
+<span style={{ fontSize: 11, fontWeight: 700, color: "#64748b" }}>Program:</span>
+<select
+ value={selectedDepartment}
+ onChange={(event) =>setSelectedDepartment(event.target.value)}
+ style={{ height: 28, border: "1px solid #cbd5e1", borderRadius: 7, background: "#fff", color: "#0f172a", fontSize: 11, fontWeight: 800, padding: "3px 28px 3px 9px", fontFamily: "inherit", outline: "none", cursor: "pointer" }}
+>
+ <option value="All">All Programs ({hodDepartmentsList.length})</option>
+ {hodDepartmentsList.map((dept) =>(
+ <option key={dept} value={dept}>{dept}</option>
+ ))}
+</select>
+</div>
+ )}
 </div>
 
  {queueLoadError && (
@@ -774,13 +796,13 @@ export default function HODDashboard({
  
 return (
 <LazyVisible key={faculty.id} triggerKey={`${faculty.email}::${faculty.academicYear}`} onVisible={() =>handleCardVisible(faculty)}>
-<div style={{ background: "#fff", borderRadius: 12, padding: "18px 20px", boxShadow: "0 1px 6px rgba(0,0,0,.07)", display: "flex", flexDirection: "column", gap: 14 }}>
+<div className="vc-review-card fa-fade-up" style={{ background: "#fff", borderRadius: 16, boxShadow: "0 4px 16px rgba(15,23,42,0.06)", border: "1px solid #eef1f6", padding: "18px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
 <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-<Avatar initials={faculty.avatar} src={faculty.avatarUrl} color={faculty.avatarColor} size={58} />
-<div style={{ flex: 1 }}>
-<div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", marginBottom: 2 }}>{faculty.name}</div>
-<div style={{ fontSize: 11, color: "#475569", marginBottom: 2 }}>{faculty.designation}</div>
-<div style={{ fontSize: 10, color: "#94a3b8", fontFamily: "monospace" }}>{faculty.employeeId}</div>
+<Avatar initials={faculty.avatar} src={faculty.avatarUrl} color={faculty.avatarColor} size={52} />
+<div style={{ flex: 1, minWidth: 0 }}>
+<div style={{ fontSize: 16, fontWeight: 900, color: "#0f172a", letterSpacing: -0.2, marginBottom: 4 }}>{faculty.name}</div>
+<div style={{ fontSize: 11, color: "#64748b", fontWeight: 600, marginBottom: 2 }}>{faculty.designation}</div>
+<div style={{ fontSize: 9, color: "#94a3b8", fontFamily: "monospace" }}>{faculty.employeeId}</div>
 </div>
 <StatusBadge status={faculty.status} />
 </div>
@@ -791,8 +813,9 @@ return (
 />
 
 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #f1f5f9", paddingTop: 12 }}>
-<div style={{ fontSize: 10, color: "#94a3b8" }}>Submitted: {faculty.submittedOn}</div>
+<div style={{ fontSize: 9.5, color: "#94a3b8", fontWeight: 600 }}>Submitted: {faculty.submittedOn}</div>
 <button
+ className="vc-action-button"
  disabled={reviewLoading === faculty.id}
  onClick={async () =>{
  setReviewLoading(faculty.id);
@@ -814,7 +837,7 @@ return (
  setReviewLoading(null);
  }
  }}
- style={{ fontSize: 11, padding: "7px 18px", background: isHodReviewed(faculty) ? "#1e293b" : "#312e81", color: "#f1f5f9", border: "none", borderRadius: 6, cursor: reviewLoading === faculty.id ? "wait" : "pointer", fontWeight: 700, fontFamily: "inherit", opacity: reviewLoading === faculty.id ? 0.7 : 1 }}>
+ style={{ fontSize: 11.5, padding: "8px 18px", background: reviewLoading === faculty.id ? "#94a3b8" : isHodReviewed(faculty) ? "#ecfdf5" : "#0f172a", color: reviewLoading === faculty.id ? "#fff" : isHodReviewed(faculty) ? "#047857" : "#fff", border: reviewLoading !== faculty.id && isHodReviewed(faculty) ? "1px solid #a7f3d0" : "none", borderRadius: 9, cursor: reviewLoading === faculty.id ? "wait" : "pointer", fontWeight: 800, fontFamily: "inherit", letterSpacing: 0.2, boxShadow: reviewLoading === faculty.id ? "none" : isHodReviewed(faculty) ? "0 2px 8px rgba(5,150,105,0.12)" : "0 6px 14px rgba(15,23,42,0.22)" }}>
  {reviewLoading === faculty.id ? "Loading..." : isHodReviewed(faculty) ? "View Review" : "Review Form"}
 </button>
 </div>
