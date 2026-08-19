@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { clearUserSession } from "../../auth/session";
 import { LogoutConfirmModal } from "./dashboardPrimitives";
+import NoticesBanner from "./NoticesBanner";
 
 export default function DashboardLayout({
   children,
@@ -29,6 +30,7 @@ export default function DashboardLayout({
     <div style={containerStyle}>
       {sidebar}
       <main style={mainStyle}>
+        <NoticesBanner />
         {children}
       </main>
 

@@ -10,7 +10,7 @@ import { NON_TEACHING_ROLES, isNonTeachingRole } from "../constants/nonTeachingH
 import { APP_INFO } from "../constants/formConfig";
 import { departmentHasHod, getDeanTrack } from "../utils/hierarchy";
 
-export const VALID_ROLES = ["faculty", "hod", "center_head", "director", "dean", "vc", ...NON_TEACHING_ROLES];
+export const VALID_ROLES = ["faculty", "hod", "center_head", "director", "dean", "vc", "admin", "super_admin", ...NON_TEACHING_ROLES];
 
 export const AUTH_SESSION_KEYS = [
   "accessToken",
@@ -63,6 +63,9 @@ const ROLE_ALIASES = {
   reporting_officer: "reporting_officer",
   "reporting head": "reporting_officer",
   registrar: "registrar",
+  admin: "admin",
+  super_admin: "super_admin",
+  "super admin": "super_admin",
 };
 
 export const normalizeRole = (role, fallback = "faculty") => {

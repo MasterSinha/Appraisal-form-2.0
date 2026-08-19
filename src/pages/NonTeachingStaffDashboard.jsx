@@ -41,6 +41,9 @@ import { WORKFLOW_STATUSES, currentWorkflowStep, isWorkflowComplete } from "../u
 import { T, TH, TD, TDC } from "../features/faculty-appraisal/components/formPrimitiveStyles";
 import { Avatar, ScoreBar, ReviewMetricsStrip, LogoutConfirmModal } from "../components/dashboard/dashboardPrimitives";
 import TeachingPartDReviewDashboard from "./TeachingPartDReviewDashboard";
+import NoticesBanner from "../components/dashboard/NoticesBanner";
+import { ReportBugButton } from "../components/dashboard/ReportBugModal";
+import NoticesBell from "../components/dashboard/NoticesBell";
 
 const ACCENT = "#1d4ed8";
 const REG_ACCENT = "#155e75";
@@ -1764,13 +1767,13 @@ export function NonTeachingReviewDashboard({ reviewerRole, title, subtitle, acce
 
         <div style={{ flex: 1 }} />
         <div style={{ height: 1, background: "linear-gradient(90deg,transparent,rgba(148,163,184,0.22) 20%,rgba(148,163,184,0.22) 80%,transparent)" }} />
-        <div style={{ width: "100%", minWidth: 0, boxSizing: "border-box", overflow: "hidden", padding: 10, borderRadius: 20, background: "linear-gradient(180deg,rgba(30,41,59,0.86),rgba(15,23,42,0.92))", border: "1px solid rgba(148,163,184,0.18)", boxShadow: "0 18px 34px rgba(2,6,23,0.28), inset 0 1px 0 rgba(255,255,255,0.05)", display: "grid", gap: 8 }}>
+        <div style={{ width: "100%", minWidth: 0, boxSizing: "border-box", overflow: "hidden", padding: 10, borderRadius: 26, background: "linear-gradient(180deg,rgba(30,41,59,0.86),rgba(15,23,42,0.92))", border: "1px solid rgba(148,163,184,0.18)", boxShadow: "0 18px 34px rgba(2,6,23,0.28), inset 0 1px 0 rgba(255,255,255,0.05)", display: "grid", gap: 9 }}>
 
         <button
           type="button"
           onClick={() => navigate("/edit-profile")}
           title="Edit profile"
-          style={{ display: "flex", alignItems: "center", gap: 10, background: "transparent", border: "none", borderRadius: 14, padding: 2, width: "100%", minWidth: 0, boxSizing: "border-box", overflow: "hidden", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
+          style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 17, padding: "7px 8px", width: "100%", minWidth: 0, boxSizing: "border-box", overflow: "hidden", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
         >
           <Avatar
             initials={initials(sessionStorage.getItem("name") || title)}
@@ -1785,13 +1788,10 @@ export function NonTeachingReviewDashboard({ reviewerRole, title, subtitle, acce
           <ProfileNavIcon />
         </button>
 
-        <div style={{ height: 1, background: "rgba(148,163,184,0.13)" }} />
-        <a href="mailto:appraisal@dypiu.ac.in" style={{ width: "100%", minWidth: 0, boxSizing: "border-box", minHeight: 34, borderRadius: 12, padding: "6px 8px", color: "#c7d2fe", background: "rgba(99,102,241,0.10)", textDecoration: "none", display: "flex", alignItems: "center", gap: 8, overflow: "hidden" }}>
-          <span style={{ width: 24, height: 24, borderRadius: 9, background: "rgba(99,102,241,0.18)", color: "#c7d2fe", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <MailIcon />
-          </span>
-          <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 800, fontSize: 11 }}>appraisal@dypiu.ac.in</span>
-        </a>
+        <div style={{ display: "flex", gap: 8, width: "100%" }}>
+          <NoticesBell style={{ flex: 1, height: 42, borderRadius: 16, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }} />
+          <ReportBugButton iconOnly style={{ flex: 1, height: 42, borderRadius: 16, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "inherit" }} />
+        </div>
         <div style={S.sideActions}>
           <button type="button" onClick={() => setShowLogoutModal(true)} style={S.sideButton}>
             <LogoutButtonIcon />
@@ -1802,6 +1802,7 @@ export function NonTeachingReviewDashboard({ reviewerRole, title, subtitle, acce
       </aside>
 
       <main style={{ flex: 1, minWidth: 0, marginLeft: 272, padding: "22px 26px", overflowX: "auto", position: "relative" }}>
+        <NoticesBanner />
         {tab === "self" ? (
           <NonTeachingAppraisalForm role={reviewerRole} embedded />
         ) : tab === "partD" ? (
@@ -2018,13 +2019,13 @@ const S = {
   sideButton: {
     width: "100%",
     boxSizing: "border-box",
-    minHeight: 38,
+    minHeight: 40,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     gap: 9,
     border: "1px solid rgba(248,113,113,0.32)",
-    borderRadius: 13,
+    borderRadius: 16,
     background: "rgba(248,113,113,0.10)",
     color: "#fecaca",
     padding: "9px 12px",

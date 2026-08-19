@@ -16,6 +16,9 @@ import FacultyInfoSection from "../components/appraisal/common/FacultyInfoSectio
 import { FacultyRecordHeader, ScoreTable, VCFinalRemarks, FinalSubmitButton, FACULTY_RECORD_THEME } from "../components/dashboard/FacultyAppraisalRecord";
 import LeaveManagementReadOnly from "../components/appraisal/PartD/LeaveManagementReadOnly";
 import RoleTransferPanel from "../components/dashboard/RoleTransferPanel";
+import NoticesBanner from "../components/dashboard/NoticesBanner";
+import { ReportBugButton } from "../components/dashboard/ReportBugModal";
+import NoticesBell from "../components/dashboard/NoticesBell";
 
 // --- Helpers ------------------------------------------------------------------
 const oneDecimal = (value) =>(Math.trunc(n(value) * 10) / 10).toFixed(1);
@@ -2292,12 +2295,12 @@ University Overview
 </div>
 
 <div style={{ height: 1, background: "rgba(148,163,184,0.16)" }} />
-<div style={{ padding: 10, borderRadius: 20, background: "linear-gradient(180deg,rgba(30,41,59,0.86),rgba(15,23,42,0.92))", border: "1px solid rgba(148,163,184,0.18)", boxShadow: "0 18px 34px rgba(2,6,23,0.28), inset 0 1px 0 rgba(255,255,255,0.05)", display: "grid", gap: 8 }}>
+<div style={{ padding: 10, borderRadius: 26, background: "linear-gradient(180deg,rgba(30,41,59,0.86),rgba(15,23,42,0.92))", border: "1px solid rgba(148,163,184,0.18)", boxShadow: "0 18px 34px rgba(2,6,23,0.28), inset 0 1px 0 rgba(255,255,255,0.05)", display: "grid", gap: 9 }}>
 <button
  type="button"
  onClick={() =>navigate("/edit-profile")}
  title="Edit profile"
- style={{ display: "flex", alignItems: "center", gap: 10, background: "transparent", border: "none", borderRadius: 14, padding: 2, width: "100%", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
+ style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 17, padding: "7px 8px", width: "100%", boxSizing: "border-box", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
  >
 <Avatar
   initials={(sessionStorage.getItem("name") || "U").split(" ").map(w =>w[0]).join("").toUpperCase()}
@@ -2309,19 +2312,16 @@ University Overview
 <div style={{ color: "#f9fafb", fontSize: 13, fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sessionStorage.getItem("name") || "Vice Chancellor"}</div>
 <div style={{ color: "#a8b3c7", fontSize: 10.5, marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Vice Chancellor - {APP_INFO.SHORT_NAME}</div>
 </div>
-<span style={{ width: 30, height: 30, borderRadius: 12, background: "rgba(129,140,248,0.18)", border: "1px solid rgba(199,210,254,0.18)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+<span style={{ width: 30, height: 30, borderRadius: 13, background: "rgba(129,140,248,0.18)", border: "1px solid rgba(199,210,254,0.18)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
 <VcIcon name="profile" size={15} color="#c4b5fd" />
 </span>
 </button>
-<div style={{ height: 1, background: "rgba(148,163,184,0.13)" }} />
-<a href="mailto:appraisal@dypiu.ac.in" style={{ minHeight: 34, borderRadius: 12, padding: "6px 8px", color: "#c7d2fe", background: "rgba(99,102,241,0.10)", textDecoration: "none", display: "flex", alignItems: "center", gap: 8 }}>
-<span style={{ width: 24, height: 24, borderRadius: 9, background: "rgba(99,102,241,0.18)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-<VcIcon name="mail" size={14} color="#c7d2fe" />
-</span>
-<span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 800, fontSize: 11 }}>appraisal@dypiu.ac.in</span>
-</a>
+<div style={{ display: "flex", gap: 8 }}>
+<NoticesBell style={{ flex: 1, height: 42, borderRadius: 16, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }} />
+<ReportBugButton iconOnly style={{ flex: 1, height: 42, borderRadius: 16, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "inherit" }} />
+</div>
 <button type="button" onClick={() =>setShowLogoutModal(true)}
- style={{ width: "100%", minHeight: 38, display: "flex", alignItems: "center", justifyContent: "center", gap: 9, background: "rgba(248,113,113,0.10)", border: "1px solid rgba(248,113,113,0.32)", borderRadius: 13, padding: "9px 12px", cursor: "pointer", fontFamily: "inherit", transition: "background 0.15s ease, border-color 0.15s ease" }}
+ style={{ width: "100%", minHeight: 40, display: "flex", alignItems: "center", justifyContent: "center", gap: 9, background: "rgba(248,113,113,0.10)", border: "1px solid rgba(248,113,113,0.32)", borderRadius: 16, padding: "9px 12px", cursor: "pointer", fontFamily: "inherit", transition: "background 0.15s ease, border-color 0.15s ease" }}
  onMouseEnter={(e) =>{ e.currentTarget.style.background = "rgba(248,113,113,0.17)"; e.currentTarget.style.borderColor = "rgba(248,113,113,0.52)"; }}
  onMouseLeave={(e) =>{ e.currentTarget.style.background = "rgba(248,113,113,0.10)"; e.currentTarget.style.borderColor = "rgba(248,113,113,0.32)"; }}>
 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
@@ -2336,6 +2336,8 @@ University Overview
 
  {/* ===== MAIN CONTENT ===== */}
 <main className="vc-dashboard-main" style={{ flex: 1, padding: "28px 30px", display: "flex", flexDirection: "column", gap: 16, overflowX: "auto", position: "relative" }}>
+
+<NoticesBanner />
 
 {loadingYearData && (
  <div className="appraisal-year-loading-overlay" role="status" aria-live="polite">

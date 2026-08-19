@@ -454,6 +454,10 @@ input[type="number"] {
 .fa-page-enter { animation: fa-fade-up      0.40s ease both; }
 .fa-pulse      { animation: fa-pulse-soft   1.6s ease-in-out infinite; }
 
+/* Text inputs on a dark card (e.g. the Report a Bug modal) - browsers default placeholder
+   color is too dark to read against a navy background otherwise. */
+.fa-dark-field::placeholder { color: #64748b; }
+
 /* - Page / Layout Entrance - */
 /* Dashboard content area fades in on component mount */
 main { animation: fa-fade-in 0.30s ease both; }
