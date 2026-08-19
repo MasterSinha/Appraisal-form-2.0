@@ -786,7 +786,11 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
 </div>)}
 
  {sectionView === "partD" && (
- person.partDStatus === "released_to_vc" ? (
+ // Backend only ever produces "pending" or "released" for part_d_status (see
+ // Declaration.part_d_status) - not the three-state pending_registrar/
+ // registrar_approved_pending_release/released_to_vc vocabulary this used to check for,
+ // which meant this gate never actually unlocked even after a real Registrar release.
+ person.partDStatus === "released" ? (
 <>
 <LeaveManagementReadOnly ctx={{ leaveManagement: person.leaveManagement }} registrarInfo={{ status: person.partDStatus, score: person.registrarPartDScore, remarks: person.registrarPartDRemarks }} />
 <div style={{ marginTop: 10, padding: "10px 14px", borderRadius: 8, background: "#ecfeff", color: "#0e7490", fontSize: 12, fontWeight: 700 }}>
@@ -797,9 +801,7 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
 <div className="review-part-stack">
 <div className="review-part-stack__title">PART D - Leave &amp; Attendance Management</div>
 <div style={{ padding: "16px 18px", borderRadius: 10, background: "#fef3c7", color: "#92400e", fontSize: 13, fontWeight: 700 }}>
- Part D is not yet released to VC. {person.partDStatus === "registrar_approved_pending_release"
- ? "The Registrar has scored it, but it is waiting on the Dean/Center Head's approval of Parts A, B, C and E on this form before it releases."
- : "It is still awaiting the Registrar's review."}
+ Part D is still awaiting the Registrar's review and has not been released to the VC yet.
 </div>
 </div>
  )

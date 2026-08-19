@@ -8,7 +8,6 @@ import {
   getSchoolKey,
   getReviewChain,
   isRejectedStatus,
-  partDReleaseGateApplies,
   PART_D_STATUSES,
   pendingStatusFor,
   rejectedStatusFor,
@@ -662,10 +661,24 @@ const hasReachedReviewer = (item = {}, reviewerRole) => {
   if (reviewerIndex < 0) return false;
 
   const stageIndex = statusStageIndex(item, chain);
-  if (stageIndex !== null) return stageIndex >= reviewerIndex;
+  const reachedStage = stageIndex !== null
+    ? stageIndex >= reviewerIndex
+    : (reviewerIndex === 0 || chain.slice(0, reviewerIndex).every((previousRole) => hasReviewScore(item, previousRole)));
 
-  if (reviewerIndex === 0) return true;
-  return chain.slice(0, reviewerIndex).every((previousRole) => hasReviewScore(item, previousRole));
+  if (!reachedStage) return false;
+
+  // The VC never receives a form - not even to preview - until the Registrar has released
+  // Part D (see PART_D_STATUSES/partDReleaseGateApplies in utils/hierarchy.js). Part D is
+  // scored by the Registrar independently of the A/B/C/E chain above, so reaching "Pending VC
+  // Review" on that chain is not by itself enough - requires backend_changes_requied.md's
+  // /dashboard/subordinates part_d_status fix to actually populate item.partDStatus.
+  // Legacy two-part years (Part A + B only, no Part D at all) never get a Registrar release -
+  // gating those on partDStatus would hide every legacy-year appraisal from the VC forever.
+  if (role === "vc" && !isLegacyTwoPartAcademicYear(item.academicYear) && item.partDStatus !== "released") {
+    return false;
+  }
+
+  return true;
 };
 
 const isReviewableForRole = (item = {}, reviewerRole, reviewerProfile = {}) => {
@@ -913,23 +926,19 @@ export const submitPartDRegistrarReview = async ({
   subjectEmail,
   academicYear,
   score = 0,
-  remarks = "",
-  subjectProfile = {},
 }) => {
   if (!subjectEmail) {
     throw new Error("Missing subject email for Part D review.");
   }
 
-  const partDStatus = partDReleaseGateApplies(subjectProfile)
-    ? PART_D_STATUSES.REGISTRAR_APPROVED_PENDING_RELEASE
-    : PART_D_STATUSES.RELEASED_TO_VC;
-
-  return await api.put(`/appraisal-remarks/registrar-part-d/${encodeURIComponent(subjectEmail)}`, {
-    academic_year: academicYear,
-    part_d_score: n(score),
-    remarks,
-    part_d_status: partDStatus,
-    partDStatus,
+  // This used to PUT /appraisal-remarks/registrar-part-d/{email} - a route from an earlier
+  // three-state Part D spec that was never actually built on the backend (404). The endpoint
+  // that actually exists and does this job is POST /dashboard/part-d-release/{email}, which
+  // only accepts registrar_part_d_score + academic_year (no remarks field - the backend never
+  // persists Part D remarks; see backend_changes_requied.md if that's needed later).
+  return await api.post(`/dashboard/part-d-release/${encodeURIComponent(subjectEmail)}`, {
+    registrar_part_d_score: n(score),
+    academic_year: academicYear || getActiveAcademicYear() || APP_INFO.DEFAULT_AY || "2026-2027",
   });
 };
 

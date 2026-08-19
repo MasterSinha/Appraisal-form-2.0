@@ -149,7 +149,7 @@ export default function TeachingPartDReviewDashboard({ accent = "#155e75" }) {
               </div>
 
               <RegistrarLeaveManagement
-                ctx={{ leaveManagement: selected.leaveManagement }}
+                ctx={{ leaveManagement: selected.leaveManagement || selected.leave_management }}
                 score={score}
                 remarks={remarks}
                 onScoreChange={setScore}
