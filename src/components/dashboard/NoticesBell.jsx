@@ -123,6 +123,9 @@ export default function NoticesBell({ style }) {
                         <span style={{ fontSize: 9.5, color: "#7c8698", flexShrink: 0, whiteSpace: "nowrap", marginTop: 2 }}>{relativeTime(a.createdAt)}</span>
                       </div>
                       <div style={{ marginTop: 4, fontSize: 11.5, color: "#a8b2c4", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{a.body}</div>
+                      {a.createdBy && (
+                        <div style={{ marginTop: 5, fontSize: 10, color: "#7c8698" }}>From: {a.createdBy}</div>
+                      )}
                       {unread && (
                         <button
                           type="button"

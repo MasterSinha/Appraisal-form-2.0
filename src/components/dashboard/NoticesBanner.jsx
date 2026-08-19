@@ -22,6 +22,9 @@ export default function NoticesBanner() {
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontWeight: 900, fontSize: 13, color: "#78350f", letterSpacing: -0.1 }}>{a.title}</div>
             <div style={{ marginTop: 3, fontSize: 12.5, color: "#92400e", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{a.body}</div>
+            {a.createdBy && (
+              <div style={{ marginTop: 4, fontSize: 10.5, color: "#b45309" }}>From: {a.createdBy}</div>
+            )}
           </div>
           <button
             type="button"

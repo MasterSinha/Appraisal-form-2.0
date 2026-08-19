@@ -251,6 +251,11 @@ export default function DashboardSidebar({
         ["summary", "Summary"],
       ];
   const selectedSectionLabel = sectionOptions.find(([value]) => value === sectionTab)?.[1] || "Part A";
+  const profileName = sessionStorage.getItem("name") || "User";
+  const profileDisplayName = profileName.split(" ").slice(0, 2).join(" ");
+  const profileInitials = profileName.split(" ").map((name) => name[0]).join("").toUpperCase();
+  const cleanProfileSubtitle = String(profileSubtitle || "").replace(/\s+-\s*$/, "").trim();
+  const profileImageUrl = sessionStorage.getItem("profilePictureUrl") || sessionStorage.getItem("profile_picture_url") || sessionStorage.getItem("avatarUrl") || "";
 
   useEffect(() => {
     const syncAcademicYear = (event) => {
@@ -447,44 +452,50 @@ export default function DashboardSidebar({
         document.body
       )}
 
-      <div style={{ height: 1, background: "linear-gradient(90deg,transparent,rgba(148,163,184,0.22) 20%,rgba(148,163,184,0.22) 80%,transparent)" }} />
-      <div style={{ padding: 10, borderRadius: 26, background: "linear-gradient(180deg,rgba(30,41,59,0.86),rgba(15,23,42,0.92))", border: "1px solid rgba(148,163,184,0.18)", boxShadow: "0 18px 34px rgba(2,6,23,0.28), inset 0 1px 0 rgba(255,255,255,0.05)", display: "grid", gap: 9 }}>
+      <div style={{ height: 1, background: "linear-gradient(90deg,transparent,rgba(148,163,184,0.20) 20%,rgba(148,163,184,0.20) 80%,transparent)" }} />
+      <div style={{ borderRadius: 12, background: "linear-gradient(180deg,rgba(21,31,49,0.98),rgba(10,16,29,0.98))", border: "1px solid rgba(148,163,184,0.10)", boxShadow: "0 14px 28px rgba(2,6,23,0.22), inset 0 1px 0 rgba(255,255,255,0.03)", overflow: "hidden" }}>
         <button
           type="button"
           onClick={() => navigate("/edit-profile")}
           title="Edit profile"
-          style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 17, padding: "7px 8px", width: "100%", boxSizing: "border-box", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
+          style={{ position: "relative", display: "flex", alignItems: "center", gap: 11, background: "transparent", border: "none", padding: "13px 13px 12px", width: "100%", boxSizing: "border-box", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
         >
           <Avatar
-            initials={(sessionStorage.getItem("name") || "U").split(" ").map((name) => name[0]).join("").toUpperCase()}
-            src={sessionStorage.getItem("profilePictureUrl") || sessionStorage.getItem("profile_picture_url") || sessionStorage.getItem("avatarUrl") || ""}
+            initials={profileInitials}
+            src={profileImageUrl}
             color="#4f46e5"
-            size={42}
+            size={44}
           />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ color: "#f9fafb", fontSize: 13, fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{(sessionStorage.getItem("name") || "User").split(" ").slice(0, 2).join(" ")}</div>
-            <div style={{ color: "#a8b3c7", fontSize: 10.5, marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{profileSubtitle}</div>
+            <div style={{ color: "#f8fafc", fontSize: 14, fontWeight: 900, lineHeight: 1.15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{profileDisplayName}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, minWidth: 0 }}>
+              <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e", boxShadow: "0 0 0 3px rgba(34,197,94,0.13)", flexShrink: 0 }} />
+              <span style={{ color: "#a8b3c7", fontSize: 11, lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cleanProfileSubtitle || "Dashboard"}</span>
+            </div>
           </div>
-          <span style={{ width: 30, height: 30, borderRadius: 13, background: "rgba(129,140,248,0.18)", border: "1px solid rgba(199,210,254,0.18)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <span style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(15,23,42,0.38)", border: "1px solid rgba(203,213,225,0.08)", color: "#cbd5e1", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <Icon name="profile" size={15} />
           </span>
         </button>
-        <div style={{ display: "flex", gap: 8 }}>
-          <NoticesBell style={{ flex: 1, height: 42, borderRadius: 16, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }} />
+        <div style={{ padding: "2px 10px 10px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+          <NoticesBell style={{ height: 44, borderRadius: 8, background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.035)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "none" }} />
           <ReportBugButton
             iconOnly
-            style={{ flex: 1, height: 42, borderRadius: 16, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "inherit" }}
+            style={{ height: 44, borderRadius: 8, background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.035)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "inherit", boxShadow: "none" }}
           />
         </div>
         <button
           type="button"
           onClick={onLogout}
-          style={{ width: "100%", minHeight: 40, display: "flex", alignItems: "center", justifyContent: "center", gap: 9, background: "rgba(248,113,113,0.10)", border: "1px solid rgba(248,113,113,0.32)", borderRadius: 16, padding: "9px 12px", cursor: "pointer", fontFamily: "inherit", transition: "background 0.15s ease, border-color 0.15s ease" }}
-          onMouseEnter={(event) => { event.currentTarget.style.background = "rgba(248,113,113,0.17)"; event.currentTarget.style.borderColor = "rgba(248,113,113,0.52)"; }}
-          onMouseLeave={(event) => { event.currentTarget.style.background = "rgba(248,113,113,0.10)"; event.currentTarget.style.borderColor = "rgba(248,113,113,0.32)"; }}
+          style={{ width: "100%", minHeight: 44, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, background: "rgba(127,29,29,0.10)", border: "none", padding: "0 13px", cursor: "pointer", fontFamily: "inherit", transition: "background 0.15s ease" }}
+          onMouseEnter={(event) => { event.currentTarget.style.background = "rgba(127,29,29,0.24)"; }}
+          onMouseLeave={(event) => { event.currentTarget.style.background = "rgba(127,29,29,0.16)"; }}
         >
-          <Icon name="logout" size={16} />
-          <span style={{ color: "#fecaca", fontWeight: 900, fontSize: 12 }}>Logout</span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+            <Icon name="logout" size={16} />
+            <span style={{ color: "#fecaca", fontWeight: 900, fontSize: 12.5 }}>Logout</span>
+          </span>
+          <span aria-hidden="true" style={{ color: "#fca5a5", fontSize: 16, lineHeight: 1 }}>›</span>
         </button>
       </div>
     </aside>

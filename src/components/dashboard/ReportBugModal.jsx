@@ -39,7 +39,7 @@ export function ReportBugButton({ style, iconOnly = false }) {
         style={style || { minHeight: 34, borderRadius: 12, padding: "6px 8px", color: "#c7d2fe", background: "rgba(99,102,241,0.10)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, width: "100%", fontFamily: "inherit" }}
       >
         {iconOnly ? (
-          <span style={{ width: 27, height: 27, borderRadius: 9, background: "linear-gradient(135deg,#fb7185,#e11d48)", display: "inline-flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 10px rgba(225,29,72,0.4)" }}>
+          <span style={{ width: 27, height: 27, borderRadius: 9, background: "linear-gradient(135deg,#a78bfa,#7c3aed)", display: "inline-flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 10px rgba(124,58,237,0.4)" }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="8" y="6" width="8" height="12" rx="4" /><path d="M8 10H4M8 14H4M16 10h4M16 14h4M12 6V3M9.5 5l-1-2M14.5 5l1-2" />
             </svg>
