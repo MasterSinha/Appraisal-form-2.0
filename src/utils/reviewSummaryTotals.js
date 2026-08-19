@@ -125,56 +125,95 @@ const reviewsFromSources = (sources) =>
     ...reviewArrayFrom(source.form?.reviewHistory),
   ]);
 
+// Some previous-year records (fetched via GET /dashboard/faculty/{email} for a closed/past
+// academic year) carry a review with no total_score/part_*_score fields at all - only a
+// section_scores map of per-section score arrays (e.g. { lectures: [40, 35], courseFile: [16] }).
+// Summing every number in that map recovers the reviewer's actual total when nothing else is
+// present, instead of silently showing no score.
+const sectionScoresTotal = (review = {}) => {
+  const sectionScores = parseMaybeJson(review.section_scores) || parseMaybeJson(review.sectionScores);
+  if (!sectionScores || typeof sectionScores !== "object") return undefined;
+  let sum = 0;
+  let found = false;
+  Object.values(sectionScores).forEach((value) => {
+    const parsedValue = parseMaybeJson(value);
+    const values = Array.isArray(parsedValue) ? parsedValue : [parsedValue];
+    values.forEach((entry) => {
+      const num = parseFloat(entry);
+      if (Number.isFinite(num)) {
+        sum += num;
+        found = true;
+      }
+    });
+  });
+  return found ? sum : undefined;
+};
+
 const reviewSummaryForRole = (review = {}) => {
   const nestedTotals = parseMaybeJson(review.totals) || {};
+  const partA = firstPresent(
+    review.part_a_score,
+    review.partAScore,
+    review.part_a_total,
+    review.partATotal,
+    nestedTotals.partA,
+    nestedTotals.part_a_score,
+    nestedTotals.part_a_total,
+  );
+  const partB = firstPresent(
+    review.part_b_score,
+    review.partBScore,
+    review.part_b_total,
+    review.partBTotal,
+    nestedTotals.partB,
+    nestedTotals.part_b_score,
+    nestedTotals.part_b_total,
+  );
+  const partC = firstPresent(
+    review.part_c_score,
+    review.partCScore,
+    review.part_c_total,
+    review.partCTotal,
+    nestedTotals.partC,
+    nestedTotals.part_c_score,
+    nestedTotals.part_c_total,
+  );
+  const partD = firstPresent(
+    review.part_d_score,
+    review.partDScore,
+    review.part_d_total,
+    review.partDTotal,
+    nestedTotals.partD,
+    nestedTotals.part_d_score,
+    nestedTotals.part_d_total,
+  );
+  const directTotal = firstPresent(
+    review.total_score,
+    review.totalScore,
+    review.total,
+    review.grand_total,
+    review.grandTotal,
+    nestedTotals.total,
+    nestedTotals.total_score,
+    nestedTotals.grand_total,
+    nestedTotals.grandTotal,
+  );
+  const partsPresent = [partA, partB, partC, partD].some((value) => value !== undefined);
+  const partsSum = partsPresent ? n(partA) + n(partB) + n(partC) + n(partD) : undefined;
+  const sectionSum = sectionScoresTotal(review);
+  // total_score is a NOT-NULL backend column defaulting to 0, so "present" alone doesn't mean
+  // "actually recorded" - some historical reviews only ever had their per-section scores sent at
+  // submission time, leaving total_score genuinely at its 0 default forever. Prefer whichever
+  // candidate is actually positive; only fall back to a literal 0/undefined when every source
+  // (direct total, summed parts, summed section_scores) agrees there's really nothing recorded.
+  const total = [directTotal, partsSum, sectionSum].find((value) => value !== undefined && n(value) > 0)
+    ?? directTotal ?? partsSum ?? sectionSum;
   return {
-    partA: firstPresent(
-      review.part_a_score,
-      review.partAScore,
-      review.part_a_total,
-      review.partATotal,
-      nestedTotals.partA,
-      nestedTotals.part_a_score,
-      nestedTotals.part_a_total,
-    ),
-    partB: firstPresent(
-      review.part_b_score,
-      review.partBScore,
-      review.part_b_total,
-      review.partBTotal,
-      nestedTotals.partB,
-      nestedTotals.part_b_score,
-      nestedTotals.part_b_total,
-    ),
-    partC: firstPresent(
-      review.part_c_score,
-      review.partCScore,
-      review.part_c_total,
-      review.partCTotal,
-      nestedTotals.partC,
-      nestedTotals.part_c_score,
-      nestedTotals.part_c_total,
-    ),
-    partD: firstPresent(
-      review.part_d_score,
-      review.partDScore,
-      review.part_d_total,
-      review.partDTotal,
-      nestedTotals.partD,
-      nestedTotals.part_d_score,
-      nestedTotals.part_d_total,
-    ),
-    total: firstPresent(
-      review.total_score,
-      review.totalScore,
-      review.total,
-      review.grand_total,
-      review.grandTotal,
-      nestedTotals.total,
-      nestedTotals.total_score,
-      nestedTotals.grand_total,
-      nestedTotals.grandTotal,
-    ),
+    partA,
+    partB,
+    partC,
+    partD,
+    total,
     remarks: firstPresent(review.remarks, review.comment, review.comments, review.review_remarks, review.reviewRemarks),
   };
 };

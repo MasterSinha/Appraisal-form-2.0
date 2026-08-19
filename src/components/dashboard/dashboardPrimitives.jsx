@@ -129,44 +129,92 @@ const metricText = (value) => {
   return Number.isFinite(score) ? score.toFixed(1) : "0.0";
 };
 
+const METRIC_ICON_PATHS = {
+  docs: <><path d="M14.5 2.5H7a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" fill="currentColor" fillOpacity={0.16} /><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /></>,
+  total: <><circle cx="12" cy="12" r="9" fill="currentColor" fillOpacity={0.16} /><circle cx="12" cy="12" r="9" /><path d="m8.5 12.3 2.3 2.3 4.7-4.9" /></>,
+  partA: <><path d="M3 4.5A1.5 1.5 0 0 1 4.5 3H11a1 1 0 0 1 1 1v16.5a.5.5 0 0 1-.77.42L8 18.9l-3.23 2.02a.5.5 0 0 1-.77-.42V4.5Z" fill="currentColor" fillOpacity={0.18} /><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" /></>,
+  partB: <><path d="M5 4a1.5 1.5 0 0 1 1.5-1.5H19v17H6.5a1.5 1.5 0 0 1 0-3H18" fill="currentColor" fillOpacity={0.14} /><path d="M4 19.5V4.5A2.5 2.5 0 0 1 6.5 2H20v18H6.5a2.5 2.5 0 0 0 0 5H20" /><path d="M8 7h8M8 11h8" opacity={0.7} /></>,
+  partC: <><circle cx="9" cy="7" r="4" fill="currentColor" fillOpacity={0.18} /><circle cx="9" cy="7" r="4" /><path d="M17 11a4 4 0 1 0 0-8" /><path d="M2 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /></>,
+  partDE: <><rect x="3" y="4" width="18" height="18" rx="3" fill="currentColor" fillOpacity={0.16} /><rect x="3" y="4" width="18" height="18" rx="3" /><path d="M16 2v4M8 2v4M3 10h18" /><circle cx="8" cy="15" r="1.1" fill="currentColor" stroke="none" /><circle cx="12" cy="15" r="1.1" fill="currentColor" stroke="none" /></>,
+  default: <><circle cx="12" cy="12" r="8" fill="currentColor" fillOpacity={0.16} /><circle cx="12" cy="12" r="3" fill="currentColor" stroke="none" /></>,
+};
+
+const METRIC_ICON_THEME = {
+  docs: { bg: "#f1f5f9", color: "#64748b" },
+  total: { bg: "#ede9fe", color: "#7c3aed" },
+  partA: { bg: "#e0e7ff", color: "#4338ca" },
+  partB: { bg: "#dbeafe", color: "#0369a1" },
+  partC: { bg: "#d1fae5", color: "#047857" },
+  partDE: { bg: "#fef3c7", color: "#b45309" },
+  default: { bg: "#f1f5f9", color: "#64748b" },
+};
+
+function metricIconKey(label) {
+  const l = String(label || "").toLowerCase();
+  if (l.includes("doc")) return "docs";
+  if (l.includes("total")) return "total";
+  if (l.includes("part a")) return "partA";
+  if (l.includes("part b")) return "partB";
+  if (l.includes("part c")) return "partC";
+  if (l.includes("part d") || l.includes("part e")) return "partDE";
+  return "default";
+}
+
+function MetricIcon({ label, size = 12, badgeSize = 20 }) {
+  const key = metricIconKey(label);
+  const theme = METRIC_ICON_THEME[key];
+  return (
+    <span style={{ width: badgeSize, height: badgeSize, borderRadius: 7, background: theme.bg, color: theme.color, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+        {METRIC_ICON_PATHS[key]}
+      </svg>
+    </span>
+  );
+}
+
 export function ReviewMetricsStrip({
   metrics = [],
   docs,
   item,
   includeDocs = true,
   columns,
-  background = "#f8fafc",
   style = {},
   compact = false,
 }) {
   const docCount = uploadedDocCount(docs, item || (typeof docs === "object" ? docs : {}));
   const allMetrics = [
     ...metrics,
-    ...(includeDocs ? [{ label: "Docs", val: docCount, color: "#10b981", helper: "files uploaded" }] : []),
+    ...(includeDocs ? [{ label: "Docs", val: docCount, helper: "files uploaded" }] : []),
   ];
 
   return (
     <div
       style={{
         display: "grid",
-        gridTemplateColumns: columns || "repeat(auto-fit, minmax(92px, 1fr))",
-        gap: compact ? 8 : 10,
-        background,
-        borderRadius: 8,
-        padding: compact ? "10px 12px" : "12px 14px",
+        // Every tile sits in one row - its own small white card - rather than wrapping onto a
+        // second line once there are more than a couple of columns (Part A-E, Total, Docs).
+        gridTemplateColumns: columns || `repeat(${Math.max(allMetrics.length, 1)}, minmax(0, 1fr))`,
+        gap: compact ? 6 : 8,
         ...style,
       }}
     >
-      {allMetrics.map(({ label, val, max, color = "#6366f1", helper }) => {
+      {/* A different color per tile used to be passed by each caller here (blue/green/orange/
+          purple...), competing for attention against the person's name/role above this strip.
+          One neutral color throughout now - the label icon + text is what distinguishes each
+          tile, not its color - callers no longer need to (and can stop) passing a `color` per metric. */}
+      {allMetrics.map(({ label, val, max, helper }) => {
         const hasMax = max !== undefined && max !== null;
         return (
-          <div key={label} style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
-            <div style={{ fontSize: compact ? 8 : 9, fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{label}</div>
-            <div style={{ fontSize: compact ? 13 : 15, fontWeight: 900, color, lineHeight: 1, whiteSpace: "nowrap" }}>
-              {hasMax ? metricText(val) : parseFloat(val) || 0}
-              {hasMax && <span style={{ fontSize: compact ? 8 : 9, color: "#94a3b8", fontWeight: 700 }}>/{max}</span>}
+          <div key={label} style={{ minWidth: 0, background: "#fff", borderRadius: 10, padding: compact ? "7px 8px" : "9px 10px", boxShadow: "0 1px 4px rgba(15,23,42,0.05), 0 1px 2px rgba(15,23,42,0.04)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+              <MetricIcon label={label} size={compact ? 10 : 11.5} badgeSize={compact ? 18 : 20} />
+              <span style={{ fontSize: compact ? 7 : 7.5, fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>
             </div>
-            {hasMax ? <ScoreBar score={val} max={max} color={color} /> : <div style={{ fontSize: 9, color: "#94a3b8" }}>{helper || "files uploaded"}</div>}
+            <div style={{ fontSize: compact ? 11.5 : 13.5, fontWeight: 900, color: "#1e293b", lineHeight: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              {hasMax ? metricText(val) : parseFloat(val) || 0}
+              {hasMax && <span style={{ fontSize: compact ? 7 : 8, color: "#94a3b8", fontWeight: 700 }}>/{max}</span>}
+            </div>
+            {hasMax ? <div style={{ marginTop: 5 }}><ScoreBar score={val} max={max} color="#94a3b8" /></div> : <div style={{ fontSize: 8, color: "#94a3b8", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{helper || "files uploaded"}</div>}
           </div>
         );
       })}
