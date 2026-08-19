@@ -76,7 +76,23 @@ export default function NoticesBell({ style }) {
           role="dialog"
           aria-label="Important Notices"
           className="fa-fade-up"
-          style={{ position: "fixed", zIndex: 2500, left: rect.left, bottom: window.innerHeight - rect.top + 10, width: 336, maxHeight: "62vh", display: "flex", flexDirection: "column", background: "#141d33", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 18, boxShadow: "0 24px 50px rgba(2,6,23,0.55)", overflow: "hidden" }}
+          style={{
+            position: "fixed",
+            zIndex: 2500,
+            left: Math.min(rect.left, window.innerWidth - 336 - 12),
+            ...(rect.top < window.innerHeight / 2
+              ? { top: rect.bottom + 10 }
+              : { bottom: window.innerHeight - rect.top + 10 }),
+            width: 336,
+            maxHeight: "62vh",
+            display: "flex",
+            flexDirection: "column",
+            background: "#141d33",
+            border: "1px solid rgba(255,255,255,0.12)",
+            borderRadius: 18,
+            boxShadow: "0 24px 50px rgba(2,6,23,0.55)",
+            overflow: "hidden",
+          }}
         >
           <div style={{ padding: "13px 14px", borderBottom: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", gap: 10, background: "linear-gradient(180deg,rgba(99,102,241,0.10),transparent)" }}>
             <span style={{ width: 32, height: 32, borderRadius: 11, background: "linear-gradient(135deg,#818cf8,#4338ca)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: "0 6px 14px rgba(79,70,229,0.4)" }}>

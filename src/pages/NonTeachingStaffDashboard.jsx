@@ -41,9 +41,22 @@ import { WORKFLOW_STATUSES, currentWorkflowStep, isWorkflowComplete } from "../u
 import { T, TH, TD, TDC } from "../features/faculty-appraisal/components/formPrimitiveStyles";
 import { Avatar, ScoreBar, ReviewMetricsStrip, LogoutConfirmModal } from "../components/dashboard/dashboardPrimitives";
 import TeachingPartDReviewDashboard from "./TeachingPartDReviewDashboard";
-import NoticesBanner from "../components/dashboard/NoticesBanner";
 import { ReportBugButton } from "../components/dashboard/ReportBugModal";
 import NoticesBell from "../components/dashboard/NoticesBell";
+
+const noticesBellHeaderStyle = {
+  width: 42,
+  height: 42,
+  borderRadius: 13,
+  background: "#fff",
+  border: "1px solid #e5e7eb",
+  boxShadow: "0 4px 14px rgba(15,23,42,0.08)",
+  cursor: "pointer",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  flexShrink: 0,
+};
 
 const ACCENT = "#1d4ed8";
 const REG_ACCENT = "#155e75";
@@ -953,7 +966,10 @@ export function NonTeachingAppraisalForm({ role = sessionStorage.getItem("role")
                 </div>
               </div>
             </div>
-            <AppraisalHeaderImage logo="iqas" height={78} />
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <NoticesBell style={noticesBellHeaderStyle} />
+              <AppraisalHeaderImage logo="iqas" height={78} />
+            </div>
           </div>
 
           {showAsHistorical ? (
@@ -1802,7 +1818,6 @@ export function NonTeachingReviewDashboard({ reviewerRole, title, subtitle, acce
       </aside>
 
       <main style={{ flex: 1, minWidth: 0, marginLeft: 272, padding: "22px 26px", overflowX: "auto", position: "relative" }}>
-        <NoticesBanner />
         {tab === "self" ? (
           <NonTeachingAppraisalForm role={reviewerRole} embedded />
         ) : tab === "partD" ? (
@@ -1927,6 +1942,7 @@ function NonTeachingReviewHeader({ title, name, academicYear, academicYearOption
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", justifyContent: "flex-end" }}>
         {rightContent}
+        <NoticesBell style={noticesBellHeaderStyle} />
         <AppraisalHeaderImage logo="iqas" height={78} />
       </div>
     </div>
