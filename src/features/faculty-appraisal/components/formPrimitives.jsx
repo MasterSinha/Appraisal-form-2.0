@@ -449,9 +449,10 @@ export function getGuidelineForTitle(titleText) {
   return null;
 }
 
-export function SectionInfoButton({ titleText, customGuideline }) {
+export function SectionInfoButton({ titleText, customGuideline, popoverPlacement = "right" }) {
   const [isOpen, setIsOpen] = useState(false);
   const data = customGuideline || getGuidelineForTitle(titleText);
+  const opensLeft = popoverPlacement === "left";
   if (!data) return null;
 
   return (
@@ -496,10 +497,10 @@ export function SectionInfoButton({ titleText, customGuideline }) {
           style={{
             position: "absolute",
             top: 28,
-            right: 0,
+            ...(opensLeft ? { right: 0 } : { left: 0 }),
             zIndex: 9999,
             width: 380,
-            maxWidth: "90vw",
+            maxWidth: "min(380px, calc(100vw - 32px))",
             background: "#ffffff",
             border: "1px solid #cbd5e1",
             borderRadius: 12,

@@ -2233,32 +2233,32 @@ export default function VCDashboard() {
 
 <div style={{ height: 1, background: "rgba(148,163,184,0.16)" }} />
 
-<button className="vc-sidebar-nav" onClick={() =>{ setReviewing(null); setShowRoleTransfers(false); }}
+<button className={`vc-sidebar-nav${showRoleTransfers ? "" : " is-active"}`} onClick={() =>{ setReviewing(null); setShowRoleTransfers(false); }}
  onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-1px)"; }}
  onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; }}
- style={{ position: "relative", background: showRoleTransfers ? "transparent" : "#f8fafc", border: showRoleTransfers ? "1px solid rgba(248,250,252,0.18)" : "1px solid #f8fafc", borderRadius: 15, padding: "10px 11px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, width: "100%", fontFamily: "inherit", transition: "transform 0.15s ease, background 0.15s ease", boxShadow: showRoleTransfers ? "none" : "0 10px 24px rgba(0,0,0,0.30), 0 0 0 3px rgba(248,250,252,0.08)" }}>
-<span style={{ width: 31, height: 31, borderRadius: 10, background: showRoleTransfers ? "rgba(255,255,255,0.06)" : "rgba(15,23,42,0.07)", border: "1px solid rgba(15,23,42,0.10)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-<VcIcon name="school" size={17} color={showRoleTransfers ? "#f8fafc" : "#0f172a"} />
+ style={{ position: "relative", background: "rgba(99,102,241,0.14)", border: showRoleTransfers ? "1px solid rgba(248,250,252,0.18)" : "1px solid rgba(129,140,248,0.48)", borderRadius: 15, padding: "10px 11px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, width: "100%", fontFamily: "inherit", transition: "transform 0.15s ease, border-color 0.15s ease", boxShadow: showRoleTransfers ? "none" : "inset 3px 0 0 rgba(165,180,252,0.95), 0 10px 22px rgba(0,0,0,0.18)" }}>
+<span style={{ width: 31, height: 31, borderRadius: 10, background: showRoleTransfers ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.11)", border: "1px solid rgba(255,255,255,0.10)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+<VcIcon name="school" size={17} color={showRoleTransfers ? "#94a3b8" : "#f8fafc"} />
 </span>
 <div style={{ flex: 1, textAlign: "left", minWidth: 0 }}>
-<div style={{ color: showRoleTransfers ? "#e2e8f0" : "#0f172a", fontWeight: 900, fontSize: 12.5 }}>School Reviews</div>
-<div style={{ color: showRoleTransfers ? "#94a3b8" : "#475569", fontSize: 10, marginTop: 1 }}>{totalPending} awaiting</div>
+<div style={{ color: showRoleTransfers ? "#cbd5e1" : "#f8fafc", fontWeight: 900, fontSize: 12.5 }}>School Reviews</div>
+<div style={{ color: showRoleTransfers ? "#94a3b8" : "#c7d2fe", fontSize: 10, marginTop: 1 }}>{totalPending} awaiting</div>
 </div>
  {totalPending >0 && (
-<div style={{ background: showRoleTransfers ? "rgba(255,255,255,0.12)" : "#0f172a", color: "#f8fafc", fontWeight: 900, fontSize: 10, minWidth: 20, height: 20, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 5px", flexShrink: 0 }}>{totalPending}</div>
+<div style={{ background: showRoleTransfers ? "rgba(255,255,255,0.12)" : "rgba(165,180,252,0.22)", color: "#f8fafc", fontWeight: 900, fontSize: 10, minWidth: 20, height: 20, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 5px", flexShrink: 0 }}>{totalPending}</div>
  )}
 </button>
 
-<button className="vc-sidebar-nav" onClick={() =>{ setReviewing(null); setShowRoleTransfers(true); }}
+<button className={`vc-sidebar-nav${showRoleTransfers ? " is-active" : ""}`} onClick={() =>{ setReviewing(null); setShowRoleTransfers(true); }}
  onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-1px)"; }}
  onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; }}
- style={{ position: "relative", background: showRoleTransfers ? "#f8fafc" : "transparent", border: showRoleTransfers ? "1px solid #f8fafc" : "1px solid rgba(248,250,252,0.18)", borderRadius: 15, padding: "10px 11px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, width: "100%", fontFamily: "inherit", transition: "transform 0.15s ease, background 0.15s ease", boxShadow: showRoleTransfers ? "0 10px 24px rgba(0,0,0,0.30), 0 0 0 3px rgba(248,250,252,0.08)" : "none" }}>
-<span style={{ width: 31, height: 31, borderRadius: 10, background: showRoleTransfers ? "rgba(15,23,42,0.07)" : "rgba(255,255,255,0.06)", border: "1px solid rgba(15,23,42,0.10)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-<VcIcon name="profile" size={17} color={showRoleTransfers ? "#0f172a" : "#f8fafc"} />
+ style={{ position: "relative", background: "rgba(99,102,241,0.14)", border: showRoleTransfers ? "1px solid rgba(129,140,248,0.48)" : "1px solid rgba(248,250,252,0.18)", borderRadius: 15, padding: "10px 11px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, width: "100%", fontFamily: "inherit", transition: "transform 0.15s ease, border-color 0.15s ease", boxShadow: showRoleTransfers ? "inset 3px 0 0 rgba(165,180,252,0.95), 0 10px 22px rgba(0,0,0,0.18)" : "none" }}>
+<span style={{ width: 31, height: 31, borderRadius: 10, background: showRoleTransfers ? "rgba(255,255,255,0.11)" : "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+<VcIcon name="profile" size={17} color={showRoleTransfers ? "#f8fafc" : "#94a3b8"} />
 </span>
 <div style={{ flex: 1, textAlign: "left", minWidth: 0 }}>
-<div style={{ color: showRoleTransfers ? "#0f172a" : "#e2e8f0", fontWeight: 900, fontSize: 12.5 }}>Role Transfers</div>
-<div style={{ color: showRoleTransfers ? "#475569" : "#94a3b8", fontSize: 10, marginTop: 1 }}>Director &amp; Dean</div>
+<div style={{ color: showRoleTransfers ? "#f8fafc" : "#cbd5e1", fontWeight: 900, fontSize: 12.5 }}>Role Transfers</div>
+<div style={{ color: showRoleTransfers ? "#c7d2fe" : "#94a3b8", fontSize: 10, marginTop: 1 }}>Director &amp; Dean</div>
 </div>
 </button>
 
@@ -2269,7 +2269,7 @@ export default function VCDashboard() {
 University Overview
 </div>
 <div style={{ fontSize: 10.5, color: "#cbd5e1", fontWeight: 600, marginBottom: 3 }}>4 Engineering Schools</div>
-<div style={{ fontSize: 10.5, color: "#cbd5e1", fontWeight: 600, marginBottom: 3 }}>4 Non-Engineering Schools</div>
+<div style={{ fontSize: 10.5, color: "#cbd5e1", fontWeight: 600, marginBottom: 3 }}>5 Non-Engineering Schools</div>
 <div style={{ fontSize: 10.5, color: "#cbd5e1", fontWeight: 600, marginBottom: 3 }}>CISR Center</div>
 <div style={{ fontSize: 10.5, color: "#cbd5e1", fontWeight: 600, marginBottom: 8 }}>Non-Teaching Branch</div>
 <div style={{ display: "flex", gap: 7 }}>

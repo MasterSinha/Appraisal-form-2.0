@@ -199,13 +199,8 @@ input[type="number"] {
 /* Sidebar nav / cards */
 .vc-sidebar-nav {
   background: rgba(99,102,241,0.14) !important;
-  border: 1px solid rgba(99,102,241,0.20) !important;
   border-radius: 8px !important;
   transition: background 0.18s ease, border-color 0.18s ease !important;
-}
-.vc-sidebar-nav:hover {
-  background: rgba(99,102,241,0.22) !important;
-  border-color: rgba(99,102,241,0.35) !important;
 }
 
 .vc-sidebar-card {
