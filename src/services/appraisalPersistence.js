@@ -512,57 +512,57 @@ export const loadSavedAppraisal = async ({ facultyEmail, academicYear, setters, 
  }
 };
 
-export const loadClosedAppraisal = async ({ facultyEmail, academicYear, setters }) =>{
- if (!facultyEmail || !academicYear || !setters) return null;
+export const loadClosedAppraisal = async ({ facultyEmail, academicYear, setters }) => {
+  if (!facultyEmail || !academicYear || !setters) return null;
 
- try {
- // A closed year - legacy two-part or a future closed 5-part year alike - has no in-progress
- // workflow left to protect visibility for, so this reads from the dedicated history endpoint
- // (no Part D release-gate) instead of the live endpoint used for the active cycle.
- const submittedAppraisal = await fetchSavedAppraisal({ facultyEmail, academicYear, useHistoryEndpoint: true });
- if (applySubmittedAppraisalToSetters(submittedAppraisal, setters, { facultyEmail, academicYear })) {
- return submittedAppraisal;
- }
- } catch (err) {
- console.warn("Could not load submitted appraisal for closed year; falling back to snapshot:", err);
- }
+  try {
+    // A closed year - legacy two-part or a future closed 5-part year alike - has no in-progress
+    // workflow left to protect visibility for, so this reads from the dedicated history endpoint
+    // (no Part D release-gate) instead of the live endpoint used for the active cycle.
+    const submittedAppraisal = await fetchSavedAppraisal({ facultyEmail, academicYear, useHistoryEndpoint: true });
+    if (applySubmittedAppraisalToSetters(submittedAppraisal, setters, { facultyEmail, academicYear })) {
+      return submittedAppraisal;
+    }
+  } catch (err) {
+    console.warn("Could not load submitted appraisal for closed year; falling back to snapshot:", err);
+  }
 
- const snapshotPayload = await loadAppraisalSnapshot({ facultyEmail, academicYear });
- if (snapshotPayload) {
- applySnapshotToSetters(snapshotPayload, setters);
- return snapshotPayload;
- }
+  const snapshotPayload = await loadAppraisalSnapshot({ facultyEmail, academicYear });
+  if (snapshotPayload) {
+    applySnapshotToSetters(snapshotPayload, setters);
+    return snapshotPayload;
+  }
 
- resetSnapshotSetters(academicYear, setters);
- return null;
+  resetSnapshotSetters(academicYear, setters);
+  return null;
 };
 
 // Used by reviewWorkflow to load any faculty's appraisal for authority review. Pass
 // useHistoryEndpoint: true only for a confirmed-closed academic year (see loadClosedAppraisal) -
 // every other caller (current/active-cycle lookups) must keep the default false, since the
 // history endpoint rejects requests for a year that's still open.
-export const fetchSavedAppraisal = async ({ facultyEmail, academicYear, useHistoryEndpoint = false }) =>{
- if (!facultyEmail) throw new Error("Faculty email is required to open the submitted form.");
- if (!academicYear) throw new Error("Academic year is required to open the submitted form.");
- const path = `/dashboard/faculty/${encodeURIComponent(facultyEmail)}${useHistoryEndpoint ? "/history" : ""}`;
- try {
- const data = await api.get(path, { params: { academic_year: academicYear } });
- return await readSubmittedAppraisalResponse(data, facultyEmail, academicYear);
- } catch (err) {
- if (err?.statusCode === 403) {
- const repaired = await repairDeanDivisionProfile();
- if (repaired) {
- try {
- const data = await api.get(path, { params: { academic_year: academicYear } });
- return await readSubmittedAppraisalResponse(data, facultyEmail, academicYear);
- } catch {
- // Fall through to the explicit authority message below.
- }
- }
- throw new Error("Access denied while opening this submitted form. I tried the Dean division-profile repair, but the backend still rejected the request. Please log out and log in again so the refreshed profile/token is used. If it still fails, the backend faculty_profiles.school for this Dean must be updated to 'engineering' or 'non_engineering'.", { cause: err });
- }
- throw err;
- }
+export const fetchSavedAppraisal = async ({ facultyEmail, academicYear, useHistoryEndpoint = false }) => {
+  if (!facultyEmail) throw new Error("Faculty email is required to open the submitted form.");
+  if (!academicYear) throw new Error("Academic year is required to open the submitted form.");
+  const path = `/dashboard/faculty/${encodeURIComponent(facultyEmail)}${useHistoryEndpoint ? "/history" : ""}`;
+  try {
+    const data = await api.get(path, { params: { academic_year: academicYear } });
+    return await readSubmittedAppraisalResponse(data, facultyEmail, academicYear);
+  } catch (err) {
+    if (err?.statusCode === 403) {
+      const repaired = await repairDeanDivisionProfile();
+      if (repaired) {
+        try {
+          const data = await api.get(path, { params: { academic_year: academicYear } });
+          return await readSubmittedAppraisalResponse(data, facultyEmail, academicYear);
+        } catch {
+          // Fall through to the explicit authority message below.
+        }
+      }
+      throw new Error("Access denied while opening this submitted form. I tried the Dean division-profile repair, but the backend still rejected the request. Please log out and log in again so the refreshed profile/token is used. If it still fails, the backend faculty_profiles.school for this Dean must be updated to 'engineering' or 'non_engineering'.", { cause: err });
+    }
+    throw err;
+  }
 };
 
 const readSubmittedAppraisalResponse = async (data, facultyEmail, academicYear) =>{
