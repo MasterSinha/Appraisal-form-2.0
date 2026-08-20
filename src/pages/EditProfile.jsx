@@ -12,7 +12,7 @@ import {
 } from "../constants/universityHierarchy";
 import { isNonTeachingRole } from "../constants/nonTeachingHierarchy";
 import { buildProfilePayload, normalizeRole, storeUserSession } from "../auth/session";
-import { updateProfile } from "../services/authService";
+import { getMe, updateProfile } from "../services/authService";
 import { listSchoolDepartments } from "../services/departmentsService";
 import {
   isValidPhone, isValidName, isValidEmployeeId, isValidExperience,
@@ -401,6 +401,34 @@ export default function EditProfile() {
     return () => { active = false; clearTimeout(timer); };
   }, [selectedSchool, isNonTeaching, isCisr]);
 
+  // Faculty/HOD's department (or program) is Director-assigned now, from a separate page
+  // (Manage Programs), not this form - so sessionStorage's copy can go stale the moment a
+  // Director assigns/changes it while this person is already logged in. A plain page refresh
+  // doesn't help either, since sessionStorage survives a refresh unchanged - only a fresh
+  // logout/login previously re-synced it. Re-fetch the live profile once on mount and refresh
+  // both sessionStorage and the on-screen value, so the current assignment shows up without
+  // requiring the user to log out.
+  useEffect(() => {
+    let active = true;
+    getMe()
+      .then((freshProfile) => {
+        if (!active || !freshProfile) return;
+        storeUserSession({ profile: freshProfile, fallbackEmail: formData.email });
+        const freshRole = normalizeRole(freshProfile.appraisal_role || freshProfile.role, initialRole);
+        const freshDepartment = isNonTeachingRole(freshRole)
+          ? String(freshProfile.department || "")
+          : canonicalDepartmentValue(freshProfile.department);
+        const freshDepartments = Array.isArray(freshProfile.departments) ? freshProfile.departments : [];
+        setFormData((prev) => ({ ...prev, department: freshDepartment, departments: freshDepartments }));
+      })
+      .catch(() => {
+        // Keep whatever sessionStorage already had - a failed refresh shouldn't block editing
+        // the rest of the profile.
+      });
+    return () => { active = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const roleOptions = BASE_ROLE_OPTIONS.filter((role) => {
     const optionIsNonTeaching = isNonTeachingRole(role.value);
     if (isNonTeaching) return optionIsNonTeaching;
@@ -490,12 +518,13 @@ export default function EditProfile() {
       const role = normalizeRole(formData.role, "");
       const nonTeaching = formData.staffType === "non_teaching";
       const school = canonicalSchoolValue(formData.school);
-      // HOD's department/program assignment is Director-controlled (via "Manage Programs" ->
-      // Transfer HOD), not something an HOD edits on their own profile - this form never sends
-      // `departments` for HOD, so it can't race with or overwrite a Director's assignment.
+      // Faculty and HOD program/department assignment is Director-controlled (via "Manage
+      // Programs" -> Assign Faculty / Assign Program), not something either edits on their own
+      // profile - this form never sends `department`/`departments` for those roles, so it can't
+      // race with or overwrite a Director's assignment.
       const department = nonTeaching
         ? String(formData.department || "").trim()
-        : role === "hod" || isCisr ? "" : canonicalDepartmentValue(formData.department);
+        : role === "hod" || role === "faculty" || isCisr ? "" : canonicalDepartmentValue(formData.department);
 
       const cleanFormData = {
         ...formData,
@@ -686,16 +715,13 @@ export default function EditProfile() {
                 )}
 
                 {needsDepartment && selectedRole === "faculty" && (
-                  <InputField label={unitLabel} hint={schoolHasDepartments ? `Managed by your school's Director` : "No options yet - ask your Director to add one"}>
-                    <IconInput icon="building">
-                      <select name="department" value={formData.department} onChange={handleChange} disabled={departmentsLoading}>
-                        <option value="">{departmentsLoading ? `Loading ${unitLabel.toLowerCase()}s...` : `Select ${unitLabel.toLowerCase()}`}</option>
-                        {schoolDepartments.map((dept) => (
-                          <option key={dept.id || dept.name} value={dept.name}>{dept.name}</option>
-                        ))}
-                      </select>
-                    </IconInput>
-                  </InputField>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 5, gridColumn: "1 / -1" }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.06em" }}>{unitLabel}</span>
+                    <div style={{ minHeight: 40, display: "flex", alignItems: "center", background: "#f9fafb", border: "1.5px solid #e5e7eb", borderRadius: 8, padding: "0 13px", fontSize: 13, color: formData.department ? "#374151" : "#c4c9d4", fontWeight: formData.department ? 700 : 400 }}>
+                      {formData.department || `Not yet assigned - your Director assigns your ${unitLabel.toLowerCase()} from "Manage ${unitLabel}s".`}
+                    </div>
+                    <span style={{ fontSize: 10, color: "#9ca3af" }}>Only your Director can change which {unitLabel.toLowerCase()} you're assigned to.</span>
+                  </div>
                 )}
 
                 {needsDepartment && selectedRole === "hod" && (

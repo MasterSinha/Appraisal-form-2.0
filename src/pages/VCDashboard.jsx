@@ -15,7 +15,22 @@ import { n, pct, grade, RO } from "../features/faculty-appraisal/shared";
 import FacultyInfoSection from "../components/appraisal/common/FacultyInfoSection";
 import { FacultyRecordHeader, ScoreTable, VCFinalRemarks, FinalSubmitButton, FACULTY_RECORD_THEME } from "../components/dashboard/FacultyAppraisalRecord";
 import LeaveManagementReadOnly from "../components/appraisal/PartD/LeaveManagementReadOnly";
-import RoleTransferPanel from "../components/dashboard/RoleTransferPanel";
+import { ReportBugButton } from "../components/dashboard/ReportBugModal";
+import NoticesBell from "../components/dashboard/NoticesBell";
+
+const noticesBellHeaderStyle = {
+  width: 42,
+  height: 42,
+  borderRadius: 13,
+  background: "#fff",
+  border: "1px solid #e5e7eb",
+  boxShadow: "0 4px 14px rgba(15,23,42,0.08)",
+  cursor: "pointer",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  flexShrink: 0,
+};
 
 // --- Helpers ------------------------------------------------------------------
 const oneDecimal = (value) =>(Math.trunc(n(value) * 10) / 10).toFixed(1);
@@ -786,7 +801,11 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
 </div>)}
 
  {sectionView === "partD" && (
- person.partDStatus === "released_to_vc" ? (
+ // Backend only ever produces "pending" or "released" for part_d_status (see
+ // Declaration.part_d_status) - not the three-state pending_registrar/
+ // registrar_approved_pending_release/released_to_vc vocabulary this used to check for,
+ // which meant this gate never actually unlocked even after a real Registrar release.
+ person.partDStatus === "released" ? (
 <>
 <LeaveManagementReadOnly ctx={{ leaveManagement: person.leaveManagement }} registrarInfo={{ status: person.partDStatus, score: person.registrarPartDScore, remarks: person.registrarPartDRemarks }} />
 <div style={{ marginTop: 10, padding: "10px 14px", borderRadius: 8, background: "#ecfeff", color: "#0e7490", fontSize: 12, fontWeight: 700 }}>
@@ -797,9 +816,7 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
 <div className="review-part-stack">
 <div className="review-part-stack__title">PART D - Leave &amp; Attendance Management</div>
 <div style={{ padding: "16px 18px", borderRadius: 10, background: "#fef3c7", color: "#92400e", fontSize: 13, fontWeight: 700 }}>
- Part D is not yet released to VC. {person.partDStatus === "registrar_approved_pending_release"
- ? "The Registrar has scored it, but it is waiting on the Dean/Center Head's approval of Parts A, B, C and E on this form before it releases."
- : "It is still awaiting the Registrar's review."}
+ Part D is still awaiting the Registrar's review and has not been released to the VC yet.
 </div>
 </div>
  )
@@ -1589,50 +1606,50 @@ function PersonCard({ person, role, onReview, schoolColor, loading = false }) {
  const rolePalette = ROLE_PALETTE[role] || { color: schoolColor || "#7c3aed", light: "#f3e8ff", label: role };
  const cardColor = rolePalette.color;
  return (
-<div className="vc-review-card fa-fade-up" style={{ background: "#fff", borderRadius: 10, boxShadow: "0 2px 10px rgba(15,23,42,0.07)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
- {/* Role-colored top stripe */}
-<div style={{ height: 4, background: `linear-gradient(90deg,${cardColor},${cardColor}66)`, flexShrink: 0 }} />
-
-<div style={{ padding: "14px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
- {/* Header row */}
-<div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-<Avatar initials={person.avatar} src={person.avatarUrl} color={person.avatarColor || cardColor} size={54} />
+<div className="vc-review-card fa-fade-up" style={{ background: "#fff", borderRadius: 16, boxShadow: "0 4px 16px rgba(15,23,42,0.06)", border: "1px solid #eef1f6", display: "flex", flexDirection: "column", overflow: "hidden", transition: "transform .16s ease, box-shadow .16s ease" }}>
+<div style={{ padding: "18px 18px 16px", display: "flex", flexDirection: "column", gap: 14 }}>
+ {/* Header row - name & role are the largest, boldest, highest-contrast elements on the
+     card on purpose; everything else (grade, scores, remarks) is deliberately quieter so the
+     eye lands here first. */}
+<div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+<span style={{ borderRadius: 999, padding: 2, background: `linear-gradient(135deg,${cardColor}55,${cardColor})`, flexShrink: 0, display: "inline-flex" }}>
+<Avatar initials={person.avatar} src={person.avatarUrl} color={person.avatarColor || cardColor} size={48} />
+</span>
 <div style={{ flex: 1, minWidth: 0 }}>
-<div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2, flexWrap: "wrap" }}>
-<span style={{ fontSize: 13, fontWeight: 800, color: "#0f172a" }}>{person.name}</span>
+<div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 4, flexWrap: "wrap" }}>
+<span style={{ fontSize: 16, fontWeight: 900, color: "#0f172a", letterSpacing: -0.2 }}>{person.name}</span>
 <RoleBadge role={role} />
 </div>
-<div style={{ fontSize: 10, color: "#64748b" }}>{person.designation}</div>
-<div style={{ fontSize: 9, color: "#94a3b8", fontFamily: "monospace", marginTop: 1 }}>{person.employeeId}</div>
+<div style={{ fontSize: 11, color: "#64748b", fontWeight: 600 }}>{person.designation}</div>
+<div style={{ fontSize: 9, color: "#94a3b8", fontFamily: "monospace", marginTop: 2 }}>{person.employeeId}</div>
 </div>
 <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, flexShrink: 0 }}>
 <StatusBadge status={person.status} />
-<div title={`${gradeBasisLabel} score: ${gradeBasisPercent.toFixed(2)}%`} style={{ display: "inline-flex", alignItems: "center", gap: 8, background: `${gradeInfo.color}12`, border: `1px solid ${gradeInfo.color}45`, borderRadius: 999, padding: "4px 12px 4px 4px", whiteSpace: "nowrap" }}>
-<span style={{ width: 26, height: 26, borderRadius: "50%", background: gradeInfo.color, color: "#fff", fontSize: 12, fontWeight: 900, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{gradeInfo.label}</span>
-<div style={{ display: "flex", flexDirection: "column", lineHeight: 1.2 }}>
-<span style={{ fontSize: 8.5, fontWeight: 800, color: gradeInfo.color, textTransform: "uppercase", letterSpacing: 0.4 }}>Grade</span>
-<span style={{ fontSize: 12, fontWeight: 900, color: "#1e293b" }}>{gradeBasisPercent.toFixed(2)}% {gradeBasisLabel}</span>
-</div>
+<div title={`${gradeBasisLabel} score: ${gradeBasisPercent.toFixed(2)}%`} style={{ display: "inline-flex", alignItems: "center", gap: 6, whiteSpace: "nowrap", background: "#f8fafc", border: "1px solid #eef1f6", borderRadius: 999, padding: "3px 9px 3px 3px" }}>
+<span style={{ width: 18, height: 18, borderRadius: "50%", background: gradeInfo.color, color: "#fff", fontSize: 9, fontWeight: 900, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{gradeInfo.label}</span>
+<span style={{ fontSize: 10.5, fontWeight: 800, color: "#475569" }}>{gradeBasisPercent.toFixed(1)}%</span>
 </div>
 </div>
 </div>
 
- {/* Review chain totals */}
-<div className="vc-score-strip" style={{ display: "grid", gridTemplateColumns: `repeat(${Math.max(scoreTiles.length, 1)}, minmax(0, 1fr))`, gap: 6, background: "#f8fafc", borderRadius: 8, padding: "10px 12px" }}>
- {scoreTiles.map((tile) =>{
+ {/* Review chain totals - one neutral color throughout instead of a different hue per
+     column; the label text (not color) is what distinguishes each score. Each tile sits in
+     its own bordered cell instead of floating in one flat box. */}
+<div className="vc-score-strip" style={{ display: "grid", gridTemplateColumns: `repeat(${Math.max(scoreTiles.length, 1)}, minmax(0, 1fr))`, gap: 0, background: "#f8fafc", border: "1px solid #eef1f6", borderRadius: 11, overflow: "hidden" }}>
+ {scoreTiles.map((tile, idx) =>{
  const score = n(tile.value);
  return (
-<div key={tile.label} style={{ minWidth: 0 }}>
-<div style={{ fontSize: 8, fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 3 }}>{tile.label}</div>
+<div key={tile.label} style={{ minWidth: 0, padding: "10px 11px", borderLeft: idx > 0 ? "1px solid #eef1f6" : "none" }}>
+<div style={{ fontSize: 8, fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{tile.label}</div>
  {score >0 || tile.isVc ? (
 <>
-<div style={{ fontSize: 15, fontWeight: 900, color: tile.color, lineHeight: 1 }}>
+<div style={{ fontSize: 14.5, fontWeight: 900, color: "#1e293b", lineHeight: 1 }}>
  {score >0 ? score.toFixed(1) : "-"}<span style={{ fontSize: 8, color: "#cbd5e1", fontWeight: 600 }}>/{scoreGrandMax}</span>
 </div>
-<ScoreBar score={score} max={scoreGrandMax} color={tile.color} />
+<div style={{ marginTop: 5 }}><ScoreBar score={score} max={scoreGrandMax} color={cardColor} /></div>
 </>
  ) : (
-<div style={{ fontSize: 15, fontWeight: 900, color: "#cbd5e1" }}>-</div>
+<div style={{ fontSize: 14.5, fontWeight: 900, color: "#cbd5e1" }}>-</div>
  )}
 </div>
  );
@@ -1640,19 +1657,22 @@ function PersonCard({ person, role, onReview, schoolColor, loading = false }) {
 </div>
 
  {remarkTiles.length >0 && (
-<div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+<div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
  {remarkTiles.map((item) =>(
-<div key={item.label} style={{ background: item.bg, borderRadius: 8, padding: "6px 10px", fontSize: 10, color: item.color, borderLeft: `3px solid ${item.border}` }}>
-<span style={{ fontWeight: 800 }}>{item.label}:</span>{" "}{item.value.slice(0, 55)}{item.value.length >55 ? "..." : ""}
+<div key={item.label} style={{ background: "#fbfcfd", border: "1px solid #f1f5f9", borderRadius: 9, padding: "8px 11px", fontSize: 11, color: "#475569", lineHeight: 1.45 }}>
+<span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontWeight: 800, color: "#334155", marginRight: 5 }}>
+<span style={{ width: 5, height: 5, borderRadius: 999, background: cardColor, flexShrink: 0, display: "inline-block" }} />
+{item.label}:
+</span>{item.value.slice(0, 55)}{item.value.length >55 ? "..." : ""}
 </div>
  ))}
 </div>
  )}
 
-<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #f1f5f9", paddingTop: 10 }}>
-<div style={{ fontSize: 9, color: "#94a3b8", letterSpacing: 0.2 }}>Submitted: {person.submittedOn || "-"}</div>
+<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #f1f5f9", paddingTop: 12 }}>
+<div style={{ fontSize: 9.5, color: "#94a3b8", letterSpacing: 0.2, fontWeight: 600 }}>Submitted: {person.submittedOn || "-"}</div>
 <button className="vc-action-button" onClick={() =>onReview(person, personMode)} disabled={loading}
- style={{ fontSize: 11, padding: "7px 16px", background: loading ? "#94a3b8" : isVcReviewed(person) ? "linear-gradient(135deg,#1e293b,#334155)" : `linear-gradient(135deg,${cardColor},${cardColor}cc)`, color: "#fff", border: "none", borderRadius: 8, cursor: loading ? "wait" : "pointer", fontWeight: 800, fontFamily: "inherit", letterSpacing: 0.2, boxShadow: loading ? "none" : `0 4px 12px ${cardColor}44` }}>
+ style={{ fontSize: 11.5, padding: "8px 18px", background: loading ? "#94a3b8" : isVcReviewed(person) ? "#ecfdf5" : "#0f172a", color: loading ? "#fff" : isVcReviewed(person) ? "#047857" : "#fff", border: !loading && isVcReviewed(person) ? "1px solid #a7f3d0" : "none", borderRadius: 9, cursor: loading ? "wait" : "pointer", fontWeight: 800, fontFamily: "inherit", letterSpacing: 0.2, boxShadow: loading ? "none" : isVcReviewed(person) ? "0 2px 8px rgba(5,150,105,0.12)" : "0 6px 14px rgba(15,23,42,0.22)", transition: "filter .15s, transform .15s" }}>
  {loading ? "Opening..." : isVcReviewed(person) ? "View Review" : "Review Form"}
 </button>
 </div>
@@ -1789,7 +1809,7 @@ function NonTeachingCard({ item, onReview }) {
 
 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #f1f5f9", paddingTop: 10 }}>
 <div style={{ fontSize: 9, color: "#94a3b8" }}>Submitted: {item.submittedOn || "-"}</div>
-<button className="vc-action-button" type="button" onClick={() =>onReview(item)} style={{ fontSize: 11, padding: "7px 16px", background: reviewed ? "linear-gradient(135deg,#1e293b,#334155)" : `linear-gradient(135deg,${cardColor},#0ea5e9)`, color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontWeight: 800, fontFamily: "inherit", boxShadow: `0 4px 12px ${cardColor}44` }}>
+<button className="vc-action-button" type="button" onClick={() =>onReview(item)} style={{ fontSize: 11, padding: "7px 16px", background: reviewed ? "#ecfdf5" : "#0f172a", color: reviewed ? "#047857" : "#fff", border: reviewed ? "1px solid #a7f3d0" : "none", borderRadius: 8, cursor: "pointer", fontWeight: 800, fontFamily: "inherit", boxShadow: reviewed ? "0 2px 8px rgba(5,150,105,0.12)" : "0 6px 14px rgba(15,23,42,0.22)" }}>
  {reviewed ? "View Review" : "Review Form"}
 </button>
 </div>
@@ -1969,7 +1989,6 @@ export default function VCDashboard() {
  const [reviewing, setReviewing] = useState(null);
  const [reviewLoading, setReviewLoading] = useState(null);
  const [showLogoutModal, setShowLogoutModal] = useState(false);
- const [showRoleTransfers, setShowRoleTransfers] = useState(false);
  const [deanList, setDeanList] = useState([]);
  const [dirList, setDirList] = useState([]);
  const [hodList, setHodList] = useState([]);
@@ -2228,33 +2247,18 @@ export default function VCDashboard() {
 
 <div style={{ height: 1, background: "rgba(148,163,184,0.16)" }} />
 
-<button className="vc-sidebar-nav" onClick={() =>{ setReviewing(null); setShowRoleTransfers(false); }}
- onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-1px)"; }}
- onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; }}
- style={{ position: "relative", background: showRoleTransfers ? "transparent" : "#f8fafc", border: showRoleTransfers ? "1px solid rgba(248,250,252,0.18)" : "1px solid #f8fafc", borderRadius: 15, padding: "10px 11px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, width: "100%", fontFamily: "inherit", transition: "transform 0.15s ease, background 0.15s ease", boxShadow: showRoleTransfers ? "none" : "0 10px 24px rgba(0,0,0,0.30), 0 0 0 3px rgba(248,250,252,0.08)" }}>
-<span style={{ width: 31, height: 31, borderRadius: 10, background: showRoleTransfers ? "rgba(255,255,255,0.06)" : "rgba(15,23,42,0.07)", border: "1px solid rgba(15,23,42,0.10)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-<VcIcon name="school" size={17} color={showRoleTransfers ? "#f8fafc" : "#0f172a"} />
+<button className="vc-sidebar-nav is-active" onClick={() =>{ setReviewing(null); }}
+ style={{ position: "relative", background: "rgba(99,102,241,0.14)", border: "1px solid rgba(129,140,248,0.48)", borderRadius: 15, padding: "10px 11px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, width: "100%", fontFamily: "inherit", boxShadow: "inset 3px 0 0 rgba(165,180,252,0.95), 0 10px 22px rgba(0,0,0,0.18)" }}>
+<span style={{ width: 31, height: 31, borderRadius: 10, background: "rgba(255,255,255,0.11)", border: "1px solid rgba(255,255,255,0.10)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+<VcIcon name="school" size={17} color="#f8fafc" />
 </span>
 <div style={{ flex: 1, textAlign: "left", minWidth: 0 }}>
-<div style={{ color: showRoleTransfers ? "#e2e8f0" : "#0f172a", fontWeight: 900, fontSize: 12.5 }}>School Reviews</div>
-<div style={{ color: showRoleTransfers ? "#94a3b8" : "#475569", fontSize: 10, marginTop: 1 }}>{totalPending} awaiting</div>
+<div style={{ color: "#f8fafc", fontWeight: 900, fontSize: 12.5 }}>School Reviews</div>
+<div style={{ color: "#c7d2fe", fontSize: 10, marginTop: 1 }}>{totalPending} awaiting</div>
 </div>
  {totalPending >0 && (
-<div style={{ background: showRoleTransfers ? "rgba(255,255,255,0.12)" : "#0f172a", color: "#f8fafc", fontWeight: 900, fontSize: 10, minWidth: 20, height: 20, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 5px", flexShrink: 0 }}>{totalPending}</div>
+<div style={{ background: "rgba(165,180,252,0.22)", color: "#f8fafc", fontWeight: 900, fontSize: 10, minWidth: 20, height: 20, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 5px", flexShrink: 0 }}>{totalPending}</div>
  )}
-</button>
-
-<button className="vc-sidebar-nav" onClick={() =>{ setReviewing(null); setShowRoleTransfers(true); }}
- onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-1px)"; }}
- onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; }}
- style={{ position: "relative", background: showRoleTransfers ? "#f8fafc" : "transparent", border: showRoleTransfers ? "1px solid #f8fafc" : "1px solid rgba(248,250,252,0.18)", borderRadius: 15, padding: "10px 11px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, width: "100%", fontFamily: "inherit", transition: "transform 0.15s ease, background 0.15s ease", boxShadow: showRoleTransfers ? "0 10px 24px rgba(0,0,0,0.30), 0 0 0 3px rgba(248,250,252,0.08)" : "none" }}>
-<span style={{ width: 31, height: 31, borderRadius: 10, background: showRoleTransfers ? "rgba(15,23,42,0.07)" : "rgba(255,255,255,0.06)", border: "1px solid rgba(15,23,42,0.10)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-<VcIcon name="profile" size={17} color={showRoleTransfers ? "#0f172a" : "#f8fafc"} />
-</span>
-<div style={{ flex: 1, textAlign: "left", minWidth: 0 }}>
-<div style={{ color: showRoleTransfers ? "#0f172a" : "#e2e8f0", fontWeight: 900, fontSize: 12.5 }}>Role Transfers</div>
-<div style={{ color: showRoleTransfers ? "#475569" : "#94a3b8", fontSize: 10, marginTop: 1 }}>Director &amp; Dean</div>
-</div>
 </button>
 
  {/* University summary */}
@@ -2264,7 +2268,7 @@ export default function VCDashboard() {
 University Overview
 </div>
 <div style={{ fontSize: 10.5, color: "#cbd5e1", fontWeight: 600, marginBottom: 3 }}>4 Engineering Schools</div>
-<div style={{ fontSize: 10.5, color: "#cbd5e1", fontWeight: 600, marginBottom: 3 }}>4 Non-Engineering Schools</div>
+<div style={{ fontSize: 10.5, color: "#cbd5e1", fontWeight: 600, marginBottom: 3 }}>5 Non-Engineering Schools</div>
 <div style={{ fontSize: 10.5, color: "#cbd5e1", fontWeight: 600, marginBottom: 3 }}>CISR Center</div>
 <div style={{ fontSize: 10.5, color: "#cbd5e1", fontWeight: 600, marginBottom: 8 }}>Non-Teaching Branch</div>
 <div style={{ display: "flex", gap: 7 }}>
@@ -2287,12 +2291,12 @@ University Overview
 </div>
 
 <div style={{ height: 1, background: "rgba(148,163,184,0.16)" }} />
-<div style={{ padding: 10, borderRadius: 20, background: "linear-gradient(180deg,rgba(30,41,59,0.86),rgba(15,23,42,0.92))", border: "1px solid rgba(148,163,184,0.18)", boxShadow: "0 18px 34px rgba(2,6,23,0.28), inset 0 1px 0 rgba(255,255,255,0.05)", display: "grid", gap: 8 }}>
+<div style={{ padding: 10, borderRadius: 26, background: "linear-gradient(180deg,rgba(30,41,59,0.86),rgba(15,23,42,0.92))", border: "1px solid rgba(148,163,184,0.18)", boxShadow: "0 18px 34px rgba(2,6,23,0.28), inset 0 1px 0 rgba(255,255,255,0.05)", display: "grid", gap: 9 }}>
 <button
  type="button"
  onClick={() =>navigate("/edit-profile")}
  title="Edit profile"
- style={{ display: "flex", alignItems: "center", gap: 10, background: "transparent", border: "none", borderRadius: 14, padding: 2, width: "100%", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
+ style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 17, padding: "7px 8px", width: "100%", boxSizing: "border-box", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
  >
 <Avatar
   initials={(sessionStorage.getItem("name") || "U").split(" ").map(w =>w[0]).join("").toUpperCase()}
@@ -2304,19 +2308,16 @@ University Overview
 <div style={{ color: "#f9fafb", fontSize: 13, fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sessionStorage.getItem("name") || "Vice Chancellor"}</div>
 <div style={{ color: "#a8b3c7", fontSize: 10.5, marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Vice Chancellor - {APP_INFO.SHORT_NAME}</div>
 </div>
-<span style={{ width: 30, height: 30, borderRadius: 12, background: "rgba(129,140,248,0.18)", border: "1px solid rgba(199,210,254,0.18)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+<span style={{ width: 30, height: 30, borderRadius: 13, background: "rgba(129,140,248,0.18)", border: "1px solid rgba(199,210,254,0.18)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
 <VcIcon name="profile" size={15} color="#c4b5fd" />
 </span>
 </button>
-<div style={{ height: 1, background: "rgba(148,163,184,0.13)" }} />
-<a href="mailto:appraisal@dypiu.ac.in" style={{ minHeight: 34, borderRadius: 12, padding: "6px 8px", color: "#c7d2fe", background: "rgba(99,102,241,0.10)", textDecoration: "none", display: "flex", alignItems: "center", gap: 8 }}>
-<span style={{ width: 24, height: 24, borderRadius: 9, background: "rgba(99,102,241,0.18)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-<VcIcon name="mail" size={14} color="#c7d2fe" />
-</span>
-<span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 800, fontSize: 11 }}>appraisal@dypiu.ac.in</span>
-</a>
+<div style={{ display: "flex", gap: 8 }}>
+<NoticesBell style={{ flex: 1, height: 42, borderRadius: 16, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }} />
+<ReportBugButton iconOnly style={{ flex: 1, height: 42, borderRadius: 16, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "inherit" }} />
+</div>
 <button type="button" onClick={() =>setShowLogoutModal(true)}
- style={{ width: "100%", minHeight: 38, display: "flex", alignItems: "center", justifyContent: "center", gap: 9, background: "rgba(248,113,113,0.10)", border: "1px solid rgba(248,113,113,0.32)", borderRadius: 13, padding: "9px 12px", cursor: "pointer", fontFamily: "inherit", transition: "background 0.15s ease, border-color 0.15s ease" }}
+ style={{ width: "100%", minHeight: 40, display: "flex", alignItems: "center", justifyContent: "center", gap: 9, background: "rgba(248,113,113,0.10)", border: "1px solid rgba(248,113,113,0.32)", borderRadius: 16, padding: "9px 12px", cursor: "pointer", fontFamily: "inherit", transition: "background 0.15s ease, border-color 0.15s ease" }}
  onMouseEnter={(e) =>{ e.currentTarget.style.background = "rgba(248,113,113,0.17)"; e.currentTarget.style.borderColor = "rgba(248,113,113,0.52)"; }}
  onMouseLeave={(e) =>{ e.currentTarget.style.background = "rgba(248,113,113,0.10)"; e.currentTarget.style.borderColor = "rgba(248,113,113,0.32)"; }}>
 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
@@ -2345,9 +2346,7 @@ University Overview
  </div>
 )}
 
- {!reviewing && showRoleTransfers && <RoleTransferPanel />}
-
- {!reviewing && !showRoleTransfers && (
+ {!reviewing && (
 <>
  {/* Hero */}
 <div className="vc-dashboard-hero fa-slide-top" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#fff", borderRadius: 14, padding: "16px 24px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb", flexWrap: "wrap" }}>
@@ -2382,6 +2381,7 @@ University Overview
 <span style={{ display: "block", fontSize: 10.5, color: "#6b7280", fontWeight: 700, marginTop: 1 }}>total submissions</span>
 </span>
 </div>
+<NoticesBell style={noticesBellHeaderStyle} />
 <AppraisalHeaderImage logo="iqas" style={{ alignSelf: "center" }} />
 </div>
 </div>

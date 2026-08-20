@@ -199,13 +199,8 @@ input[type="number"] {
 /* Sidebar nav / cards */
 .vc-sidebar-nav {
   background: rgba(99,102,241,0.14) !important;
-  border: 1px solid rgba(99,102,241,0.20) !important;
   border-radius: 8px !important;
   transition: background 0.18s ease, border-color 0.18s ease !important;
-}
-.vc-sidebar-nav:hover {
-  background: rgba(99,102,241,0.22) !important;
-  border-color: rgba(99,102,241,0.35) !important;
 }
 
 .vc-sidebar-card {
@@ -325,35 +320,35 @@ input[type="number"] {
 .vc-review-card {
   position: relative;
   overflow: hidden;
-  border-radius: 10px !important;
+  border-radius: 16px !important;
   border: 1px solid rgba(15,23,42,0.07) !important;
   transition: transform 0.2s ease, box-shadow 0.25s ease !important;
   background: #fff !important;
 }
 .vc-review-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 28px rgba(15,23,42,0.11) !important;
-  border-color: rgba(99,102,241,0.18) !important;
+  transform: translateY(-3px);
+  box-shadow: 0 14px 30px rgba(15,23,42,0.10) !important;
+  border-color: rgba(15,23,42,0.14) !important;
 }
 
 .vc-score-strip {
   transition: background 0.18s ease;
-  border-radius: 8px !important;
+  border-radius: 11px !important;
 }
 .vc-review-card:hover .vc-score-strip {
-  background: #eef2ff !important;
+  background: #f1f5f9 !important;
 }
 
 /* Review action button */
 .vc-action-button {
-  border-radius: 8px !important;
+  border-radius: 9px !important;
   letter-spacing: 0.2px;
   transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease !important;
 }
 .vc-action-button:hover:not(:disabled) {
   transform: translateY(-1px) !important;
-  box-shadow: 0 6px 16px rgba(76,29,149,0.24) !important;
-  opacity: 0.92;
+  box-shadow: 0 6px 16px rgba(15,23,42,0.18) !important;
+  filter: brightness(0.97);
 }
 
 /* Empty state */
@@ -458,6 +453,10 @@ input[type="number"] {
 .fa-slide-top  { animation: fa-slide-in-top  0.28s ease both; }
 .fa-page-enter { animation: fa-fade-up      0.40s ease both; }
 .fa-pulse      { animation: fa-pulse-soft   1.6s ease-in-out infinite; }
+
+/* Text inputs on a dark card (e.g. the Report a Bug modal) - browsers default placeholder
+   color is too dark to read against a navy background otherwise. */
+.fa-dark-field::placeholder { color: #64748b; }
 
 /* - Page / Layout Entrance - */
 /* Dashboard content area fades in on component mount */

@@ -167,7 +167,11 @@ export default function LegacyPreviousYearReport({
   const facultyPartB = hasPartBScores ? calculatedPartB : clampScore(storedTotals?.partB, 375);
   const facultyPartAMax = storedTotals?.partAMax || normalizedReport.totals?.faculty?.partAMax || normalizedReport.partA?.max || 200;
   const facultyPartBMax = storedTotals?.partBMax || normalizedReport.totals?.faculty?.partBMax || normalizedReport.partB?.max || 375;
-  const facultyGrandMax = storedTotals?.grandMax || normalizedReport.totals?.faculty?.grandMax || normalizedReport.totals?.faculty?.max || facultyPartAMax + facultyPartBMax;
+  // Grand max must always be the sum of the two part maxes above - a separately-stored
+  // grand/max field (score_summary.grandMax etc.) has been observed stale/inconsistent with the
+  // record's actual part maxes (e.g. reporting 720 for a 175+345=520 record), so it's never
+  // trusted here even as a fallback.
+  const facultyGrandMax = facultyPartAMax + facultyPartBMax;
   const displayedFacultyPartA = storedTotals?.partA ?? facultyPartA;
   const displayedFacultyPartB = storedTotals?.partB ?? facultyPartB;
   const grandFaculty = storedTotals?.grand ?? (hasPartAScores || hasPartBScores
@@ -175,6 +179,18 @@ export default function LegacyPreviousYearReport({
     : clampScore(storedTotals?.grand, facultyGrandMax));
   const hasStoredScore = [storedTotals?.partA, storedTotals?.partB, storedTotals?.grand]
     .some((value) => value !== null && value !== undefined && n(value) > 0);
+  // Each reviewing authority's own score was already computed into storedTotals (hodTotal,
+  // directorTotal, ...) but never actually rendered anywhere - only their remarks made it onto
+  // screen. Surface whichever roles have a recorded score and/or remarks, scored against the
+  // same corrected grand max faculty is measured against.
+  const reviewerRows = [["hod", "HOD"], ["director", "Director"], ["dean", "Dean"], ["vc", "VC"]]
+    .map(([key, label]) => ({
+      key,
+      label,
+      total: storedTotals?.[`${key}Total`],
+      remarks: storedTotals?.[`${key}Remarks`],
+    }))
+    .filter((row) => (row.total !== null && row.total !== undefined && n(row.total) > 0) || String(row.remarks || "").trim() !== "");
   const hasPreviousRecord = hasStoredScore ||
     legacySectionsHaveData(partASections) ||
     legacySectionsHaveData(partBSections) ||
@@ -220,6 +236,26 @@ export default function LegacyPreviousYearReport({
           </div>
         ))}
       </div>
+      {reviewerRows.length > 0 && (
+        <div style={{ marginTop: 16 }}>
+          <div style={{ color: "#64748b", fontSize: 10, fontWeight: 900, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 8 }}>Higher Authority Scores</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {reviewerRows.map((row) => (
+              <div key={row.key} style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: "11px 13px", background: "#f8fafc", display: "flex", flexDirection: "column", gap: 4 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                  <span style={{ color: "#334155", fontSize: 12.5, fontWeight: 900 }}>{row.label}</span>
+                  <span style={{ color: "#111827", fontSize: 14, fontWeight: 900 }}>
+                    {row.total !== null && row.total !== undefined ? `${n(row.total).toFixed(1)} / ${facultyGrandMax}` : "Score not recorded"}
+                  </span>
+                </div>
+                {String(row.remarks || "").trim() !== "" && (
+                  <div style={{ color: "#64748b", fontSize: 12, lineHeight: 1.5 }}>{row.remarks}</div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       <div style={{ marginTop: 18 }}>
         <PreviousYearReportActions report={normalizedReport} title="Previous Year Appraisal Report" showSummary={false} reviews={reviews} />
       </div>

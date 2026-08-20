@@ -40,15 +40,64 @@ const reviewName = (review = {}) =>
 const reviewDate = (review = {}) =>
   firstFilled(review.reviewed_at, review.reviewedAt, review.updated_at, review.updatedAt, review.created_at, review.createdAt);
 
+// Some previous-year records carry a review with no total_score/part_*_score fields at all -
+// only a section_scores map of per-section score arrays (e.g. { lectures: [40, 35] }). Summing
+// every number in that map recovers the reviewer's actual total when nothing else is present.
+const sectionScoresTotal = (review = {}) => {
+  const raw = review.section_scores ?? review.sectionScores;
+  const sectionScores = typeof raw === "string" ? (() => { try { return JSON.parse(raw); } catch { return null; } })() : raw;
+  if (!sectionScores || typeof sectionScores !== "object") return "";
+  let sum = 0;
+  let found = false;
+  Object.values(sectionScores).forEach((value) => {
+    const values = Array.isArray(value) ? value : [value];
+    values.forEach((entry) => {
+      const num = parseFloat(entry);
+      if (Number.isFinite(num)) {
+        sum += num;
+        found = true;
+      }
+    });
+  });
+  return found ? sum : "";
+};
+
+const reviewScore = (review = {}) => {
+  const nestedTotals = (() => {
+    if (review.totals && typeof review.totals === "object") return review.totals;
+    if (typeof review.totals === "string") {
+      try { return JSON.parse(review.totals) || {}; } catch { return {}; }
+    }
+    return {};
+  })();
+  const direct = firstFilled(
+    review.total_score, review.totalScore, review.total, review.grand_total, review.grandTotal,
+    nestedTotals.total, nestedTotals.total_score, nestedTotals.grand_total, nestedTotals.grandTotal,
+  );
+  const partKeys = ["part_a_score", "partAScore", "part_b_score", "partBScore", "part_c_score", "partCScore", "part_d_score", "partDScore"];
+  const partsPresent = partKeys.some((key) => review[key] !== undefined && review[key] !== null && String(review[key]).trim() !== "");
+  const partsSum = partsPresent ? partKeys.reduce((sum, key) => sum + (parseFloat(review[key]) || 0), 0) : "";
+  const sectionSum = sectionScoresTotal(review);
+  // total_score is a NOT-NULL backend column defaulting to 0, so "present" alone doesn't mean
+  // "actually recorded" - some historical reviews only ever had their per-section scores sent at
+  // submission time, leaving total_score genuinely at its 0 default forever. Prefer whichever
+  // candidate is actually positive; only fall back to a literal 0/blank when every source (direct
+  // total, summed parts, summed section_scores) agrees there's really nothing recorded.
+  const positive = [direct, partsSum, sectionSum].find((value) => value !== "" && (parseFloat(value) || 0) > 0);
+  if (positive !== undefined) return positive;
+  return direct !== "" ? direct : (partsSum !== "" ? partsSum : sectionSum);
+};
+
 const renderAuthorityRemarks = (reviews = []) => {
   const rows = (Array.isArray(reviews) ? reviews : [])
     .map((review) => ({
       role: reviewRole(review),
       name: reviewName(review),
       date: reviewDate(review),
+      score: reviewScore(review),
       remarks: reviewRemarks(review),
     }))
-    .filter((review) => String(review.remarks || "").trim());
+    .filter((review) => String(review.remarks || "").trim() || hasScore(review.score));
 
   if (!rows.length) return "";
 
@@ -57,10 +106,11 @@ const renderAuthorityRemarks = (reviews = []) => {
   <table>
     <thead>
       <tr>
-        <th style="width:18%">Authority</th>
-        <th style="width:22%">Reviewer</th>
-        <th style="width:16%">Date</th>
-        <th>Remarks</th>
+        <th style="width:14%">Authority</th>
+        <th style="width:16%">Reviewer</th>
+        <th style="width:12%">Date</th>
+        <th style="width:10%">Score</th>
+        <th style="width:48%">Remarks</th>
       </tr>
     </thead>
     <tbody>
@@ -73,6 +123,7 @@ const renderAuthorityRemarks = (reviews = []) => {
           <td>${safeHtml(reviewerLabels[role] || role || "Authority")}</td>
           <td>${displayValue(review.name)}</td>
           <td class="c">${displayValue(displayDate)}</td>
+          <td class="c">${hasScore(review.score) ? score(review.score) : "-"}</td>
           <td><div class="remarks">${safeHtml(review.remarks)}</div></td>
         </tr>`;
       }).join("")}
@@ -137,9 +188,12 @@ const renderSummary = (report = {}, levels = ["faculty"]) => `
     <tbody>
       ${levels.map((level) => {
         const totals = report.totals?.[level] || {};
-        const partAMax = totals.partAMax || report.partA?.max;
-        const partBMax = totals.partBMax || report.partB?.max;
-        const grandMax = totals.grandMax || totals.max || report.totals?.faculty?.grandMax || report.totals?.faculty?.max || ((report.partA?.max || 0) + (report.partB?.max || 0));
+        const partAMax = totals.partAMax || report.partA?.max || 0;
+        const partBMax = totals.partBMax || report.partB?.max || 0;
+        // Grand max is always the sum of the two part maxes above - a separately-stored
+        // grand/max field has been observed stale/inconsistent with the record's actual part
+        // maxes, so it's never trusted here even as a fallback.
+        const grandMax = partAMax + partBMax;
         return `
         <tr>
           <td>${safeHtml(roleLabels[level]?.replace(" Score", "") || level)}</td>

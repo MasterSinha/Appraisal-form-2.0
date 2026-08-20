@@ -5,6 +5,20 @@ import { api } from "../services/api";
 import { Avatar, ScoreCard, ScoreBar, StatusBadge, ReviewMetricsStrip, uploadedDocCount } from "../components/dashboard/dashboardPrimitives";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import DashboardSidebar from "../components/dashboard/DashboardSidebar";
+import NoticesBell from "../components/dashboard/NoticesBell";
+
+const noticesBellHeaderStyle = {
+  width: 42,
+  height: 42,
+  borderRadius: 13,
+  background: "#f8fafc",
+  border: "1px solid #e5e7eb",
+  cursor: "pointer",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  flexShrink: 0,
+};
 import { ACR_DETAIL_POINTS, SOCIETY_LABELS, MAX_SCORES, APP_INFO, createAcrRows, fetchSavedAppraisal, loadAppraisalDocuments, loadSavedAppraisal, mergeFacultyInfo, saveAppraisalDraftSection, submitAppraisal, fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, INNOVATIVE_METHODS, SCORE_LIMITS, averageSectionScore, clampScore, clampReviewScore, courseFileAverageScore, courseFileRowScore, effectiveMaxScore, feedbackAverage, feedbackRowScore, feedbackSectionScore, innovativeSelectionsFromDetails, innovativeTeachingScore, isAllowedAttachmentFile, isValidDDMMYYYY, maskDateDDMMYYYY, normalizeAutoScores, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewSectionScore, rowHasReviewableData, isSectionEmpty, scoreRemaining, selfEffectivePartAMax, societyRowLocked, societyRowScore, sumSectionScore, toggleInnovativeMethod, validateCompleteRows, buildReviewRemarks, standardSubmittedScoreSummary, AppraisalHeaderImage, SummaryOtherInfoField, summaryOtherInfoValueFrom, RejectionNotice, DocCell, ViewCell, ViewDocsCell, RowButtons as RowBtns, SectionSaveFooter, SectionCard as SC, T, TH, TH_HOD, TH_DIR, TD, TDC, TDS, TDS_HOD, TDS_DIR, TDV, MyAppraisalSection, CreativeSchoolAuthorityReviewPanel, isCreativeSchool, isDesignArtsSchool, isMediaCommSchool } from "../features/faculty-appraisal";
 import { getActiveAcademicYear, getSessionItem, normalizeAcademicYearLabel, setActiveAcademicYear } from "../auth/session";
 import { PreviousYearReportViewer } from "../features/previousYearReport";
@@ -1108,6 +1122,7 @@ export default function DirectorDashboard() {
 <div style={{ fontSize: 11, fontWeight: 700, padding: "5px 12px", borderRadius: 20, background: "#d1fae5", color: "#065f46" }}>
  {activeMainTab === "facultyApprovals" ? facultyReviewedCount : hodReviewedCount} Reviewed
 </div>
+<NoticesBell style={noticesBellHeaderStyle} />
 <AppraisalHeaderImage logo="iqas" />
 </div>
 </div>
@@ -1163,13 +1178,13 @@ export default function DirectorDashboard() {
 
  return (
 <LazyVisible key={item.id} triggerKey={`${item.email}::${item.academicYear}`} onVisible={() =>handleCardVisible(item)}>
-<div style={{ background: "#fff", borderRadius: 12, padding: "18px 20px", boxShadow: "0 1px 6px rgba(0,0,0,.07)", display: "flex", flexDirection: "column", gap: 14 }}>
+<div className="vc-review-card fa-fade-up" style={{ background: "#fff", borderRadius: 16, boxShadow: "0 4px 16px rgba(15,23,42,0.06)", border: "1px solid #eef1f6", padding: "18px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
 <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-<Avatar initials={item.avatar} src={item.avatarUrl} color={item.avatarColor} size={58} />
-<div style={{ flex: 1 }}>
-<div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", marginBottom: 2 }}>{item.name}</div>
-<div style={{ fontSize: 11, color: "#475569", marginBottom: 2 }}>{item.designation}</div>
-<div style={{ fontSize: 10, color: "#94a3b8", fontFamily: "monospace" }}>{item.employeeId}</div>
+<Avatar initials={item.avatar} src={item.avatarUrl} color={item.avatarColor} size={52} />
+<div style={{ flex: 1, minWidth: 0 }}>
+<div style={{ fontSize: 16, fontWeight: 900, color: "#0f172a", letterSpacing: -0.2, marginBottom: 4 }}>{item.name}</div>
+<div style={{ fontSize: 11, color: "#64748b", fontWeight: 600, marginBottom: 2 }}>{item.designation}</div>
+<div style={{ fontSize: 9, color: "#94a3b8", fontFamily: "monospace" }}>{item.employeeId}</div>
 </div>
 <StatusBadge status={item.status} />
 </div>
@@ -1222,8 +1237,9 @@ item={item}
  })()}
 
 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #f1f5f9", paddingTop: 12 }}>
-<div style={{ fontSize: 10, color: "#94a3b8" }}>Submitted: {item.submittedOn}</div>
+<div style={{ fontSize: 9.5, color: "#94a3b8", fontWeight: 600 }}>Submitted: {item.submittedOn}</div>
 <button
+ className="vc-action-button"
  disabled={reviewLoading === item.id}
  onClick={async () =>{
  setReviewLoading(item.id);
@@ -1246,7 +1262,7 @@ item={item}
  setReviewLoading(null);
  }
  }}
- style={{ fontSize: 11, padding: "7px 18px", background: isDirectorReviewed(item) ? "#1e293b" : "#312e81", color: "#f1f5f9", border: "none", borderRadius: 6, cursor: reviewLoading === item.id ? "wait" : "pointer", fontWeight: 700, fontFamily: "inherit", opacity: reviewLoading === item.id ? 0.7 : 1 }}>
+ style={{ fontSize: 11.5, padding: "8px 18px", background: reviewLoading === item.id ? "#94a3b8" : isDirectorReviewed(item) ? "#ecfdf5" : "#0f172a", color: reviewLoading === item.id ? "#fff" : isDirectorReviewed(item) ? "#047857" : "#fff", border: reviewLoading !== item.id && isDirectorReviewed(item) ? "1px solid #a7f3d0" : "none", borderRadius: 9, cursor: reviewLoading === item.id ? "wait" : "pointer", fontWeight: 800, fontFamily: "inherit", letterSpacing: 0.2, boxShadow: reviewLoading === item.id ? "none" : isDirectorReviewed(item) ? "0 2px 8px rgba(5,150,105,0.12)" : "0 6px 14px rgba(15,23,42,0.22)" }}>
  {reviewLoading === item.id ? "Loading..." : isDirectorReviewed(item) ? "View Review" : "Review Form"}
 </button>
 </div>

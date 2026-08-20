@@ -4,6 +4,20 @@ import { useNavigate } from "react-router-dom";
 import { getActiveAcademicYear, getSessionItem, setActiveAcademicYear } from "../auth/session";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import DashboardSidebar from "../components/dashboard/DashboardSidebar";
+import NoticesBell from "../components/dashboard/NoticesBell";
+
+const noticesBellHeaderStyle = {
+  width: 42,
+  height: 42,
+  borderRadius: 13,
+  background: "#f8fafc",
+  border: "1px solid #e5e7eb",
+  cursor: "pointer",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  flexShrink: 0,
+};
 import ManageDepartmentsPanel from "../components/dashboard/ManageDepartmentsPanel";
 import { Avatar, LogoutConfirmModal, ScoreBar, StatusBadge, ReviewMetricsStrip } from "../components/dashboard/dashboardPrimitives";
 import { getSchoolByValue, getSchoolKey } from "../constants/universityHierarchy";
@@ -910,7 +924,10 @@ export default function DesignArtsDashboard({ fixedRole }) {
             </div>
           </div>
           </div>
-          <AppraisalHeaderImage logo="iqas" height={78} />
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <NoticesBell style={noticesBellHeaderStyle} />
+            <AppraisalHeaderImage logo="iqas" height={78} />
+          </div>
         </div>
       </div>
       )}
@@ -949,6 +966,7 @@ export default function DesignArtsDashboard({ fixedRole }) {
 <div style={{ fontSize: 11, fontWeight: 700, padding: "5px 12px", borderRadius: 20, background: "#d1fae5", color: "#065f46" }}>
  {reviewedCount} Reviewed
 </div>
+<NoticesBell style={noticesBellHeaderStyle} />
 <AppraisalHeaderImage logo="iqas" />
 </div>
 </div>
@@ -1220,11 +1238,11 @@ export default function DesignArtsDashboard({ fixedRole }) {
  ];
  return (
 <LazyVisible key={item.id} triggerKey={`${item.email}::${item.academicYear}`} onVisible={() =>handleCardVisible(item)}>
-<div style={{ background: "#fff", borderRadius: 12, padding: "18px 20px", boxShadow: "0 1px 6px rgba(0,0,0,.07)", display: "flex", flexDirection: "column", gap: 14 }}>
+<div className="vc-review-card fa-fade-up" style={{ background: "#fff", borderRadius: 16, boxShadow: "0 4px 16px rgba(15,23,42,0.06)", border: "1px solid #eef1f6", padding: "18px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
 <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-<Avatar initials={initials} src={item.avatarUrl} color={item.avatarColor} size={58} />
+<Avatar initials={initials} src={item.avatarUrl} color={item.avatarColor} size={52} />
 <div style={{ flex: 1, minWidth: 0 }}>
-<div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</div>
+<div style={{ fontSize: 16, fontWeight: 900, color: "#0f172a", letterSpacing: -0.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</div>
 </div>
 <StatusBadge status={item.status} />
 </div>
@@ -1236,8 +1254,9 @@ export default function DesignArtsDashboard({ fixedRole }) {
 />
 
 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #f1f5f9", paddingTop: 12 }}>
-<div style={{ fontSize: 10, color: "#94a3b8" }}>{scoreLabel}</div>
+<div style={{ fontSize: 9.5, color: "#94a3b8", fontWeight: 600 }}>{scoreLabel}</div>
 <button
+ className="vc-action-button"
  disabled={reviewLoading === item.id}
  onClick={async () =>{
  setReviewLoading(item.id);
@@ -1258,7 +1277,7 @@ export default function DesignArtsDashboard({ fixedRole }) {
  setReviewLoading(null);
  }
  }}
- style={{ fontSize: 11, padding: "7px 18px", background: reviewComplete ? "#1e293b" : "#312e81", color: "#f1f5f9", border: "none", borderRadius: 6, cursor: reviewLoading === item.id ? "wait" : "pointer", fontWeight: 700, fontFamily: "inherit", opacity: reviewLoading === item.id ? 0.7 : 1 }}
+ style={{ fontSize: 11.5, padding: "8px 18px", background: reviewLoading === item.id ? "#94a3b8" : reviewComplete ? "#ecfdf5" : "#0f172a", color: reviewLoading === item.id ? "#fff" : reviewComplete ? "#047857" : "#fff", border: reviewLoading !== item.id && reviewComplete ? "1px solid #a7f3d0" : "none", borderRadius: 9, cursor: reviewLoading === item.id ? "wait" : "pointer", fontWeight: 800, fontFamily: "inherit", letterSpacing: 0.2, boxShadow: reviewLoading === item.id ? "none" : reviewComplete ? "0 2px 8px rgba(5,150,105,0.12)" : "0 6px 14px rgba(15,23,42,0.22)" }}
  >
  {reviewLoading === item.id ? "Loading..." : reviewComplete ? "View Review" : "Review Form"}
 </button>

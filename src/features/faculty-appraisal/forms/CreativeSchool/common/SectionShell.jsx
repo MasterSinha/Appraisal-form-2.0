@@ -97,6 +97,7 @@ function SubsectionIcon({ type }) {
 export default function SectionShell({ title, children }) {
   const displayTitle = stripMaxMarksFromTitle(title);
   const iconType = detectIconType(title);
+  const infoPopoverPlacement = /\bB12\b/i.test(String(title)) ? "left" : "right";
 
   // Flatten children to place tables inside card box and buttons outside
   const childArray = [];
@@ -127,7 +128,7 @@ export default function SectionShell({ title, children }) {
           <SubsectionIcon type={iconType} />
         </span>
         <span>{displayTitle}</span>
-        <SectionInfoButton titleText={title} />
+        <SectionInfoButton titleText={title} popoverPlacement={infoPopoverPlacement} />
       </div>
 
       {/* Rounded Table Card Box Container */}
