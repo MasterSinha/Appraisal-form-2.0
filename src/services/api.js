@@ -9,8 +9,12 @@ let baseRawUrl = (
 
 if (baseRawUrl.startsWith("/") && typeof window !== "undefined" && window.location) {
   const { hostname, port, protocol } = window.location;
-  if (port && port !== "8000" && port !== "80" && port !== "443") {
-    baseRawUrl = `${protocol}//${hostname}:8000${baseRawUrl}`;
+  if (port && port !== "80" && port !== "443") {
+    const match = port.match(/^300(\d)$/);
+    const backendPort = match ? `800${match[1]}` : "8000";
+    if (port !== backendPort) {
+      baseRawUrl = `${protocol}//${hostname}:${backendPort}${baseRawUrl}`;
+    }
   }
 }
 
