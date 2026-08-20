@@ -6,21 +6,7 @@ import { fetchPartDRegistrarQueue, submitPartDRegistrarReview } from "../service
 import { getActiveAcademicYear } from "../auth/session";
 import { roleLabel } from "../utils/hierarchy";
 import AppraisalHeaderImage from "../components/AppraisalHeaderImage";
-import NoticesBell from "../components/dashboard/NoticesBell";
 import { DEAN_TRACKS, UNIVERSITY_SCHOOLS, getSchoolByValue, normalizeHierarchyText } from "../constants/universityHierarchy";
-
-const noticesBellHeaderStyle = {
-  width: 42,
-  height: 42,
-  borderRadius: 13,
-  background: "#f8fafc",
-  border: "1px solid #e5e7eb",
-  cursor: "pointer",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  flexShrink: 0,
-};
 
 // Registrar-only queue for Part D (Leave & Attendance) of teaching-staff forms (Faculty/HOD/
 // Director/Dean/Center Head, any school) - a track independent of the A/B/C/E chain that never
@@ -322,7 +308,6 @@ export default function TeachingPartDReviewDashboard({ accent = "#155e75", acade
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <NoticesBell style={noticesBellHeaderStyle} />
           <AppraisalHeaderImage logo="iqas" height={78} />
         </div>
       </div>

@@ -18,20 +18,6 @@ import LeaveManagementReadOnly from "../components/appraisal/PartD/LeaveManageme
 import { ReportBugButton } from "../components/dashboard/ReportBugModal";
 import NoticesBell from "../components/dashboard/NoticesBell";
 
-const noticesBellHeaderStyle = {
-  width: 42,
-  height: 42,
-  borderRadius: 13,
-  background: "#fff",
-  border: "1px solid #e5e7eb",
-  boxShadow: "0 4px 14px rgba(15,23,42,0.08)",
-  cursor: "pointer",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  flexShrink: 0,
-};
-
 // --- Helpers ------------------------------------------------------------------
 const oneDecimal = (value) =>(Math.trunc(n(value) * 10) / 10).toFixed(1);
 const isVcReviewed = (person = {}) =>!isPendingReviewStatusFor([person.status, person.workflowStatus, person.workflow_status], "vc") && (person.status === "Reviewed" || person.status === "VC Reviewed" || person.status === "Rejected" || person.status === "VC Rejected" || n(person.vcTotal) >0);
@@ -1974,10 +1960,35 @@ const previousYearFormTypeFor = (profile = {}) =>{
 };
 
 function PreviousYearAuthorityResult({ item, onBack }) {
+ const previousYearReviews = reviewListFrom(
+ item.reviews ||
+ item.review_history ||
+ item.reviewHistory ||
+ item.previousYearResponse?.reviews ||
+ item.previousYearResponse?.review_history ||
+ item.previousYearResponse?.reviewHistory ||
+ item.previousYearResponse?.appraisal_reviews ||
+ item.previousYearResponse?.appraisalReviews ||
+ item.previousYearResponse?.payload?.reviews ||
+ item.previousYearResponse?.payload?.review_history ||
+ item.previousYearResponse?.payload?.reviewHistory ||
+ item.previousYearResponse?.payload?.appraisal_reviews ||
+ item.previousYearResponse?.payload?.appraisalReviews ||
+ item.previousYearResponse?.data?.reviews ||
+ item.previousYearResponse?.data?.review_history ||
+ item.previousYearResponse?.data?.reviewHistory ||
+ item.previousYearResponse?.data?.appraisal_reviews ||
+ item.previousYearResponse?.data?.appraisalReviews ||
+ item.previousYearResponse?.data?.payload?.reviews ||
+ item.previousYearResponse?.data?.payload?.review_history ||
+ item.previousYearResponse?.data?.payload?.reviewHistory ||
+ item.previousYearResponse?.data?.payload?.appraisal_reviews ||
+ item.previousYearResponse?.data?.payload?.appraisalReviews
+ );
  return (
  <div style={{ display: "grid", gap: 12 }}>
  <button type="button" onClick={onBack} style={{ justifySelf: "start", border: "1px solid #cbd5e1", background: "#fff", color: "#334155", borderRadius: 8, padding: "8px 14px", fontWeight: 800, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>Back</button>
- <PreviousYearReportViewer showTables visibleLevels={["faculty", "hod", "director", "dean", "vc"]} formType={previousYearFormTypeFor(item)} form={item} docs={item.docs || {}} response={item.previousYearResponse || item} academicYear={item.academicYear || item.academic_year || item.info?.ay} profile={item} reviews={reviewListFrom(item.reviews || item.previousYearResponse?.reviews || item.previousYearResponse?.payload?.reviews)} />
+ <PreviousYearReportViewer showTables visibleLevels={["faculty", "hod", "director", "dean", "vc"]} formType={previousYearFormTypeFor(item)} form={item} docs={item.docs || {}} response={item.previousYearResponse || item} academicYear={item.academicYear || item.academic_year || item.info?.ay} profile={item} reviews={previousYearReviews} />
  </div>
  );
 }
@@ -2383,7 +2394,6 @@ University Overview
 <span style={{ display: "block", fontSize: 10.5, color: "#6b7280", fontWeight: 700, marginTop: 1 }}>total submissions</span>
 </span>
 </div>
-<NoticesBell style={noticesBellHeaderStyle} />
 <AppraisalHeaderImage logo="iqas" style={{ alignSelf: "center" }} />
 </div>
 </div>

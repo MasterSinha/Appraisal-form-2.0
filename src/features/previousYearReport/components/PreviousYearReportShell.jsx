@@ -1,3 +1,4 @@
+import { useState } from "react";
 import PreviousYearReportActions from "./PreviousYearReportActions";
 import PreviousYearScoreSummary from "./PreviousYearScoreSummary";
 import PreviousYearSectionTable from "./PreviousYearSectionTable";
@@ -23,7 +24,7 @@ export default function PreviousYearReportShell({ report, title, reviews = [], s
   return (
     <SC title={`${title} - ${report.academicYear}`} accent="#4c1d95">
       {showTables ? (
-        <PreviousYearTableView report={report} visibleLevels={visibleLevels} />
+        <PreviousYearTableView report={report} reviews={reviews} visibleLevels={visibleLevels} />
       ) : (
         <PreviousYearReportActions report={report} title={title} reviews={reviews} />
       )}
@@ -31,8 +32,62 @@ export default function PreviousYearReportShell({ report, title, reviews = [], s
   );
 }
 
-function PreviousYearTableView({ report, visibleLevels }) {
+function PreviousYearTableView({ report, reviews = [], visibleLevels }) {
+  const isLegacyTwoPartReport = (academicYear = "") => {
+    const value = String(academicYear || "").replace(/\s+/g, "");
+    return value === "2025-2026" || value === "2025-26" || value === "25-26";
+  };
   const levels = visibleLevels?.length ? visibleLevels : (report.reviewLevels || ["faculty", "hod", "director", "dean"]);
+  const pages = [
+    { key: "partA", label: "Part A" },
+    { key: "partB", label: "Part B" },
+    { key: "summary", label: "Summary" },
+  ];
+  const [legacyPage, setLegacyPage] = useState("partA");
+  const legacyPageIndex = pages.findIndex((page) => page.key === legacyPage);
+  const previousPage = pages[Math.max(legacyPageIndex - 1, 0)];
+  const nextPage = pages[Math.min(legacyPageIndex + 1, pages.length - 1)];
+
+  if (isLegacyTwoPartReport(report.academicYear)) {
+    return (
+      <div style={{ display: "grid", gap: 16 }}>
+        <PreviousYearFacultyInfo report={report} />
+        <LegacyPageNav pages={pages} activePage={legacyPage} onChange={setLegacyPage} />
+        {legacyPage === "partA" && (
+          <>
+            <PartBand title="Part A - Teaching & Academic Activities" />
+            {report.partA.sections.map((section) => (
+              <PreviousYearSectionTable key={section.key || section.label} section={section} levels={levels} />
+            ))}
+          </>
+        )}
+        {legacyPage === "partB" && (
+          <>
+            <PartBand title="Part B - Research & Academic Contributions" tone="#ede9fe" />
+            {report.partB.sections.map((section) => (
+              <PreviousYearSectionTable key={section.key || section.label} section={section} levels={levels} />
+            ))}
+          </>
+        )}
+        {legacyPage === "summary" && (
+          <>
+            <PartBand title="Summary" tone="#ecfdf5" />
+            <PreviousYearScoreSummary report={report} visibleLevels={levels} variant="table" />
+            <AuthorityRemarks reviews={reviews} />
+          </>
+        )}
+        <LegacyPager
+          activePage={legacyPage}
+          previousPage={previousPage}
+          nextPage={nextPage}
+          isFirst={legacyPageIndex <= 0}
+          isLast={legacyPageIndex >= pages.length - 1}
+          onChange={setLegacyPage}
+        />
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: "grid", gap: 16 }}>
       <PreviousYearFacultyInfo report={report} />
@@ -48,6 +103,214 @@ function PreviousYearTableView({ report, visibleLevels }) {
     </div>
   );
 }
+
+const firstFilled = (...values) =>
+  values.find((value) => value !== undefined && value !== null && String(value).trim() !== "") || "";
+
+const hasPositiveScore = (value) => String(value ?? "").trim() !== "" && (parseFloat(value) || 0) > 0;
+
+const reviewerLabels = {
+  faculty: "Faculty",
+  hod: "HOD / Center Head",
+  center_head: "Center Head",
+  director: "Director",
+  dean: "Dean",
+  vc: "VC",
+};
+
+const reviewerOrder = {
+  faculty: 0,
+  hod: 1,
+  center_head: 1,
+  director: 2,
+  dean: 3,
+  vc: 4,
+};
+
+const reviewRemarks = (review = {}) =>
+  firstFilled(review.remarks, review.remark, review.comments, review.comment, review.review_remarks, review.reviewRemarks, review.reviewer_remarks, review.reviewerRemarks, review.reason, review.rejection_reason, review.rejectionReason);
+
+const reviewRole = (review = {}) =>
+  firstFilled(review.reviewer_role, review.reviewerRole, review.role, review.authority_role, review.authorityRole);
+
+const normalizedReviewRole = (role = "") => {
+  const value = String(role || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (value === "center_head" || value === "centre_head") return "center_head";
+  if (value.includes("hod") || value.includes("head_of_department")) return "hod";
+  if (value.includes("director")) return "director";
+  if (value.includes("dean")) return "dean";
+  if (value === "vc" || value.includes("vice_chancellor")) return "vc";
+  if (value.includes("faculty")) return "faculty";
+  return value;
+};
+
+const reviewName = (review = {}) =>
+  firstFilled(review.reviewer_name, review.reviewerName, review.name, review.authority_name, review.authorityName);
+
+const reviewDate = (review = {}) =>
+  firstFilled(review.reviewed_at, review.reviewedAt, review.updated_at, review.updatedAt, review.created_at, review.createdAt);
+
+const reviewScore = (review = {}) => {
+  const totals = typeof review.totals === "string"
+    ? (() => {
+      try { return JSON.parse(review.totals) || {}; } catch { return {}; }
+    })()
+    : (review.totals || {});
+  const direct = firstFilled(
+    review.total_score,
+    review.totalScore,
+    review.total,
+    review.grand_total,
+    review.grandTotal,
+    totals.total,
+    totals.total_score,
+    totals.grand_total,
+    totals.grandTotal,
+  );
+  const partKeys = ["part_a_score", "partAScore", "part_b_score", "partBScore", "part_c_score", "partCScore", "part_d_score", "partDScore"];
+  const partsPresent = partKeys.some((key) => String(review[key] ?? "").trim() !== "");
+  const partsSum = partsPresent ? partKeys.reduce((sum, key) => sum + (parseFloat(review[key]) || 0), 0) : "";
+  return [direct, partsSum].find(hasPositiveScore) ?? direct ?? partsSum;
+};
+
+function AuthorityRemarks({ reviews = [] }) {
+  const rows = (Array.isArray(reviews) ? reviews : [])
+    .map((review) => ({
+      role: normalizedReviewRole(reviewRole(review)),
+      name: reviewName(review),
+      date: reviewDate(review),
+      score: reviewScore(review),
+      remarks: reviewRemarks(review),
+    }))
+    .filter((review) => String(review.remarks || "").trim() || hasPositiveScore(review.score))
+    .sort((a, b) => {
+      const roleDiff = (reviewerOrder[a.role] ?? 99) - (reviewerOrder[b.role] ?? 99);
+      if (roleDiff !== 0) return roleDiff;
+      const aTime = a.date ? new Date(a.date).getTime() : 0;
+      const bTime = b.date ? new Date(b.date).getTime() : 0;
+      return (Number.isFinite(aTime) ? aTime : 0) - (Number.isFinite(bTime) ? bTime : 0);
+    });
+
+  if (!rows.length) return null;
+
+  return (
+    <div style={{ border: "1px solid #dbe3ef", borderRadius: 8, overflow: "hidden", background: "#fff" }}>
+      <div style={{ background: "#f8fafc", borderBottom: "1px solid #dbe3ef", padding: "10px 12px", color: "#172033", fontSize: 12, fontWeight: 900, textTransform: "uppercase" }}>
+        Higher Authority Remarks
+      </div>
+      <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+        <thead>
+          <tr style={{ background: "#fff" }}>
+            <th style={{ ...summaryTh, width: "16%" }}>Authority</th>
+            <th style={{ ...summaryTh, width: "18%" }}>Reviewer</th>
+            <th style={{ ...summaryTh, width: "14%" }}>Date</th>
+            <th style={{ ...summaryTh, width: "12%" }}>Score</th>
+            <th style={summaryTh}>Remarks</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((review, index) => {
+            const date = review.date ? new Date(review.date) : null;
+            const displayDate = date && Number.isFinite(date.getTime()) ? date.toLocaleDateString("en-IN") : review.date;
+            return (
+              <tr key={`${review.role || "authority"}-${index}`}>
+                <td style={summaryTdLabel}>{reviewerLabels[review.role] || review.role || "Authority"}</td>
+                <td style={summaryTd}>{review.name || "-"}</td>
+                <td style={summaryTd}>{displayDate || "-"}</td>
+                <td style={summaryTd}>{hasPositiveScore(review.score) ? (parseFloat(review.score) || 0).toFixed(1) : "-"}</td>
+                <td style={{ ...summaryTd, textAlign: "left", whiteSpace: "pre-wrap", lineHeight: 1.45 }}>{review.remarks || "-"}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function LegacyPageNav({ pages, activePage, onChange }) {
+  return (
+    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      {pages.map((page) => {
+        const active = page.key === activePage;
+        return (
+          <button
+            key={page.key}
+            type="button"
+            onClick={() => onChange(page.key)}
+            style={{
+              border: active ? "1px solid #4c1d95" : "1px solid #dbe3ef",
+              background: active ? "#4c1d95" : "#fff",
+              color: active ? "#fff" : "#475569",
+              borderRadius: 7,
+              padding: "8px 14px",
+              fontFamily: "inherit",
+              fontSize: 12,
+              fontWeight: 900,
+              cursor: "pointer",
+            }}
+          >
+            {page.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function LegacyPager({ previousPage, nextPage, isFirst, isLast, onChange }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", borderTop: "1px solid #e5e7eb", paddingTop: 14 }}>
+      <button type="button" disabled={isFirst} onClick={() => onChange(previousPage.key)} style={pagerButton(isFirst)}>
+        Previous
+      </button>
+      <button type="button" disabled={isLast} onClick={() => onChange(nextPage.key)} style={pagerButton(isLast, true)}>
+        Next
+      </button>
+    </div>
+  );
+}
+
+const pagerButton = (disabled, primary = false) => ({
+  minHeight: 38,
+  border: primary ? "none" : "1px solid #cbd5e1",
+  background: disabled ? "#f1f5f9" : primary ? "#4c1d95" : "#fff",
+  color: disabled ? "#94a3b8" : primary ? "#fff" : "#334155",
+  borderRadius: 7,
+  padding: "8px 16px",
+  fontFamily: "inherit",
+  fontSize: 12,
+  fontWeight: 900,
+  cursor: disabled ? "not-allowed" : "pointer",
+  boxShadow: disabled || !primary ? "none" : "0 8px 18px rgba(76,29,149,0.16)",
+});
+
+const summaryTh = {
+  border: "1px solid #dbe3ef",
+  padding: "10px 12px",
+  color: "#172033",
+  fontSize: 12,
+  fontWeight: 900,
+  textAlign: "center",
+};
+
+const summaryTd = {
+  border: "1px solid #e5e7eb",
+  padding: "10px 12px",
+  color: "#111827",
+  fontSize: 13,
+  fontWeight: 800,
+  textAlign: "center",
+  overflowWrap: "anywhere",
+};
+
+const summaryTdLabel = {
+  ...summaryTd,
+  color: "#475569",
+  fontSize: 12,
+  textAlign: "left",
+  textTransform: "uppercase",
+};
 
 function PreviousYearFacultyInfo({ report }) {
   const profile = report.profile || {};

@@ -63,7 +63,6 @@ import {
   TH,
   ViewCell,
 } from "../../components";
-import NoticesBell from "../../../../components/dashboard/NoticesBell";
 import {
   n,
   pct,
@@ -2060,20 +2059,6 @@ export default function StandardMyAppraisal({
               </div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                <NoticesBell
-                  style={{
-                    width: 42,
-                    height: 42,
-                    borderRadius: 13,
-                    background: "#f8fafc",
-                    border: "1px solid #e5e7eb",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexShrink: 0,
-                  }}
-                />
                 <AppraisalHeaderImage logo="iqas" height={78} />
               </div>
             </div>
