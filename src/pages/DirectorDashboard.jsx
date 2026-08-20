@@ -120,11 +120,12 @@ const buildDirectorSectionScores = (faculty, dirData) =>{
  const reviewRow = dirData[key]?.[index] || {};
  const score = key === "society" && societyRowLocked(row)
  ? "0"
- : clampDirectorReviewScore(key, row, reviewRow.dir ?? reviewRow.director ?? row.dir ?? row.director ?? "", REVIEW_SECTION_MAX[key] || 0);
+ : clampDirectorReviewScore(key, row, reviewRow.director ?? reviewRow.director_score ?? reviewRow.directorScore ?? reviewRow.dir ?? row.director ?? row.director_score ?? row.directorScore ?? row.dir ?? "", REVIEW_SECTION_MAX[key] || 0);
  return {
  ...row,
  dir: score,
  director: score,
+ director_score: score,
  };
  });
  });
@@ -133,13 +134,14 @@ const buildDirectorSectionScores = (faculty, dirData) =>{
  const mergedInnovRows = innovRows.map((row, index) =>{
  const score = isSectionEmpty("innovRows", faculty.innovRows, faculty.docs)
    ? ""
-   : clampDirectorReviewScore("innovRows", { ...row, max: row.max || STANDARD_INNOVATIVE_ROW_MAX }, reviewInnovRows[index]?.dir ?? reviewInnovRows[index]?.director ?? row.dir ?? row.director ?? "", STANDARD_INNOVATIVE_SECTION_MAX);
+   : clampDirectorReviewScore("innovRows", { ...row, max: row.max || STANDARD_INNOVATIVE_ROW_MAX }, reviewInnovRows[index]?.director ?? reviewInnovRows[index]?.director_score ?? reviewInnovRows[index]?.directorScore ?? reviewInnovRows[index]?.dir ?? row.director ?? row.director_score ?? row.directorScore ?? row.dir ?? "", STANDARD_INNOVATIVE_SECTION_MAX);
  return {
  ...row,
  max: row.max || STANDARD_INNOVATIVE_ROW_MAX,
  sectionMax: row.sectionMax || STANDARD_INNOVATIVE_SECTION_MAX,
  dir: score,
  director: score,
+ director_score: score,
  };
  });
  const innovTotal = reviewSectionScore("innovRows", mergedInnovRows, STANDARD_INNOVATIVE_SECTION_MAX, "director");
@@ -154,21 +156,23 @@ const normalizeDirectorDraftData = (sectionScores = {}) =>{
  REVIEW_ARRAY_KEYS.forEach((key) =>{
  if (!Array.isArray(next[key])) return;
  next[key] = next[key].map((row = {}) =>{
- const score = row.dir ?? row.director ?? "";
+ const score = row.director ?? row.director_score ?? row.directorScore ?? row.dir ?? "";
  return {
  ...row,
  dir: score,
  director: score,
+ director_score: score,
  };
  });
  });
  if (Array.isArray(next.innovRows)) {
  next.innovRows = next.innovRows.map((row = {}) =>{
- const score = row.dir ?? row.director ?? "";
+ const score = row.director ?? row.director_score ?? row.directorScore ?? row.dir ?? "";
  return {
  ...row,
  dir: score,
  director: score,
+ director_score: score,
  };
  });
  }
