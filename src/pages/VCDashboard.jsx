@@ -15,7 +15,22 @@ import { n, pct, grade, RO } from "../features/faculty-appraisal/shared";
 import FacultyInfoSection from "../components/appraisal/common/FacultyInfoSection";
 import { FacultyRecordHeader, ScoreTable, VCFinalRemarks, FinalSubmitButton, FACULTY_RECORD_THEME } from "../components/dashboard/FacultyAppraisalRecord";
 import LeaveManagementReadOnly from "../components/appraisal/PartD/LeaveManagementReadOnly";
-import RoleTransferPanel from "../components/dashboard/RoleTransferPanel";
+import { ReportBugButton } from "../components/dashboard/ReportBugModal";
+import NoticesBell from "../components/dashboard/NoticesBell";
+
+const noticesBellHeaderStyle = {
+  width: 42,
+  height: 42,
+  borderRadius: 13,
+  background: "#fff",
+  border: "1px solid #e5e7eb",
+  boxShadow: "0 4px 14px rgba(15,23,42,0.08)",
+  cursor: "pointer",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  flexShrink: 0,
+};
 
 // --- Helpers ------------------------------------------------------------------
 const oneDecimal = (value) =>(Math.trunc(n(value) * 10) / 10).toFixed(1);
@@ -1974,7 +1989,6 @@ export default function VCDashboard() {
  const [reviewing, setReviewing] = useState(null);
  const [reviewLoading, setReviewLoading] = useState(null);
  const [showLogoutModal, setShowLogoutModal] = useState(false);
- const [showRoleTransfers, setShowRoleTransfers] = useState(false);
  const [deanList, setDeanList] = useState([]);
  const [dirList, setDirList] = useState([]);
  const [hodList, setHodList] = useState([]);
@@ -2233,33 +2247,18 @@ export default function VCDashboard() {
 
 <div style={{ height: 1, background: "rgba(148,163,184,0.16)" }} />
 
-<button className={`vc-sidebar-nav${showRoleTransfers ? "" : " is-active"}`} onClick={() =>{ setReviewing(null); setShowRoleTransfers(false); }}
- onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-1px)"; }}
- onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; }}
- style={{ position: "relative", background: "rgba(99,102,241,0.14)", border: showRoleTransfers ? "1px solid rgba(248,250,252,0.18)" : "1px solid rgba(129,140,248,0.48)", borderRadius: 15, padding: "10px 11px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, width: "100%", fontFamily: "inherit", transition: "transform 0.15s ease, border-color 0.15s ease", boxShadow: showRoleTransfers ? "none" : "inset 3px 0 0 rgba(165,180,252,0.95), 0 10px 22px rgba(0,0,0,0.18)" }}>
-<span style={{ width: 31, height: 31, borderRadius: 10, background: showRoleTransfers ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.11)", border: "1px solid rgba(255,255,255,0.10)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-<VcIcon name="school" size={17} color={showRoleTransfers ? "#94a3b8" : "#f8fafc"} />
+<button className="vc-sidebar-nav is-active" onClick={() =>{ setReviewing(null); }}
+ style={{ position: "relative", background: "rgba(99,102,241,0.14)", border: "1px solid rgba(129,140,248,0.48)", borderRadius: 15, padding: "10px 11px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, width: "100%", fontFamily: "inherit", boxShadow: "inset 3px 0 0 rgba(165,180,252,0.95), 0 10px 22px rgba(0,0,0,0.18)" }}>
+<span style={{ width: 31, height: 31, borderRadius: 10, background: "rgba(255,255,255,0.11)", border: "1px solid rgba(255,255,255,0.10)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+<VcIcon name="school" size={17} color="#f8fafc" />
 </span>
 <div style={{ flex: 1, textAlign: "left", minWidth: 0 }}>
-<div style={{ color: showRoleTransfers ? "#cbd5e1" : "#f8fafc", fontWeight: 900, fontSize: 12.5 }}>School Reviews</div>
-<div style={{ color: showRoleTransfers ? "#94a3b8" : "#c7d2fe", fontSize: 10, marginTop: 1 }}>{totalPending} awaiting</div>
+<div style={{ color: "#f8fafc", fontWeight: 900, fontSize: 12.5 }}>School Reviews</div>
+<div style={{ color: "#c7d2fe", fontSize: 10, marginTop: 1 }}>{totalPending} awaiting</div>
 </div>
  {totalPending >0 && (
-<div style={{ background: showRoleTransfers ? "rgba(255,255,255,0.12)" : "rgba(165,180,252,0.22)", color: "#f8fafc", fontWeight: 900, fontSize: 10, minWidth: 20, height: 20, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 5px", flexShrink: 0 }}>{totalPending}</div>
+<div style={{ background: "rgba(165,180,252,0.22)", color: "#f8fafc", fontWeight: 900, fontSize: 10, minWidth: 20, height: 20, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 5px", flexShrink: 0 }}>{totalPending}</div>
  )}
-</button>
-
-<button className={`vc-sidebar-nav${showRoleTransfers ? " is-active" : ""}`} onClick={() =>{ setReviewing(null); setShowRoleTransfers(true); }}
- onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-1px)"; }}
- onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; }}
- style={{ position: "relative", background: "rgba(99,102,241,0.14)", border: showRoleTransfers ? "1px solid rgba(129,140,248,0.48)" : "1px solid rgba(248,250,252,0.18)", borderRadius: 15, padding: "10px 11px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, width: "100%", fontFamily: "inherit", transition: "transform 0.15s ease, border-color 0.15s ease", boxShadow: showRoleTransfers ? "inset 3px 0 0 rgba(165,180,252,0.95), 0 10px 22px rgba(0,0,0,0.18)" : "none" }}>
-<span style={{ width: 31, height: 31, borderRadius: 10, background: showRoleTransfers ? "rgba(255,255,255,0.11)" : "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-<VcIcon name="profile" size={17} color={showRoleTransfers ? "#f8fafc" : "#94a3b8"} />
-</span>
-<div style={{ flex: 1, textAlign: "left", minWidth: 0 }}>
-<div style={{ color: showRoleTransfers ? "#f8fafc" : "#cbd5e1", fontWeight: 900, fontSize: 12.5 }}>Role Transfers</div>
-<div style={{ color: showRoleTransfers ? "#c7d2fe" : "#94a3b8", fontSize: 10, marginTop: 1 }}>Director &amp; Dean</div>
-</div>
 </button>
 
  {/* University summary */}
@@ -2292,12 +2291,12 @@ University Overview
 </div>
 
 <div style={{ height: 1, background: "rgba(148,163,184,0.16)" }} />
-<div style={{ padding: 10, borderRadius: 20, background: "linear-gradient(180deg,rgba(30,41,59,0.86),rgba(15,23,42,0.92))", border: "1px solid rgba(148,163,184,0.18)", boxShadow: "0 18px 34px rgba(2,6,23,0.28), inset 0 1px 0 rgba(255,255,255,0.05)", display: "grid", gap: 8 }}>
+<div style={{ padding: 10, borderRadius: 26, background: "linear-gradient(180deg,rgba(30,41,59,0.86),rgba(15,23,42,0.92))", border: "1px solid rgba(148,163,184,0.18)", boxShadow: "0 18px 34px rgba(2,6,23,0.28), inset 0 1px 0 rgba(255,255,255,0.05)", display: "grid", gap: 9 }}>
 <button
  type="button"
  onClick={() =>navigate("/edit-profile")}
  title="Edit profile"
- style={{ display: "flex", alignItems: "center", gap: 10, background: "transparent", border: "none", borderRadius: 14, padding: 2, width: "100%", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
+ style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 17, padding: "7px 8px", width: "100%", boxSizing: "border-box", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
  >
 <Avatar
   initials={(sessionStorage.getItem("name") || "U").split(" ").map(w =>w[0]).join("").toUpperCase()}
@@ -2309,19 +2308,16 @@ University Overview
 <div style={{ color: "#f9fafb", fontSize: 13, fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sessionStorage.getItem("name") || "Vice Chancellor"}</div>
 <div style={{ color: "#a8b3c7", fontSize: 10.5, marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Vice Chancellor - {APP_INFO.SHORT_NAME}</div>
 </div>
-<span style={{ width: 30, height: 30, borderRadius: 12, background: "rgba(129,140,248,0.18)", border: "1px solid rgba(199,210,254,0.18)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+<span style={{ width: 30, height: 30, borderRadius: 13, background: "rgba(129,140,248,0.18)", border: "1px solid rgba(199,210,254,0.18)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
 <VcIcon name="profile" size={15} color="#c4b5fd" />
 </span>
 </button>
-<div style={{ height: 1, background: "rgba(148,163,184,0.13)" }} />
-<a href="mailto:appraisal@dypiu.ac.in" style={{ minHeight: 34, borderRadius: 12, padding: "6px 8px", color: "#c7d2fe", background: "rgba(99,102,241,0.10)", textDecoration: "none", display: "flex", alignItems: "center", gap: 8 }}>
-<span style={{ width: 24, height: 24, borderRadius: 9, background: "rgba(99,102,241,0.18)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-<VcIcon name="mail" size={14} color="#c7d2fe" />
-</span>
-<span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 800, fontSize: 11 }}>appraisal@dypiu.ac.in</span>
-</a>
+<div style={{ display: "flex", gap: 8 }}>
+<NoticesBell style={{ flex: 1, height: 42, borderRadius: 16, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }} />
+<ReportBugButton iconOnly style={{ flex: 1, height: 42, borderRadius: 16, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "inherit" }} />
+</div>
 <button type="button" onClick={() =>setShowLogoutModal(true)}
- style={{ width: "100%", minHeight: 38, display: "flex", alignItems: "center", justifyContent: "center", gap: 9, background: "rgba(248,113,113,0.10)", border: "1px solid rgba(248,113,113,0.32)", borderRadius: 13, padding: "9px 12px", cursor: "pointer", fontFamily: "inherit", transition: "background 0.15s ease, border-color 0.15s ease" }}
+ style={{ width: "100%", minHeight: 40, display: "flex", alignItems: "center", justifyContent: "center", gap: 9, background: "rgba(248,113,113,0.10)", border: "1px solid rgba(248,113,113,0.32)", borderRadius: 16, padding: "9px 12px", cursor: "pointer", fontFamily: "inherit", transition: "background 0.15s ease, border-color 0.15s ease" }}
  onMouseEnter={(e) =>{ e.currentTarget.style.background = "rgba(248,113,113,0.17)"; e.currentTarget.style.borderColor = "rgba(248,113,113,0.52)"; }}
  onMouseLeave={(e) =>{ e.currentTarget.style.background = "rgba(248,113,113,0.10)"; e.currentTarget.style.borderColor = "rgba(248,113,113,0.32)"; }}>
 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
@@ -2350,9 +2346,7 @@ University Overview
  </div>
 )}
 
- {!reviewing && showRoleTransfers && <RoleTransferPanel />}
-
- {!reviewing && !showRoleTransfers && (
+ {!reviewing && (
 <>
  {/* Hero */}
 <div className="vc-dashboard-hero fa-slide-top" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#fff", borderRadius: 14, padding: "16px 24px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb", flexWrap: "wrap" }}>
@@ -2387,6 +2381,7 @@ University Overview
 <span style={{ display: "block", fontSize: 10.5, color: "#6b7280", fontWeight: 700, marginTop: 1 }}>total submissions</span>
 </span>
 </div>
+<NoticesBell style={noticesBellHeaderStyle} />
 <AppraisalHeaderImage logo="iqas" style={{ alignSelf: "center" }} />
 </div>
 </div>

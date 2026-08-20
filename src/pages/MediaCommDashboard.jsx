@@ -4,6 +4,20 @@ import { useNavigate } from "react-router-dom";
 import { getActiveAcademicYear, getSessionItem, setActiveAcademicYear } from "../auth/session";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import DashboardSidebar from "../components/dashboard/DashboardSidebar";
+import NoticesBell from "../components/dashboard/NoticesBell";
+
+const noticesBellHeaderStyle = {
+  width: 42,
+  height: 42,
+  borderRadius: 13,
+  background: "#f8fafc",
+  border: "1px solid #e5e7eb",
+  cursor: "pointer",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  flexShrink: 0,
+};
 import ManageDepartmentsPanel from "../components/dashboard/ManageDepartmentsPanel";
 import { Avatar, LogoutConfirmModal, ScoreBar, StatusBadge, ReviewMetricsStrip } from "../components/dashboard/dashboardPrimitives";
 import { getSchoolByValue, getSchoolKey } from "../constants/universityHierarchy";
@@ -925,7 +939,10 @@ export default function MediaCommDashboard({ fixedRole }) {
             </div>
           </div>
           </div>
-          <AppraisalHeaderImage logo="iqas" height={78} />
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <NoticesBell style={noticesBellHeaderStyle} />
+            <AppraisalHeaderImage logo="iqas" height={78} />
+          </div>
         </div>
       </div>
       )}
@@ -1146,6 +1163,7 @@ export default function MediaCommDashboard({ fixedRole }) {
 <div style={{ fontSize: 11, fontWeight: 700, padding: "5px 12px", borderRadius: 20, background: "#d1fae5", color: "#065f46" }}>
  {reviewedCount} Reviewed
 </div>
+<NoticesBell style={noticesBellHeaderStyle} />
 <AppraisalHeaderImage logo="iqas" />
 </div>
 </div>
