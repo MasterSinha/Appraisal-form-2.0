@@ -945,6 +945,7 @@ export default function DirectorDashboard() {
  }, [dirSchool]);
 
  const [filterStatus, setFilterStatus] = useState("All");
+ const [reviewerTypeFilter, setReviewerTypeFilter] = useState("faculty");
  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
 
@@ -967,11 +968,10 @@ export default function DirectorDashboard() {
 
  const navItems = [
  { id: "myAppraisal", icon: "", label: "My Appraisal", sub: "View your self-appraisal form" },
- { id: "facultyApprovals", icon: "", label: "Faculty's Appraisal", sub: `${facultyPendingCount} awaiting review`, badge: facultyPendingCount },
- // Always shown, same as Faculty's Appraisal - previously hidden until hasHodDepartments was
- // true, which made the option itself look missing for schools that hadn't added a
- // department yet, instead of just showing empty until one exists.
- { id: "hodApprovals", icon: "", label: "HOD's Appraisal", sub: `${hodPendingCount} awaiting review`, badge: hodPendingCount },
+ // Faculty's Appraisal and HOD's Appraisal are merged into one screen, switched via a
+ // Faculty/HOD dropdown on the page itself - applies to both Engineering and
+ // Non-Engineering school Directors alike, same as the two used to be always shown.
+ { id: "appraisalReviewer", icon: "", label: "Appraisal Reviewer", sub: `${facultyPendingCount + hodPendingCount} awaiting review`, badge: facultyPendingCount + hodPendingCount },
  { id: "departments", icon: "", label: isSoemrSchool(dirSchool) ? "Manage Departments" : "Manage Programs", sub: `${schoolDepartments.length} ${isSoemrSchool(dirSchool) ? "department" : "program"}${schoolDepartments.length === 1 ? "" : "s"}` },
  ];
  const handleSubmitReview = async (type, id, scores, remarks, sectionScores, reviewConfirmed = false, decision = "approved") =>{
@@ -1019,7 +1019,7 @@ export default function DirectorDashboard() {
  }
  };
 
- const filtered = activeMainTab === "hodApprovals"
+ const filtered = reviewerTypeFilter === "hod"
  ? (filterStatus === "All" ? hodList : (filterStatus === "Pending Review" ? hodList.filter(isDirectorPending) : hodList.filter(isDirectorReviewed)))
  : (filterStatus === "All" ? facultyList : (filterStatus === "Pending Review" ? facultyList.filter(isDirectorPending) : facultyList.filter(isDirectorReviewed)));
 
@@ -1079,14 +1079,14 @@ export default function DirectorDashboard() {
 
 {activeMainTab === "departments" && <ManageDepartmentsPanel school={dirSchool} />}
 
- {(activeMainTab === "facultyApprovals" || activeMainTab === "hodApprovals") && !reviewingFaculty && !reviewingHod && (
+ {activeMainTab === "appraisalReviewer" && !reviewingFaculty && !reviewingHod && (
 <>
 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 18, background: "#fff", borderRadius: 14, padding: "16px 24px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb" }}>
 <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
 <AppraisalHeaderImage logo="dypiu" />
 <div>
 <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "#0f172a", letterSpacing: -0.5 }}>
- {activeMainTab === "facultyApprovals" ? "Faculty's Appraisal" : "HOD's Appraisal"}
+ Appraisal Reviewer
 </h1>
 <div style={{ marginTop: 5, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", color: "#64748b", fontSize: 11 }}>
 <span>{sessionStorage.getItem("department") || ""}</span>
@@ -1107,17 +1107,29 @@ export default function DirectorDashboard() {
 </div>
 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
 <div style={{ fontSize: 11, fontWeight: 700, padding: "5px 12px", borderRadius: 20, background: "#fef3c7", color: "#92400e" }}>
- {activeMainTab === "facultyApprovals" ? facultyPendingCount : hodPendingCount} Pending
+ {reviewerTypeFilter === "hod" ? hodPendingCount : facultyPendingCount} Pending
 </div>
 <div style={{ fontSize: 11, fontWeight: 700, padding: "5px 12px", borderRadius: 20, background: "#d1fae5", color: "#065f46" }}>
- {activeMainTab === "facultyApprovals" ? facultyReviewedCount : hodReviewedCount} Reviewed
+ {reviewerTypeFilter === "hod" ? hodReviewedCount : facultyReviewedCount} Reviewed
 </div>
 <AppraisalHeaderImage logo="iqas" />
 </div>
 </div>
 
  {/* Filter */}
-<div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 16px", background: "#fff", borderRadius: 9, boxShadow: "0 1px 4px rgba(0,0,0,.05)" }}>
+<div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", padding: "10px 16px", background: "#fff", borderRadius: 9, boxShadow: "0 1px 4px rgba(0,0,0,.05)" }}>
+<div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+<span style={{ fontSize: 11, fontWeight: 700, color: "#64748b" }}>Reviewing:</span>
+<select
+ value={reviewerTypeFilter}
+ onChange={(event) =>{ setReviewerTypeFilter(event.target.value); setFilterStatus("All"); }}
+ style={{ height: 30, border: "1px solid #cbd5e1", borderRadius: 8, background: "#fff", color: "#0f172a", fontSize: 11.5, fontWeight: 800, padding: "3px 10px", fontFamily: "inherit", outline: "none", cursor: "pointer" }}
+>
+ <option value="faculty">Faculty's Appraisal ({facultyPendingCount} pending)</option>
+ <option value="hod">HOD's Appraisal ({hodPendingCount} pending)</option>
+</select>
+</div>
+<div style={{ display: "flex", alignItems: "center", gap: 8 }}>
 <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b" }}>Filter:</span>
  {["All", "Pending Review", "Reviewed"].map(f =>(
 <button key={f} onClick={() =>setFilterStatus(f)}
@@ -1125,6 +1137,7 @@ export default function DirectorDashboard() {
  {f}
 </button>
  ))}
+</div>
 </div>
 
  {queueLoadError && (
@@ -1244,7 +1257,7 @@ item={item}
  const mergedForm = preserveSavedReviewScores(form, item);
  const declaration = data?.declaration || item.declaration || null;
  const merged = normalizeStandardReviewSubject({ ...item, ...mergedForm, docs, declaration, academicYear, academic_year: academicYear, previousYearResponse: data, previousYearResultOnly: isLegacyTwoPartAcademicYear(academicYear), status: declaration?.status || data?.status || item.status, workflowStatus: declaration?.status || data?.workflowStatus || item.workflowStatus });
- activeMainTab === "facultyApprovals" ? setReviewingFaculty(merged) : setReviewingHod(merged);
+ reviewerTypeFilter === "hod" ? setReviewingHod(merged) : setReviewingFaculty(merged);
  } catch (err) {
  alert(`Unable to open submitted form.\n\n${err.message}`);
  } finally {
@@ -1272,7 +1285,7 @@ item={item}
  )}
 
  {/* REVIEW PANEL */}
- {activeMainTab === "facultyApprovals" && reviewingFaculty && (
+ {activeMainTab === "appraisalReviewer" && reviewingFaculty && (
 reviewingFaculty.previousYearResultOnly ? (
 <PreviousYearAuthorityResult item={reviewingFaculty} onBack={() =>setReviewingFaculty(null)} />
 ) : (
@@ -1284,7 +1297,7 @@ readOnly={isDirectorReviewed(reviewingFaculty)}
 />
 )
  )}
- {activeMainTab === "hodApprovals" && reviewingHod && (
+ {activeMainTab === "appraisalReviewer" && reviewingHod && (
 reviewingHod.previousYearResultOnly ? (
 <PreviousYearAuthorityResult item={reviewingHod} onBack={() =>setReviewingHod(null)} />
 ) : (
