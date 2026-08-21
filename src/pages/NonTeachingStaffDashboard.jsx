@@ -44,20 +44,6 @@ import TeachingPartDReviewDashboard from "./TeachingPartDReviewDashboard";
 import { ReportBugButton } from "../components/dashboard/ReportBugModal";
 import NoticesBell from "../components/dashboard/NoticesBell";
 
-const noticesBellHeaderStyle = {
-  width: 42,
-  height: 42,
-  borderRadius: 13,
-  background: "#fff",
-  border: "1px solid #e5e7eb",
-  boxShadow: "0 4px 14px rgba(15,23,42,0.08)",
-  cursor: "pointer",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  flexShrink: 0,
-};
-
 const ACCENT = "#1d4ed8";
 const REG_ACCENT = "#155e75";
 const VC_ACCENT = "#6d28d9";
@@ -967,7 +953,6 @@ export function NonTeachingAppraisalForm({ role = sessionStorage.getItem("role")
               </div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-              <NoticesBell style={noticesBellHeaderStyle} />
               <AppraisalHeaderImage logo="iqas" height={78} />
             </div>
           </div>
@@ -1942,7 +1927,6 @@ function NonTeachingReviewHeader({ title, name, academicYear, academicYearOption
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", justifyContent: "flex-end" }}>
         {rightContent}
-        <NoticesBell style={noticesBellHeaderStyle} />
         <AppraisalHeaderImage logo="iqas" height={78} />
       </div>
     </div>

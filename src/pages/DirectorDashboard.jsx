@@ -5,20 +5,6 @@ import { api } from "../services/api";
 import { Avatar, ScoreCard, ScoreBar, StatusBadge, ReviewMetricsStrip, uploadedDocCount } from "../components/dashboard/dashboardPrimitives";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import DashboardSidebar from "../components/dashboard/DashboardSidebar";
-import NoticesBell from "../components/dashboard/NoticesBell";
-
-const noticesBellHeaderStyle = {
-  width: 42,
-  height: 42,
-  borderRadius: 13,
-  background: "#f8fafc",
-  border: "1px solid #e5e7eb",
-  cursor: "pointer",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  flexShrink: 0,
-};
 import { ACR_DETAIL_POINTS, SOCIETY_LABELS, MAX_SCORES, APP_INFO, createAcrRows, fetchSavedAppraisal, loadAppraisalDocuments, loadSavedAppraisal, mergeFacultyInfo, saveAppraisalDraftSection, submitAppraisal, fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, INNOVATIVE_METHODS, SCORE_LIMITS, averageSectionScore, clampScore, clampReviewScore, courseFileAverageScore, courseFileRowScore, effectiveMaxScore, feedbackAverage, feedbackRowScore, feedbackSectionScore, innovativeSelectionsFromDetails, innovativeTeachingScore, isAllowedAttachmentFile, isValidDDMMYYYY, maskDateDDMMYYYY, normalizeAutoScores, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewSectionScore, rowHasReviewableData, isSectionEmpty, scoreRemaining, selfEffectivePartAMax, societyRowLocked, societyRowScore, sumSectionScore, toggleInnovativeMethod, validateCompleteRows, buildReviewRemarks, standardSubmittedScoreSummary, AppraisalHeaderImage, SummaryOtherInfoField, summaryOtherInfoValueFrom, RejectionNotice, DocCell, ViewCell, ViewDocsCell, RowButtons as RowBtns, SectionSaveFooter, SectionCard as SC, T, TH, TH_HOD, TH_DIR, TD, TDC, TDS, TDS_HOD, TDS_DIR, TDV, MyAppraisalSection, CreativeSchoolAuthorityReviewPanel, isCreativeSchool, isDesignArtsSchool, isMediaCommSchool } from "../features/faculty-appraisal";
 import { getActiveAcademicYear, getSessionItem, normalizeAcademicYearLabel, setActiveAcademicYear } from "../auth/session";
 import { PreviousYearReportViewer } from "../features/previousYearReport";
@@ -120,11 +106,12 @@ const buildDirectorSectionScores = (faculty, dirData) =>{
  const reviewRow = dirData[key]?.[index] || {};
  const score = key === "society" && societyRowLocked(row)
  ? "0"
- : clampDirectorReviewScore(key, row, reviewRow.dir ?? reviewRow.director ?? row.dir ?? row.director ?? "", REVIEW_SECTION_MAX[key] || 0);
+ : clampDirectorReviewScore(key, row, reviewRow.director ?? reviewRow.director_score ?? reviewRow.directorScore ?? reviewRow.dir ?? row.director ?? row.director_score ?? row.directorScore ?? row.dir ?? "", REVIEW_SECTION_MAX[key] || 0);
  return {
  ...row,
  dir: score,
  director: score,
+ director_score: score,
  };
  });
  });
@@ -133,13 +120,14 @@ const buildDirectorSectionScores = (faculty, dirData) =>{
  const mergedInnovRows = innovRows.map((row, index) =>{
  const score = isSectionEmpty("innovRows", faculty.innovRows, faculty.docs)
    ? ""
-   : clampDirectorReviewScore("innovRows", { ...row, max: row.max || STANDARD_INNOVATIVE_ROW_MAX }, reviewInnovRows[index]?.dir ?? reviewInnovRows[index]?.director ?? row.dir ?? row.director ?? "", STANDARD_INNOVATIVE_SECTION_MAX);
+   : clampDirectorReviewScore("innovRows", { ...row, max: row.max || STANDARD_INNOVATIVE_ROW_MAX }, reviewInnovRows[index]?.director ?? reviewInnovRows[index]?.director_score ?? reviewInnovRows[index]?.directorScore ?? reviewInnovRows[index]?.dir ?? row.director ?? row.director_score ?? row.directorScore ?? row.dir ?? "", STANDARD_INNOVATIVE_SECTION_MAX);
  return {
  ...row,
  max: row.max || STANDARD_INNOVATIVE_ROW_MAX,
  sectionMax: row.sectionMax || STANDARD_INNOVATIVE_SECTION_MAX,
  dir: score,
  director: score,
+ director_score: score,
  };
  });
  const innovTotal = reviewSectionScore("innovRows", mergedInnovRows, STANDARD_INNOVATIVE_SECTION_MAX, "director");
@@ -154,21 +142,23 @@ const normalizeDirectorDraftData = (sectionScores = {}) =>{
  REVIEW_ARRAY_KEYS.forEach((key) =>{
  if (!Array.isArray(next[key])) return;
  next[key] = next[key].map((row = {}) =>{
- const score = row.dir ?? row.director ?? "";
+ const score = row.director ?? row.director_score ?? row.directorScore ?? row.dir ?? "";
  return {
  ...row,
  dir: score,
  director: score,
+ director_score: score,
  };
  });
  });
  if (Array.isArray(next.innovRows)) {
  next.innovRows = next.innovRows.map((row = {}) =>{
- const score = row.dir ?? row.director ?? "";
+ const score = row.director ?? row.director_score ?? row.directorScore ?? row.dir ?? "";
  return {
  ...row,
  dir: score,
  director: score,
+ director_score: score,
  };
  });
  }
@@ -1122,7 +1112,6 @@ export default function DirectorDashboard() {
 <div style={{ fontSize: 11, fontWeight: 700, padding: "5px 12px", borderRadius: 20, background: "#d1fae5", color: "#065f46" }}>
  {activeMainTab === "facultyApprovals" ? facultyReviewedCount : hodReviewedCount} Reviewed
 </div>
-<NoticesBell style={noticesBellHeaderStyle} />
 <AppraisalHeaderImage logo="iqas" />
 </div>
 </div>

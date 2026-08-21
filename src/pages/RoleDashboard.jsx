@@ -42,6 +42,8 @@ function DashboardSwitch({ role, school, department, formType }) {
       return <CISRCenterHeadDashboard />;
 
     case "hod": {
+      if (formType === FORM_TYPES.MEDIA_COMM) return <MediaCommDashboard />;
+      if (formType === FORM_TYPES.DESIGN_ARTS) return <DesignArtsDashboard />;
       const hasHod = departmentHasHod(school, department);
       if (!hasHod) return <DirectorDashboard />;
       return <HODDashboard />;

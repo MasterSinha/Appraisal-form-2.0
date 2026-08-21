@@ -206,36 +206,45 @@ export function DirectorFacultyReviewForm({ faculty, hodData, setHodData, dirDat
  } else if (!Array.isArray(updated[section])) {
  updated[section] = JSON.parse(JSON.stringify(sourceRows));
  }
-  const nextVal = field === "dir" && idx !== null
+  const scoreField = field === "dir" || field === "director" || field === "director_score";
+  const nextVal = scoreField && idx !== null
   ? (isSectionEmpty(section, faculty[section], faculty.docs) ? "" : clampDirectorReviewScore(section, sourceRows[idx] || {}, val, getReviewSectionMax(section, faculty, true)))
   : val;
+ const rowValue = scoreField
+ ? { director: nextVal, dir: nextVal, director_score: nextVal }
+ : { [field]: nextVal };
  if (idx === null) {
  updated[section] = Array.isArray(updated[section])
- ? (updated[section].length ? updated[section].map((r, i) =>i === 0 ? { ...r, [field]: nextVal } : r) : [{ [field]: nextVal }])
- : { ...updated[section], [field]: nextVal };
+ ? (updated[section].length ? updated[section].map((r, i) =>i === 0 ? { ...r, ...rowValue } : r) : [rowValue])
+ : { ...updated[section], ...rowValue };
  }
- else { updated[section] = updated[section].map((r, i) =>i === idx ? { ...r, [field]: nextVal } : r); }
+ else { updated[section] = updated[section].map((r, i) =>i === idx ? { ...r, ...rowValue } : r); }
  return updated;
  });
  };
 
  const getDir = (section, idx, field) =>{
+ const resolveDirectorValue = (row = {}) => row.director ?? row.director_score ?? row.directorScore ?? row.dir ?? "";
  if (section === "acr" && idx !== null) {
  const rows = Array.isArray(dirData[section]) && dirData[section].length
  ? createAcrRows(dirData[section])
  : createAcrRows(faculty[section]);
- return rows[idx]?.[field] ?? rows[idx]?.director ?? "";
+ return field === "director" || field === "dir" || field === "director_score"
+ ? resolveDirectorValue(rows[idx])
+ : rows[idx]?.[field] ?? resolveDirectorValue(rows[idx]);
  }
  let value;
  if (dirData[section]) {
  const s = dirData[section];
- value = idx === null ? (Array.isArray(s) ? (s[0]?.[field] ?? "") : (s[field] ?? "")) : (s[idx]?.[field] ?? "");
+ value = idx === null
+ ? (Array.isArray(s) ? (field === "director" || field === "dir" || field === "director_score" ? resolveDirectorValue(s[0]) : (s[0]?.[field] ?? "")) : (field === "director" || field === "dir" || field === "director_score" ? resolveDirectorValue(s) : (s[field] ?? "")))
+ : (field === "director" || field === "dir" || field === "director_score" ? resolveDirectorValue(s[idx]) : (s[idx]?.[field] ?? ""));
  } else if (idx === null) {
  const source = faculty[section];
- value = Array.isArray(source) ? (source[0]?.director ?? "") : (source?.director ?? "");
+ value = Array.isArray(source) ? resolveDirectorValue(source[0]) : resolveDirectorValue(source);
  } else {
  if (section === "acr" && !reviewLocked) return "";
- value = faculty[section]?.[idx]?.director ?? "";
+ value = resolveDirectorValue(faculty[section]?.[idx]);
  }
  return value;
  };
@@ -248,20 +257,20 @@ export function DirectorFacultyReviewForm({ faculty, hodData, setHodData, dirDat
  const innovativeRows = Array.isArray(faculty.innovRows) && faculty.innovRows.length
  ? faculty.innovRows
  : [{ method: faculty.innovDetails || "Innovative / participatory teaching methods used", details: faculty.innovDetails || "", score: faculty.innovScore || "" }];
- const getInnovDir = (index) =>dirData.innovRows?.[index]?.director ?? dirData.innovRows?.[index]?.dir ?? innovativeRows[index]?.director ?? "";
+ const getInnovDir = (index) =>dirData.innovRows?.[index]?.director ?? dirData.innovRows?.[index]?.director_score ?? dirData.innovRows?.[index]?.directorScore ?? dirData.innovRows?.[index]?.dir ?? innovativeRows[index]?.director ?? innovativeRows[index]?.director_score ?? innovativeRows[index]?.dir ?? "";
  const setInnovDir = (index, value) =>{
   if (isSectionEmpty("innovRows", faculty.innovRows, faculty.docs)) return;
   const sourceRow = innovativeRows[index] || {};
   const nextValue = clampDirectorReviewScore("innovRows", { ...sourceRow, max: sourceRow.max || STANDARD_INNOVATIVE_ROW_MAX }, value, STANDARD_INNOVATIVE_SECTION_MAX);
   setDirData(prev =>{
   const sourceRows = Array.isArray(prev.innovRows) && prev.innovRows.length ? prev.innovRows : JSON.parse(JSON.stringify(innovativeRows));
-  const nextRows = sourceRows.map((row, rowIndex) =>rowIndex === index ? { ...row, max: row.max || STANDARD_INNOVATIVE_ROW_MAX, sectionMax: row.sectionMax || STANDARD_INNOVATIVE_SECTION_MAX, dir: nextValue, director: nextValue } : row);
+  const nextRows = sourceRows.map((row, rowIndex) =>rowIndex === index ? { ...row, max: row.max || STANDARD_INNOVATIVE_ROW_MAX, sectionMax: row.sectionMax || STANDARD_INNOVATIVE_SECTION_MAX, dir: nextValue, director: nextValue, director_score: nextValue } : row);
   const total = reviewSectionScore("innovRows", nextRows.map((row, rowIndex) =>({ ...innovativeRows[rowIndex], max: innovativeRows[rowIndex]?.max || STANDARD_INNOVATIVE_ROW_MAX, ...row })), STANDARD_INNOVATIVE_SECTION_MAX, "director");
   return { ...prev, innovRows: nextRows, innovDir: total ? String(total) : "" };
   });
   };
- const setDirector = (section, idx, _field, val) => setDir(section, idx, "dir", val);
- const getDirector = (section, idx, field) => getDir(section, idx, field === "hod" ? "dir" : field);
+ const setDirector = (section, idx, _field, val) => setDir(section, idx, "director", val);
+ const getDirector = (section, idx, field) => getDir(section, idx, field === "hod" || field === "dir" ? "director" : field);
  const ctx = { faculty, docs, lectures, courseFile, obeRows, projects, mentoringRows, quals, feedback, deptActs, uniActs, eventRows, society, industry, alumniRows, placementRows, acr, leaveManagement, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, rows, sectionEmpty, emptySectionRow, get: getDirector, set: setDirector, getDir, setDir, getInnovDir, setInnovDir, innovativeRows: innovativeRows.map((row) => ({ ...row, max: row.max || STANDARD_INNOVATIVE_ROW_MAX })), reviewerScoreLabel: "Director Score", reviewerLabel: "Director", innovativeRowMax: STANDARD_INNOVATIVE_ROW_MAX, innovativeSectionMax: STANDARD_INNOVATIVE_SECTION_MAX };
 
  return (

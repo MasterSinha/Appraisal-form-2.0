@@ -809,6 +809,13 @@ export const mergeForm = (base, incoming = {}) => {
   return merged;
 };
 
+export const normalizeSubmittedCreativeFormForReview = (submittedForm = {}, source = {}) => {
+  const baseForm = isMediaCommSchool(submittedForm, source)
+    ? emptyMediaForm(submittedForm?.info?.school || source?.school || source?.info?.school)
+    : emptyDesignArtsForm();
+  return preserveSavedReviewScores(mergeForm(baseForm, submittedForm), source);
+};
+
 export const normalizeScoresForSubmit = (form) => normalizeAutoScores(form);
 
 export const validateCreativeSchoolBeforeSubmit = (form, docs = {}, sectionView = "all") => {
@@ -2571,6 +2578,8 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
     ...totals,
     partA: String(person?.[`${reviewerRole}PartA`] ?? "").trim() !== "" ? n(person?.[`${reviewerRole}PartA`]) : totals.partA,
     partB: String(person?.[`${reviewerRole}PartB`] ?? "").trim() !== "" ? n(person?.[`${reviewerRole}PartB`]) : totals.partB,
+    partC: String(person?.[`${reviewerRole}PartC`] ?? "").trim() !== "" ? n(person?.[`${reviewerRole}PartC`]) : totals.partC,
+    partE: String(person?.[`${reviewerRole}PartD`] ?? "").trim() !== "" ? n(person?.[`${reviewerRole}PartD`]) : totals.partE,
     total: String(person?.[`${reviewerRole}Total`] ?? "").trim() !== "" ? n(person?.[`${reviewerRole}Total`]) : totals.total,
   } : totals;
   const roleSummaryTotalsFor = (role) => {

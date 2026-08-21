@@ -13,11 +13,21 @@ const roleLabels = {
 };
 
 const reviewerLabels = {
+  faculty: "Faculty",
   hod: "HOD",
   center_head: "Center Head",
   director: "Director",
   dean: "Dean",
   vc: "VC",
+};
+
+const reviewerOrder = {
+  faculty: 0,
+  hod: 1,
+  center_head: 1,
+  director: 2,
+  dean: 3,
+  vc: 4,
 };
 
 const hasScore = (value) => String(value ?? "").trim() !== "" && (parseFloat(value) || 0) > 0;
@@ -33,6 +43,17 @@ const reviewRemarks = (review = {}) =>
 
 const reviewRole = (review = {}) =>
   firstFilled(review.reviewer_role, review.reviewerRole, review.role, review.authority_role, review.authorityRole);
+
+const normalizeReviewRole = (role = "") => {
+  const value = String(role || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (value === "center_head" || value === "centre_head") return "center_head";
+  if (value.includes("hod") || value.includes("head_of_department")) return "hod";
+  if (value.includes("director")) return "director";
+  if (value.includes("dean")) return "dean";
+  if (value === "vc" || value.includes("vice_chancellor")) return "vc";
+  if (value.includes("faculty")) return "faculty";
+  return value;
+};
 
 const reviewName = (review = {}) =>
   firstFilled(review.reviewer_name, review.reviewerName, review.name, review.authority_name, review.authorityName);
@@ -91,13 +112,20 @@ const reviewScore = (review = {}) => {
 const renderAuthorityRemarks = (reviews = []) => {
   const rows = (Array.isArray(reviews) ? reviews : [])
     .map((review) => ({
-      role: reviewRole(review),
+      role: normalizeReviewRole(reviewRole(review)),
       name: reviewName(review),
       date: reviewDate(review),
       score: reviewScore(review),
       remarks: reviewRemarks(review),
     }))
-    .filter((review) => String(review.remarks || "").trim() || hasScore(review.score));
+    .filter((review) => String(review.remarks || "").trim() || hasScore(review.score))
+    .sort((a, b) => {
+      const roleDiff = (reviewerOrder[a.role] ?? 99) - (reviewerOrder[b.role] ?? 99);
+      if (roleDiff !== 0) return roleDiff;
+      const aTime = a.date ? new Date(a.date).getTime() : 0;
+      const bTime = b.date ? new Date(b.date).getTime() : 0;
+      return (Number.isFinite(aTime) ? aTime : 0) - (Number.isFinite(bTime) ? bTime : 0);
+    });
 
   if (!rows.length) return "";
 

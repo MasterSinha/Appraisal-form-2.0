@@ -4,20 +4,6 @@ import { useNavigate } from "react-router-dom";
 import { getActiveAcademicYear, getSessionItem, setActiveAcademicYear } from "../auth/session";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import DashboardSidebar from "../components/dashboard/DashboardSidebar";
-import NoticesBell from "../components/dashboard/NoticesBell";
-
-const noticesBellHeaderStyle = {
-  width: 42,
-  height: 42,
-  borderRadius: 13,
-  background: "#f8fafc",
-  border: "1px solid #e5e7eb",
-  cursor: "pointer",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  flexShrink: 0,
-};
 import ManageDepartmentsPanel from "../components/dashboard/ManageDepartmentsPanel";
 import { Avatar, LogoutConfirmModal, ScoreBar, StatusBadge, ReviewMetricsStrip } from "../components/dashboard/dashboardPrimitives";
 import { getSchoolByValue, getSchoolKey } from "../constants/universityHierarchy";
@@ -89,7 +75,7 @@ import {
 import { canReviewerRejectProfile, getReviewChain, pendingStatusFor, profileFromsessionStorage, reviewedStatusFor, roleLabel, visiblePreviousReviewRoles, workflowValidationError, isAppraisalFinalisedByVc, isRejectedStatus, isPendingReviewStatusFor, hasActiveRejection, reviewListFrom } from "../utils/hierarchy";
 import { n, pct, RO, TI } from "../features/faculty-appraisal/shared";
 
-import { emptyDesignArtsForm, ALL_ARRAY_KEYS, titleCase, calculateDesignArtsTotals, getDesignArtsEffectiveMaxScores, validateDesignArtsBeforeSubmit, mergeForm, preserveSavedReviewScores, designArtsSchoolName, PART_A_SECTIONS, PART_B_SECTIONS, PART_C_SECTIONS, PART_D_SECTIONS, PART_E_SECTIONS, DesignArtsForm, DesignArtsAuthorityReviewPanel, SectionSelector, AccuracyCheckbox, CompactAuthoritySummaryCard, isReviewerReviewComplete, normalizeScoresForSubmit, summaryRow, b8summaryRow, SECTION_OPTIONS, SummaryBox, WorkflowTracker, ACCENT, ACCENT2, PART_A_MAX, PART_B_MAX, PART_D_MAX, PART_E_MAX, GRAND_MAX, userInitials } from "../features/faculty-appraisal";
+import { emptyDesignArtsForm, ALL_ARRAY_KEYS, titleCase, calculateDesignArtsTotals, getDesignArtsEffectiveMaxScores, validateDesignArtsBeforeSubmit, mergeForm, preserveSavedReviewScores, normalizeSubmittedCreativeFormForReview, designArtsSchoolName, PART_A_SECTIONS, PART_B_SECTIONS, PART_C_SECTIONS, PART_D_SECTIONS, PART_E_SECTIONS, DesignArtsForm, DesignArtsAuthorityReviewPanel, SectionSelector, AccuracyCheckbox, CompactAuthoritySummaryCard, isReviewerReviewComplete, normalizeScoresForSubmit, summaryRow, b8summaryRow, SECTION_OPTIONS, SummaryBox, WorkflowTracker, ACCENT, ACCENT2, PART_A_MAX, PART_B_MAX, PART_D_MAX, PART_E_MAX, GRAND_MAX, userInitials } from "../features/faculty-appraisal";
 import { loadClosedAppraisal } from "../services/appraisalPersistence";
 import { DesignArtsPreviousYearView } from "../features/previousYearReport";
 import { isLegacyTwoPartAcademicYear } from "../features/faculty-appraisal/forms/standard/legacyPreviousYearReportUtils";
@@ -198,7 +184,7 @@ export default function DesignArtsDashboard({ fixedRole }) {
  const navigate = useNavigate();
  const role = fixedRole || sessionStorage.getItem("role") || "faculty";
  const profile = profileFromsessionStorage();
- const [activeTab, setActiveTab] = useState(role === "faculty" ? "my" : "approvals");
+ const [activeTab, setActiveTab] = useState(role === "faculty" || role === "hod" ? "my" : "approvals");
  const [selfSectionView, setSelfSectionView] = useState("partA");
  const [form, setForm] = useState(emptyDesignArtsForm);
  const [docs, setDocs] = useState({});
@@ -925,7 +911,6 @@ export default function DesignArtsDashboard({ fixedRole }) {
           </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <NoticesBell style={noticesBellHeaderStyle} />
             <AppraisalHeaderImage logo="iqas" height={78} />
           </div>
         </div>
@@ -966,7 +951,6 @@ export default function DesignArtsDashboard({ fixedRole }) {
 <div style={{ fontSize: 11, fontWeight: 700, padding: "5px 12px", borderRadius: 20, background: "#d1fae5", color: "#065f46" }}>
  {reviewedCount} Reviewed
 </div>
-<NoticesBell style={noticesBellHeaderStyle} />
 <AppraisalHeaderImage logo="iqas" />
 </div>
 </div>
@@ -1268,7 +1252,7 @@ export default function DesignArtsDashboard({ fixedRole }) {
  });
  const submittedForm = data?.payload?.form || data?.form || {};
  const submittedDocs = data?.payload?.docs || data?.docs || {};
- const mergedForm = preserveSavedReviewScores(submittedForm, item);
+ const mergedForm = normalizeSubmittedCreativeFormForReview(submittedForm, item);
  const declaration = data?.declaration || item.declaration || null;
  setReviewing({ ...item, ...mergedForm, docs: submittedDocs, declaration, status: declaration?.status || data?.status || item.status, workflowStatus: declaration?.status || data?.workflowStatus || item.workflowStatus });
  } catch (err) {
