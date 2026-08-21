@@ -233,7 +233,17 @@ const enrichQueueItemDocs = async (item = {}) => {
   const currentDocCount = docCountFromValue(item.docs, item);
   const isLegacyYear = isLegacyTwoPartAcademicYear(item.academicYear);
   const missingLegacyScore = isLegacyYear && (n(item.grandTotal) === 0 || n(item.hodTotal) === 0);
-  if (currentDocCount > 0 && !missingLegacyScore) {
+  // The same "lightweight response lacks this reviewer's total" gap the legacy check above
+  // covers also happens on the current form format - normalizeQueueItem's lightweight pass over
+  // /dashboard/subordinates sometimes comes back with hodTotal 0 even though hod actually
+  // reviewed. A later-chain reviewer (director/dean/vc) already having a positive total proves
+  // the hod stage must be complete (the workflow is chain-gated), so that combination means
+  // "missing", not "not yet reviewed" - worth the extra round trip below to recover it from the
+  // full submitted record, which already has it (see currentReviewSummary further down).
+  const hasDownstreamReviewerScore = n(item.directorTotal) > 0 || n(item.deanTotal) > 0 || n(item.vcTotal) > 0;
+  const missingCurrentHodScore = !isLegacyYear && n(item.hodTotal) === 0 && hasDownstreamReviewerScore;
+  const missingReviewerScore = missingLegacyScore || missingCurrentHodScore;
+  if (currentDocCount > 0 && !missingReviewerScore) {
     return item;
   }
 
@@ -258,7 +268,7 @@ const enrichQueueItemDocs = async (item = {}) => {
     }
   }
 
-  if (!missingLegacyScore && docCountFromValue(enrichedItem.docs, enrichedItem) > 0) {
+  if (!missingReviewerScore && docCountFromValue(enrichedItem.docs, enrichedItem) > 0) {
     return enrichedItem;
   }
 
@@ -295,7 +305,14 @@ const enrichQueueItemDocs = async (item = {}) => {
           grandMax: n(legacyTotals.grandMax) || 575,
         }
       : standardSubmittedScoreSummary(submitted, standardSubmittedScoreSummary(enrichedItem));
-    const legacyReviewerFields = legacyTotals
+    // Current (non-legacy) format: the lightweight /dashboard/subordinates pass already tries
+    // standardReviewSummary on the queue item itself (see normalizeQueueItem), but that response
+    // sometimes doesn't carry a reviewer's total even though they reviewed (the gap this whole
+    // function exists to patch, per missingCurrentHodScore above). Re-running the same summary
+    // reader against the full submitted record recovers it the same way legacyTotals does for
+    // the old format.
+    const currentReviewSummary = legacyTotals ? null : standardReviewSummary(submitted, submitted?.payload, submitted?.form);
+    const recoveredReviewerFields = legacyTotals
       ? {
           hodTotal: numberValue(legacyTotals.hodTotal, enrichedItem.hodTotal),
           hodPartA: numberValue(legacyTotals.hodPartA, enrichedItem.hodPartA),
@@ -314,10 +331,37 @@ const enrichQueueItemDocs = async (item = {}) => {
           vcPartB: numberValue(legacyTotals.vcPartB, enrichedItem.vcPartB),
           vcRemarks: firstValue(legacyTotals.vcRemarks, enrichedItem.vcRemarks),
         }
+      : currentReviewSummary
+      ? {
+          hodTotal: numberValue(currentReviewSummary.hodTotal, enrichedItem.hodTotal),
+          hodPartA: numberValue(currentReviewSummary.hodPartA, enrichedItem.hodPartA),
+          hodPartB: numberValue(currentReviewSummary.hodPartB, enrichedItem.hodPartB),
+          hodPartC: numberValue(currentReviewSummary.hodPartC, enrichedItem.hodPartC),
+          hodPartD: numberValue(currentReviewSummary.hodPartD, enrichedItem.hodPartD),
+          hodRemarks: firstValue(currentReviewSummary.hodRemarks, enrichedItem.hodRemarks),
+          directorTotal: numberValue(currentReviewSummary.directorTotal, enrichedItem.directorTotal),
+          directorPartA: numberValue(currentReviewSummary.directorPartA, enrichedItem.directorPartA),
+          directorPartB: numberValue(currentReviewSummary.directorPartB, enrichedItem.directorPartB),
+          directorPartC: numberValue(currentReviewSummary.directorPartC, enrichedItem.directorPartC),
+          directorPartD: numberValue(currentReviewSummary.directorPartD, enrichedItem.directorPartD),
+          directorRemarks: firstValue(currentReviewSummary.directorRemarks, enrichedItem.directorRemarks),
+          deanTotal: numberValue(currentReviewSummary.deanTotal, enrichedItem.deanTotal),
+          deanPartA: numberValue(currentReviewSummary.deanPartA, enrichedItem.deanPartA),
+          deanPartB: numberValue(currentReviewSummary.deanPartB, enrichedItem.deanPartB),
+          deanPartC: numberValue(currentReviewSummary.deanPartC, enrichedItem.deanPartC),
+          deanPartD: numberValue(currentReviewSummary.deanPartD, enrichedItem.deanPartD),
+          deanRemarks: firstValue(currentReviewSummary.deanRemarks, enrichedItem.deanRemarks),
+          vcTotal: numberValue(currentReviewSummary.vcTotal, enrichedItem.vcTotal),
+          vcPartA: numberValue(currentReviewSummary.vcPartA, enrichedItem.vcPartA),
+          vcPartB: numberValue(currentReviewSummary.vcPartB, enrichedItem.vcPartB),
+          vcPartC: numberValue(currentReviewSummary.vcPartC, enrichedItem.vcPartC),
+          vcPartD: numberValue(currentReviewSummary.vcPartD, enrichedItem.vcPartD),
+          vcRemarks: firstValue(currentReviewSummary.vcRemarks, enrichedItem.vcRemarks),
+        }
       : {};
     const nextItem = {
       ...enrichedItem,
-      ...legacyReviewerFields,
+      ...recoveredReviewerFields,
       partATotal: submittedSummary.partA,
       partBTotal: submittedSummary.partB,
       partCTotal: submittedSummary.partC,

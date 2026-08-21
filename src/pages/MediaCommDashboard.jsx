@@ -181,6 +181,15 @@ const storedAcademicYearCycles = () =>
     ? JSON.parse(getSessionItem("availableCycles") || "[]")
     : [];
 
+function PreviousYearAuthorityResult({ item, reviewerRole, onBack }) {
+  return (
+    <div style={{ display: "grid", gap: 12 }}>
+      <button type="button" onClick={onBack} style={{ justifySelf: "start", border: "1px solid #cbd5e1", background: "#fff", color: "#334155", borderRadius: 8, padding: "8px 14px", fontWeight: 800, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>Back</button>
+      <MediaCommunicationPreviousYearView showTables visibleLevels={["faculty", reviewerRole]} form={item} docs={item.docs || {}} response={item.previousYearResponse || item} academicYear={item.academicYear || item.academic_year} profile={item} reviews={reviewListFrom(item.reviews || item.previousYearResponse?.reviews || item.previousYearResponse?.payload?.reviews)} />
+    </div>
+  );
+}
+
 export default function MediaCommDashboard({ fixedRole }) {
  const navigate = useNavigate();
  const role = fixedRole || sessionStorage.getItem("role") || "faculty";
@@ -544,7 +553,7 @@ export default function MediaCommDashboard({ fixedRole }) {
  if (nextSection) {
    setSelfSectionView(nextSection);
    requestAnimationFrame(() => {
-     window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
    });
  }
  } catch (err) {
@@ -679,16 +688,17 @@ export default function MediaCommDashboard({ fixedRole }) {
  const openSubmittedReview = async (item) =>{
  setReviewLoading(item.id);
  try {
+ const academicYear = item.academic_year || item.academicYear || item.info?.ay || APP_INFO.DEFAULT_AY || "2026-2027";
  const data = await fetchSavedAppraisal({
  facultyEmail: item.email,
- academicYear: item.academic_year || item.academicYear || item.info?.ay || APP_INFO.DEFAULT_AY || "2026-2027",
+ academicYear,
  reviewerRole: role,
  });
  const submittedForm = data?.payload?.form || data?.form || {};
  const submittedDocs = data?.payload?.docs || data?.docs || {};
  const mergedForm = normalizeSubmittedCreativeFormForReview(submittedForm, item);
  const declaration = data?.declaration || item.declaration || null;
- setReviewing({ ...item, ...mergedForm, docs: submittedDocs, declaration, status: declaration?.status || data?.status || item.status, workflowStatus: declaration?.status || data?.workflowStatus || item.workflowStatus });
+ setReviewing({ ...item, ...mergedForm, docs: submittedDocs, declaration, academicYear, academic_year: academicYear, previousYearResponse: data, previousYearResultOnly: isLegacyTwoPartAcademicYear(academicYear), status: declaration?.status || data?.status || item.status, workflowStatus: declaration?.status || data?.workflowStatus || item.workflowStatus });
  } catch (err) {
  alert(`Unable to open submitted form.\n\n${err.message}`);
  } finally {
@@ -1278,6 +1288,9 @@ export default function MediaCommDashboard({ fixedRole }) {
  )}
 
   {(activeTab === "approvals" || activeTab === "hodApprovals") && reviewing && (
+reviewing.previousYearResultOnly ? (
+<PreviousYearAuthorityResult item={reviewing} reviewerRole={role} onBack={() =>setReviewing(null)} />
+) : (
 <MediaCommAuthorityReviewPanel
  person={reviewing}
  reviewerRole={role}
@@ -1286,6 +1299,7 @@ export default function MediaCommDashboard({ fixedRole }) {
  readOnly={isReviewerReviewComplete(reviewing, role)}
  showReport={false}
 />
+ )
   )}
     </DashboardLayout>
   );

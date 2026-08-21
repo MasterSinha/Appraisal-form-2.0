@@ -2820,7 +2820,7 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
   const authorityDirectorReviewCards = splitAuthorityDeanDirectorRows
     ? authoritySummaryCards.filter((card) => card.key === reviewerRole)
     : [];
-  const useAuthorityRecordCard = reviewerRole === "dean" || reviewerRole === "director" || reviewerRole === "vc";
+  const useAuthorityRecordCard = reviewerRole === "hod" || reviewerRole === "dean" || reviewerRole === "director" || reviewerRole === "vc";
   const authorityRecordSchoolTrack = useAuthorityRecordCard ? getDeanTrack({ school: person?.school || form.info?.school, department: person?.department, designation: person?.designation }) : "";
   const authorityRecordSchoolGroupLabel = { engineering: "Engineering", non_engineering: "Non-Engineering", direct_vc: "CISR" }[authorityRecordSchoolTrack] || person?.school || form.info?.school || APP_INFO.UNIVERSITY_NAME;
   const authorityRecordPreviousCards = reviewerRole === "vc" ? previousSummaryCards : authorityPreviousSummaryCards;
@@ -2934,12 +2934,12 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
 
   const handleSaveAndNext = async () => {
     await handleSaveDraft();
-    const NEXT_SECTION_MAP = { partA: "partB", partB: "partC", partC: "partD", partD: "summary" };
+    const NEXT_SECTION_MAP = { partA: "partB", partB: "partC", partC: "partD", partD: "partE", partE: "summary" };
     const nextSection = NEXT_SECTION_MAP[sectionView];
     if (nextSection) {
       setSectionView(nextSection);
       requestAnimationFrame(() => {
-        window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+        window.scrollTo({ top: 0, left: 0, behavior: "auto" });
       });
     }
   };

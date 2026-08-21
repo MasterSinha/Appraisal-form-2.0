@@ -73,7 +73,7 @@ function PreviousYearTableView({ report, reviews = [], visibleLevels }) {
           <>
             <PartBand title="Summary" tone="#ecfdf5" />
             <PreviousYearScoreSummary report={report} visibleLevels={levels} variant="table" />
-            <AuthorityRemarks reviews={reviews} />
+            <AuthorityRemarks reviews={reviews} levels={levels} />
           </>
         )}
         <LegacyPager
@@ -173,7 +173,7 @@ const reviewScore = (review = {}) => {
   return [direct, partsSum].find(hasPositiveScore) ?? direct ?? partsSum;
 };
 
-function AuthorityRemarks({ reviews = [] }) {
+function AuthorityRemarks({ reviews = [], levels }) {
   const rows = (Array.isArray(reviews) ? reviews : [])
     .map((review) => ({
       role: normalizedReviewRole(reviewRole(review)),
@@ -183,6 +183,7 @@ function AuthorityRemarks({ reviews = [] }) {
       remarks: reviewRemarks(review),
     }))
     .filter((review) => String(review.remarks || "").trim() || hasPositiveScore(review.score))
+    .filter((review) => !levels?.length || levels.includes(review.role))
     .sort((a, b) => {
       const roleDiff = (reviewerOrder[a.role] ?? 99) - (reviewerOrder[b.role] ?? 99);
       if (roleDiff !== 0) return roleDiff;

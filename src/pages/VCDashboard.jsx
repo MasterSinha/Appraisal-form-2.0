@@ -1146,7 +1146,7 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
     if (nextSection) {
       setSectionView(nextSection);
       requestAnimationFrame(() => {
-        window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+        window.scrollTo({ top: 0, left: 0, behavior: "auto" });
       });
     }
   };
