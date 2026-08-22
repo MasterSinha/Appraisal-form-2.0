@@ -203,6 +203,7 @@ export default function DesignArtsDashboard({ fixedRole }) {
  const [queueLoadError, setQueueLoadError] = useState("");
  const [reviewLoading, setReviewLoading] = useState(null);
  const [filterStatus, setFilterStatus] = useState("All");
+ const [reviewerTypeFilter, setReviewerTypeFilter] = useState("faculty");
  const [submitting, setSubmitting] = useState(false);
  const [confirmed, setConfirmed] = useState(false);
  const [attachmentsConfirmed, setAttachmentsConfirmed] = useState(false);
@@ -809,10 +810,10 @@ export default function DesignArtsDashboard({ fixedRole }) {
   const isHodItem = (item) => (item.appraisalRole || item.appraisal_role || "").toLowerCase() === "hod";
   const facultyQueue = queue.filter((item) => !isHodItem(item));
   const hodQueue = queue.filter(isHodItem);
-  const activeQueue = activeTab === "hodApprovals" ? hodQueue : facultyQueue;
+  const activeQueue = role === "director" && reviewerTypeFilter === "hod" ? hodQueue : facultyQueue;
   const facultyPendingCount = facultyQueue.filter((item) => !isApprovalReviewed(item)).length;
   const hodPendingCount = hodQueue.filter((item) => !isApprovalReviewed(item)).length;
-  const pendingCount = activeTab === "hodApprovals" ? hodPendingCount : facultyPendingCount;
+  const pendingCount = role === "director" && reviewerTypeFilter === "hod" ? hodPendingCount : facultyPendingCount;
   const reviewedCount = activeQueue.filter(isApprovalReviewed).length;
   const filteredQueue = filterStatus === "All"
     ? activeQueue
@@ -830,11 +831,14 @@ export default function DesignArtsDashboard({ fixedRole }) {
 
   const navItems = [
     ...(canSelfSubmit ? [{ id: "myAppraisal", label: "My Appraisal", sub: "View your self-appraisal form" }] : []),
-    ...(role !== "faculty" ? [{ id: "approvals", label: `Faculty's Appraisal (${facultyPendingCount})`, sub: "Review faculty appraisals" }] : []),
-    // Always shown for directors, same as Faculty's Appraisal - previously hidden until
-    // hasHodDepartments was true, which made the option itself look missing for schools that
-    // hadn't added a department yet, instead of just showing empty until one exists.
-    ...(role === "director" ? [{ id: "hodApprovals", label: `HOD's Appraisal (${hodPendingCount})`, sub: "Review HOD appraisals" }] : []),
+    // For Director, Faculty's Appraisal and HOD's Appraisal are merged into one screen,
+    // switched via a Faculty/HOD dropdown on the page itself - same treatment as the
+    // engineering DirectorDashboard. Other roles (HOD/Dean) keep their single "approvals" queue.
+    ...(role === "director"
+      ? [{ id: "approvals", label: `Appraisal Reviewer (${facultyPendingCount + hodPendingCount})`, sub: "Review faculty & HOD appraisals" }]
+      : role !== "faculty"
+        ? [{ id: "approvals", label: `Faculty's Appraisal (${facultyPendingCount})`, sub: "Review faculty appraisals" }]
+        : []),
     // SoD/SoAA are organized into programs, not departments - one HOD can cover multiple programs.
  ...(role === "director" ? [{ id: "departments", label: "Manage Programs", sub: "HOD programs for your school" }] : []),
   ];
@@ -875,7 +879,7 @@ export default function DesignArtsDashboard({ fixedRole }) {
           </div>
         </div>
       )}
-      {loadingQueue && (activeTab === "approvals" || activeTab === "hodApprovals") && (
+      {loadingQueue && activeTab === "approvals" && (
         <div className="appraisal-year-loading-overlay" role="status" aria-live="polite">
           <div className="appraisal-year-loading-card">
             <div className="appraisal-year-loading-spinner" />
@@ -930,13 +934,13 @@ export default function DesignArtsDashboard({ fixedRole }) {
         <ManageDepartmentsPanel school={currentSchoolValue} />
       )}
 
-      {(activeTab === "approvals" || activeTab === "hodApprovals") && !reviewing && role !== "faculty" && (
+      {activeTab === "approvals" && !reviewing && role !== "faculty" && (
       <>
 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 18, background: "#fff", borderRadius: 14, padding: "16px 24px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb" }}>
 <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
 <AppraisalHeaderImage logo="dypiu" />
 <div>
-<h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "#0f172a", letterSpacing: -0.5 }}>{activeTab === "hodApprovals" ? "HOD's Appraisal" : "Faculty's Appraisal"}</h1>
+<h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "#0f172a", letterSpacing: -0.5 }}>{role === "director" ? "Appraisal Reviewer" : (reviewerTypeFilter === "hod" ? "HOD's Appraisal" : "Faculty's Appraisal")}</h1>
 <div style={{ marginTop: 5, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", color: "#64748b", fontSize: 11 }}>
 <span>AY</span>
 <select
@@ -964,7 +968,21 @@ export default function DesignArtsDashboard({ fixedRole }) {
 </div>
 </div>
 
-<div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 16px", background: "#fff", borderRadius: 9, boxShadow: "0 1px 4px rgba(0,0,0,.05)" }}>
+<div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", padding: "10px 16px", background: "#fff", borderRadius: 9, boxShadow: "0 1px 4px rgba(0,0,0,.05)" }}>
+{role === "director" && (
+<div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+<span style={{ fontSize: 11, fontWeight: 700, color: "#64748b" }}>Reviewing:</span>
+<select
+ value={reviewerTypeFilter}
+ onChange={(event) =>{ setReviewerTypeFilter(event.target.value); setFilterStatus("All"); }}
+ style={{ height: 30, border: "1px solid #cbd5e1", borderRadius: 8, background: "#fff", color: "#0f172a", fontSize: 11.5, fontWeight: 800, padding: "3px 10px", fontFamily: "inherit", outline: "none", cursor: "pointer" }}
+>
+ <option value="faculty">Faculty's Appraisal ({facultyPendingCount} pending)</option>
+ <option value="hod">HOD's Appraisal ({hodPendingCount} pending)</option>
+</select>
+</div>
+)}
+<div style={{ display: "flex", alignItems: "center", gap: 8 }}>
 <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b" }}>Filter:</span>
  {["All", "Pending Review", "Reviewed"].map((filter) =>(
 <button key={filter} onClick={() =>setFilterStatus(filter)}
@@ -972,6 +990,7 @@ export default function DesignArtsDashboard({ fixedRole }) {
  {filter}
 </button>
  ))}
+</div>
 </div>
       </>
       )}
@@ -1158,7 +1177,7 @@ export default function DesignArtsDashboard({ fixedRole }) {
 </div>
   )}
 
- {(activeTab === "approvals" || activeTab === "hodApprovals") && !reviewing && role !== "faculty" && (
+ {activeTab === "approvals" && !reviewing && role !== "faculty" && (
 <div>
  {queueLoadError && (
 <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 9, color: "#991b1b", fontSize: 13, fontWeight: 700, marginBottom: 14 }}>
@@ -1291,7 +1310,7 @@ export default function DesignArtsDashboard({ fixedRole }) {
 </div>
  )}
 
- {(activeTab === "approvals" || activeTab === "hodApprovals") && reviewing && (
+ {activeTab === "approvals" && reviewing && (
 reviewing.previousYearResultOnly ? (
 <PreviousYearAuthorityResult item={reviewing} reviewerRole={role} onBack={() =>setReviewing(null)} />
 ) : (
