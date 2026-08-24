@@ -132,7 +132,8 @@ const normalizedPartDStatus = (value) => String(value || "")
   .replace(/[_-]+/g, " ")
   .replace(/\s+/g, " ");
 
-const isPartDReviewed = (item = {}) => {
+// eslint-disable-next-line react-refresh/only-export-components
+export const isPartDReviewed = (item = {}) => {
   const status = normalizedPartDStatus(item.partDStatus || item.part_d_status);
   return Boolean(
     item.registrarPartDReviewedAt ||

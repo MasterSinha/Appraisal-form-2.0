@@ -242,7 +242,15 @@ const enrichQueueItemDocs = async (item = {}) => {
   // full submitted record, which already has it (see currentReviewSummary further down).
   const hasDownstreamReviewerScore = n(item.directorTotal) > 0 || n(item.deanTotal) > 0 || n(item.vcTotal) > 0;
   const missingCurrentHodScore = !isLegacyYear && n(item.hodTotal) === 0 && hasDownstreamReviewerScore;
-  const missingReviewerScore = missingLegacyScore || missingCurrentHodScore;
+  // /dashboard/subordinates' lightweight pass also sometimes omits Part C/D entirely (unlike
+  // Part A/B, which it always carries) - a subject with a positive Part A or B total but a
+  // literal-zero Part C or D is therefore "missing", not "genuinely scored zero", and needs the
+  // same full-record round trip below (standardSubmittedScoreSummary against the fetched
+  // `submitted` record, which has the real uniActs/deptActs/leaveManagement rows) to recover it.
+  const missingCurrentPartCOrDScore = !isLegacyYear &&
+    (n(item.partATotal) > 0 || n(item.partBTotal) > 0) &&
+    (n(item.partCTotal) === 0 || n(item.partDTotal) === 0);
+  const missingReviewerScore = missingLegacyScore || missingCurrentHodScore || missingCurrentPartCOrDScore;
   if (currentDocCount > 0 && !missingReviewerScore) {
     return item;
   }

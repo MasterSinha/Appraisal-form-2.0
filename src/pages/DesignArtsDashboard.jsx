@@ -33,7 +33,6 @@ import {
  saveReviewerDraft,
  submitWorkflowReview,
  buildReviewRemarks,
- openFullFormReport,
  generateMediaCommReport,
  INNOVATIVE_METHODS,
  SCORE_LIMITS,
@@ -292,25 +291,6 @@ export default function DesignArtsDashboard({ fixedRole }) {
     setForm((prev) => ({ ...prev, info: { ...prev.info, ay: newAy } }));
     setActiveAcademicYear(newAy);
     window.dispatchEvent(new CustomEvent("academicYearChanged", { detail: { academicYear: newAy } }));
-  };
-
-  const handleGenerateReport = () => {
-    openFullFormReport({
-      title: `${schoolDisplayName} — Faculty Appraisal Report`,
-      subtitle: `Academic Year: ${academicYear}`,
-      form,
-      docs,
-      partASections: PART_A_SECTIONS,
-      partBSections: PART_B_SECTIONS,
-      partCSections: PART_C_SECTIONS,
-      partDSections: PART_D_SECTIONS,
-      totals,
-      maxScores: totals.maxScores,
-      scoreRoles: ["score"],
-      roleLabel,
-      declaration,
-      hideAcr: true,
-    });
   };
 
  const setters = useMemo(() =>Object.fromEntries([
@@ -738,8 +718,9 @@ export default function DesignArtsDashboard({ fixedRole }) {
   partBSections: PART_B_SECTIONS,
   partCSections: PART_C_SECTIONS,
   partDSections: PART_D_SECTIONS,
+  partDTitle: "Leave & Attendance Management",
+  partDIncludesSelfScore: true,
   totals: { partA: partATotal, partB: partBTotal, partC: partCTotal, partD: partDTotal, total: grandTotal },
-  hideAcr: true,
   maxScores,
   generatedBy: sessionStorage.getItem("name") || roleLabel(role),
   declaration,
@@ -785,9 +766,6 @@ export default function DesignArtsDashboard({ fixedRole }) {
   { isHeader: true, label: "Part D - Leave & Attendance Management" },
   { id: "D1", label: "Management of Leaves", max: 25, score: partDTotal },
   { isTotal: true, label: "Part D Total", max: maxScores.partD, score: partDTotal },
-  { isHeader: true, label: "Part E - Annual Confidential Report (ACR)" },
-  ...summaryRow(applicability, "acr", { id: "E1", label: "Annual Confidential Report", max: 50, score: rowSum("acr", 50) }),
-  { isTotal: true, label: "Part E Total", max: maxScores.partE, score: rowSum("acr", 50) },
   { isGrandTotal: true, label: "Grand Total", max: maxScores.grand, score: grandTotal },
   ],
   });
@@ -1079,7 +1057,7 @@ export default function DesignArtsDashboard({ fixedRole }) {
       <div style={{ display: "flex", justifyContent: "center", marginTop: 20 }}>
         <button
           type="button"
-          onClick={handleGenerateReport}
+          onClick={generateSelfReport}
           style={{ padding: "10px 28px", background: "#4c1d95", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: 14, fontFamily: "inherit" }}
         >
           Generate Report

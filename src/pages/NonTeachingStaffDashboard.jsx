@@ -5,7 +5,7 @@ import { APP_INFO } from "../constants/formConfig";
 import { normalizeNonTeachingRole } from "../constants/nonTeachingHierarchy";
 import { api } from "../services/api";
 import { getMe } from "../services/authService";
-import { loadReviewerDraft, saveReviewerDraft } from "../services/reviewWorkflow";
+import { loadReviewerDraft, saveReviewerDraft, fetchPartDRegistrarQueue } from "../services/reviewWorkflow";
 import { isAllowedAttachmentFile, isFilled } from "../utils/appraisalFormUtils";
 import {
   NON_TEACHING_MAX,
@@ -40,7 +40,7 @@ import { SectionCard } from "../features/faculty-appraisal/components/formPrimit
 import { WORKFLOW_STATUSES, currentWorkflowStep, isWorkflowComplete } from "../utils/workflow";
 import { T, TH, TD, TDC } from "../features/faculty-appraisal/components/formPrimitiveStyles";
 import { Avatar, ScoreBar, ReviewMetricsStrip, LogoutConfirmModal } from "../components/dashboard/dashboardPrimitives";
-import TeachingPartDReviewDashboard from "./TeachingPartDReviewDashboard";
+import TeachingPartDReviewDashboard, { isPartDReviewed } from "./TeachingPartDReviewDashboard";
 import { ReportBugButton } from "../components/dashboard/ReportBugModal";
 import NoticesBell from "../components/dashboard/NoticesBell";
 
@@ -1703,14 +1703,33 @@ export function NonTeachingReviewDashboard({ reviewerRole, title, subtitle, acce
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reviewerRole, selectedAcademicYear]);
 
+  const [partDItems, setPartDItems] = useState([]);
+  const loadPartDQueue = async () => {
+    try {
+      const queue = await fetchPartDRegistrarQueue({ academicYear: selectedAcademicYear });
+      setPartDItems(queue);
+    } catch (err) {
+      console.error("Could not load Part D review queue:", err);
+      setPartDItems([]);
+    }
+  };
+
+  useEffect(() => {
+    if (!showPartD) return undefined;
+    const timer = setTimeout(loadPartDQueue, 0);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showPartD, selectedAcademicYear, tab]);
+
   const selected = items.find((item) => item.id === selectedId);
   const normalizedReviewerRole = normalizeNonTeachingRole(reviewerRole, reviewerRole);
   const reviewedCount = items.filter((item) => isCurrentNonTeachingReviewApproved(item, normalizedReviewerRole)).length;
   const pendingCount = items.length - reviewedCount;
+  const partDPendingCount = partDItems.filter((item) => !isPartDReviewed(item)).length;
   const navItems = [
     { id: "self", label: "My Staff Appraisal", sub: "View your self-appraisal form", icon: <SelfNavIcon /> },
     { id: "review", label: "Non Teaching Approval", sub: `${pendingCount} awaiting review`, icon: <ReviewNavIcon />, badge: pendingCount },
-    ...(showPartD ? [{ id: "partD", label: "Part D - Teaching Staff", sub: "Score teaching-staff leave & attendance", icon: <PartDNavIcon /> }] : []),
+    ...(showPartD ? [{ id: "partD", label: "Part D - Teaching Staff", sub: `${partDPendingCount} awaiting review`, icon: <PartDNavIcon />, badge: partDPendingCount }] : []),
   ];
 
   return (

@@ -80,12 +80,19 @@ const partCScoreFromRows = (sources, partCMax) =>
     scoreRowsFromSources(sources, ["uniActs", "university_activities", "universityActivities", "uni_acts"], 50) +
     scoreRowsFromSources(sources, ["deptActs", "departmental_activities", "departmentalActivities", "department_activities", "departmentActivities", "dept_acts"], 30) +
     scoreRowsFromSources(sources, ["eventRows", "events", "event_rows", "eventOrganisation", "event_organisation"], 20) +
-    scoreRowsFromSources(sources, ["society", "social_contributions", "socialContributions", "contribution_to_society", "contributionToSociety"], 20, 5) +
-    scoreRowsFromSources(sources, ["industry", "industry_connect", "industryConnect"], 8) +
+    scoreRowsFromSources(sources, ["society", "social_contributions", "socialContributions", "contribution_to_society", "contributionToSociety"], 10) +
+    scoreRowsFromSources(sources, ["industry", "industry_connect", "industryConnect"], 10) +
     scoreRowsFromSources(sources, ["alumniRows", "alumni", "alumni_rows"], 10) +
     scoreRowsFromSources(sources, ["placementRows", "placements", "placement_rows"], 20),
     partCMax,
   );
+
+// Part D (Leave & Attendance Management, 25 marks, faculty-filled) has no dedicated
+// part_d_total/partDTotal field on some queue payloads (only part_a/part_b are guaranteed) -
+// recompute it from the raw leaveManagement row(s) the same way partCScoreFromRows recovers
+// Part C, instead of silently showing 0 when the pre-aggregated total is missing.
+const partDScoreFromRows = (sources, partDMax) =>
+  scoreRowsFromSources(sources, ["leaveManagement", "leave_management"], partDMax, partDMax);
 
 const normalizeReviewRole = (value) => {
   const role = clean(value).toLowerCase().replace(/[-\s]+/g, "_");
@@ -363,7 +370,8 @@ export const standardSubmittedScoreSummary = (subject = {}, fallback = {}) => {
     "partDTotal", "partD", "part_d_total", "part_d_score", "selfPartD", "self_part_d",
     "facultyPartD", "faculty_part_d", "facultyPartDScore", "faculty_part_d_score",
   ], fallback.partD);
-  const partD = Math.min(rawPartD, cappedPartDMax);
+  const inferredPartDFromRows = partDScoreFromRows(sources, cappedPartDMax);
+  const partD = Math.min(Math.max(rawPartD, inferredPartDFromRows), cappedPartDMax);
   const computedTotal = partA + partB + partC + partD;
   const rawTotal = numericFrom(sources, [
     "grandTotal", "grand_total", "totalScore", "total_score", "total", "selfTotal",

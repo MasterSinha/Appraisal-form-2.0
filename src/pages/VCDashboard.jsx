@@ -3,7 +3,7 @@
 import { useNavigate } from "react-router-dom";
 import { Avatar, LogoutConfirmModal, ScoreCard, ReviewMetricsStrip } from "../components/dashboard/dashboardPrimitives";
 import { fetchNonTeachingQueueForRole, isNonTeachingReviewComplete } from "../services/nonTeachingWorkflow";
-import { fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, fetchSavedAppraisal, mergeFacultyInfo, ACR_DETAIL_POINTS, MAX_SCORES, APP_INFO, createAcrRows, buildReviewRemarks, openFullFormReport, SummaryOtherInfoField, summaryOtherInfoValueFrom, SCORE_LIMITS, clampScore, clampReviewScore, effectiveMaxScore, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewRowMaxForSection, reviewSectionScore, rowHasReviewableData, isSectionEmpty, selfEffectivePartAMax, societyRowLocked, societyRowScore, standardReviewSummary, standardSubmittedScoreSummary, qualificationRowDescription, AppraisalHeaderImage, ViewDocsCell, SectionCard as SC, EmptySectionRow, CreativeSchoolAuthorityReviewPanel, normalizeSubmittedCreativeFormForReview, isCreativeSchool, isDesignArtsSchool, isMediaCommSchool } from "../features/faculty-appraisal";
+import { fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, fetchSavedAppraisal, mergeFacultyInfo, ACR_DETAIL_POINTS, MAX_SCORES, APP_INFO, createAcrRows, buildReviewRemarks, openFullFormReport, renderCombinedPartsSummary, safeHtml, displayValue, SummaryOtherInfoField, summaryOtherInfoValueFrom, SCORE_LIMITS, clampScore, clampReviewScore, effectiveMaxScore, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewRowMaxForSection, reviewSectionScore, rowHasReviewableData, isSectionEmpty, selfEffectivePartAMax, societyRowLocked, societyRowScore, standardReviewSummary, standardSubmittedScoreSummary, qualificationRowDescription, AppraisalHeaderImage, ViewDocsCell, SectionCard as SC, EmptySectionRow, CreativeSchoolAuthorityReviewPanel, normalizeSubmittedCreativeFormForReview, isCreativeSchool, isDesignArtsSchool, isMediaCommSchool } from "../features/faculty-appraisal";
 import { clearUserSession, getActiveAcademicYear, getSessionItem, normalizeAcademicYearLabel, setActiveAcademicYear } from "../auth/session";
 import { PreviousYearReportViewer } from "../features/previousYearReport";
 import { isLegacyTwoPartAcademicYear } from "../features/faculty-appraisal/forms/standard/legacyPreviousYearReportUtils";
@@ -1181,6 +1181,51 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  }));
  });
  reportForm.innovVc = vcData.innovVc ?? vcData.innovVC ?? person.innovVc ?? "";
+
+ const effectivePartA = reviewLocked && String(person.vcPartA ?? "").trim() !== "" ? n(person.vcPartA) : partA;
+ const effectivePartB = reviewLocked && String(person.vcPartB ?? "").trim() !== "" ? n(person.vcPartB) : partB;
+ const effectivePartC = reviewLocked && String(person.vcPartC ?? "").trim() !== "" ? n(person.vcPartC) : partC;
+ // vcPartD/partD here means Part E/ACR (see comment above) - Leave & Attendance (real Part D) is scored separately by the Registrar.
+ const effectivePartE = reviewLocked && String(person.vcPartD ?? "").trim() !== "" ? n(person.vcPartD) : partD;
+ const effectiveTotal = reviewLocked && String(person.vcTotal ?? "").trim() !== "" ? n(person.vcTotal) : total;
+
+ const leaveMax = 25;
+ const selfLeaveScore = clampScore(n(person.declaration?.part_d_total ?? person.partDTotal ?? person.selfPartD ?? 0), leaveMax);
+ const leaveRows = Array.isArray(person.leaveManagement) ? person.leaveManagement : [];
+ const extraSectionsHtml = `
+ <div class="page-break"></div>
+ <h3 style="background:#d9d9d9;padding:4px;text-align:center;font-size:13px">PART D - Leave &amp; Attendance Management</h3>
+ <div class="remarks" style="margin-bottom:10px">Faculty-submitted data only. Registrar/reviewer assessment for this part has not yet been finalised.</div>
+ <table>
+ <tr><th>SN</th><th>CL Taken</th><th>ML Taken</th><th>OD Taken</th><th>C/Off Taken</th><th>Late Remarks</th><th>Working Days</th><th>Management of Leaves</th></tr>
+ ${leaveRows.length ? leaveRows.map((r, i) => `<tr><td class="c">${i + 1}</td><td class="c">${displayValue(r.clTaken)}</td><td class="c">${displayValue(r.mlTaken)}</td><td class="c">${displayValue(r.odTaken)}</td><td class="c">${displayValue(r.coffTaken)}</td><td class="c">${displayValue(r.lateRemarks)}</td><td class="c">${displayValue(r.workingDays)}</td><td>${displayValue(r.managementRating)}</td></tr>`).join("") : `<tr><td colspan="8" class="c">No data submitted</td></tr>`}
+ </table>`;
+
+ const vcValues = { partA: effectivePartA, partB: effectivePartB, partC: effectivePartC, partD: effectivePartE, total: effectiveTotal };
+ const valuesFor = (key) => ({
+ score: facultyTotals[key],
+ ...Object.fromEntries(previousSummaryCards.map((card) => [card.role, card.totals[key]])),
+ vc: vcValues[key],
+ });
+ const summaryHtml = renderCombinedPartsSummary({
+ academicYear: person.academicYear || person.info?.ay || APP_INFO.DEFAULT_AY || "",
+ roles: [
+ { key: "score", label: "Faculty (Self)" },
+ ...previousSummaryCards.map((card) => ({ key: card.role, label: card.meta.shortLabel })),
+ { key: "vc", label: "VC" },
+ ],
+ parts: [
+ { label: "Part A - Teaching Process & Academic Activities", max: reviewerMaxScores.partA, values: valuesFor("partA") },
+ { label: "Part B - Research & Academic Contributions", max: reviewerMaxScores.partB, values: valuesFor("partB") },
+ { label: "Part C - Administrative Role & University Development Contribution", max: reviewerMaxScores.partC, values: valuesFor("partC") },
+ { label: "Part D - Leave & Attendance Management", max: leaveMax, values: { score: selfLeaveScore } },
+ { label: "Part E - Annual Confidential Report (ACR)", max: reviewerMaxScores.partD, values: valuesFor("partD") },
+ ],
+ grandTotal: { max: reviewerMaxScores.grand, values: valuesFor("total") },
+ status: person.status,
+ note: "Part D (Leave & Attendance Management) shows faculty-submitted data only - Registrar/reviewer marks are not yet confirmed. Part E (ACR) is evaluated by the review chain and is never self-scored by faculty.",
+ });
+
  openFullFormReport({
  title: "VC Appraisal Report",
  subtitle: `${APP_INFO.UNIVERSITY_NAME} | Academic Year ${person.academicYear || person.info?.ay || APP_INFO.DEFAULT_AY || ""}`,
@@ -1190,12 +1235,15 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
   partBSections: ["SoCSEA", "SoBB", "SoCE", "SoEMR", "SoCM"].includes(getSchoolKey(person?.school || person?.schoolName || person?.info?.school || "")) ? VC_REPORT_PART_B_SECTIONS.filter(s => s.key !== "exhibitions") : VC_REPORT_PART_B_SECTIONS,
  partCSections: VC_REPORT_PART_C_SECTIONS,
  partDSections: VC_REPORT_PART_D_SECTIONS,
+ partDLabel: "E",
+ partDTitle: "Annual Confidential Report (ACR)",
+ extraSectionsHtml,
  totals: {
- partA: reviewLocked && String(person.vcPartA ?? "").trim() !== "" ? n(person.vcPartA) : partA,
- partB: reviewLocked && String(person.vcPartB ?? "").trim() !== "" ? n(person.vcPartB) : partB,
- partC: reviewLocked && String(person.vcPartC ?? "").trim() !== "" ? n(person.vcPartC) : partC,
- partD: reviewLocked && String(person.vcPartD ?? "").trim() !== "" ? n(person.vcPartD) : partD,
- total: reviewLocked && String(person.vcTotal ?? "").trim() !== "" ? n(person.vcTotal) : total,
+ partA: effectivePartA,
+ partB: effectivePartB,
+ partC: effectivePartC,
+ partD: effectivePartE,
+ total: effectiveTotal,
  },
  maxScores: reviewerMaxScores,
  scoreRoles: ["score", ...previousRoles, "vc"],
@@ -1207,6 +1255,7 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  currentRemarks: remarks,
  roleLabels: { hod: firstReviewRoleLabel },
  }),
+ summaryHtml,
  generatedBy: sessionStorage.getItem("name") || "Vice Chancellor",
  });
  };

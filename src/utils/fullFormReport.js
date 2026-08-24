@@ -332,6 +332,53 @@ export const renderReportSummary = ({
   </table>`;
 };
 
+export const renderCombinedPartsSummary = ({
+  academicYear = "",
+  parts = [],
+  roles = [],
+  grandTotal = null,
+  status = "",
+  note = "",
+} = {}) => {
+  const cell = (value) =>
+    value === null || value === undefined || value === "" ? "&nbsp;" : n(value).toFixed(1);
+  const colCount = 2 + roles.length;
+  return `
+  <h3 style="text-align:center;font-size:13px">SUMMARY${academicYear ? ` - AY ${safeHtml(academicYear)}` : ""}</h3>
+  <table class="st">
+    <thead>
+      <tr>
+        <th>Part</th>
+        <th style="width:14%">Max</th>
+        ${roles.map((role) => `<th>${safeHtml(role.label)}</th>`).join("")}
+      </tr>
+    </thead>
+    <tbody>
+      ${parts
+        .map(
+          (part) => `
+      <tr>
+        <td>${safeHtml(part.label)}</td>
+        <td class="c">${safeHtml(String(part.max ?? ""))}</td>
+        ${roles.map((role) => `<td class="c">${cell(part.values?.[role.key])}</td>`).join("")}
+      </tr>`,
+        )
+        .join("")}
+      ${
+        grandTotal
+          ? `<tr class="tr" style="background:#bfbfbf;font-weight:bold;font-size:13px">
+        <td>Grand Total</td>
+        <td class="c">${safeHtml(String(grandTotal.max ?? ""))}</td>
+        ${roles.map((role) => `<td class="c">${cell(grandTotal.values?.[role.key])}</td>`).join("")}
+      </tr>`
+          : ""
+      }
+      ${status ? `<tr><td class="c">Status</td><td colspan="${colCount - 1}">${safeHtml(status)}</td></tr>` : ""}
+    </tbody>
+  </table>
+  ${note ? `<div class="remarks" style="margin-top:6px;font-size:10.5px">${safeHtml(note)}</div>` : ""}`;
+};
+
 const docsFor = (docs, key) => {
   const files = docs?.[key] || [];
   if (!files.length) return "&nbsp;";
@@ -614,6 +661,10 @@ export const openFullFormReport = async ({
   declaration = null,
   reviewChain = [],
   hideAcr = false,
+  partDLabel = "D",
+  partDTitle = "Annual Confidential Report (ACR)",
+  extraSectionsHtml = "",
+  summaryHtml = null,
 }) => {
   const win = window.open("", "_blank", "width=1000,height=800");
   if (!win) {
@@ -746,10 +797,12 @@ ${PRINT_REPORT_CSS}
     )
     .join("")}
 
+  ${extraSectionsHtml}
+
   ${!hideAcr ? `
   <div class="page-break"></div>
-  <h3 style="background:#d9d9d9;padding:4px;text-align:center;font-size:13px">PART D - Annual Confidential Report (ACR)</h3>
-  ${(partDSections && partDSections.length ? partDSections : [{ key: "acr", title: "Part D - Annual Confidential Report (ACR)", max: 50, fields: [["label", "Attribute"]] }])
+  <h3 style="background:#d9d9d9;padding:4px;text-align:center;font-size:13px">PART ${safeHtml(partDLabel)} - ${safeHtml(partDTitle)}</h3>
+  ${(partDSections && partDSections.length ? partDSections : [{ key: "acr", title: `Part ${partDLabel} - ${partDTitle}`, max: 50, fields: [["label", "Attribute"]] }])
     .filter((section) => isSectionReportable(form, section))
     .map((section) =>
       renderSection({
@@ -765,6 +818,10 @@ ${PRINT_REPORT_CSS}
   ` : ""}
 
   <div class="page-break"></div>
+  ${
+    summaryHtml
+      ? summaryHtml
+      : `
   <h3 style="text-align:center;font-size:13px">SUMMARY</h3>
   <table class="st">
     <thead><tr><th>Section</th><th>Score</th><th>Maximum</th></tr></thead>
@@ -777,7 +834,8 @@ ${PRINT_REPORT_CSS}
       <tr class="tr"><td>Marks Obtained (%)</td><td colspan="2" class="c">${displayTotalPercentage}%</td></tr>
       ${status ? `<tr><td>Status</td><td colspan="2">${safeHtml(status)}</td></tr>` : ""}
     </tbody>
-  </table>
+  </table>`
+  }
   ${renderReviewRemarks(Array.isArray(remarksSections) ? remarksSections : remarksLabel ? [{ label: remarksLabel, remarks }] : [])}
   ${renderSummaryOtherInfo(form.summaryOtherInfo)}
   ${buildSignaturePage({
@@ -802,14 +860,19 @@ export const generateMediaCommReport = async ({
   partBSections = [],
   partCSections = [],
   partDSections = [],
+  partDTitle = "Annual Confidential Report (ACR)",
+  partDIncludesSelfScore = false,
+  partESections = null,
+  partETitle = "Annual Confidential Report",
+  partEScoreRoles = [],
   totals = {},
   maxScores = {},
   generatedBy = "",
   detailedSummaryRows = null,
+  summaryHtml = null,
   declaration = null,
   reviewChain = [],
   remarksSections = [],
-  hideAcr = false,
   scoreRoles = ["score"],
   partDScoreRoles = null,
   roleLabel,
@@ -823,9 +886,10 @@ export const generateMediaCommReport = async ({
   const iqacLogoSrc = await fetchImageAsDataUrl("/IQAS.png");
 
   const info = form.info || {};
-  const resolvedPartDScoreRoles = Array.isArray(partDScoreRoles)
-    ? partDScoreRoles.filter((role) => role !== "score")
-    : scoreRoles.filter((role) => role !== "score");
+  const partDRoleSource = Array.isArray(partDScoreRoles) ? partDScoreRoles : scoreRoles;
+  const resolvedPartDScoreRoles = partDIncludesSelfScore
+    ? partDRoleSource
+    : partDRoleSource.filter((role) => role !== "score");
   const displayPartA = n(totals.partA);
   const displayPartAMax = n(maxScores.partA || 0);
   const displayPartB = n(totals.partB);
@@ -834,13 +898,7 @@ export const generateMediaCommReport = async ({
   const partAPercentage = percentOf(displayPartA, displayPartAMax);
   const partBPercentage = percentOf(displayPartB, maxScores.partB);
   const totalPercentage = percentOf(displayGrand, displayGrandMax);
-  const rowsToRender = collapsePartBSummaryRows(
-    hideAcr && Array.isArray(detailedSummaryRows)
-      ? detailedSummaryRows.filter(
-          (r) => !/annual confidential report|acr|^part d\b/i.test(r.label || ""),
-        )
-      : detailedSummaryRows,
-  );
+  const rowsToRender = collapsePartBSummaryRows(detailedSummaryRows);
 
   const html = `<!doctype html>
 <html>
@@ -929,10 +987,9 @@ ${PRINT_REPORT_CSS}
     )
     .join("")}
 
-  ${!hideAcr ? `
   <div class="pb"></div>
-  <h3 style="background:#d9d9d9;padding:4px;text-align:center;font-size:13px">PART D - Annual Confidential Report (ACR)</h3>
-  ${(partDSections.length ? partDSections : [{ key: "acr", title: "Part D - Annual Confidential Report (ACR)", max: 50, fields: [["label", "Attribute"]] }])
+  <h3 style="background:#d9d9d9;padding:4px;text-align:center;font-size:13px">PART D - ${safeHtml(partDTitle)}</h3>
+  ${(partDSections.length ? partDSections : [{ key: "acr", title: `Part D - ${partDTitle}`, max: 50, fields: [["label", "Attribute"]] }])
     .filter((s) => isSectionReportable(form, s))
     .map((s) =>
       renderSection({
@@ -945,11 +1002,31 @@ ${PRINT_REPORT_CSS}
       }),
     )
     .join("")}
+
+  ${partESections && partESections.length ? `
+  <div class="pb"></div>
+  <h3 style="background:#d9d9d9;padding:4px;text-align:center;font-size:13px">PART E - ${safeHtml(partETitle)}</h3>
+  ${!partEScoreRoles.length ? `<div class="remarks" style="margin-bottom:10px">Evaluated by HOD/Director only. This part has no faculty self-score input.</div>` : ""}
+  ${partESections
+    .filter((s) => isSectionReportable(form, s))
+    .map((s) =>
+      renderSection({
+        section: s,
+        rows: form[s.key] || form.acr,
+        docs,
+        scoreRoles: partEScoreRoles,
+        roleLabel,
+        showTotal: Boolean(partEScoreRoles.length),
+      }),
+    )
+    .join("")}
   ` : ""}
 
   <div class="pb"></div>
   ${
-    rowsToRender
+    summaryHtml
+      ? summaryHtml
+      : rowsToRender
       ? `
   <h3 style="text-align:center;font-size:13px">SUMMARY OF SELF SCORES - AY ${safeHtml(info.ay || "")}</h3>
   <table class="st">

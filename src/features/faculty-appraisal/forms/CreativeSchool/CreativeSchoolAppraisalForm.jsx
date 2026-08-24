@@ -24,6 +24,7 @@ import {
   buildReviewRemarks,
   openFullFormReport,
   generateMediaCommReport,
+  renderCombinedPartsSummary,
   INNOVATIVE_METHODS,
   SCORE_LIMITS,
   averageSectionScore,
@@ -510,161 +511,6 @@ const docKeysForSectionRow = (section, index) => {
     `${section.doc}-${index}`,
     ...(DOC_KEY_ALIASES[section.key] || []).map((prefix) => `${prefix}-${index}`),
   ];
-};
-
-const dummyPdfFor = (key) => [{
-  name: `${key}-dummy.pdf`,
-  type: "application/pdf",
-  size: 1024,
-  url: "data:application/pdf;base64,JVBERi0xLjQKJcTl8uXrp/Og0MTGCjEgMCBvYmoKPDwvVHlwZSAvQ2F0YWxvZy9QYWdlcyAyIDAgUj4+CmVuZG9iago=",
-}];
-
-const dummyValueForCreativeField = (sectionKey, fieldKey, rowIndex = 0) => {
-  const date = `${String(rowIndex + 1).padStart(2, "0")}/08/2026`;
-  const values = {
-    sem: rowIndex % 2 === 0 ? "Sem-I" : "Sem-II",
-    code: `CR-${rowIndex + 101}`,
-    planned: String(36 + rowIndex * 2),
-    conducted: String(34 + rowIndex * 2),
-    pctConducted: `${(((34 + rowIndex * 2) / (36 + rowIndex * 2)) * 100).toFixed(1)}%`,
-    course: `Creative Studies ${rowIndex + 1}`,
-    details: "Documented with verified evidence",
-    title: `${sectionKey} dummy title ${rowIndex + 1}`,
-    fb1: "86",
-    fb2: "90",
-    label: "UG Design / Media Capstone",
-    body: "DYPIU",
-    date,
-    fromDate: date,
-    toDate: date,
-    journal: "Journal of Creative Practice",
-    doi: "10.0000/dypiu.test",
-    index: "Q2",
-    impact: "2.5",
-    coAuthors: "One co-author",
-    firstAuthor: "Yes",
-    publisher: "DYPIU Press, ISBN 9780000000000",
-    type: rowIndex % 2 === 0 ? "National" : "International",
-    level: rowIndex % 2 === 0 ? "National" : "International",
-    scope: "National",
-    status: "Completed",
-    fileNo: `DYPIU-IP-${rowIndex + 1}`,
-    agency: "DYPIU Innovation Cell",
-    amount: String(50000 + rowIndex * 25000),
-    role: rowIndex % 2 === 0 ? "PI" : "Co-PI",
-    degree: rowIndex % 2 === 0 ? "PhD" : "PG",
-    name: `Student ${rowIndex + 1}`,
-    client: "Creative Industry Partner",
-    nature: "Consultancy",
-    org: "DYPIU",
-    program: "Faculty Development Programme",
-    platform: "SWAYAM",
-    reach: "1200 views",
-    event: "Creative outreach event",
-    activity: "Institutional contribution activity",
-    duration: rowIndex % 2 === 0 ? "5 days" : "2 weeks",
-    durationCat: rowIndex % 2 === 0 ? "More than 6 months" : "3 to 6 months",
-    period: rowIndex % 2 === 0 ? "Aug 2026 - Dec 2026" : "Jan 2027 - Apr 2027",
-    partner: "Industry Partner",
-    venueLevel: "National",
-  };
-  if (sectionKey === "courseFile" && fieldKey === "details") return "1.Available";
-  if (sectionKey === "feedback" && fieldKey === "code") return `FB-${rowIndex + 101}`;
-  if (sectionKey === "feedback" && fieldKey === "fb1") return rowIndex % 2 === 0 ? "86" : "88";
-  if (sectionKey === "feedback" && fieldKey === "fb2") return rowIndex % 2 === 0 ? "90" : "92";
-  if (sectionKey === "placements" && fieldKey === "type") return "Portfolio Review";
-  return values[fieldKey] ?? `Dummy ${fieldKey} ${rowIndex + 1}`;
-};
-
-const dummyRowCountForSection = (sectionKey) => {
-  if (sectionKey === "lectures") return 4;
-  if (sectionKey === "courseFile" || sectionKey === "feedback") return 2;
-  return 2;
-};
-
-// dummyScoreForSection is the constraint guard: it derives each row's score from the section's
-// own max (section.max / rowCount, capped further by the row's own rowMax), so no matter how
-// many dummy rows a section gets, their scores can never sum above that section's total marks.
-const dummyScoreForSection = (section = {}, row = {}, rowIndex = 0, rowCount = 1) => {
-  if (section.key === "courseFile") return "4";
-  if (section.key === "feedback") return String(Math.max(1, Math.floor((section.max || 10) / rowCount)));
-  const max = section.rowMax
-    ? (typeof section.rowMax === "function" ? section.rowMax(row) : section.rowMax)
-    : section.max;
-  const rowCap = n(max) || 2;
-  const sectionSafeScore = Math.max(1, Math.floor((section.max || rowCap) / rowCount));
-  return String(Math.min(rowCap, sectionSafeScore, section.key === "lectures" ? 10 : 5));
-};
-
-const buildDummyRowsForSection = (section, count = dummyRowCountForSection(section?.key)) =>
-  Array.from({ length: count }, (_, rowIndex) => {
-    const row = Object.fromEntries(section.fields.map(([fieldKey]) => [
-      fieldKey,
-      dummyValueForCreativeField(section.key, fieldKey, rowIndex),
-    ]));
-    return {
-      ...row,
-      score: dummyScoreForSection(section, row, rowIndex, count),
-      _id: uid(),
-    };
-  });
-
-const buildDummyCreativeDocs = (currentForm = {}) => {
-  const docs = {};
-  const addDocKeys = (section, count = 1) => {
-    Array.from({ length: count }, (_, index) => {
-      docKeysForSectionRow(section, index).forEach((key) => {
-        docs[key] = dummyPdfFor(key);
-      });
-      return null;
-    });
-  };
-  [...PART_A_SECTIONS, ...getPartBSectionsForSchool(currentForm?.info?.school || currentForm), ...PART_C_SECTIONS].forEach((section) => addDocKeys(section, dummyRowCountForSection(section.key)));
-  ["innov", "obe", "mentor"].forEach((prefix) => {
-    const count = prefix === "innov" ? 4 : 3;
-    Array.from({ length: count }, (_, index) => {
-      const key = `${prefix}-${index}`;
-      docs[key] = dummyPdfFor(key);
-      return null;
-    });
-  });
-  return docs;
-};
-
-const buildDummyCreativeForm = (currentForm = {}) => {
-  const applicablePartBSections = getPartBSectionsForSchool(currentForm?.info?.school || currentForm);
-  const applicablePartBKeys = new Set(applicablePartBSections.map((section) => section.key));
-  return {
-    ...currentForm,
-    lectures: buildDummyRowsForSection(PART_A_SECTIONS.find((section) => section.key === "lectures")),
-    courseFile: buildDummyRowsForSection(PART_A_SECTIONS.find((section) => section.key === "courseFile")),
-    innovDetails: "Flipped classroom, studio critique, peer learning",
-    innovScore: "8",
-    innovRows: [
-      { method: "Flipped Classroom", details: "Recorded material and in-class problem solving used.", score: "2", max: CREATIVE_INNOVATIVE_ROW_MAX, sectionMax: CREATIVE_INNOVATIVE_SECTION_MAX, _id: uid() },
-      { method: "Peer Learning", details: "Peer critique and reflective documentation completed.", score: "2", max: CREATIVE_INNOVATIVE_ROW_MAX, sectionMax: CREATIVE_INNOVATIVE_SECTION_MAX, _id: uid() },
-      { method: "Studio Critique", details: "Rubric-based critique and improvement cycle completed.", score: "2", max: CREATIVE_INNOVATIVE_ROW_MAX, sectionMax: CREATIVE_INNOVATIVE_SECTION_MAX, _id: uid() },
-      { method: "Field-based Learning", details: "Industry/studio observation converted into class activity.", score: "2", max: CREATIVE_INNOVATIVE_ROW_MAX, sectionMax: CREATIVE_INNOVATIVE_SECTION_MAX, _id: uid() },
-    ],
-    obeRows: defaultObeRows().map((row) => ({ ...row, evidence: "Outcome report attached", score: String(Math.min(row.max || 1, 4)), _id: uid() })),
-    mentoringRows: defaultMentoringRows().map((row) => ({ ...row, evidence: "Mentoring record attached", score: String(Math.min(row.max || 1, 3)), _id: uid() })),
-    projects: buildDummyRowsForSection(PART_A_SECTIONS.find((section) => section.key === "projects")),
-    quals: buildDummyRowsForSection(PART_A_SECTIONS.find((section) => section.key === "quals")),
-    feedback: buildDummyRowsForSection(PART_A_SECTIONS.find((section) => section.key === "feedback")),
-    ...Object.fromEntries(PART_B_SECTIONS.map((section) => [
-      section.key,
-      applicablePartBKeys.has(section.key) ? buildDummyRowsForSection(section) : [],
-    ])),
-    ...Object.fromEntries(PART_C_SECTIONS.map((section) => [section.key, buildDummyRowsForSection(section)])),
-    leaveManagement: [{
-      clTaken: "3", mlTaken: "2", odTaken: "4", coffTaken: "1",
-      clOutOf: "8", mlOutOf: "6", odOutOf: "10", coffOutOf: "4",
-      lateRemarks: "1", workingDays: "220", managementRating: "Above Average",
-      score: String(partDRatingScore("Above Average")),
-    }],
-    acr: createAcrRows(currentForm.acr),
-    summaryOtherInfo: "Dummy data generated for validation, report, upload, save, and review flow testing.",
-  };
 };
 
 const normalizeCreativeRow = (key, row = {}, index = 0) => {
@@ -2201,30 +2047,8 @@ export function PartDRubricInfoCard() {
 export function CreativeSchoolForm({ form, setForm, docs, setDocs, mode = "self", locked = false, reviewerRole = "", reviewData = {}, setReviewData = () => {}, previousRoles = [], sectionView = "partA" }) {
   const sectionTableProps = { form, setForm, docs, setDocs, mode, locked, reviewerRole, reviewData, setReviewData, previousRoles };
   const partBSections = getPartBSectionsForSchool(form?.info?.school || form);
-  const canFillDummyData = mode === "self" && !locked;
-  const fillDummyData = () => {
-    if (!canFillDummyData) return;
-    const nextForm = buildDummyCreativeForm(form);
-    setForm(nextForm);
-    setDocs((prevDocs) => ({
-      ...prevDocs,
-      ...buildDummyCreativeDocs(nextForm),
-    }));
-  };
   return (
     <>
-      {canFillDummyData && (
-        <div style={{ display: "flex", justifyContent: "flex-end", margin: "0 0 12px" }}>
-          <button
-            type="button"
-            onClick={fillDummyData}
-            title="Fills every section with sample rows. Row scores are derived from each section's own max marks divided across rows, so section totals can never exceed the cap."
-            style={{ padding: "8px 14px", background: "#0f766e", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 800, fontSize: 12, fontFamily: "inherit", boxShadow: "0 8px 18px rgba(15,118,110,0.18)" }}
-          >
-            Fill Dummy Test Data
-          </button>
-        </div>
-      )}
       {(sectionView === "partA" || sectionView === "all") && (
         <PartA sections={PART_A_SECTIONS} SectionTable={SectionTable} InnovativeSection={InnovativeSection} ObeSection={ObeSection} MentoringSection={MentoringSection} sectionTableProps={sectionTableProps} />
       )}
@@ -2963,6 +2787,32 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
     const partDTotal = panelReadOnly && String(person?.[`${reviewerRole}PartD`] ?? "").trim() !== "" ? n(person?.[`${reviewerRole}PartD`]) : totals.partD;
     const grandTotal = panelReadOnly && String(person?.[`${reviewerRole}Total`] ?? "").trim() !== "" ? n(person?.[`${reviewerRole}Total`]) : totals.total;
     const b8Score = clampScore(rowSum("fdps", 20) + rowSum("training", 20), 20);
+    const isVcReport = reviewerRole === "vc";
+    const vcSummaryValuesFor = (key) => ({
+      score: facultyTotals[key],
+      ...Object.fromEntries(previousSummaryCards.map((card) => [card.role, card.totals[key]])),
+      vc: reviewerSummaryTotals[key],
+    });
+    const summaryHtml = isVcReport
+      ? renderCombinedPartsSummary({
+          academicYear: person?.academicYear || person?.academic_year || reviewerForm?.info?.ay || "",
+          roles: [
+            { key: "score", label: "Faculty (Self)" },
+            ...previousSummaryCards.map((card) => ({ key: card.role, label: card.label })),
+            { key: "vc", label: "VC" },
+          ],
+          parts: [
+            { label: "Part A - Teaching Process & Academic Activities", max: maxScores.partA, values: vcSummaryValuesFor("partA") },
+            { label: "Part B - Research & Academic Contributions", max: maxScores.partB, values: vcSummaryValuesFor("partB") },
+            { label: "Part C - Administrative Role & Contribution", max: maxScores.partC, values: vcSummaryValuesFor("partC") },
+            { label: "Part D - Leave & Attendance Management", max: maxScores.partD, values: { score: facultyTotals.partD } },
+            { label: "Part E - Annual Confidential Report (ACR)", max: maxScores.partE, values: vcSummaryValuesFor("partE") },
+          ],
+          grandTotal: { max: maxScores.grand, values: vcSummaryValuesFor("total") },
+          status: person?.status,
+          note: "Part D (Leave & Attendance Management) shows faculty-submitted data only - Registrar/reviewer marks are not yet confirmed. Part E (ACR) is evaluated by the review chain and is never self-scored by faculty.",
+        })
+      : null;
     generateMediaCommReport({
       title: `${schoolDisplayName} Appraisal Report`,
       subtitle: `${roleLabel(reviewerRole)} review`,
@@ -2972,7 +2822,18 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
       partBSections: getPartBSectionsForSchool(reviewerForm?.info?.school || person),
       partCSections: PART_C_SECTIONS,
       partDSections: PART_D_SECTIONS,
-      partDScoreRoles: partDReportRoles,
+      partDScoreRoles: isVcReport ? ["score"] : partDReportRoles,
+      ...(isVcReport
+        ? {
+            scoreRoles: ["score", ...partDReportRoles],
+            partDTitle: "Leave & Attendance Management",
+            partDIncludesSelfScore: true,
+            partESections: PART_E_SECTIONS,
+            partETitle: "Annual Confidential Report (ACR)",
+            partEScoreRoles: partDReportRoles,
+            summaryHtml,
+          }
+        : {}),
       roleLabel,
       totals: { partA: partATotal, partB: partBTotal, partC: partCTotal, partD: partDTotal, total: grandTotal },
       maxScores,
