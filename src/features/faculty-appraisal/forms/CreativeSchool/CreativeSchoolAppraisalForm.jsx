@@ -314,7 +314,7 @@ export const PART_B_SECTIONS = [
   { key: "popularWritings", title: "B3 (Part 1). Popular Writing — Newspaper & Magazine Articles, Columns & Reviews", max: 40, doc: "pop", fields: [["title", "Title of Article / Column"], ["pubName", "Publication Name & Date"], ["type", "Type (Article/Column/Review/Op-ed)"], ["circulation", "Circulation (Local/Regional/National/Intl.)"]] },
   { key: "ipr", title: "B3 (Part 2). Patents, Copyrights, IP & Creative Product Development", max: 40, doc: "ipr", fields: [["title", "Title"], ["scope", "National / International"], ["status", "Status (Published/Granted)"], ["fileNo", "Filing / Grant No. & Date"]] },
   { key: "externalProjects", title: "B4. Funded Research / Creative Projects & Grants", max: 20, doc: "ext", fields: [["title", "Title of Project / Grant"], ["agency", "Funding Agency"], ["date", "Sanction Date"], ["amount", "Amount (₹)"], ["role", "PI / Co-PI"], ["status", "Status"]] },
-  { key: "research", title: "B5. Research / Creative Guidance", max: 20, doc: "res", rowMax: researchGuidanceRowMax, fields: [["degree", "Degree (PhD/PG)"], ["name", "Name of Student / Scholar"], ["status", "Status (Ongoing/Awarded)"], ["date", "Date"]] },
+  { key: "research", title: "B5. Research / Creative Guidance", max: 20, doc: "res", rowMax: researchGuidanceRowMax, fields: [["degree", "Degree (PhD)"], ["name", "Name of Student / Scholar"], ["status", "Status (Ongoing/Awarded)"], ["date", "Date"]] },
   { key: "consultancy", title: "B6. Consultancy, Training & Creative Commissions", max: 30, doc: "con", fields: [["client", "Client / Organisation"], ["nature", "Nature of Engagement"], ["amount", "Revenue Generated (₹)"]] },
   { key: "confs", title: "B7. Conference / FDP / Training / Workshop Contributions as Resource Person", max: 20, doc: "conf", fields: [["title", "Event / Session Title"], ["role", "Role"], ["date", "Date"], ["level", "Level (Intl./National)"]] },
   { key: "fdps", title: "B8. Conference / FDP / Industry-Studio Training Attended", max: 20, doc: "fdp", fields: [["program", "Programme / Event"], ["fromDate", "From"], ["toDate", "To"], ["org", "Organised By"]] },
@@ -772,7 +772,7 @@ const FIELD_PLACEHOLDERS = {
   agency: "Funding agency / organisation",
   amount: "Amount in INR",
   role: "PI / Co-PI / Coordinator",
-  degree: "PhD / PG",
+  degree: "PhD",
   name: "Student / scholar / company name",
   client: "Client / organisation",
   nature: "Nature of work / responsibility",
@@ -834,7 +834,7 @@ const DROPDOWN_FIELD_OPTIONS = {
     status: ["Ongoing", "Completed", "Sanctioned", "Submitted"],
   },
   research: {
-    degree: ["PhD", "PG"],
+    degree: ["PhD"],
     status: ["Ongoing", "Awarded"],
   },
   consultancy: {
@@ -1157,7 +1157,6 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
                           >
                             <option value="">Select</option>
                             <option value="PhD">PhD</option>
-                            <option value="PG">PG</option>
                           </select>
                         ) : section.key === "courseFile" && key === "details" ? (
                           <select
@@ -1190,7 +1189,7 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
                           <RO value={row.pctConducted} center />
                         ) : (
                           <>
-                            <TI value={section.key === "events" && (key === "fromDate" || key === "toDate") ? (row[key] || row.date || "") : row[key]} type={key === "amount" ? "integer" : NUMERIC_KEYS.has(key) ? "number" : "text"} center={section.key === "courseFile" && key === "title"} placeholder={section.key === "research" && key === "date" && row.status === "Ongoing" ? "Not required" : placeholderForField(section.key, key)} max={key === "fb1" || key === "fb2" ? 5 : undefined} deferClampWhileTyping={key === "fb1" || key === "fb2"} textOnly={TEXT_ONLY_KEYS.has(key) && !(section.key === "courseFile" && key === "title")} readOnly={!editableSelf || readOnlyField || selfLocked || socRowLocked || (section.key === "research" && key === "date" && row.status === "Ongoing")} onChange={(value) => updateRow(index, key, value)} />
+                            <TI value={row[key]} type={key === "amount" ? "integer" : NUMERIC_KEYS.has(key) ? "number" : "text"} center={section.key === "courseFile" && key === "title"} placeholder={section.key === "research" && key === "date" && row.status === "Ongoing" ? "Not required" : placeholderForField(section.key, key)} max={key === "fb1" || key === "fb2" ? 5 : undefined} deferClampWhileTyping={key === "fb1" || key === "fb2"} textOnly={TEXT_ONLY_KEYS.has(key) && !(section.key === "courseFile" && key === "title")} readOnly={!editableSelf || readOnlyField || selfLocked || socRowLocked || (section.key === "research" && key === "date" && row.status === "Ongoing")} onChange={(value) => updateRow(index, key, value)} />
                             {section.key === "acr" && key === "label" && ACR_DETAIL_POINTS[row[key]] && (
                               <ul style={{ margin: "5px 0 0 16px", padding: 0, color: "#64748b", fontSize: 10, lineHeight: 1.5 }}>
                                 {ACR_DETAIL_POINTS[row[key]].map((point) => <li key={point}>{point}</li>)}
@@ -2863,7 +2862,7 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
         ...(isMediaCommSchool(reviewerForm?.info?.school || person) ? summaryRow(applicability, "popularWritings", { id: "B3", label: "Popular Writing — Newspaper & Magazine Articles", max: 40, score: rowSum("popularWritings", 40) }) : []),
         ...(isDesignArtsSchool(reviewerForm?.info?.school || person) ? summaryRow(applicability, "ipr", { id: "B3", label: "Patents, Copyrights, IP & Creative Product Development", max: 40, score: rowSum("ipr", 40) }) : []),
         ...summaryRow(applicability, "externalProjects", { id: "B4", label: "External Research / Consultancy Projects", max: 20, score: rowSum("externalProjects", 20) }),
-        ...summaryRow(applicability, "research", { id: "B5", label: "Research Guidance - PhD / PG", max: 20, score: rowSum("research", 20) }),
+        ...summaryRow(applicability, "research", { id: "B5", label: "Research Guidance - PhD", max: 20, score: rowSum("research", 20) }),
         ...summaryRow(applicability, "consultancy", { id: "B6", label: "Consultancy, Training & Creative Commissions", max: 30, score: rowSum("consultancy", 30) }),
         ...summaryRow(applicability, "confs", { id: "B7", label: "Conference / FDP / Training / Workshop Contributions as Resource Person", max: 20, score: rowSum("confs", 20) }),
         ...b8summaryRow(applicability, { id: "B8", label: "FDP / Self Development + Industrial Training", max: 20, score: b8Score }),

@@ -36,6 +36,7 @@ import {
   isValidDDMMYYYY,
   lectureGuidelineScore,
   maskDateDDMMYYYY,
+  migrateLegacyRowFields,
   normalizeAutoScores,
   projectGuidanceRowMax,
   researchGuidanceRowMax,
@@ -812,9 +813,21 @@ export default function StandardMyAppraisal({
     }),
     setLectures, setCourseFile, setInnovRows: (rows) => setInnovRows(sanitizeInnovativeRows(rows)), setInnovDetails, setInnovScore,
     setProjects, setObeRows, setMentoringRows, setQuals, setFeedback, setDeptActs, setUniActs,
-    setEventRows, setSociety, setIndustry, setAlumniRows, setPlacementRows, setAcr, setJournals, setBooks, setIct,
-    setResearch, setProjects2, setExternalProjects, setPatents, setAwards,
-    setConfs, setProposals, setProducts, setFdps, setTraining, setExhibitions, setDocs,
+    setEventRows: (rows) => setEventRows(migrateLegacyRowFields(rows, [["fromDate", "date"], ["toDate", "date"]])),
+    setSociety,
+    setIndustry: (rows) => setIndustry(migrateLegacyRowFields(rows, [["activity", "name"], ["partner", "details"]])),
+    setAlumniRows, setPlacementRows, setAcr,
+    setJournals: (rows) => setJournals(migrateLegacyRowFields(rows, [["impactFactor", "impact"], ["authorPosition", "position"]])),
+    setBooks: (rows) => setBooks(migrateLegacyRowFields(rows, [["book", "publisherIsbn"], ["pub", "type"]])),
+    setIct: (rows) => setIct(migrateLegacyRowFields(rows, [["type", "desc"], ["quad", "reach"]])),
+    setResearch: (rows) => setResearch(migrateLegacyRowFields(rows, [["status", "thesis"]])),
+    setProjects2, setExternalProjects,
+    setPatents: (rows) => setPatents(migrateLegacyRowFields(rows, [["type", "level"], ["type", "scope"], ["fileNo", "date"]])),
+    setAwards,
+    setConfs: (rows) => setConfs(migrateLegacyRowFields(rows, [["role", "type"], ["level", "org"]])),
+    setProposals: (rows) => setProposals(migrateLegacyRowFields(rows, [["agency", "title"], ["duration", "nature"], ["amount", "revenue"]])),
+    setProducts: (rows) => setProducts(migrateLegacyRowFields(rows, [["details", "title"], ["role", "usage"]])),
+    setFdps, setTraining, setExhibitions, setDocs,
     setSummaryOtherInfo, setSectionSaveStatus, setLeaveManagement,
   };
 
@@ -1022,8 +1035,12 @@ export default function StandardMyAppraisal({
   const proposalScore = sumSectionScore(proposals, B6_CONSULTANCY_MAX);
   const productScore = sumSectionScore(products, B10_STARTUP_MAX);
   const fdpScore = fdps.reduce((s, r) => s + clampScore(parseFloat(r.score) || 0, B8_ATTENDED_MAX), 0);
-  const trainScore = training.reduce((s, r) => s + clampScore(parseFloat(r.score) || 0, B8_ATTENDED_MAX), 0);
-  const b8Score = clampScore(fdpScore + trainScore, B8_ATTENDED_MAX);
+  // Industrial Training used to be its own visible, editable section; it was folded into the
+  // combined B8 table above and its input is now display:none (kept only so old printed reports
+  // still list those historical rows). Its score must NOT feed the live/submitted B8 total any
+  // more - a faculty member has no way to see or clear that hidden row, so counting it made the
+  // total look like it defaulted to a nonzero value out of nowhere.
+  const b8Score = clampScore(fdpScore, B8_ATTENDED_MAX);
   const researchGuidanceProjectMax = B4_PROJECT_MAX + B5_RESEARCH_GUIDANCE_MAX;
   const effectivePartBMax = PART_B_MAX;
   const partCTotal = clampScore(uniScore + deptScore + eventScore + societyScore + industryScore + alumniScore + placementScore, PART_C_MAX);
@@ -2562,8 +2579,8 @@ export default function StandardMyAppraisal({
                               <td style={TDC}>{i + 1}</td>
                               <td style={TD}><TI val={r.event} onChange={(v) => setEvent(i, "event", v)} placeholder="Event / conference / workshop name" /></td>
                               <td style={TD}><TI val={r.role} onChange={(v) => setEvent(i, "role", v)} placeholder="Convener / coordinator / member" /></td>
-                              <td style={TD}><TI val={r.fromDate || r.date || ""} onChange={(v) => setEvent(i, "fromDate", maskDateDDMMYYYY(v))} placeholder="DD/MM/YYYY" /></td>
-                              <td style={TD}><TI val={r.toDate || r.date || ""} onChange={(v) => setEvent(i, "toDate", maskDateDDMMYYYY(v))} placeholder="DD/MM/YYYY" /></td>
+                              <td style={TD}><TI val={r.fromDate} onChange={(v) => setEvent(i, "fromDate", maskDateDDMMYYYY(v))} placeholder="DD/MM/YYYY" /></td>
+                              <td style={TD}><TI val={r.toDate} onChange={(v) => setEvent(i, "toDate", maskDateDDMMYYYY(v))} placeholder="DD/MM/YYYY" /></td>
                               <td style={TD}>
                                  <select
                                    value={r.level || ""}
@@ -2644,8 +2661,8 @@ export default function StandardMyAppraisal({
                           {industry.map((r, i) => (
                             <tr key={i} style={i % 2 === 1 ? { background: "#f8fafc" } : {}}>
                               <td style={TDC}>{i + 1}</td>
-                              <td style={TD}><TI val={r.activity || r.name || ""} onChange={(v) => setInd(i, "activity", v)} placeholder="MOU / CoE / drive / guest lecture" /></td>
-                              <td style={TD}><TI val={r.partner || r.details || ""} onChange={(v) => setInd(i, "partner", v)} placeholder="Industry partner name" /></td>
+                              <td style={TD}><TI val={r.activity} onChange={(v) => setInd(i, "activity", v)} placeholder="MOU / CoE / drive / guest lecture" /></td>
+                              <td style={TD}><TI val={r.partner} onChange={(v) => setInd(i, "partner", v)} placeholder="Industry partner name" /></td>
                               <td style={TD}><TI val={r.date} onChange={(v) => setInd(i, "date", maskDateDDMMYYYY(v))} placeholder="DD/MM/YYYY" /></td>
                               <td style={TD}><DocCell id={`ind-${i}`} docs={docs} setDocs={setDocs} /></td>
                               <td style={TD}><ViewCell id={`ind-${i}`} docs={docs} /></td>
@@ -2880,8 +2897,8 @@ export default function StandardMyAppraisal({
                               <td style={TD}><TI val={r.title} onChange={(v) => setJour(i, "title", v)} textOnly placeholder="Paper title" /></td>
                               <td style={TD}><TI val={r.journal} onChange={(v) => setJour(i, "journal", v)} placeholder="Journal name, volume, issue" /></td>
                               <td style={TD}><TI val={r.issn} onChange={(v) => setJour(i, "issn", v)} placeholder="ISSN / e-ISSN" /></td>
-                              <td style={TD}><TI val={r.impactFactor || r.impact} onChange={(v) => setJour(i, "impactFactor", v)} placeholder="Impact Factor" /></td>
-                              <td style={TD}><TI val={r.authorPosition || r.position} onChange={(v) => setJour(i, "authorPosition", v)} placeholder="1st / Corresponding / Co-Author" /></td>
+                              <td style={TD}><TI val={r.impactFactor} onChange={(v) => setJour(i, "impactFactor", v)} placeholder="Impact Factor" /></td>
+                              <td style={TD}><TI val={r.authorPosition} onChange={(v) => setJour(i, "authorPosition", v)} placeholder="1st / Corresponding / Co-Author" /></td>
                               <td style={TD}><DocCell id={`jour-${i}`} docs={docs} setDocs={setDocs} /></td>
                               <td style={TD}><ViewCell id={`jour-${i}`} docs={docs} /></td>
                               <td style={TDS}><TI val={r.score} onChange={(v) => setJour(i, "score", v)} center numeric max={B1_JOURNAL_MAX} /></td>
@@ -2918,10 +2935,10 @@ export default function StandardMyAppraisal({
                             <tr key={i} style={i % 2 === 1 ? { background: "#f8fafc" } : {}}>
                               <td style={TDC}>{i + 1}</td>
                               <td style={TD}><TI val={r.title} onChange={(v) => setBook(i, "title", v)} textOnly placeholder="Book / chapter title" /></td>
-                              <td style={TD}><TI val={r.book || r.publisherIsbn} onChange={(v) => setBook(i, "book", v)} placeholder="Publisher & ISBN" /></td>
+                              <td style={TD}><TI val={r.book} onChange={(v) => setBook(i, "book", v)} placeholder="Publisher & ISBN" /></td>
                               <td style={TD}>
                                 <select
-                                  value={r.pub || r.type || ""}
+                                  value={r.pub || ""}
                                   onChange={(e) => setBook(i, "pub", e.target.value)}
                                   style={{ width: "100%", height: 30, border: "1px solid #cbd5e1", borderRadius: 4, background: "#fff", fontSize: 11, fontFamily: "inherit" }}
                                 >
@@ -2978,8 +2995,8 @@ export default function StandardMyAppraisal({
                             <tr key={i} style={i % 2 === 1 ? { background: "#f8fafc" } : {}}>
                               <td style={TDC}>{i + 1}</td>
                               <td style={TD}><TI val={r.title} onChange={(v) => setIctRow(i, "title", v)} textOnly placeholder="Title" /></td>
-                              <td style={TD}><TI val={r.type || r.desc} onChange={(v) => setIctRow(i, "type", v)} placeholder="Platform / Type" /></td>
-                              <td style={TD}><TI val={r.quad || r.reach} onChange={(v) => setIctRow(i, "quad", v)} placeholder="Reach / Views" /></td>
+                              <td style={TD}><TI val={r.type} onChange={(v) => setIctRow(i, "type", v)} placeholder="Platform / Type" /></td>
+                              <td style={TD}><TI val={r.quad} onChange={(v) => setIctRow(i, "quad", v)} placeholder="Reach / Views" /></td>
                               <td style={TD}><DocCell id={`ict-${i}`} docs={docs} setDocs={setDocs} /></td>
                               <td style={TD}><ViewCell id={`ict-${i}`} docs={docs} /></td>
                               <td style={TDS}><TI val={r.score} onChange={(v) => setIctRow(i, "score", v)} center numeric max={B3_ICT_MAX} /></td>
@@ -3002,7 +3019,7 @@ export default function StandardMyAppraisal({
                           <thead>
                             <tr>
                               <th style={{ ...TH, width: 30 }}>SN</th>
-                              <th style={TH}>Degree (PhD/PG)</th>
+                              <th style={TH}>Degree (PhD)</th>
                               <th style={TH}>Name of Student / Scholar</th>
                               <th style={TH}>Status (Ongoing/Awarded)</th>
                               <th style={TH}>Date</th>
@@ -3023,13 +3040,12 @@ export default function StandardMyAppraisal({
                                   >
                                     <option value="">Select</option>
                                     <option value="PhD">PhD</option>
-                                    <option value="PG">PG</option>
                                   </select>
                                 </td>
                                 <td style={TD}><TI val={r.name} onChange={(v) => setRes(i, "name", v)} textOnly placeholder="Name of Student / Scholar" /></td>
                                 <td style={TD}>
                                   <select
-                                    value={r.status || r.thesis || ""}
+                                    value={r.status || ""}
                                     onChange={(event) => {
                                       const nextStatus = event.target.value;
                                       setRes(i, "status", nextStatus);
@@ -3187,7 +3203,7 @@ export default function StandardMyAppraisal({
                               <td style={TD}><TI val={r.title} onChange={(v) => setPat(i, "title", v)} textOnly placeholder="Patent / IP title" /></td>
                               <td style={TD}>
                                 <select
-                                  value={r.type || r.level || r.scope || ""}
+                                  value={r.type || ""}
                                   onChange={(e) => setPat(i, "type", e.target.value)}
                                   style={{ width: "100%", height: 30, border: "1px solid #cbd5e1", borderRadius: 4, background: "#fff", fontSize: 11, fontFamily: "inherit" }}
                                 >
@@ -3209,7 +3225,7 @@ export default function StandardMyAppraisal({
                                   ))}
                                 </select>
                               </td>
-                              <td style={TD}><TI val={r.fileNo || r.date} onChange={(v) => setPat(i, "fileNo", v)} placeholder="Filing / grant no. and date" /></td>
+                              <td style={TD}><TI val={r.fileNo} onChange={(v) => setPat(i, "fileNo", v)} placeholder="Filing / grant no. and date" /></td>
                               <td style={TD}><DocCell id={`pat-${i}`} docs={docs} setDocs={setDocs} /></td>
                               <td style={TD}><ViewCell id={`pat-${i}`} docs={docs} /></td>
                               <td style={TDS}><TI val={r.score} onChange={(v) => setPat(i, "score", v)} center numeric max={B3_PATENT_MAX} /></td>
@@ -3283,9 +3299,9 @@ export default function StandardMyAppraisal({
                             <tr key={i} style={i % 2 === 1 ? { background: "#f8fafc" } : {}}>
                               <td style={TDC}>{i + 1}</td>
                               <td style={TD}><TI val={r.title} onChange={(v) => setConf(i, "title", v)} textOnly placeholder="Event / Session Title" /></td>
-                              <td style={TD}><TI val={r.role || r.type} onChange={(v) => setConf(i, "role", v)} placeholder="Role (e.g. Coordinator)" /></td>
+                              <td style={TD}><TI val={r.role} onChange={(v) => setConf(i, "role", v)} placeholder="Role (e.g. Coordinator)" /></td>
                               <td style={TD}><TI val={r.date} onChange={(v) => setConf(i, "date", maskDateDDMMYYYY(v))} placeholder="DD/MM/YYYY" /></td>
-                              <td style={TD}><TI val={r.level || r.org} onChange={(v) => setConf(i, "level", v)} placeholder="Intl. / National" /></td>
+                              <td style={TD}><TI val={r.level} onChange={(v) => setConf(i, "level", v)} placeholder="Intl. / National" /></td>
                               <td style={TD}><DocCell id={`conf-${i}`} docs={docs} setDocs={setDocs} /></td>
                               <td style={TD}><ViewCell id={`conf-${i}`} docs={docs} /></td>
                               <td style={TDS}><TI val={r.score} onChange={(v) => setConf(i, "score", v)} center numeric max={B7_CONFERENCE_MAX} /></td>
@@ -3319,9 +3335,9 @@ export default function StandardMyAppraisal({
                           {proposals.map((r, i) => (
                             <tr key={i} style={i % 2 === 1 ? { background: "#f8fafc" } : {}}>
                               <td style={TDC}>{i + 1}</td>
-                              <td style={TD}><TI val={r.agency || r.title} onChange={(v) => setProp(i, "agency", v)} textOnly placeholder="Client / Organisation" /></td>
-                              <td style={TD}><TI val={r.duration || r.nature} onChange={(v) => setProp(i, "duration", v)} placeholder="Nature of Engagement" /></td>
-                              <td style={TD}><TI val={r.amount || r.revenue} onChange={(v) => setProp(i, "amount", v)} numeric placeholder="Revenue (₹)" /></td>
+                              <td style={TD}><TI val={r.agency} onChange={(v) => setProp(i, "agency", v)} textOnly placeholder="Client / Organisation" /></td>
+                              <td style={TD}><TI val={r.duration} onChange={(v) => setProp(i, "duration", v)} placeholder="Nature of Engagement" /></td>
+                              <td style={TD}><TI val={r.amount} onChange={(v) => setProp(i, "amount", v)} numeric placeholder="Revenue (₹)" /></td>
                               <td style={TD}><DocCell id={`prop-${i}`} docs={docs} setDocs={setDocs} /></td>
                               <td style={TD}><ViewCell id={`prop-${i}`} docs={docs} /></td>
                               <td style={{ ...TDS, fontWeight: 800 }}>{r.score}</td>
@@ -3355,8 +3371,8 @@ export default function StandardMyAppraisal({
                           {products.map((r, i) => (
                             <tr key={i} style={i % 2 === 1 ? { background: "#f8fafc" } : {}}>
                               <td style={TDC}>{i + 1}</td>
-                              <td style={TD}><TI val={r.details || r.title} onChange={(v) => setProd(i, "details", v)} placeholder="Title / start-up / product" /></td>
-                              <td style={TD}><TI val={r.role || r.usage} onChange={(v) => setProd(i, "role", v)} placeholder="Founder / mentor / developer" /></td>
+                              <td style={TD}><TI val={r.details} onChange={(v) => setProd(i, "details", v)} placeholder="Title / start-up / product" /></td>
+                              <td style={TD}><TI val={r.role} onChange={(v) => setProd(i, "role", v)} placeholder="Founder / mentor / developer" /></td>
                               <td style={TD}><TI val={r.status} onChange={(v) => setProd(i, "status", v)} placeholder="Prototype / registered / commercialized" /></td>
                               <td style={TD}><DocCell id={`prod-${i}`} docs={docs} setDocs={setDocs} /></td>
                               <td style={TD}><ViewCell id={`prod-${i}`} docs={docs} /></td>

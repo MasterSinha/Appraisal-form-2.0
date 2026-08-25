@@ -47,6 +47,7 @@ import {
  innovativeTeachingScore,
  isValidDDMMYYYY,
  maskDateDDMMYYYY,
+ migrateLegacyRowFields,
  normalizeAutoScores,
  projectGuidanceRowMax,
  researchGuidanceRowMax,
@@ -295,7 +296,14 @@ export default function DesignArtsDashboard({ fixedRole }) {
 
  const setters = useMemo(() =>Object.fromEntries([
  ["setInfo", (value) =>setForm((prev) =>({ ...prev, info: { ...prev.info, ...value } }))],
- ...ALL_ARRAY_KEYS.map((key) =>[`set${titleCase(key)}`, (value) =>setForm((prev) =>({ ...prev, [key]: key === "acr" ? createAcrRows(value) : value }))]),
+ ...ALL_ARRAY_KEYS.map((key) =>[`set${titleCase(key)}`, (value) =>setForm((prev) =>({
+   ...prev,
+   [key]: key === "acr"
+     ? createAcrRows(value)
+     : key === "events"
+     ? migrateLegacyRowFields(value, [["fromDate", "date"], ["toDate", "date"]])
+     : value,
+ }))]),
  ["setInnovDetails", (value) =>setForm((prev) =>({ ...prev, innovDetails: value }))],
  ["setInnovScore", (value) =>setForm((prev) =>({ ...prev, innovScore: value }))],
  ["setInnovRows", (value) =>setForm((prev) =>({ ...prev, innovRows: value }))],

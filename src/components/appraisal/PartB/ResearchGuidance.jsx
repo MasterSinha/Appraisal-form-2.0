@@ -33,7 +33,7 @@ export default function ResearchGuidance({ ctx }) {
  <SC title="B5. Research Guidance (Max 20)" accent="#059669">
 <table style={T}>
 <thead><tr>
-<th style={TH}>SN</th><th style={TH}>Degree (PhD/PG)</th><th style={TH}>Name of Student / Scholar</th><th style={TH}>Status (Ongoing/Awarded)</th><th style={TH}>Date</th>
+<th style={TH}>SN</th><th style={TH}>Degree (PhD)</th><th style={TH}>Name of Student / Scholar</th><th style={TH}>Status (Ongoing/Awarded)</th><th style={TH}>Date</th>
 <th style={TH}>View Docs</th><th style={TH}>Faculty Score</th><th style={TH_HOD}>{reviewerScoreLabel}</th>
 </tr></thead>
 <tbody>

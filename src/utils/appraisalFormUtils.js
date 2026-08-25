@@ -786,6 +786,27 @@ export const maskDateDDMMYYYY = (value) =>{
  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
 };
 
+// Some rows were saved under an older schema where a field now split into two (or renamed)
+// still carried real data under its old key. Copy that old value into the new key ONCE (only
+// when the new key is empty) and drop the old key, so a live edit that clears the new field
+// can never have it "revert" back to the stale legacy value on the next keystroke.
+export const migrateLegacyRowFields = (rows, fieldPairs) =>{
+ if (!Array.isArray(rows)) return rows;
+ return rows.map((row) =>{
+ if (!row || typeof row !== "object") return row;
+ const next = { ...row };
+ const legacyKeys = new Set();
+ fieldPairs.forEach(([primary, legacy]) =>{
+ if (!String(next[primary] ?? "").trim() && String(row[legacy] ?? "").trim()) {
+ next[primary] = row[legacy];
+ }
+ legacyKeys.add(legacy);
+ });
+ legacyKeys.forEach((legacyKey) =>delete next[legacyKey]);
+ return next;
+ });
+};
+
 export const isValidDDMMYYYY = (value) =>{
  const text = String(value ?? "").trim();
  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(text);
