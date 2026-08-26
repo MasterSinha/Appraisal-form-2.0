@@ -2329,7 +2329,6 @@ export default function StandardMyAppraisal({
                           </tr>
                         </tbody>
                       </table>
-                      <RowBtns onAdd={() => setObeRows((p) => [...p, { component: "", evidence: "", score: "", max: A5_OBE_MAX }])} onDel={() => setObeRows((p) => p.length > 1 ? p.slice(0, -1) : p)} canDel={obeRows.length > 1} />
                     </div>
 
                     {/* A6. Guided Students Project */}
@@ -2439,7 +2438,6 @@ export default function StandardMyAppraisal({
                           </tr>
                         </tbody>
                       </table>
-                      <RowBtns onAdd={() => setMentoringRows((p) => [...p, { activity: "", evidence: "", score: "", max: A7_MENTORING_MAX }])} onDel={() => setMentoringRows((p) => p.length > 1 ? p.slice(0, -1) : p)} canDel={mentoringRows.length > 1} />
                     </div>
 
                     {/* A8. Qualifications */}
