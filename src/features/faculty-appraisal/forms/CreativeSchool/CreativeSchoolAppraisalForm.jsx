@@ -1568,9 +1568,6 @@ function ObeSection({ form, setForm, docs, setDocs, mode, locked, reviewerRole, 
           </tbody>
         </table>
       </div>
-      {mode === "self" && !locked && (
-        <RowBtns onAdd={addObeRow} onDel={deleteObeRow} canDel={visibleObeRows.length > 3} />
-      )}
     </SectionShell>
   );
 }
@@ -1703,9 +1700,6 @@ function MentoringSection({ form, setForm, docs, setDocs, mode, locked, reviewer
           </tbody>
         </table>
       </div>
-      {mode === "self" && !locked && (
-        <RowBtns onAdd={addMentoringRow} onDel={deleteMentoringRow} canDel={visibleMentoringRows.length > 3} />
-      )}
     </SectionShell>
   );
 }
@@ -2047,7 +2041,7 @@ export function CreativeSchoolForm({ form, setForm, docs, setDocs, mode = "self"
   const sectionTableProps = { form, setForm, docs, setDocs, mode, locked, reviewerRole, reviewData, setReviewData, previousRoles };
   const partBSections = getPartBSectionsForSchool(form?.info?.school || form);
   return (
-    <>
+    <div className="appraisal-form-shell">
       {(sectionView === "partA" || sectionView === "all") && (
         <PartA sections={PART_A_SECTIONS} SectionTable={SectionTable} InnovativeSection={InnovativeSection} ObeSection={ObeSection} MentoringSection={MentoringSection} sectionTableProps={sectionTableProps} />
       )}
@@ -2063,7 +2057,7 @@ export function CreativeSchoolForm({ form, setForm, docs, setDocs, mode = "self"
       {(sectionView === "partE" || sectionView === "all") && (
         <PartE sectionTableProps={sectionTableProps} />
       )}
-    </>
+    </div>
   );
 }
 
