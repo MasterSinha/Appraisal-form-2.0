@@ -203,8 +203,8 @@ export const SECTION_GUIDELINES = {
     rules: [
       "Patent Granted — National: 30, International: 20.",
       "Patent Published — National: 8, International: 5.",
-      "Design Patent: 10.",
-      "Copyright/Trademark: 5 (Arts/Design: 10).",
+      "Design Patent Granted: 10.",
+      "Copyright/Trademark Granted: 5 (Arts/Design: 10).",
       "Technology transfer: 15.",
       "Product used in lab/university: 10/product."
     ]
@@ -228,7 +228,7 @@ export const SECTION_GUIDELINES = {
   B6: {
     title: "B6. Consultancy, Testing & Training (Max 20)",
     rules: [
-      "Revenue per engagement: up to ₹50K → 3, ₹50K–2L → 5, ₹2L–5L → 10, ₹5L–10L → 15, >₹10L → 20 marks."
+      "Revenue per engagement: up to ₹50K → 3, ₹50K–1.99L → 5, ₹2L–4.99L → 10, ₹5L–9.99L → 15, >₹10L → 20 marks."
     ]
   },
   B7: {
@@ -336,9 +336,8 @@ export const SECTION_GUIDELINES = {
     title: "C6. Alumni Engagement & Networking (Max 10)",
     rules: [
       "Alumni meet / reunion organised: 5 marks/event.",
-      "Alumni guest lecture / webinar coordinated: 5 marks/session.",
-      "Alumni feedback survey (submitted to BoS): 5 marks.",
-      "Any other alumni activity: 5 marks/activity."
+      "Alumni guest lecture / webinar coordinated: 3 marks/session.",
+      "Any other alumni activity: 3 marks/activity."
     ]
   },
   C7: {

@@ -206,9 +206,9 @@ export function ReviewMetricsStrip({
         const hasMax = max !== undefined && max !== null;
         return (
           <div key={label} style={{ minWidth: 0, background: "#fff", borderRadius: 10, padding: compact ? "7px 8px" : "9px 10px", boxShadow: "0 1px 4px rgba(15,23,42,0.05), 0 1px 2px rgba(15,23,42,0.04)" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 6, marginBottom: 6 }}>
               <MetricIcon label={label} size={compact ? 10 : 11.5} badgeSize={compact ? 18 : 20} />
-              <span style={{ fontSize: compact ? 7 : 7.5, fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>
+              <span style={{ fontSize: compact ? 7 : 7.5, fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.3, whiteSpace: "normal", lineHeight: 1.2, minWidth: 0 }}>{label}</span>
             </div>
             <div style={{ fontSize: compact ? 11.5 : 13.5, fontWeight: 900, color: "#1e293b", lineHeight: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
               {hasMax ? metricText(val) : parseFloat(val) || 0}

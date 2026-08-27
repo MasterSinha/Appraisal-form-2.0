@@ -1244,7 +1244,7 @@ ${PRINT_REPORT_CSS}
   <div class="pb"></div>
   <h3 style="background:#d9d9d9;padding:4px;text-align:center;font-size:13px">PART B - Research &amp; Academic Contributions</h3>
   <h3>1) Published Papers in Journals (Max 120)</h3>
-  <table><tr><th>SN</th><th>Title with Page Nos.</th><th>Journal Details</th><th>ISSN/ISBN No.</th><th>Journal Indexing</th><th>Self Score</th></tr>
+  <table><tr><th>SN</th><th>Title with Page Nos.</th><th>Journal Details</th><th>DOI No.</th><th>Journal Indexing</th><th>Self Score</th></tr>
   ${journals.map((j, i) => `<tr><td class="c">${i + 1}</td><td>${displayValue(j.title)}</td><td>${displayValue(j.journal)}</td><td class="c">${displayValue(j.issn)}</td><td class="c">${displayValue(j.index)}</td><td class="c">${displayValue(j.score)}</td></tr>`).join("")}
   <tr class="tr"><td colspan="5" class="c b">Total (Max 120)</td><td class="c">${journalScore > 0 ? journalScore.toFixed(1) : "&nbsp;"}</td></tr></table>
   <h3>2) Articles / Chapters in Books (Max 50)</h3>

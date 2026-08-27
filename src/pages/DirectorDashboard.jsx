@@ -184,7 +184,7 @@ const STANDARD_REPORT_PART_A_SECTIONS = [
  { key: "quals", title: "A8. Professional Development & Qualification Enhancement", max: 10, doc: "qual", fields: [["label", "Qualification / Category"]] },
 ];
 const STANDARD_REPORT_PART_B_SECTIONS = [
- { key: "journals", title: "B1. Journal Publications", max: 100, doc: "jour", fields: [["title", "Title"], ["journal", "Journal"], ["issn", "ISSN"], ["impactFactor", "Impact Factor"], ["authorPosition", "Author Position"]] },
+ { key: "journals", title: "B1. Journal Publications", max: 100, doc: "jour", fields: [["title", "Title"], ["journal", "Journal"], ["issn", "DOI No."], ["impactFactor", "Impact Factor"], ["authorPosition", "Author Position"]] },
  { key: "books", title: "B2. Books, Book Chapters & Edited Volumes", max: 30, doc: "book", fields: [["title", "Title"], ["book", "Publisher & ISBN"], ["pub", "Type"], ["level", "Level"], ["coauth", "Co-authors from DYPIU"]] },
  { key: "patents", title: "B3. Patents, Copyrights & IP and Product Development", max: 40, doc: "pat", fields: [["title", "Title"], ["type", "National / International"], ["status", "Status"], ["fileNo", "Filing / Grant No. & Date"]] },
  { key: "projects2", title: "B4. External Funded Research Projects", max: 40, doc: "project2", fields: [["title", "Title of Project"], ["agency", "Funding Agency"], ["date", "Sanction Date"], ["amount", "Amount"], ["role", "PI / Co-PI"], ["status", "Status"]] },
