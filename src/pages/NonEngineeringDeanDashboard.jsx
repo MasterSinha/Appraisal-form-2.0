@@ -626,7 +626,7 @@ function DeanReviewScoreForm({ approval, deanData, setDeanData, sectionView = "p
  columns={[
  { label: "Title", render: (r) =>r.title },
  { label: "Journal", render: (r) =>r.journal },
- { label: "ISSN", render: (r) =>r.issn, center: true },
+ { label: "DOI No.", render: (r) =>r.issn, center: true },
  { label: "Impact Factor", render: (r) =>r.impactFactor || r.impact, center: true },
  { label: "Author Position", render: (r) =>r.authorPosition || r.position, center: true },
  ]}

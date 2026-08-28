@@ -34,7 +34,7 @@ export default function DirectorJournalTable({ ctx }) {
 <table style={T}>
 <thead><tr>
 <th style={TH}>SN</th><th style={TH}>Title</th><th style={TH}>Journal</th>
-<th style={TH}>ISSN</th><th style={TH}>Impact Factor</th><th style={TH}>Author Position</th>
+<th style={TH}>DOI No.</th><th style={TH}>Impact Factor</th><th style={TH}>Author Position</th>
 <th style={TH}>View Docs</th><th style={TH}>Faculty Score</th><th style={TH_DIR}>Director Score</th>
 </tr></thead>
 <tbody>

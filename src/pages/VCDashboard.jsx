@@ -477,7 +477,7 @@ const VC_REPORT_PART_D_SECTIONS = [
  { key: "acr", title: "D1. Annual Confidential Report (ACR)", max: 50, doc: "acr", showDocuments: false, fields: [["label", "Attribute"]] },
 ];
 const VC_REPORT_PART_B_SECTIONS = [
- { key: "journals", title: "B1. Journal Publications", max: 100, doc: "jour", fields: [["title", "Title"], ["journal", "Journal"], ["issn", "ISSN"], ["impactFactor", "Impact Factor"], ["authorPosition", "Author Position"]] },
+ { key: "journals", title: "B1. Journal Publications", max: 100, doc: "jour", fields: [["title", "Title"], ["journal", "Journal"], ["issn", "DOI No."], ["impactFactor", "Impact Factor"], ["authorPosition", "Author Position"]] },
  { key: "books", title: "B2. Books, Book Chapters & Edited Volumes", max: 30, doc: "book", fields: [["title", "Title"], ["book", "Publisher & ISBN"], ["pub", "Type"], ["level", "Level"], ["coauth", "Co-authors from DYPIU"]] },
  { key: "patents", title: "B3. Patents, Copyrights & IP and Product Development", max: 40, doc: "pat", fields: [["title", "Title"], ["type", "National / International"], ["status", "Status (Published/Granted)"], ["fileNo", "Filing / Grant No. & Date"]] },
  { key: "projects2", title: "B4. External Funded Research Projects", max: 40, doc: "project2", fields: [["title", "Title of Project"], ["agency", "Funding Agency"], ["date", "Sanction Date"], ["amount", "Amount (₹)"], ["role", "PI / Co-PI"], ["status", "Status"]] },
@@ -839,7 +839,7 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
 <SC title="B1. Journal Publications (Max 100)" accent="#7c3aed">
 <div style={{ overflowX: "auto" }}><table style={T}><thead><tr>
 <th style={TH}>SN</th><th style={TH}>Title</th><th style={TH}>Journal</th>
-<th style={TH}>ISSN</th><th style={TH}>Impact Factor</th><th style={TH}>Author Position</th><th style={TH}>Docs</th>
+<th style={TH}>DOI No.</th><th style={TH}>Impact Factor</th><th style={TH}>Author Position</th><th style={TH}>Docs</th>
  {renderScoreHeaders()}
 </tr></thead>
 <tbody>{sectionEmpty("journals") ? emptyRow(7 + scoreColumnCount) : sectionRows("journals").map((r, i) =>(
@@ -2571,7 +2571,7 @@ readOnly={isVcReviewed(reviewing.person)}
  Cancel
 </button>
 <button onClick={() =>{ setShowLogoutModal(false); clearUserSession(); navigate("/", { replace: true }); }}
- style={{ flex: 1, minHeight: 44, padding: "10px", background: "#111827", color: "#f87171", border: "1px solid rgba(248,113,113,0.55)", borderRadius: 10, cursor: "pointer", fontWeight: 900, fontSize: 13, fontFamily: "inherit" }}>
+ style={{ flex: 1, minHeight: 44, padding: "10px", background: "#dc2626", color: "#ffffff", border: "1px solid #b91c1c", borderRadius: 10, cursor: "pointer", fontWeight: 900, fontSize: 13, fontFamily: "inherit" }}>
  Yes, Logout
 </button>
 </div>

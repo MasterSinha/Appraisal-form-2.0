@@ -1590,7 +1590,7 @@ export default function StandardMyAppraisal({
 
     <h3>B1. Journal Publications &nbsp;(Max 100)</h3>
     <table>
-      <tr><th>SN</th><th>Title with Page Nos.</th><th>Journal Details</th><th>ISSN/ISBN No.</th><th>Journal Indexing</th><th>Self Score</th></tr>
+      <tr><th>SN</th><th>Title with Page Nos.</th><th>Journal Details</th><th>DOI No.</th><th>Journal Indexing</th><th>Self Score</th></tr>
       ${journals.map((j, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(j.title)}</td><td>${reportTextValue(j.journal)}</td><td class="c">${reportTextValue(j.issn)}</td><td class="c">${reportTextValue(j.index)}</td><td class="c">${reportTextValue(j.score)}</td></tr>`).join('')}
       <tr class="tr"><td colspan="5" class="c b">Total (Max 100)</td><td class="c">${journalScore > 0 ? journalScore.toFixed(1) : "&nbsp;"}</td></tr>
     </table>
@@ -2878,7 +2878,7 @@ export default function StandardMyAppraisal({
                             <th style={{ ...TH, width: 30 }}>SN</th>
                             <th style={TH}>Title</th>
                             <th style={TH}>Journal</th>
-                            <th style={TH}>ISSN</th>
+                            <th style={TH}>DOI No.</th>
                             <th style={TH}>Impact Factor</th>
                             <th style={TH}>Author Position</th>
                             <th style={TH}>Attachment</th>
@@ -2892,7 +2892,7 @@ export default function StandardMyAppraisal({
                               <td style={TDC}>{i + 1}</td>
                               <td style={TD}><TI val={r.title} onChange={(v) => setJour(i, "title", v)} textOnly placeholder="Paper title" /></td>
                               <td style={TD}><TI val={r.journal} onChange={(v) => setJour(i, "journal", v)} placeholder="Journal name, volume, issue" /></td>
-                              <td style={TD}><TI val={r.issn} onChange={(v) => setJour(i, "issn", v)} placeholder="ISSN / e-ISSN" /></td>
+                              <td style={TD}><TI val={r.issn} onChange={(v) => setJour(i, "issn", v)} placeholder="DOI / URL" /></td>
                               <td style={TD}><TI val={r.impactFactor} onChange={(v) => setJour(i, "impactFactor", v)} placeholder="Impact Factor" /></td>
                               <td style={TD}><TI val={r.authorPosition} onChange={(v) => setJour(i, "authorPosition", v)} placeholder="1st / Corresponding / Co-Author" /></td>
                               <td style={TD}><DocCell id={`jour-${i}`} docs={docs} setDocs={setDocs} /></td>
