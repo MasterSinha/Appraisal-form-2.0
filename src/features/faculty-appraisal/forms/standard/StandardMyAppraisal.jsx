@@ -316,7 +316,6 @@ const A1_COURSE_DELIVERY_MAX = 40;
 const A2_COURSE_FILE_MAX = 20;
 const A3_INNOVATIVE_MAX = 20;
 const A3_INNOVATIVE_ROW_MAX = 4;
-const A3_METHODS_ROW_LIMIT = 5;
 const A4_FEEDBACK_MAX = 10;
 const A5_OBE_MAX = 20;
 const A6_PROJECT_GUIDANCE_MAX = 20;
@@ -2102,7 +2101,7 @@ export default function StandardMyAppraisal({
                           </tr>
                         </thead>
                         <tbody>
-                          {lectures.slice(0, 4).map((r, i) => (
+                          {lectures.map((r, i) => (
                             <tr key={i} style={i % 2 === 1 ? { background: "#f8fafc" } : {}}>
                               <td style={TDC}>{i + 1}</td>
                               <td style={TD}><TI val={r.sem} onChange={(v) => setLec(i, "sem", v)} placeholder="e.g. 2026-27 Sem-I" /></td>
@@ -2123,10 +2122,6 @@ export default function StandardMyAppraisal({
                       </table>
                       <RowBtns
                         onAdd={() => {
-                          if (lectures.length >= 4) {
-                            alert("A1. Course Delivery & Classroom Engagement allows a maximum of 4 courses (4 rows).");
-                            return;
-                          }
                           setLectures((p) => [...p, { sem: "", code: "", planned: "", conducted: "", score: "", hod: "", director: "" }]);
                         }}
                         onDel={() => setLectures((p) => (p.length > 1 ? p.slice(0, -1) : p))}
@@ -2240,10 +2235,7 @@ export default function StandardMyAppraisal({
                           </tr>
                         </tbody>
                       </table>
-                      <RowBtns onAdd={() => setInnovRows((p) => p.length < A3_METHODS_ROW_LIMIT ? [...p, blankInnovativeRow()] : p)} onDel={() => setInnovRows((p) => p.length > 1 ? p.slice(0, -1) : p)} canDel={innovRows.length > 1} canAdd={innovRows.length < A3_METHODS_ROW_LIMIT} />
-                      {innovRows.length >= A3_METHODS_ROW_LIMIT && (
-                        <div style={{ fontSize: 11, color: "#ef4444", marginTop: 4 }}>Maximum {A3_METHODS_ROW_LIMIT} methods can be claimed.</div>
-                      )}
+                      <RowBtns onAdd={() => setInnovRows((p) => [...p, blankInnovativeRow()])} onDel={() => setInnovRows((p) => p.length > 1 ? p.slice(0, -1) : p)} canDel={innovRows.length > 1} />
                     </div>
 
                     {/* A4. Student Feedback */}
