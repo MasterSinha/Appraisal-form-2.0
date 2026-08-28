@@ -2696,21 +2696,24 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
     }
     if (panelReadOnly || !subjectEmail || !academicYear || !reviewerRole) return undefined;
 
-    const payload = {
-      subjectEmail,
-      academicYear,
-      reviewerRole,
-      partAScore: totals.partA,
-      partBScore: totals.partB,
-      partCScore: totals.partC,
-      partDScore: totals.partD,
-      totalScore: totals.total,
-      remarks,
-      sectionScores: buildCreativeSchoolSectionScores(form, reviewData, reviewerRole),
+    // Build the snapshot + JSON.stringify only after the debounce fires, not synchronously
+    // on every keystroke - keeps the main thread free while typing and scrolling. Behaviour
+    // is otherwise unchanged: same debounce, same fingerprint dedupe, same payload.
+    const buildSnapshot = () => {
+      const payload = {
+        subjectEmail,
+        academicYear,
+        reviewerRole,
+        partAScore: totals.partA,
+        partBScore: totals.partB,
+        partCScore: totals.partC,
+        partDScore: totals.partD,
+        totalScore: totals.total,
+        remarks,
+        sectionScores: buildCreativeSchoolSectionScores(form, reviewData, reviewerRole),
+      };
+      return { fingerprint: JSON.stringify(payload), payload };
     };
-    const fingerprint = JSON.stringify(payload);
-    if (fingerprint === lastAutoSavedFingerprintRef.current) return undefined;
-    const snapshot = { fingerprint, payload };
 
     const runAutoSave = async (nextSnapshot) => {
       if (autoSaveInFlightRef.current) {
@@ -2734,6 +2737,8 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
     };
 
     const timer = window.setTimeout(() => {
+      const snapshot = buildSnapshot();
+      if (snapshot.fingerprint === lastAutoSavedFingerprintRef.current) return;
       runAutoSave(snapshot);
     }, 1800);
 

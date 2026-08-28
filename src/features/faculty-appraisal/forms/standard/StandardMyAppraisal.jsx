@@ -1260,20 +1260,24 @@ export default function StandardMyAppraisal({
     }
     if (!userEmail || !info.ay || formLocked || submitting || showClosedReportOnly || isLegacyTwoPartYear || (!isSelectedCycleOpen && !canSaveDraft(appraisalWindowStatus))) return undefined;
 
-    const formSnapshot = buildSelfDraftForm();
-    const totalsSnapshot = { partATotal, partBTotal, partCTotal, partDTotal, grandTotal, effectivePartAMax, effectivePartBMax, effectivePartCMax: PART_C_MAX, effectivePartDMax: PART_D_MAX, effectiveGrandMax };
-    const fingerprint = JSON.stringify({ form: formSnapshot, docs, totals: totalsSnapshot });
-    if (fingerprint === lastAutoSavedFingerprintRef.current) return undefined;
-
-    const payload = {
-      fingerprint,
-      facultyEmail: userEmail,
-      academicYear: info.ay,
-      form: formSnapshot,
-      totals: totalsSnapshot,
-      docs,
-      submitterProfile: profileFromsessionStorage(),
-      sectionSaveStatus,
+    // Build the (potentially large) snapshot + JSON.stringify only after the debounce
+    // fires, not synchronously on every keystroke - keeps the main thread free while typing
+    // and scrolling. Behaviour is otherwise unchanged: same debounce, same fingerprint
+    // dedupe, same payload.
+    const buildAutoSavePayload = () => {
+      const formSnapshot = buildSelfDraftForm();
+      const totalsSnapshot = { partATotal, partBTotal, partCTotal, partDTotal, grandTotal, effectivePartAMax, effectivePartBMax, effectivePartCMax: PART_C_MAX, effectivePartDMax: PART_D_MAX, effectiveGrandMax };
+      const fingerprint = JSON.stringify({ form: formSnapshot, docs, totals: totalsSnapshot });
+      return {
+        fingerprint,
+        facultyEmail: userEmail,
+        academicYear: info.ay,
+        form: formSnapshot,
+        totals: totalsSnapshot,
+        docs,
+        submitterProfile: profileFromsessionStorage(),
+        sectionSaveStatus,
+      };
     };
 
     const runAutoSave = async (snapshot) => {
@@ -1302,6 +1306,8 @@ export default function StandardMyAppraisal({
     };
 
     const timer = window.setTimeout(() => {
+      const payload = buildAutoSavePayload();
+      if (payload.fingerprint === lastAutoSavedFingerprintRef.current) return;
       runAutoSave(payload);
     }, 1800);
 
