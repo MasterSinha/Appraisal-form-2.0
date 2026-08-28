@@ -105,7 +105,6 @@ export const blankLeaveManagementRow = () => ({
 });
 const CREATIVE_INNOVATIVE_ROW_MAX = 4;
 const CREATIVE_INNOVATIVE_SECTION_MAX = 20;
-const CREATIVE_A3_ROW_LIMIT = 5;
 
 export const titleCase = (value) => String(value || "").charAt(0).toUpperCase() + String(value || "").slice(1);
 
@@ -1064,10 +1063,6 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
       alert(`${section.title} allows a maximum of ${section.maxRows} rows.`);
       return;
     }
-    if (section.key === "lectures" && rows.length >= 4) {
-      alert("A1. Course Delivery & Classroom Engagement allows a maximum of 4 courses (4 rows).");
-      return;
-    }
     const blank = Object.fromEntries(section.fields.map(([key]) => [key, ""]));
     setForm((prev) => ({
       ...prev,
@@ -1321,7 +1316,6 @@ function InnovativeSection({ form, setForm, docs, setDocs, mode, locked, reviewe
   };
   const addInnovRow = () => setForm((prev) => {
     const baseRows = Array.isArray(prev.innovRows) && prev.innovRows.length ? prev.innovRows : [{ method: prev.innovDetails || "", details: prev.innovDetails || "", methodOther: "", score: prev.innovScore || "" }];
-    if (baseRows.length >= CREATIVE_A3_ROW_LIMIT) return prev;
     return { ...prev, innovRows: [...baseRows.map(withCreativeInnovativeLimits), withCreativeInnovativeLimits({ method: "", details: "", methodOther: "", score: "" })] };
   });
   const deleteInnovRow = () => setForm((prev) => {
@@ -1418,10 +1412,7 @@ function InnovativeSection({ form, setForm, docs, setDocs, mode, locked, reviewe
       </table>
       {mode === "self" && !locked && (
         <>
-          <RowBtns onAdd={addInnovRow} onDel={deleteInnovRow} canDel={visibleInnovRows.length > 1} canAdd={visibleInnovRows.length < CREATIVE_A3_ROW_LIMIT} />
-          {visibleInnovRows.length >= CREATIVE_A3_ROW_LIMIT && (
-            <div style={{ fontSize: 11, color: "#ef4444", marginTop: 4 }}>Maximum {CREATIVE_A3_ROW_LIMIT} methods can be claimed.</div>
-          )}
+          <RowBtns onAdd={addInnovRow} onDel={deleteInnovRow} canDel={visibleInnovRows.length > 1} />
         </>
       )}
     </SectionShell>
@@ -2705,21 +2696,24 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
     }
     if (panelReadOnly || !subjectEmail || !academicYear || !reviewerRole) return undefined;
 
-    const payload = {
-      subjectEmail,
-      academicYear,
-      reviewerRole,
-      partAScore: totals.partA,
-      partBScore: totals.partB,
-      partCScore: totals.partC,
-      partDScore: totals.partD,
-      totalScore: totals.total,
-      remarks,
-      sectionScores: buildCreativeSchoolSectionScores(form, reviewData, reviewerRole),
+    // Build the snapshot + JSON.stringify only after the debounce fires, not synchronously
+    // on every keystroke - keeps the main thread free while typing and scrolling. Behaviour
+    // is otherwise unchanged: same debounce, same fingerprint dedupe, same payload.
+    const buildSnapshot = () => {
+      const payload = {
+        subjectEmail,
+        academicYear,
+        reviewerRole,
+        partAScore: totals.partA,
+        partBScore: totals.partB,
+        partCScore: totals.partC,
+        partDScore: totals.partD,
+        totalScore: totals.total,
+        remarks,
+        sectionScores: buildCreativeSchoolSectionScores(form, reviewData, reviewerRole),
+      };
+      return { fingerprint: JSON.stringify(payload), payload };
     };
-    const fingerprint = JSON.stringify(payload);
-    if (fingerprint === lastAutoSavedFingerprintRef.current) return undefined;
-    const snapshot = { fingerprint, payload };
 
     const runAutoSave = async (nextSnapshot) => {
       if (autoSaveInFlightRef.current) {
@@ -2743,6 +2737,8 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
     };
 
     const timer = window.setTimeout(() => {
+      const snapshot = buildSnapshot();
+      if (snapshot.fingerprint === lastAutoSavedFingerprintRef.current) return;
       runAutoSave(snapshot);
     }, 1800);
 
