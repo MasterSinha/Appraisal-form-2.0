@@ -2638,7 +2638,12 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
   const useAuthorityRecordCard = reviewerRole === "hod" || reviewerRole === "dean" || reviewerRole === "director" || reviewerRole === "vc";
   const authorityRecordSchoolTrack = useAuthorityRecordCard ? getDeanTrack({ school: person?.school || form.info?.school, department: person?.department, designation: person?.designation }) : "";
   const authorityRecordSchoolGroupLabel = { engineering: "Engineering", non_engineering: "Non-Engineering", direct_vc: "CISR" }[authorityRecordSchoolTrack] || person?.school || form.info?.school || APP_INFO.UNIVERSITY_NAME;
-  const authorityRecordPreviousCards = reviewerRole === "vc" ? previousSummaryCards : authorityPreviousSummaryCards;
+  // The "Faculty appraisal record" summary table (below) mirrors the standard/engineering
+  // dashboards (HODDashboard, DirectorDashboard, DeanDashboard, NonEngineeringDeanDashboard):
+  // every non-VC reviewer's record shows only Self + their own score - never intermediate
+  // reviewers' scores (e.g. the Dean's record must not surface HOD/Director scores). Only the
+  // VC, who reviews last, sees the full prior-reviewer chain.
+  const authorityRecordPreviousCards = reviewerRole === "vc" ? previousSummaryCards : [];
   const authorityRecordReviewerLabel = reviewerRole === "vc" ? "Vice Chancellor" : roleLabel(reviewerRole);
   const authorityRecordReviewerIcon = reviewerRole === "vc" ? "crown" : "briefcase";
   const authorityRecordScoreRows = useAuthorityRecordCard ? [
@@ -2815,7 +2820,7 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
       form: reviewerForm,
       docs,
       partASections: PART_A_SECTIONS,
-      partBSections: getPartBSectionsForSchool(reviewerForm?.info?.school || person),
+      partBSections: getPartBSectionsForSchool(person, reviewerForm?.info?.school),
       partCSections: PART_C_SECTIONS,
       partDSections: PART_D_SECTIONS,
       partDScoreRoles: isVcReport ? ["score"] : partDReportRoles,
@@ -2856,8 +2861,8 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
         { isHeader: true, label: "Part B - Research & Academic Contributions" },
         ...summaryRow(applicability, "journals", { id: "B1(i)", label: "Published Papers in Journals", max: 80, score: rowSum("journals", 80) }),
         ...summaryRow(applicability, "books", { id: "B2", label: "Articles / Chapters in Books", max: 60, score: rowSum("books", 60) }),
-        ...(isMediaCommSchool(reviewerForm?.info?.school || person) ? summaryRow(applicability, "popularWritings", { id: "B3", label: "Popular Writing — Newspaper & Magazine Articles", max: 40, score: rowSum("popularWritings", 40) }) : []),
-        ...(isDesignArtsSchool(reviewerForm?.info?.school || person) ? summaryRow(applicability, "ipr", { id: "B3", label: "Patents, Copyrights, IP & Creative Product Development", max: 40, score: rowSum("ipr", 40) }) : []),
+        ...(isMediaCommSchool(person, reviewerForm?.info?.school) ? summaryRow(applicability, "popularWritings", { id: "B3", label: "Popular Writing — Newspaper & Magazine Articles", max: 40, score: rowSum("popularWritings", 40) }) : []),
+        ...(isDesignArtsSchool(person, reviewerForm?.info?.school) ? summaryRow(applicability, "ipr", { id: "B3", label: "Patents, Copyrights, IP & Creative Product Development", max: 40, score: rowSum("ipr", 40) }) : []),
         ...summaryRow(applicability, "externalProjects", { id: "B4", label: "External Research / Consultancy Projects", max: 20, score: rowSum("externalProjects", 20) }),
         ...summaryRow(applicability, "research", { id: "B5", label: "Research Guidance - PhD", max: 20, score: rowSum("research", 20) }),
         ...summaryRow(applicability, "consultancy", { id: "B6", label: "Consultancy, Training & Creative Commissions", max: 30, score: rowSum("consultancy", 30) }),
