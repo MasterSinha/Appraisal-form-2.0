@@ -27,20 +27,28 @@ import { n, RO } from "../../../features/faculty-appraisal/shared";
 import { DirectorInput as DirInput } from "../common/ReviewerInput";
 export default function Qualification({ ctx }) {
  const { faculty, docs, lectures, courseFile, projects, quals, feedback, deptActs, uniActs, society, industry, acr, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, rows, sectionEmpty, emptySectionRow, get, set, reviewerLabel, reviewerScoreLabel, innovativeRows, getInnovHod, setInnovHod } = ctx;
+ const qTitle = (row = {}) => row.title || row.label || row.qualification || row.qualificationTitle || row.certification || row.certificationTitle || row.name || "";
+ const qBody = (row = {}) => row.body || row.awardingBody || row.awarding_body || row.agency || row.institution || row.institute || row.university || row.details || "";
+ const qDate = (row = {}) => row.date || row.completionDate || row.awardDate || "";
  return (
 <>
 {/* A8: Qualification */}
 <SC title="A8. Professional Development & Qualification Enhancement (Max 10)" accent="#8b5cf6">
 <table style={T}>
 <thead><tr>
-<th style={TH}>SN</th><th style={TH}>Description</th>
+<th style={TH}>SN</th>
+<th style={TH}>Qualification / Certification Title</th>
+<th style={TH}>Awarding Body</th>
+<th style={TH}>Date</th>
 <th style={TH}>View Docs</th><th style={TH}>Faculty Score</th><th style={TH_HOD}>{reviewerScoreLabel}</th>
 </tr></thead>
 <tbody>
- {sectionEmpty("quals") ? emptySectionRow(5) : rows(quals).map((r, i) =>(
+ {sectionEmpty("quals") ? emptySectionRow(7) : rows(quals).map((r, i) =>(
 <tr key={i} style={i % 2 ? { background: "#f8fafc" } : {}}>
 <td style={TDC}>{i + 1}</td>
-<td style={TD}><RO val={qualificationRowDescription(r)} /></td>
+<td style={TD}><RO val={qTitle(r)} /></td>
+<td style={TD}><RO val={qBody(r)} /></td>
+<td style={TDC}><RO val={qDate(r)} center /></td>
 <td style={TDV}><ViewDocsCell docKey={`qual-${i}`} docs={docs} /></td>
 <td style={TDS}><RO val={String(r.score ?? "").trim() ? clampScore(r.score, SCORE_LIMITS.qualificationRow) : ""} center /></td>
 <td style={TDS_HOD}><HodInput val={get("quals", i, "hod")} onChange={v =>set("quals", i, "hod", v)} max={SCORE_LIMITS.qualificationRow} disabled={!rowHasReviewableData("quals", r, docs, `qual-${i}`)} /></td>
