@@ -1749,6 +1749,24 @@ const renameKeys = (rows, mapping) =>
  return out;
  });
 
+// Like renameKeys, but never lets an empty source clobber a target that already has data.
+// Needed for cross-engine fields (e.g. Standard stores C4 under `label`, Creative School under
+// `activity`): normalizeFetchedForm backfills an empty `label` onto Creative rows on every
+// round-trip, and a plain rename would then overwrite the real `activity` value with "".
+const coalesceKeys = (rows, mapping) =>
+ (rows || []).map((row) =>{
+ const out = { ...row };
+ Object.entries(mapping).forEach(([from, to]) =>{
+ if (!(from in out)) return;
+ const fromValue = out[from];
+ const hasFrom = String(fromValue ?? "").trim() !== "";
+ const hasTo = String(out[to] ?? "").trim() !== "";
+ if (hasFrom || !hasTo) out[to] = fromValue;
+ delete out[from];
+ });
+ return out;
+ });
+
 const dropKeys = (rows, keys = []) =>
  (rows || []).map((row) =>{
  const out = { ...row };
@@ -1774,7 +1792,7 @@ const mapFormForSubmit = (form = {}) =>{
  feedback: renameKeys(form.feedback, {
  code: "course_code", fb1: "feedback_1", fb2: "feedback_2",
  }),
- society: renameKeys(form.society, { label: "activity", participated: "status" }),
+ society: coalesceKeys(form.society, { label: "activity", participated: "status" }),
  journals: renameKeys(form.journals, { index: "indexing" }),
  books,
  ict: renameKeys(form.ict, { desc: "description", quad: "quadrant" }),
