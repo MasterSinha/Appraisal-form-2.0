@@ -598,6 +598,13 @@ const normalizeCreativeRow = (key, row = {}, index = 0) => {
     deptActs: {
       durationCat: ["durationCat", "duration_cat", "nature", "duration"],
     },
+    society: {
+      // Persistence normalizes C4 "society" rows with activity -> label (for the legacy standard
+      // form). Read it back so the Activity column survives a fetch for higher-authority reviewers.
+      activity: ["activity", "label", "society_activity", "societyActivity"],
+      details: ["details", "description"],
+      date: ["date", "period"],
+    },
     alumni: {
       activity: ["activity", "event", "title", "type"],
       details: ["details", "description", "name", "role"],
