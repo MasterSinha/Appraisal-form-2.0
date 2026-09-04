@@ -3,6 +3,7 @@ import {
   NON_TEACHING_ROLE_LABELS,
   isNonTeachingRole,
   normalizeNonTeachingRole,
+  readReportsToRegistrarFlag,
   roReportsToRegistrar,
 } from "../constants/nonTeachingHierarchy";
 import { profileFromsessionStorage, roleLabel } from "../utils/hierarchy";
@@ -735,8 +736,17 @@ export const nonTeachingReviewFlow = (itemOrForm = {}) => {
   ) {
     return ["self", "registrar", "vc"];
   }
-  if (subjectRole === "non_teaching_staff")
-    return ["self", "ro", "registrar", "vc"];
+  if (subjectRole === "non_teaching_staff") {
+    // Staff has a Reporting Officer ahead of them. Whether Registrar also sits in the chain
+    // after RO is controlled by the same reports_to_registrar admin flag, read at its full
+    // tri-state (true/false/undefined) rather than collapsed-to-boolean - an explicit `false`
+    // here means "RO -> VC direct", distinct from "no info yet" (which still legacy-defaults
+    // to keeping Registrar). Mirrors roReportsToRegistrar's own tri-state handling above.
+    const explicitRegistrarFlag = readReportsToRegistrarFlag(itemOrForm);
+    return explicitRegistrarFlag === false
+      ? ["self", "ro", "vc"]
+      : ["self", "ro", "registrar", "vc"];
+  }
   return ["self"];
 };
 
@@ -1262,8 +1272,6 @@ export const openNonTeachingReport = async ({
       label: labelForRole("self"),
       total: totals.self.total,
       partA: (key) => reportForm[key]?.marks,
-      remarks: reportForm.remarks,
-      remarksLabel: labelForRole("self"),
     },
     ro: {
       label: labelForRole("reporting_officer"),
@@ -1369,7 +1377,11 @@ export const openNonTeachingReport = async ({
       </tbody>
     </table>`;
 
+  // The staff member's own context is captured only via summaryOtherInfoBlock below - the
+  // reviewer-facing REMARKS section covers reviewer roles (RO/Registrar/VC) only, since the
+  // staff-side "Remarks" field no longer exists in the self-appraisal UI.
   const remarksBlock = reportRoles
+    .filter((role) => role !== "self")
     .map((role) => `
       <h3>${safeHtml(reportColumns[role].remarksLabel)}</h3>
       <div class="remarks">${isFilledValue(reportColumns[role].remarks) ? safeHtml(reportColumns[role].remarks) : "No remarks provided."}</div>

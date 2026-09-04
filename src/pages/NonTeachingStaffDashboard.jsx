@@ -21,6 +21,7 @@ import {
   loadNonTeachingWorkflow,
   nonTeachingReviewFlow,
   nonTeachingRoleLabel,
+  nonTeachingWorkflowFor,
   normalizeNonTeachingStatus,
   openNonTeachingReport,
   primeFormForReviewer,
@@ -31,7 +32,7 @@ import {
   visibleNonTeachingReviewRoles,
   workflowDesignationForNonTeachingRole,
 } from "../services/nonTeachingWorkflow";
-import { clampScore, scoreRemaining } from "../utils/appraisalFormUtils";
+import { clampScore } from "../utils/appraisalFormUtils";
 import { profileFromsessionStorage } from "../utils/hierarchy";
 import { n } from "../features/faculty-appraisal/shared";
 import AppraisalHeaderImage from "../components/AppraisalHeaderImage";
@@ -41,6 +42,7 @@ import { SectionCard } from "../features/faculty-appraisal/components/formPrimit
 import { WORKFLOW_STATUSES, currentWorkflowStep, isWorkflowComplete } from "../utils/workflow";
 import { T, TH, TD, TDC } from "../features/faculty-appraisal/components/formPrimitiveStyles";
 import { Avatar, ScoreBar, ReviewMetricsStrip, LogoutConfirmModal } from "../components/dashboard/dashboardPrimitives";
+import { FacultyRecordHeader, ScoreTable, VCFinalRemarks, FinalSubmitButton, FACULTY_RECORD_THEME } from "../components/dashboard/FacultyAppraisalRecord";
 import TeachingPartDReviewDashboard, { isPartDReviewed } from "./TeachingPartDReviewDashboard";
 import { ReportBugButton } from "../components/dashboard/ReportBugModal";
 import NoticesBell from "../components/dashboard/NoticesBell";
@@ -49,6 +51,51 @@ const ACCENT = "#1d4ed8";
 const REG_ACCENT = "#155e75";
 const VC_ACCENT = "#6d28d9";
 const clampOptionalScore = (value, max) => String(value ?? "").trim() === "" ? "" : clampScore(value, max);
+
+// Matches the icon-row summary table used by the academic appraisal's Summary tab
+// (src/features/faculty-appraisal/forms/standard/StandardMyAppraisal.jsx) so the non-teaching
+// summary pages look consistent with the rest of the portal.
+function InlineSvgIcon({ paths, size = 16, strokeWidth = 2.2 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {paths.map((path) => <path key={path} d={path} />)}
+    </svg>
+  );
+}
+
+const SUMMARY_ICONS = {
+  book: ["M4 19.5V5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-1.5Z", "M8 7h6M8 11h8M8 15h5"],
+  flask: ["M9 3h6", "M10 3v6l-4 8a3 3 0 0 0 2.7 4.3h6.6A3 3 0 0 0 18 17l-4-8V3", "M8 16h8"],
+  sigma: ["M18 4H7l6 8-6 8h11"],
+  report: ["M6 2h9l5 5v15H6z", "M14 2v6h6", "M9 13h6M9 17h6"],
+  send: ["M22 2 11 13", "M22 2 15 22l-4-9-9-4 20-7Z"],
+};
+
+function ScoreBadge({ score, max, color, tone = "#eef2ff" }) {
+  return (
+    <span style={{ display: "inline-flex", justifyContent: "center", minWidth: 92, borderRadius: 999, padding: "6px 12px", background: tone, color, fontSize: 13, fontWeight: 900, lineHeight: 1, whiteSpace: "nowrap" }}>
+      {n(score).toFixed(1)}/{max}
+    </span>
+  );
+}
+
+function SummaryRow({ label, score, max, color, tone, icon }) {
+  return (
+    <tr className="appraisal-summary-row">
+      <td style={{ padding: 0, border: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 14, minHeight: 52, padding: "10px 12px" }}>
+          <span style={{ width: 32, height: 32, borderRadius: 9, background: tone, color, border: `1px solid ${color}20`, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <InlineSvgIcon paths={SUMMARY_ICONS[icon]} size={17} />
+          </span>
+          <span style={{ color: "#1f2937", fontSize: 13, fontWeight: 800, lineHeight: 1.35 }}>{label}</span>
+        </div>
+      </td>
+      <td style={{ width: 150, padding: "10px 12px", border: 0, textAlign: "right", verticalAlign: "middle" }}>
+        <ScoreBadge score={score} max={max} color={color} tone={tone} />
+      </td>
+    </tr>
+  );
+}
 
 const normalizeAcademicYearCycles = (cyclesData) => {
   const normalizeCycle = (cycle) => {
@@ -395,41 +442,24 @@ function SelfAppraisalTable({ form, setForm, readOnly, accent }) {
   );
 }
 
-function SummaryPanel({ form, onSubmit, onUpdateRemarks, onUpdateSummaryOtherInfo, onReport, submitting, locked, confirmed, setConfirmed, accent, showReport = true }) {
+function SummaryPanel({ form, onSubmit, onUpdateSummaryOtherInfo, onReport, submitting, locked, confirmed, setConfirmed, accent, showReport = true }) {
   const self = calculateNonTeachingTotals(form, "self");
   const selfMax = NON_TEACHING_MAX.partA;
 
   return (
-    <SectionCard title="Summary of Total Score" subtitle={`Max ${selfMax} marks`} accent="#059669" scoreBadge={`${self.total.toFixed(1)} / ${selfMax}`}>
-      <div style={{ border: "1px solid #dbe3ef", borderRadius: 10, padding: "10px 14px", background: "#f8fafc", boxShadow: "0 8px 18px rgba(15,23,42,0.03)" }}>
-        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, marginBottom: 6 }}>
-          <span style={{ color: "#64748b", fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.4 }}>Self Claimed Score</span>
-          <span style={{ fontSize: 11, color: "#64748b", fontWeight: 700 }}>
-            <span style={{ color: ACCENT, fontSize: 16, fontWeight: 900 }}>{self.total.toFixed(1)}</span> / {selfMax} &nbsp;|&nbsp; {scoreRemaining(self.total, selfMax).toFixed(1)} remaining
-          </span>
-        </div>
-        <ScoreBar score={self.total} max={selfMax} color={ACCENT} />
-      </div>
+    <SectionCard title="Appraisal Summary & Submission" accent="#10b981">
+      <table className="appraisal-summary-table" style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, marginBottom: 0, border: "1px solid #e5e7eb", borderRadius: 12, overflow: "hidden", boxShadow: "0 12px 26px rgba(15,23,42,0.04)" }}>
+        <tbody>
+          <SummaryRow label="Part A - Self Appraisal" score={self.total} max={selfMax} color={ACCENT} tone={`${ACCENT}14`} icon="book" />
+        </tbody>
+      </table>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 14 }}>
-        <SummaryOtherInfoField
-          value={form.summaryOtherInfo}
-          onChange={onUpdateSummaryOtherInfo}
-          readOnly={locked}
-          rows={5}
-        />
-
-        <label style={{ display: "grid", gap: 8, marginBottom: 0 }}>
-          <span style={{ color: "#334155", fontSize: 12, fontWeight: 900 }}>Remarks</span>
-          <TextArea
-            value={form.remarks}
-            readOnly={locked}
-            rows={5}
-            placeholder="Optional remarks for the next authority..."
-            onChange={onUpdateRemarks}
-          />
-        </label>
-      </div>
+      <SummaryOtherInfoField
+        value={form.summaryOtherInfo}
+        onChange={onUpdateSummaryOtherInfo}
+        readOnly={locked}
+        rows={5}
+      />
 
       {!locked && (
         <label className="appraisal-confirmation-card" style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "11px 12px", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 10, fontSize: 12, color: "#334155", lineHeight: 1.5 }}>
@@ -438,14 +468,27 @@ function SummaryPanel({ form, onSubmit, onUpdateRemarks, onUpdateSummaryOtherInf
         </label>
       )}
 
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+      <div className="appraisal-summary-actions" style={{ display: "flex", justifyContent: "center", gap: 14, flexWrap: "wrap" }}>
         {showReport && (
-          <button type="button" className="appraisal-report-button" onClick={onReport} style={{ padding: "10px 20px", border: "1.5px solid #d1d5db", borderRadius: 10, background: "#fff", color: "#475569", cursor: "pointer", fontWeight: 700, fontFamily: "inherit" }}>
+          <button
+            type="button"
+            className="appraisal-report-button"
+            onClick={onReport}
+            style={{ minWidth: 172, minHeight: 42, padding: "10px 24px", background: "linear-gradient(180deg,#6d28d9 0%,#4c1d95 100%)", color: "#fff", border: "none", borderRadius: 9, cursor: "pointer", fontWeight: 800, fontSize: 13, fontFamily: "inherit", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 9, boxShadow: "0 10px 20px rgba(76,29,149,0.22)" }}
+          >
+            <InlineSvgIcon paths={SUMMARY_ICONS.report} size={16} />
             Generate Report
           </button>
         )}
         {!locked && (
-          <button type="button" className="appraisal-submit-button" onClick={onSubmit} disabled={!confirmed || submitting} style={{ padding: "10px 24px", border: "none", borderRadius: 10, background: confirmed ? accent : "#94a3b8", color: "#fff", cursor: confirmed && !submitting ? "pointer" : "not-allowed", fontWeight: 800, fontFamily: "inherit" }}>
+          <button
+            type="button"
+            className="appraisal-submit-button"
+            onClick={onSubmit}
+            disabled={!confirmed || submitting}
+            style={{ minWidth: 172, minHeight: 42, padding: "10px 24px", background: (!confirmed || submitting) ? "#94a3b8" : accent, color: "#fff", border: "none", borderRadius: 9, cursor: confirmed && !submitting ? "pointer" : "not-allowed", fontWeight: 800, fontSize: 13, fontFamily: "inherit", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 9, boxShadow: (!confirmed || submitting) ? "none" : "0 10px 20px rgba(30,41,59,0.18)" }}
+          >
+            <InlineSvgIcon paths={SUMMARY_ICONS.send} size={16} />
             {submitting ? "Submitting..." : "Submit"}
           </button>
         )}
@@ -691,6 +734,14 @@ function NonTeachingPreviousYearReportCard({ recordFound, form, academicYear, on
   );
 }
 
+// The backend only creates an approval-step record once a stage is actually reached, so right
+// after self-submission `loadNonTeachingWorkflow` can come back with zero approval steps even
+// though the staff member's route (one of the 4 dynamic paths) is already fully known from their
+// profile/status flags. When that happens, project the full expected chain (with WAITING/PENDING
+// statuses) via nonTeachingWorkflowFor instead of showing a tracker with only the "Staff" step.
+const resolveNonTeachingWorkflow = (liveWorkflow, itemOrForm) =>
+  liveWorkflow?.approvalSteps?.length ? liveWorkflow : nonTeachingWorkflowFor(itemOrForm);
+
 export function NonTeachingAppraisalForm({ role = sessionStorage.getItem("role"), embedded = false }) {
   const normalizedRole = normalizeNonTeachingRole(role, "non_teaching_staff");
   const navigate = useNavigate();
@@ -789,7 +840,7 @@ export function NonTeachingAppraisalForm({ role = sessionStorage.getItem("role")
         } else {
           setForm(loadedForm);
         }
-        setWorkflow(liveWorkflow);
+        setWorkflow(resolveNonTeachingWorkflow(liveWorkflow, { ...profileForYear, form: loadedForm, status: loadedForm.status }));
       } catch (err) {
         console.error("Could not load non-teaching appraisal:", err);
       } finally {
@@ -802,10 +853,6 @@ export function NonTeachingAppraisalForm({ role = sessionStorage.getItem("role")
 
   const updateInfo = (field, value) => {
     setForm((current) => ({ ...current, info: { ...(current.info || {}), [field]: value } }));
-  };
-
-  const updateRemarks = (value) => {
-    setForm((current) => ({ ...current, remarks: value }));
   };
 
   const updateSummaryOtherInfo = (value) => {
@@ -826,7 +873,7 @@ export function NonTeachingAppraisalForm({ role = sessionStorage.getItem("role")
         email: saved.form?.info?.email || profileFromsessionStorage().email,
         academicYear: saved.form?.info?.ay || APP_INFO.DEFAULT_AY,
       }).catch(() => null);
-      setWorkflow(liveWorkflow);
+      setWorkflow(resolveNonTeachingWorkflow(liveWorkflow, saved));
       setDraftSaved(true);
     } catch (err) {
       if (err?.statusCode === 403 || err?.response?.status === 403) {
@@ -879,7 +926,7 @@ export function NonTeachingAppraisalForm({ role = sessionStorage.getItem("role")
         email: saved.form?.info?.email || profileFromsessionStorage().email,
         academicYear: saved.form?.info?.ay || APP_INFO.DEFAULT_AY,
       }).catch(() => null);
-      setWorkflow(liveWorkflow);
+      setWorkflow(resolveNonTeachingWorkflow(liveWorkflow, saved));
       setConfirmed(false);
       alert("Non-teaching appraisal submitted successfully.");
     } catch (err) {
@@ -1050,7 +1097,6 @@ export function NonTeachingAppraisalForm({ role = sessionStorage.getItem("role")
               form={form}
               role={normalizedRole}
               onSubmit={handleSubmit}
-              onUpdateRemarks={updateRemarks}
               onUpdateSummaryOtherInfo={updateSummaryOtherInfo}
               onReport={handleReport}
               submitting={submitting}
@@ -1306,8 +1352,32 @@ export function NonTeachingAuthorityReviewPanel({ item, reviewerRole, onBack, on
   const reviewerDesignation = workflowDesignationForNonTeachingRole({ ...item, form, workflow: displayWorkflow }, role);
   const selfTotals = calculateNonTeachingTotals(form, "self");
   const totals = calculateNonTeachingTotals(form, role === "vc" ? "vc" : role);
-  const authorityScoreLabel = role === "vc" ? "Vice Chancellor Score" : `${reviewerDesignation} Score`;
-  const remarksLabel = role === "vc" ? "Vice Chancellor Remarks and Grade" : `${reviewerDesignation} Remarks`;
+  // The stage this panel's viewer is actively reviewing right now - its row gets no "note"
+  // button (its remarks are being typed live below, not yet recorded) and is bolded, matching
+  // the academic dashboards' Faculty Appraisal Record table (src/components/dashboard/FacultyAppraisalRecord.jsx).
+  const currentRoleKey = role === "reporting_officer" ? "ro" : role;
+  const NON_TEACHING_ROLE_KEY_META = {
+    ro: { icon: "briefcase", designationRole: "reporting_officer", totals: calculateNonTeachingTotals(form, "reporting_officer"), remarks: form.roRemarks },
+    registrar: { icon: "shield", designationRole: "registrar", totals: calculateNonTeachingTotals(form, "registrar"), remarks: form.registrarRemarks },
+    vc: { icon: "crown", designationRole: "vc", totals: calculateNonTeachingTotals(form, "vc"), remarks: form.vcRemarks },
+  };
+  const recordScoreRows = [
+    { key: "self", label: "Staff", icon: "user", values: selfTotals, note: form.summaryOtherInfo },
+    ...visibleRoles
+      .filter((roleKey) => roleKey !== "self" && NON_TEACHING_ROLE_KEY_META[roleKey])
+      .map((roleKey) => {
+        const meta = NON_TEACHING_ROLE_KEY_META[roleKey];
+        const isCurrent = roleKey === currentRoleKey;
+        return {
+          key: roleKey,
+          label: workflowDesignationForNonTeachingRole({ ...item, form }, meta.designationRole),
+          icon: meta.icon,
+          values: meta.totals,
+          accent: isCurrent,
+          ...(isCurrent ? {} : { note: meta.remarks }),
+        };
+      }),
+  ];
   useEffect(() => {
     let active = true;
     if (locked || !subjectEmail) return undefined;
@@ -1499,89 +1569,62 @@ export function NonTeachingAuthorityReviewPanel({ item, reviewerRole, onBack, on
       )}
 
       {tab === "remarks" && (
-        <SectionCard title={locked ? "Submitted Review" : `${reviewerDesignation} Remarks & Submission`} accent={accent}>
-          {role === "vc" && hasVisibleReviewRole(visibleRoles, "ro") && form.roRemarks && <PriorRemark label={`${workflowDesignationForNonTeachingRole({ ...item, form }, "reporting_officer")} Remarks`} value={form.roRemarks} color={ACCENT} />}
-          {role === "vc" && hasVisibleReviewRole(visibleRoles, "registrar") && form.registrarRemarks && <PriorRemark label={`${workflowDesignationForNonTeachingRole({ ...item, form }, "registrar")} Remarks`} value={form.registrarRemarks} color={REG_ACCENT} />}
-
-          <div>
-            <div style={{ color: "#334155", fontSize: 11, fontWeight: 900, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 8 }}>Staff Submitted Score</div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
-              {[
-                ["Part A", selfTotals.partA, NON_TEACHING_MAX.partA],
-                ["Part B", selfTotals.partB, NON_TEACHING_MAX.partB],
-                ["Grand Total", selfTotals.total, NON_TEACHING_MAX.grand],
-              ].map(([label, value, max]) => (
-                <div key={label} style={{ border: "1px solid #dbe3ef", borderRadius: 10, background: "#f8fafc", padding: "10px 12px", boxShadow: "0 8px 18px rgba(15,23,42,0.03)" }}>
-                  <div style={{ color: "#64748b", fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.4 }}>{label}</div>
-                  <div style={{ color: "#1d4ed8", fontSize: 18, fontWeight: 900, margin: "4px 0" }}>{n(value).toFixed(1)} / {max}</div>
-                  <ScoreBar score={value} max={max} color="#1d4ed8" />
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <div style={{ color: "#334155", fontSize: 11, fontWeight: 900, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 8 }}>{authorityScoreLabel}</div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
-              {[
-                ["Part A", totals.partA, NON_TEACHING_MAX.partA],
-                ["Part B", totals.partB, NON_TEACHING_MAX.partB],
-                ["Grand Total", totals.total, NON_TEACHING_MAX.grand],
-              ].map(([label, value, max]) => (
-                <div key={label} style={{ border: "1px solid #dbe3ef", borderRadius: 10, background: "#f8fafc", padding: "10px 12px", boxShadow: "0 8px 18px rgba(15,23,42,0.03)" }}>
-                  <div style={{ color: "#64748b", fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.4 }}>{label}</div>
-                  <div style={{ color: accent, fontSize: 18, fontWeight: 900, margin: "4px 0" }}>{n(value).toFixed(1)} / {max}</div>
-                  <ScoreBar score={value} max={max} color={accent} />
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label style={{ fontSize: 12, color: "#334155", fontWeight: 800, display: "block", marginBottom: 6 }}>{remarksLabel}</label>
-            <TextArea value={remarks} onChange={setRemarks} readOnly={locked} rows={7} placeholder="Enter review remarks and recommendations..." />
-          </div>
-
-          {!locked && (
-            <label className="appraisal-confirmation-card" style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "11px 12px", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 10, fontSize: 12, color: "#334155", lineHeight: 1.5 }}>
-              <input type="checkbox" checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} style={{ marginTop: 3, accentColor: "#16a34a" }} />
-              <span>I have verified all details and confirm that this review is accurate.</span>
-            </label>
-          )}
-
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-            <span style={{ color: "#64748b", fontSize: 11, fontWeight: 800 }}>{draftStatus}</span>
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
-            <button type="button" onClick={onBack} style={{ padding: "9px 18px", border: "none", borderRadius: 10, background: "#f1f5f9", color: "#475569", cursor: "pointer", fontWeight: 800, fontFamily: "inherit" }}>{locked ? "Close" : "Cancel"}</button>
-            {role === "vc" && locked && (
-              <button type="button" className="appraisal-report-button" onClick={handleReport} style={{ padding: "9px 18px", border: "none", borderRadius: 10, background: "#e2e8f0", color: "#475569", cursor: "pointer", fontWeight: 800, fontFamily: "inherit" }}>Generate Report</button>
+        <div className="far-wrap" style={{ width: "100%" }}>
+          <div className="far-card" style={{ width: "100%", boxSizing: "border-box", background: FACULTY_RECORD_THEME.card, border: `1px solid ${FACULTY_RECORD_THEME.borderStrong}`, borderRadius: 16, padding: "22px 24px", display: "grid", gap: 18, boxShadow: "0 10px 30px rgba(15,23,42,0.08)" }}>
+            <FacultyRecordHeader
+              title="Non-Teaching appraisal record"
+              subtitle={`${APP_INFO.UNIVERSITY_NAME} · Non-Teaching Staff · AY ${academicYear}`}
+              referenceNumber={item.employeeId}
+            />
+            <ScoreTable
+              columns={[
+                { key: "partA", label: "Part A", max: NON_TEACHING_MAX.partA },
+                { key: "partB", label: "Part B", max: NON_TEACHING_MAX.partB },
+                { key: "total", label: "Total", max: NON_TEACHING_MAX.grand },
+              ]}
+              rows={recordScoreRows}
+            />
+            <VCFinalRemarks
+              title={`${reviewerDesignation} final remarks`}
+              icon={role === "vc" ? "crown" : role === "registrar" ? "shield" : "briefcase"}
+              value={remarks}
+              onChange={setRemarks}
+              readOnly={locked}
+              description="This statement is entered against the official appraisal record before final submission."
+            />
+            {!locked && (
+              <label style={{ display: "flex", alignItems: "flex-start", gap: 9, color: FACULTY_RECORD_THEME.textMuted, fontSize: 11, lineHeight: 1.5, cursor: "pointer" }}>
+                <input type="checkbox" checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} style={{ marginTop: 2, accentColor: FACULTY_RECORD_THEME.accent, flexShrink: 0 }} />
+                <span>I have verified all details and confirm that this review is accurate.</span>
+              </label>
             )}
             {!locked && (
-              <>
-              <button type="button" onClick={handleSaveDraft} disabled={savingDraft} style={{ padding: "10px 24px", border: "none", borderRadius: 10, background: savingDraft ? "#94a3b8" : "#2563eb", color: "#fff", cursor: savingDraft ? "not-allowed" : "pointer", fontWeight: 800, fontFamily: "inherit" }}>
-                {savingDraft ? "Saving..." : "Save Draft"}
-              </button>
-              <button type="button" className="appraisal-danger-button" onClick={handleReject} disabled={!confirmed || !remarks.trim() || submitting} style={{ padding: "10px 24px", border: "none", borderRadius: 10, background: (confirmed && remarks.trim()) ? "#dc2626" : "#94a3b8", color: "#fff", cursor: confirmed && remarks.trim() && !submitting ? "pointer" : "not-allowed", fontWeight: 800, fontFamily: "inherit" }}>
-                Reject Form
-              </button>
-              <button type="button" className="appraisal-submit-button" onClick={handleSubmit} disabled={!confirmed || !remarks.trim() || submitting} style={{ padding: "10px 24px", border: "none", borderRadius: 10, background: (confirmed && remarks.trim()) ? accent : "#94a3b8", color: "#fff", cursor: confirmed && remarks.trim() && !submitting ? "pointer" : "not-allowed", fontWeight: 800, fontFamily: "inherit" }}>
-                {submitting ? "Submitting..." : "Submit"}
-              </button>
-              </>
+              <FinalSubmitButton disabled={!confirmed || !remarks?.trim() || submitting} onClick={handleSubmit}>
+                {submitting ? "Submitting..." : "Confirm and submit review"}
+              </FinalSubmitButton>
             )}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap", borderTop: `1px solid ${FACULTY_RECORD_THEME.border}`, paddingTop: 14 }}>
+              <span style={{ color: FACULTY_RECORD_THEME.textFaint, fontSize: 10.5, fontStyle: "italic" }}>{draftStatus}</span>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginLeft: "auto" }}>
+                <button type="button" onClick={onBack} style={{ padding: "8px 14px", background: "transparent", color: FACULTY_RECORD_THEME.textMuted, border: `1px solid ${FACULTY_RECORD_THEME.border}`, borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: 11.5, fontFamily: "inherit" }}>{locked ? "Close" : "Cancel"}</button>
+                {role === "vc" && locked && (
+                  <button type="button" className="appraisal-report-button" onClick={handleReport} style={{ padding: "8px 14px", background: "transparent", color: FACULTY_RECORD_THEME.accentSoft, border: "1px solid rgba(124,58,237,0.35)", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: 11.5, fontFamily: "inherit" }}>Generate Report</button>
+                )}
+                {!locked && (
+                  <>
+                    <button type="button" onClick={handleSaveDraft} disabled={savingDraft} style={{ padding: "8px 14px", background: "transparent", color: savingDraft ? FACULTY_RECORD_THEME.textFaint : "#2563eb", border: `1px solid ${savingDraft ? FACULTY_RECORD_THEME.border : "#bfdbfe"}`, borderRadius: 8, cursor: savingDraft ? "not-allowed" : "pointer", fontWeight: 700, fontSize: 11.5, fontFamily: "inherit" }}>
+                      {savingDraft ? "Saving..." : "Save Draft"}
+                    </button>
+                    <button type="button" className="appraisal-danger-button" onClick={handleReject} disabled={!confirmed || !remarks?.trim() || submitting} style={{ padding: "8px 14px", background: "transparent", color: (confirmed && remarks?.trim()) ? "#dc2626" : FACULTY_RECORD_THEME.textFaint, border: `1px solid ${(confirmed && remarks?.trim()) ? "#fecaca" : FACULTY_RECORD_THEME.border}`, borderRadius: 8, cursor: (confirmed && remarks?.trim()) ? "pointer" : "not-allowed", fontWeight: 700, fontSize: 11.5, fontFamily: "inherit" }}>
+                      Reject Form
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
-        </SectionCard>
+        </div>
       )}
-    </div>
-  );
-}
-
-function PriorRemark({ label, value, color }) {
-  return (
-    <div style={{ background: `${color}12`, border: `1px solid ${color}35`, borderLeft: `3px solid ${color}`, borderRadius: 8, padding: "10px 12px", marginBottom: 10 }}>
-      <div style={{ color, fontSize: 10, textTransform: "uppercase", fontWeight: 900, marginBottom: 4 }}>{label}</div>
-      <div style={{ color: "#334155", fontSize: 12, lineHeight: 1.6 }}>{value}</div>
     </div>
   );
 }
