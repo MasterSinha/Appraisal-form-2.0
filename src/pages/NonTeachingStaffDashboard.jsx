@@ -19,6 +19,7 @@ import {
   isNonTeachingRejectedStatus,
   loadNonTeachingAppraisal,
   loadNonTeachingWorkflow,
+  nonTeachingReviewFlow,
   nonTeachingRoleLabel,
   normalizeNonTeachingStatus,
   openNonTeachingReport,
@@ -903,7 +904,11 @@ export function NonTeachingAppraisalForm({ role = sessionStorage.getItem("role")
         academicYear: form.info?.ay,
       },
       form,
-      visibleRoles: selectedYearIsClosed ? ["self", "ro", "registrar", "vc"] : ["self"],
+      // Derive the authority columns from this appraisal's own review flow so a Reporting
+      // Officer routed straight to the VC never gets a phantom Registrar column.
+      visibleRoles: selectedYearIsClosed
+        ? nonTeachingReviewFlow({ ...form, appraisalRole: normalizedRole, workflow })
+        : ["self"],
       includePartB: selectedYearIsClosed,
     });
   };

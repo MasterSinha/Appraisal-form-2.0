@@ -3,6 +3,7 @@ import {
   NON_TEACHING_ROLE_LABELS,
   isNonTeachingRole,
   normalizeNonTeachingRole,
+  roReportsToRegistrar,
 } from "../constants/nonTeachingHierarchy";
 import { profileFromsessionStorage, roleLabel } from "../utils/hierarchy";
 import { clampScore } from "../utils/appraisalFormUtils";
@@ -13,6 +14,10 @@ import {
 } from "../utils/workflow";
 import { api } from "./api";
 import { PRINT_REPORT_CSS, safeHtml, isFilledValue, fetchImageAsDataUrl } from "../utils/fullFormReport";
+
+// Re-exported so callers reading this module's workflow API find the RO routing rule alongside
+// nonTeachingReportsToRegistrar. Defined in constants to avoid a hierarchy.js <-> this cycle.
+export { roReportsToRegistrar };
 
 export const NON_TEACHING_STATUS = {
   DRAFT: "Draft",
@@ -366,16 +371,20 @@ export const emptyNonTeachingForm = (
   return {
     appraisalType: "non-teaching",
     submittedByRole: normalizedRole,
-    reports_to_registrar: normalizedRole === "non_teaching_staff" && nonTeachingReportsToRegistrar({
-      ...profile,
-      appraisal_role: normalizedRole,
-      reports_to_registrar: firstNonEmpty(
-        profile.reports_to_registrar,
-        profile.reportsToRegistrar,
-        sessionStorage.getItem("reports_to_registrar"),
-        sessionStorage.getItem("reportsToRegistrar"),
-      ),
-    }),
+    reports_to_registrar: (() => {
+      const flagSource = {
+        ...profile,
+        appraisal_role: normalizedRole,
+        reports_to_registrar: firstNonEmpty(
+          profile.reports_to_registrar,
+          profile.reportsToRegistrar,
+          sessionStorage.getItem("reports_to_registrar"),
+          sessionStorage.getItem("reportsToRegistrar"),
+        ),
+      };
+      if (normalizedRole === "reporting_officer") return roReportsToRegistrar(flagSource);
+      return normalizedRole === "non_teaching_staff" && nonTeachingReportsToRegistrar(flagSource);
+    })(),
     status: NON_TEACHING_STATUS.DRAFT,
     info: {
       name,
@@ -456,17 +465,27 @@ export const normalizeNonTeachingForm = (
     form.submittedByRole,
     normalizeNonTeachingRole(role, role),
   );
+  const reportsToRegistrarSource = {
+    ...profile,
+    ...form,
+    form,
+    payload: form,
+    info: merged.info,
+  };
   const reportsToRegistrar =
-    merged.submittedByRole === "non_teaching_staff" &&
-    nonTeachingReportsToRegistrar({
-      ...profile,
-      ...form,
-      form,
-      payload: form,
-      info: merged.info,
-    });
+    merged.submittedByRole === "reporting_officer"
+      ? roReportsToRegistrar(reportsToRegistrarSource)
+      : merged.submittedByRole === "non_teaching_staff" &&
+        nonTeachingReportsToRegistrar(reportsToRegistrarSource);
   merged.reports_to_registrar = reportsToRegistrar;
   merged.reportsToRegistrar = reportsToRegistrar;
+  merged.registrar_email = firstNonEmpty(
+    form.registrar_email,
+    form.registrarEmail,
+    profile.registrar_email,
+    profile.registrarEmail,
+    merged.info?.registrar_email,
+  );
   merged.info.ay = academicYear(merged.info.ay || profile.academic_year);
   merged.info.email = emailKey(
     merged.info.email || profile.email || sessionStorage.getItem("username"),
@@ -583,7 +602,9 @@ export const statusAfterSelfSubmit = (role, source = {}) => {
   if (normalizedRole === "registrar")
     return NON_TEACHING_STATUS.REGISTRAR_REVIEWED;
   if (normalizedRole === "reporting_officer")
-    return NON_TEACHING_STATUS.PENDING_REGISTRAR_REVIEW;
+    return roReportsToRegistrar(source)
+      ? NON_TEACHING_STATUS.PENDING_REGISTRAR_REVIEW
+      : NON_TEACHING_STATUS.PENDING_VC_REVIEW;
   if (
     normalizedRole === "non_teaching_staff" &&
     nonTeachingReportsToRegistrar(source)
@@ -704,7 +725,10 @@ export const nonTeachingReviewFlow = (itemOrForm = {}) => {
   const subjectRole = normalizeNonTeachingRole(rawRole, rawRole || "non_teaching_staff");
 
   if (subjectRole === "registrar") return ["self", "vc"];
-  if (subjectRole === "reporting_officer") return ["self", "registrar", "vc"];
+  if (subjectRole === "reporting_officer")
+    return roReportsToRegistrar(itemOrForm)
+      ? ["self", "registrar", "vc"]
+      : ["self", "vc"];
   if (
     subjectRole === "non_teaching_staff" &&
     nonTeachingReportsToRegistrar(itemOrForm)
@@ -739,11 +763,13 @@ export const canReviewNonTeachingItem = (item = {}, reviewerRole) => {
 
   if (role === "vc")
     return subjectRole !== "vc" && isNonTeachingRole(subjectRole);
-  if (role === "registrar")
-    return (
-      subjectRole === "non_teaching_staff" ||
-      subjectRole === "reporting_officer"
-    );
+  if (role === "registrar") {
+    if (subjectRole === "non_teaching_staff") return true;
+    // A Reporting Officer's own appraisal is only the Registrar's to review when it routes
+    // through the Registrar; "straight to VC" ROs must not appear in the Registrar queue.
+    if (subjectRole === "reporting_officer") return roReportsToRegistrar(item);
+    return false;
+  }
   if (role === "reporting_officer")
     return (
       subjectRole === "non_teaching_staff" &&
@@ -881,7 +907,25 @@ export const submitNonTeachingSelfAppraisal = async ({
     profile,
     normalizedRole,
   );
-  const status = NON_TEACHING_STATUS.PENDING_RO_REVIEW;
+  // Wire status on self-submit. Only ONE case deviates from the long-standing behaviour:
+  // a Reporting Officer whose profile says "straight to VC" (reports_to_registrar === false).
+  // Everyone else - including a through-Registrar / unknown-flag RO - still submits exactly as
+  // before (PENDING_RO_REVIEW), so this cannot regress existing records.
+  //
+  // The DB `non_teaching_appraisals_status_check` constraint only accepts a small legacy set
+  // (Draft / Submitted / Pending RO Review / Reporting Officer Reviewed / Registrar Reviewed /
+  // VC Approved), so we cannot send 'Pending VC Review'. 'Registrar Reviewed' is the
+  // constraint-safe status that routes a non-teaching record straight to the VC queue
+  // (frontend_api_reference: "vc sees ... Registrar Reviewed"); the RO's review flow has no
+  // Registrar step so nothing renders a phantom Registrar column/score.
+  // TODO(backend): allow 'Pending VC Review' + honour reports_to_registrar for reporting_officer.
+  const isDirectToVcReportingOfficer =
+    normalizedRole === "reporting_officer" &&
+    !roReportsToRegistrar({ ...profile, ...normalizedForm });
+  const status = isDirectToVcReportingOfficer
+    ? NON_TEACHING_STATUS.REGISTRAR_REVIEWED
+    : NON_TEACHING_STATUS.PENDING_RO_REVIEW;
+
   const finalForm = stripSelfPartBRatings(
     normalizeNonTeachingForm(
       { ...normalizedForm, status },
@@ -922,12 +966,15 @@ export const decorateNonTeachingRow = (row, profile = {}) => {
   const roTotals = calculateNonTeachingTotals(form, "reporting_officer");
   const registrarTotals = calculateNonTeachingTotals(form, "registrar");
   const vcTotals = calculateNonTeachingTotals(form, "vc");
-  const reportsToRegistrar = nonTeachingReportsToRegistrar({
+  const reportsToRegistrarSource = {
     ...profile,
     ...row,
     form,
     payload: row.payload,
-  });
+  };
+  const reportsToRegistrar = role === "reporting_officer"
+    ? roReportsToRegistrar(reportsToRegistrarSource)
+    : nonTeachingReportsToRegistrar(reportsToRegistrarSource);
   const workflowSource = workflowSourceFrom(row);
 
   return {
@@ -999,11 +1046,14 @@ const normalizeNonTeachingQueueItem = (item = {}) => {
   const roTotals = calculateNonTeachingTotals(form, "reporting_officer");
   const registrarTotals = calculateNonTeachingTotals(form, "registrar");
   const vcTotals = calculateNonTeachingTotals(form, "vc");
-  const reportsToRegistrar = nonTeachingReportsToRegistrar({
+  const reportsToRegistrarSource = {
     ...item,
     form,
     payload: item.payload,
-  });
+  };
+  const reportsToRegistrar = role === "reporting_officer"
+    ? roReportsToRegistrar(reportsToRegistrarSource)
+    : nonTeachingReportsToRegistrar(reportsToRegistrarSource);
   const workflowSource = workflowSourceFrom(item);
   return {
     ...item,

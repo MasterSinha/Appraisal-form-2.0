@@ -6,7 +6,7 @@ import {
   isCisrSchool,
   normalizeHierarchyText,
 } from "../constants/universityHierarchy.js";
-import { isNonTeachingRole, normalizeNonTeachingRole } from "../constants/nonTeachingHierarchy.js";
+import { isNonTeachingRole, normalizeNonTeachingRole, roReportsToRegistrar } from "../constants/nonTeachingHierarchy.js";
 
 const ENGINEERING = DEAN_TRACKS.ENGINEERING;
 const NON_ENGINEERING = DEAN_TRACKS.NON_ENGINEERING;
@@ -84,7 +84,9 @@ export const getReviewChain = (profile = {}) => {
 
   if (role === "vc") return [];
   if (role === "registrar") return ["vc"];
-  if (role === "reporting_officer") return ["registrar", "vc"];
+  // A Reporting Officer's own appraisal: honour reports_to_registrar (unknown => keep Registrar).
+  if (role === "reporting_officer")
+    return roReportsToRegistrar(profile) ? ["registrar", "vc"] : ["vc"];
   if (role === "non_teaching_staff")
     return reportsToRegistrar ? ["registrar", "vc"] : ["reporting_officer", "registrar", "vc"];
   if (role === "center_head") return ["vc"];
@@ -251,7 +253,10 @@ export const canAuthorityReviewProfile = (reviewerProfile = {}, subjectProfile =
   if (reviewerRole === "vc") return subjectRole !== "vc";
 
   if (reviewerRole === "registrar") {
-    return subjectRole === "non_teaching_staff" || subjectRole === "reporting_officer";
+    if (subjectRole === "non_teaching_staff") return true;
+    // A Reporting Officer's own appraisal only reaches the Registrar when it routes that way.
+    if (subjectRole === "reporting_officer") return roReportsToRegistrar(subjectProfile);
+    return false;
   }
 
   if (reviewerRole === "reporting_officer") {
@@ -328,4 +333,6 @@ export const profileFromsessionStorage = () => ({
   avatarUrl: getItem("profilePictureUrl") || getItem("profile_picture_url") || getItem("avatarUrl") || "",
   reports_to_registrar: getItem("reports_to_registrar") === "true" || getItem("reportsToRegistrar") === "true",
   reportsToRegistrar: getItem("reports_to_registrar") === "true" || getItem("reportsToRegistrar") === "true",
+  registrar_email: getItem("registrar_email") || getItem("registrarEmail") || "",
+  registrarEmail: getItem("registrar_email") || getItem("registrarEmail") || "",
 });

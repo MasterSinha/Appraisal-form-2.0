@@ -6,7 +6,7 @@ import {
   isSoemrSchool,
   normalizeHierarchyText,
 } from "../constants/universityHierarchy";
-import { NON_TEACHING_ROLES, isNonTeachingRole } from "../constants/nonTeachingHierarchy";
+import { NON_TEACHING_ROLES, isNonTeachingRole, roReportsToRegistrar } from "../constants/nonTeachingHierarchy";
 import { APP_INFO } from "../constants/formConfig";
 import { departmentHasHod, getDeanTrack } from "../utils/hierarchy";
 
@@ -32,6 +32,8 @@ export const AUTH_SESSION_KEYS = [
   "avatarUrl",
   "reports_to_registrar",
   "reportsToRegistrar",
+  "registrar_email",
+  "registrarEmail",
   "hasHod",
   "hasHOD",
 ];
@@ -175,6 +177,9 @@ export const buildProfilePayload = (formData, academicYear = "2026-2027") => {
     academic_year: academicYear,
     appraisal_role: role,
     reports_to_registrar: nonTeachingRole && boolFlag(formData.reports_to_registrar, formData.reportsToRegistrar),
+    ...(nonTeachingRole && String(formData.registrar_email ?? formData.registrarEmail ?? "").trim()
+      ? { registrar_email: String(formData.registrar_email ?? formData.registrarEmail).trim() }
+      : {}),
   };
 };
 
@@ -191,12 +196,22 @@ export const storeUserSession = ({ token, profile = {}, fallbackEmail = "" }) =>
       ? canonicalDepartmentValue(firstValue(safeProfile.department))
       : firstValue(safeProfile.department);
   const normalizedDepartment = nonTeachingRole || !isCisrSchool(school) ? department : "";
-  const reportsToRegistrar = role === "non_teaching_staff" && boolFlag(
-    safeProfile.reports_to_registrar,
-    safeProfile.reportsToRegistrar,
-    safeProfile.direct_to_registrar,
-    safeProfile.directToRegistrar,
-  );
+  // non_teaching_staff: unknown flag => false (RO does the first review).
+  // reporting_officer: their OWN appraisal honours the same flag, but unknown => true so an
+  //   existing RO keeps the RO -> Registrar -> VC chain until an admin says otherwise.
+  const reportsToRegistrar = role === "non_teaching_staff"
+    ? boolFlag(
+        safeProfile.reports_to_registrar,
+        safeProfile.reportsToRegistrar,
+        safeProfile.direct_to_registrar,
+        safeProfile.directToRegistrar,
+      )
+    : role === "reporting_officer"
+      ? roReportsToRegistrar(safeProfile)
+      : false;
+  const registrarEmail = role === "non_teaching_staff" || role === "reporting_officer"
+    ? firstValue(safeProfile.registrar_email, safeProfile.registrarEmail)
+    : "";
   const profilePictureUrl = profilePictureValue(safeProfile);
   const academicYear = getActiveAcademicYear(firstValue(safeProfile.academic_year, safeProfile.academicYear, safeProfile.ay, APP_INFO.DEFAULT_AY));
 
@@ -221,6 +236,8 @@ export const storeUserSession = ({ token, profile = {}, fallbackEmail = "" }) =>
     avatarUrl: profilePictureUrl,
     reports_to_registrar: reportsToRegistrar ? "true" : "false",
     reportsToRegistrar: reportsToRegistrar ? "true" : "false",
+    registrar_email: registrarEmail || "",
+    registrarEmail: registrarEmail || "",
     academicYear,
   };
 
@@ -242,7 +259,7 @@ export const storeUserSession = ({ token, profile = {}, fallbackEmail = "" }) =>
   sessionStorage.setItem("hasHod", hasHod ? "true" : "false");
   sessionStorage.setItem("hasHOD", hasHod ? "true" : "false");
 
-  return { email, role, school, department: normalizedDepartment, departments: departmentsList, reports_to_registrar: reportsToRegistrar };
+  return { email, role, school, department: normalizedDepartment, departments: departmentsList, reports_to_registrar: reportsToRegistrar, registrar_email: registrarEmail || "" };
 };
 
 export const getSessionItem = (key) => {

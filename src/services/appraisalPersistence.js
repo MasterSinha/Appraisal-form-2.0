@@ -1750,9 +1750,9 @@ const renameKeys = (rows, mapping) =>
  });
 
 // Like renameKeys, but never lets an empty source clobber a target that already has data.
-// Needed for cross-engine fields (e.g. Standard stores C4 under `label`, Creative School under
-// `activity`): normalizeFetchedForm backfills an empty `label` onto Creative rows on every
-// round-trip, and a plain rename would then overwrite the real `activity` value with "".
+// For the Standard engine, where `label` is the row's real field and `activity` is only the
+// wire key: `label` wins whenever it has a value (that's the edit the user just made), and an
+// empty `label` can't wipe a populated `activity`.
 const coalesceKeys = (rows, mapping) =>
  (rows || []).map((row) =>{
  const out = { ...row };
@@ -1762,6 +1762,24 @@ const coalesceKeys = (rows, mapping) =>
  const hasFrom = String(fromValue ?? "").trim() !== "";
  const hasTo = String(out[to] ?? "").trim() !== "";
  if (hasFrom || !hasTo) out[to] = fromValue;
+ delete out[from];
+ });
+ return out;
+ });
+
+// The mirror of coalesceKeys for the Creative/Media/Design engine, where `activity` is the
+// row's real field and `label` is only ever a stale ghost that normalizeFetchedForm backfills
+// on every round-trip. `label` may fill an *empty* `activity` but must never replace one the
+// user has edited - otherwise resubmitting after a rejection reverts the C4 text to its old
+// value (the ghost `label` still holds the pre-edit string).
+const fillEmptyKeys = (rows, mapping) =>
+ (rows || []).map((row) =>{
+ const out = { ...row };
+ Object.entries(mapping).forEach(([from, to]) =>{
+ if (!(from in out)) return;
+ if (String(out[to] ?? "").trim() === "" && String(out[from] ?? "").trim() !== "") {
+ out[to] = out[from];
+ }
  delete out[from];
  });
  return out;
@@ -1792,7 +1810,9 @@ const mapFormForSubmit = (form = {}) =>{
  feedback: renameKeys(form.feedback, {
  code: "course_code", fb1: "feedback_1", fb2: "feedback_2",
  }),
- society: coalesceKeys(form.society, { label: "activity", participated: "status" }),
+ society: mediaOrDesign
+ ? fillEmptyKeys(form.society, { label: "activity", participated: "status" })
+ : coalesceKeys(form.society, { label: "activity", participated: "status" }),
  journals: renameKeys(form.journals, { index: "indexing" }),
  books,
  ict: renameKeys(form.ict, { desc: "description", quad: "quadrant" }),

@@ -629,7 +629,12 @@ const normalizeCreativeRow = (key, row = {}, index = 0) => {
   Object.entries(fieldAliases[key] || {}).forEach(([target, aliases]) => {
     next = withFallbackValue(next, row, target, aliases);
   });
-  if (key === "society") return { ...next, max: next.max || 10 };
+  if (key === "society") {
+    // `activity` is this engine's real field; drop the `label` ghost that persistence backfills
+    // so a stale pre-edit value can never resurface on the next round-trip / submit.
+    const { label: _societyLabelGhost, ...societyRow } = next;
+    return { ...societyRow, max: next.max || 10 };
+  }
   if (key === "externalProjects") return { ...next, max: next.max || 20 };
   return next;
 };
