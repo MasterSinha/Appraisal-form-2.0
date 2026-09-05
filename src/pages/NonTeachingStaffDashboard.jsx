@@ -224,6 +224,7 @@ function TextInput({ value, onChange, readOnly = false, placeholder = "", type =
 
 function TextArea({ value, onChange, readOnly = false, placeholder = "", rows = 3 }) {
   const large = rows >= 7;
+  const [focused, setFocused] = useState(false);
   return (
     <textarea
       value={value ?? ""}
@@ -231,12 +232,32 @@ function TextArea({ value, onChange, readOnly = false, placeholder = "", rows = 
       readOnly={readOnly}
       placeholder={placeholder}
       rows={rows}
-      style={{ width: "100%", boxSizing: "border-box", height: large ? 235 : undefined, minHeight: large ? 235 : undefined, border: "1px solid #cbd5e1", borderRadius: 6, padding: large ? "10px 11px" : "8px 10px", fontSize: 12, lineHeight: large ? 1.5 : undefined, fontFamily: "inherit", resize: large ? "none" : "vertical", outline: "none", background: readOnly ? "#f8fafc" : "#fff", color: "#0f172a" }}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
+      style={{
+        width: "100%",
+        boxSizing: "border-box",
+        height: large ? 235 : undefined,
+        minHeight: large ? 235 : undefined,
+        border: focused ? "1.5px solid #6366f1" : "1.5px solid #dde3ec",
+        borderRadius: 8,
+        padding: large ? "10px 12px" : "9px 11px",
+        fontSize: 12,
+        lineHeight: large ? 1.5 : 1.5,
+        fontFamily: "inherit",
+        resize: large ? "none" : "vertical",
+        outline: "none",
+        background: readOnly ? "#f8fafc" : "#fff",
+        color: "#0f172a",
+        boxShadow: focused ? "0 0 0 3px rgba(99,102,241,0.14)" : "0 1px 2px rgba(15,23,42,0.03)",
+        transition: "border-color .15s ease, box-shadow .15s ease",
+      }}
     />
   );
 }
 
 function MarksInput({ value, onChange, max, readOnly = false, accent = ACCENT }) {
+  const [focused, setFocused] = useState(false);
   return (
     <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
       <input
@@ -247,7 +268,21 @@ function MarksInput({ value, onChange, max, readOnly = false, accent = ACCENT })
         value={value ?? ""}
         onChange={(event) => onChange(clampOptionalScore(event.target.value, max))}
         readOnly={readOnly}
-        style={{ width: 62, textAlign: "center", border: `1.5px solid ${accent}`, borderRadius: 6, padding: "5px 6px", fontSize: 12, fontFamily: "inherit", outline: "none", background: readOnly ? "#f8fafc" : "#eff6ff" }}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        style={{
+          width: 64,
+          textAlign: "center",
+          border: `1.5px solid ${accent}`,
+          borderRadius: 8,
+          padding: "6px 6px",
+          fontSize: 12,
+          fontFamily: "inherit",
+          outline: "none",
+          background: readOnly ? "#f8fafc" : "#eff6ff",
+          boxShadow: focused ? `0 0 0 3px ${accent}26` : "none",
+          transition: "box-shadow .15s ease",
+        }}
       />
       <span style={{ fontSize: 11, color: "#64748b", fontWeight: 700 }}>/ {max}</span>
     </div>
