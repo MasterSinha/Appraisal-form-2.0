@@ -6,7 +6,7 @@ import {
   isCisrSchool,
   normalizeHierarchyText,
 } from "../constants/universityHierarchy.js";
-import { isNonTeachingRole, normalizeNonTeachingRole, roReportsToRegistrar } from "../constants/nonTeachingHierarchy.js";
+import { isNonTeachingRole, normalizeNonTeachingRole, readReportsToRegistrarFlag, roReportsToRegistrar } from "../constants/nonTeachingHierarchy.js";
 
 const ENGINEERING = DEAN_TRACKS.ENGINEERING;
 const NON_ENGINEERING = DEAN_TRACKS.NON_ENGINEERING;
@@ -87,8 +87,12 @@ export const getReviewChain = (profile = {}) => {
   // A Reporting Officer's own appraisal: honour reports_to_registrar (unknown => keep Registrar).
   if (role === "reporting_officer")
     return roReportsToRegistrar(profile) ? ["registrar", "vc"] : ["vc"];
-  if (role === "non_teaching_staff")
-    return reportsToRegistrar ? ["registrar", "vc"] : ["reporting_officer", "registrar", "vc"];
+  if (role === "non_teaching_staff") {
+    if (reportsToRegistrar) return ["registrar", "vc"];
+    const explicitRegistrarFlag = readReportsToRegistrarFlag(profile);
+    if (explicitRegistrarFlag === false) return ["reporting_officer", "vc"];
+    return ["reporting_officer", "registrar", "vc"];
+  }
   if (role === "center_head") return ["vc"];
   if (role === "dean") return ["vc"];
   if (role === "director") return ["dean", "vc"];
@@ -253,17 +257,13 @@ export const canAuthorityReviewProfile = (reviewerProfile = {}, subjectProfile =
   if (reviewerRole === "vc") return subjectRole !== "vc";
 
   if (reviewerRole === "registrar") {
-    if (subjectRole === "non_teaching_staff") return true;
-    // A Reporting Officer's own appraisal only reaches the Registrar when it routes that way.
-    if (subjectRole === "reporting_officer") return roReportsToRegistrar(subjectProfile);
-    return false;
+    const chain = getReviewChain(subjectProfile);
+    return chain.includes("registrar");
   }
 
   if (reviewerRole === "reporting_officer") {
-    const reportsToRegistrar = subjectProfile.reports_to_registrar === true ||
-      subjectProfile.reportsToRegistrar === true ||
-      String(subjectProfile.reports_to_registrar || subjectProfile.reportsToRegistrar || "").trim().toLowerCase() === "true";
-    return subjectRole === "non_teaching_staff" && !reportsToRegistrar;
+    const chain = getReviewChain(subjectProfile);
+    return chain.includes("reporting_officer") && subjectRole !== "reporting_officer";
   }
 
   if (isNonTeachingRole(reviewerRole) || isNonTeachingRole(subjectRole)) {

@@ -44,11 +44,17 @@ export const workflowSourceFrom = (source = {}) =>
  source.approval_workflow ||
  source.reviewWorkflow ||
  source.review_workflow ||
+ source.profile?.workflow ||
+ source.profile?.workflowData ||
+ source.profile?.approvalWorkflow ||
  source.payload?.workflow ||
  source.payload?.workflowData ||
  source.payload?.approvalWorkflow ||
  source.form?.workflow ||
  source.form?.workflowData ||
+ source.form?.info?.workflow ||
+ source.payload?.info?.workflow ||
+ source.info?.workflow ||
  null;
 
 export const normalizeWorkflowSteps = (steps = []) =>{

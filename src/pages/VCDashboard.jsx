@@ -2,7 +2,7 @@
  import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Avatar, LogoutConfirmModal, ScoreCard, ReviewMetricsStrip } from "../components/dashboard/dashboardPrimitives";
-import { fetchNonTeachingQueueForRole, isNonTeachingReviewComplete } from "../services/nonTeachingWorkflow";
+import { fetchNonTeachingQueueForRole, isNonTeachingReviewComplete, nonTeachingReviewFlow } from "../services/nonTeachingWorkflow";
 import { fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, fetchSavedAppraisal, mergeFacultyInfo, ACR_DETAIL_POINTS, MAX_SCORES, APP_INFO, createAcrRows, buildReviewRemarks, openFullFormReport, renderCombinedPartsSummary, safeHtml, displayValue, SummaryOtherInfoField, summaryOtherInfoValueFrom, SCORE_LIMITS, clampScore, clampReviewScore, effectiveMaxScore, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewRowMaxForSection, reviewSectionScore, rowHasReviewableData, isSectionEmpty, selfEffectivePartAMax, societyRowLocked, societyRowScore, standardReviewSummary, standardSubmittedScoreSummary, qualificationRowDescription, AppraisalHeaderImage, ViewDocsCell, SectionCard as SC, EmptySectionRow, CreativeSchoolAuthorityReviewPanel, normalizeSubmittedCreativeFormForReview, isCreativeSchool, isDesignArtsSchool, isMediaCommSchool } from "../features/faculty-appraisal";
 import { clearUserSession, getActiveAcademicYear, getSessionItem, normalizeAcademicYearLabel, setActiveAcademicYear } from "../auth/session";
 import { PreviousYearReportViewer } from "../features/previousYearReport";
@@ -1775,72 +1775,75 @@ function SchoolPanel({ school, deanList, dirList, hodList, centerHeadList = [], 
 </div>
  );
 }
-
-
 // --- University Structure -----------------------------------------------------
 // --- Main VC Dashboard --------------------------------------------------------
 function NonTeachingCard({ item, onReview }) {
- const reviewed = isNonTeachingReviewComplete(item);
- const cardColor = "#1d4ed8";
- // Same percentage-to-letter grade bands used on the Faculty review cards - based on the
- // VC score once reviewed, otherwise the staff member's own self-claimed score out of 130.
- const gradeBasisLabel = reviewed ? "VC" : "Self";
- const gradeBasisValue = reviewed ? n(item.vcTotal) : n(item.selfTotal);
- const gradeBasisPercent = (gradeBasisValue / 130) * 100;
- const gradeInfo = gradeForPercent(gradeBasisPercent);
- return (
-<div className="vc-review-card fa-fade-up" style={{ background: "#fff", borderRadius: 10, boxShadow: "0 2px 10px rgba(15,23,42,0.07)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-<div style={{ height: 4, background: `linear-gradient(90deg,${cardColor},#0ea5e9)`, flexShrink: 0 }} />
+  const reviewed = isNonTeachingReviewComplete(item);
+  const cardColor = "#1d4ed8";
+  const flow = nonTeachingReviewFlow(item);
+  const hasRo = flow.includes("ro");
+  const hasRegistrar = flow.includes("registrar");
+  // Same percentage-to-letter grade bands used on the Faculty review cards - based on the
+  // VC score once reviewed, otherwise the staff member's own self-claimed score out of 130.
+  const gradeBasisLabel = reviewed ? "VC" : "Self";
+  const gradeBasisValue = reviewed ? n(item.vcTotal) : n(item.selfTotal);
+  const gradeBasisPercent = (gradeBasisValue / 130) * 100;
+  const gradeInfo = gradeForPercent(gradeBasisPercent);
 
-<div style={{ padding: "14px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
-<div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-<Avatar initials={item.avatar} src={item.avatarUrl} color={item.avatarColor || cardColor} size={54} />
-<div style={{ flex: 1, minWidth: 0 }}>
-<div style={{ fontSize: 13, fontWeight: 800, color: "#0f172a" }}>{item.name}</div>
-<div style={{ fontSize: 10, color: "#64748b", marginTop: 2 }}>{item.roleLabel} - {item.designation}</div>
-<div style={{ fontSize: 9, color: "#94a3b8", fontFamily: "monospace", marginTop: 1 }}>{item.employeeId}</div>
-</div>
-<div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, flexShrink: 0 }}>
- {reviewed && <span style={{ fontSize: 9, fontWeight: 800, background: "#fdf4ff", color: "#6b21a8", border: "1px solid #e9d5ff", borderRadius: 999, padding: "4px 10px", whiteSpace: "nowrap" }}>VC Reviewed</span>}
- <div title={`${gradeBasisLabel} score: ${gradeBasisPercent.toFixed(2)}%`} style={{ display: "inline-flex", alignItems: "center", gap: 8, background: `${gradeInfo.color}12`, border: `1px solid ${gradeInfo.color}45`, borderRadius: 999, padding: "4px 12px 4px 4px", whiteSpace: "nowrap" }}>
-<span style={{ width: 26, height: 26, borderRadius: "50%", background: gradeInfo.color, color: "#fff", fontSize: 12, fontWeight: 900, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{gradeInfo.label}</span>
-<div style={{ display: "flex", flexDirection: "column", lineHeight: 1.2 }}>
-<span style={{ fontSize: 8.5, fontWeight: 800, color: gradeInfo.color, textTransform: "uppercase", letterSpacing: 0.4 }}>Grade</span>
-<span style={{ fontSize: 12, fontWeight: 900, color: "#1e293b" }}>{gradeBasisPercent.toFixed(2)}% {gradeBasisLabel}</span>
-</div>
-</div>
-</div>
-</div>
+  const scoreColumns = [
+    ["Self", item.selfTotal, "#1d4ed8"],
+    ...(hasRo ? [["RO", item.roTotal, "#0891b2"]] : []),
+    ...(hasRegistrar ? [["Registrar", item.registrarTotal, "#155e75"]] : []),
+    ["VC", item.vcTotal, "#6d28d9"],
+  ];
+  return (
+    <div className="vc-review-card fa-fade-up" style={{ background: "#fff", borderRadius: 10, boxShadow: "0 2px 10px rgba(15,23,42,0.07)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <div style={{ height: 4, background: `linear-gradient(90deg,${cardColor},#0ea5e9)`, flexShrink: 0 }} />
 
-<div className="vc-score-strip" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 6, background: "#f8fafc", borderRadius: 8, padding: "10px 12px" }}>
- {[
- ["Self", item.selfTotal, "#1d4ed8"],
- ["RO", item.roTotal, "#0891b2"],
- ["Registrar", item.registrarTotal, "#155e75"],
- ["VC", item.vcTotal, "#6d28d9"],
- ].map(([label, value, color]) =>(
-<div key={label} style={{ minWidth: 0 }}>
-<div style={{ fontSize: 8, fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 3 }}>{label}</div>
-<div style={{ fontSize: 14, fontWeight: 900, color, lineHeight: 1 }}>{n(value).toFixed(1)}<span style={{ fontSize: 8, color: "#cbd5e1", fontWeight: 600 }}>/ 130</span></div>
-<ScoreBar score={value} max={130} color={color} />
-</div>
- ))}
-</div>
+      <div style={{ padding: "14px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+          <Avatar initials={item.avatar} src={item.avatarUrl} color={item.avatarColor || cardColor} size={54} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: "#0f172a" }}>{item.name}</div>
+            <div style={{ fontSize: 10, color: "#64748b", marginTop: 2 }}>{item.roleLabel} - {item.designation}</div>
+            <div style={{ fontSize: 9, color: "#94a3b8", fontFamily: "monospace", marginTop: 1 }}>{item.employeeId}</div>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, flexShrink: 0 }}>
+            {reviewed && <span style={{ fontSize: 9, fontWeight: 800, background: "#fdf4ff", color: "#6b21a8", border: "1px solid #e9d5ff", borderRadius: 999, padding: "4px 10px", whiteSpace: "nowrap" }}>VC Reviewed</span>}
+            <div title={`${gradeBasisLabel} score: ${gradeBasisPercent.toFixed(2)}%`} style={{ display: "inline-flex", alignItems: "center", gap: 8, background: `${gradeInfo.color}12`, border: `1px solid ${gradeInfo.color}45`, borderRadius: 999, padding: "4px 12px 4px 4px", whiteSpace: "nowrap" }}>
+              <span style={{ width: 26, height: 26, borderRadius: "50%", background: gradeInfo.color, color: "#fff", fontSize: 12, fontWeight: 900, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{gradeInfo.label}</span>
+              <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.2 }}>
+                <span style={{ fontSize: 8.5, fontWeight: 800, color: gradeInfo.color, textTransform: "uppercase", letterSpacing: 0.4 }}>Grade</span>
+                <span style={{ fontSize: 12, fontWeight: 900, color: "#1e293b" }}>{gradeBasisPercent.toFixed(2)}% {gradeBasisLabel}</span>
+              </div>
+            </div>
+          </div>
+        </div>
 
- {(item.form?.roRemarks || item.form?.registrarRemarks) && (
-<div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
- {item.form?.roRemarks && (
-<div style={{ background: "#eff6ff", borderLeft: "3px solid #1d4ed8", borderRadius: 8, padding: "6px 10px", color: "#1e40af", fontSize: 10 }}>
-<span style={{ fontWeight: 800 }}>RO:</span>{" "}{item.form.roRemarks.slice(0, 70)}{item.form.roRemarks.length >70 ? "..." : ""}
-</div>
- )}
- {item.form?.registrarRemarks && (
-<div style={{ background: "#ecfeff", borderLeft: "3px solid #155e75", borderRadius: 8, padding: "6px 10px", color: "#155e75", fontSize: 10 }}>
-<span style={{ fontWeight: 800 }}>Registrar:</span>{" "}{item.form.registrarRemarks.slice(0, 70)}{item.form.registrarRemarks.length >70 ? "..." : ""}
-</div>
- )}
-</div>
- )}
+        <div className="vc-score-strip" style={{ display: "grid", gridTemplateColumns: `repeat(${scoreColumns.length}, minmax(0, 1fr))`, gap: 6, background: "#f8fafc", borderRadius: 8, padding: "10px 12px" }}>
+          {scoreColumns.map(([label, value, color]) => (
+            <div key={label} style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 8, fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 3 }}>{label}</div>
+              <div style={{ fontSize: 14, fontWeight: 900, color, lineHeight: 1 }}>{n(value).toFixed(1)}<span style={{ fontSize: 8, color: "#cbd5e1", fontWeight: 600 }}>/ 130</span></div>
+              <ScoreBar score={value} max={130} color={color} />
+            </div>
+          ))}
+        </div>
+
+        {((hasRo && item.form?.roRemarks) || (hasRegistrar && item.form?.registrarRemarks)) && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            {hasRo && item.form?.roRemarks && (
+              <div style={{ background: "#eff6ff", borderLeft: "3px solid #1d4ed8", borderRadius: 8, padding: "6px 10px", color: "#1e40af", fontSize: 10 }}>
+                <span style={{ fontWeight: 800 }}>RO:</span>{" "}{item.form.roRemarks.slice(0, 70)}{item.form.roRemarks.length > 70 ? "..." : ""}
+              </div>
+            )}
+            {hasRegistrar && item.form?.registrarRemarks && (
+              <div style={{ background: "#ecfeff", borderLeft: "3px solid #155e75", borderRadius: 8, padding: "6px 10px", color: "#155e75", fontSize: 10 }}>
+                <span style={{ fontWeight: 800 }}>Registrar:</span>{" "}{item.form.registrarRemarks.slice(0, 70)}{item.form.registrarRemarks.length > 70 ? "..." : ""}
+              </div>
+            )}
+          </div>
+        )}
 
 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #f1f5f9", paddingTop: 10 }}>
 <div style={{ fontSize: 9, color: "#94a3b8" }}>Submitted: {item.submittedOn || "-"}</div>
