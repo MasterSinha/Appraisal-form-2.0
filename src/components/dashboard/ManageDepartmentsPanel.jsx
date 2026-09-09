@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { listSchoolDepartments, addSchoolDepartment, removeSchoolDepartment } from "../../services/departmentsService";
 import { fetchSchoolHods, transferRole, removeRoleAssignment, deactivateHodAccount } from "../../services/roleAssignmentsService";
 import { fetchSchoolFaculty, assignFacultyToProgram } from "../../services/facultyAssignmentService";
-import { isSoemrSchool, SOEMR_DEPARTMENTS } from "../../constants/universityHierarchy";
+import { schoolUnitLabel } from "../../constants/universityHierarchy";
 import CreateHodForm from "./CreateHodForm";
 import AppraisalHeaderImage from "../AppraisalHeaderImage";
 
@@ -753,15 +753,12 @@ function FacultyRow({ person, isLast, options, school, onAssigned }) {
 }
 
 // Director-only panel for managing the department/program list of their own school, which HOD
-// (if any) owns each one, and which faculty individually report to which HOD. SoEMR is
-// organized into departments (one HOD per department); every other school is organized into
-// programs, where one HOD can be assigned to several programs at once - see
-// backend_changes_requied.md / New_backend.md. Built as a 3-step wizard: Create Program ->
-// Create HOD -> Assign Faculty, since each step depends on the previous one's data existing.
-export default function ManageDepartmentsPanel({ school }) {
-  const isDepartmentSchool = isSoemrSchool(school);
-  const unitLabel = isDepartmentSchool ? "Department" : "Program";
+// (if any) owns each one, and which faculty individually report to which HOD. The unit label is
+// read from live school config so schools can choose departments or programs dynamically.
+export default function ManageDepartmentsPanel({ school, headerControls = null }) {
+  const unitLabel = schoolUnitLabel(school);
   const unitLabelLower = unitLabel.toLowerCase();
+  const isDepartmentSchool = unitLabelLower === "department";
 
   const [step, setStep] = useState(1);
   const [departments, setDepartments] = useState([]);
@@ -774,13 +771,6 @@ export default function ManageDepartmentsPanel({ school }) {
     setLoading(true);
     try {
       let [departmentList, hodList] = await Promise.all([listSchoolDepartments(school), fetchSchoolHods(school)]);
-      // SoEMR previously ran on 4 hardcoded departments (SOEMR_DEPARTMENTS) before departments
-      // became Director-managed. Seed them once so existing SoEMR HOD/faculty routing keeps
-      // working the first time this panel loads against a school with zero departments on record.
-      if (isDepartmentSchool && departmentList.length === 0) {
-        await Promise.all(SOEMR_DEPARTMENTS.map((name) => addSchoolDepartment(school, name).catch(() => null)));
-        departmentList = await listSchoolDepartments(school);
-      }
       setDepartments(departmentList);
       setExistingHods(hodList);
     } catch (err) {
@@ -788,7 +778,7 @@ export default function ManageDepartmentsPanel({ school }) {
     } finally {
       setLoading(false);
     }
-  }, [school, unitLabelLower, isDepartmentSchool]);
+  }, [school, unitLabelLower]);
 
   useEffect(() => {
     const timer = setTimeout(refresh, 0);
@@ -820,6 +810,8 @@ export default function ManageDepartmentsPanel({ school }) {
         </div>
         <AppraisalHeaderImage logo="iqas" />
       </div>
+
+      {headerControls}
 
       <StepBar step={step} onStepChange={setStep} unitLabel={unitLabel} />
 

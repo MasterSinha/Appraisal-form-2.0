@@ -1,21 +1,23 @@
 /* eslint-disable no-unused-vars */
 import { useState, useRef, useEffect } from "react";
-import MyAppraisalForm from "../components/appraisal";
-import { Avatar, ScoreCard, ScoreBar, StatusBadge, ReviewMetricsStrip, uploadedDocCount } from "../components/dashboard/dashboardPrimitives";
-import DashboardLayout from "../components/dashboard/DashboardLayout";
-import DashboardSidebar from "../components/dashboard/DashboardSidebar";
-import { api } from "../services/api";
-import { ACR_DETAIL_POINTS, APP_INFO, MAX_SCORES, createAcrRows, fetchSavedAppraisal, loadAppraisalDocuments, loadSavedAppraisal, mergeFacultyInfo, saveAppraisalDraftSection, submitAppraisal, fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, INNOVATIVE_METHODS, SCORE_LIMITS, averageSectionScore, clampScore, clampReviewScore, courseFileAverageScore, courseFileRowScore, effectiveMaxScore, feedbackAverage, feedbackRowScore, feedbackSectionScore, innovativeSelectionsFromDetails, innovativeTeachingScore, isAllowedAttachmentFile, isValidDDMMYYYY, maskDateDDMMYYYY, normalizeAutoScores, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewSectionScore, rowHasReviewableData, isSectionEmpty, scoreRemaining, selfEffectivePartAMax, societyRowLocked, societyRowScore, sumSectionScore, toggleInnovativeMethod, validateCompleteRows, standardSubmittedScoreSummary, AppraisalHeaderImage, SummaryOtherInfoField, summaryOtherInfoValueFrom, RejectionNotice, DocCell, ViewCell, ViewDocsCell, RowButtons as RowBtns, SectionSaveFooter, SectionCard as SC, T, TH, TH_HOD, TD, TDC, TDS, TDS_HOD, TDV, MyAppraisalSection, CreativeSchoolAuthorityReviewPanel, isCreativeSchool, isDesignArtsSchool, isMediaCommSchool } from "../features/faculty-appraisal";
-import { getActiveAcademicYear, getSessionItem, normalizeAcademicYearLabel, setActiveAcademicYear } from "../auth/session";
-import { PreviousYearReportViewer } from "../features/previousYearReport";
-import { isLegacyTwoPartAcademicYear } from "../features/faculty-appraisal/forms/standard/legacyPreviousYearReportUtils";
-import { legacyDashboardMetrics } from "../utils/legacyDashboardMetrics";
-import { canReviewerRejectProfile, getDeanTrack, rejectedStatusFor, reviewedStatusFor, profileFromsessionStorage, workflowValidationError, roleLabel, isAppraisalFinalisedByVc, isRejectedStatus, isPendingReviewStatusFor, hasActiveRejection, reviewListFrom, getSchoolKey } from "../utils/hierarchy";
-import { normalizeHierarchyText } from "../constants/universityHierarchy.js";
-import { n, pct, grade, reportValue, reportTextValue, reportQualification, reportExperience, RO, TI } from "../features/faculty-appraisal/shared";
-import { FacultyRecordHeader, ScoreTable, VCFinalRemarks, FinalSubmitButton, FACULTY_RECORD_THEME } from "../components/dashboard/FacultyAppraisalRecord";
-import { enrichQueueItem } from "../services/reviewWorkflow";
-import LazyVisible from "../components/dashboard/LazyVisible";
+import MyAppraisalForm from "../../components/appraisal";
+import { Avatar, ScoreCard, ScoreBar, StatusBadge, ReviewMetricsStrip, uploadedDocCount } from "../../components/dashboard/dashboardPrimitives";
+import DashboardLayout from "../../components/dashboard/DashboardLayout";
+import DashboardSidebar from "../../components/dashboard/DashboardSidebar";
+import { api } from "../../services/api";
+import { ACR_DETAIL_POINTS, APP_INFO, MAX_SCORES, createAcrRows, fetchSavedAppraisal, loadAppraisalDocuments, loadSavedAppraisal, mergeFacultyInfo, saveAppraisalDraftSection, submitAppraisal, fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, INNOVATIVE_METHODS, SCORE_LIMITS, averageSectionScore, clampScore, clampReviewScore, courseFileAverageScore, courseFileRowScore, effectiveMaxScore, feedbackAverage, feedbackRowScore, feedbackSectionScore, innovativeSelectionsFromDetails, innovativeTeachingScore, isAllowedAttachmentFile, isValidDDMMYYYY, maskDateDDMMYYYY, normalizeAutoScores, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewSectionScore, rowHasReviewableData, isSectionEmpty, scoreRemaining, selfEffectivePartAMax, societyRowLocked, societyRowScore, sumSectionScore, toggleInnovativeMethod, validateCompleteRows, standardSubmittedScoreSummary, AppraisalHeaderImage, SummaryOtherInfoField, summaryOtherInfoValueFrom, RejectionNotice, DocCell, ViewCell, ViewDocsCell, RowButtons as RowBtns, SectionSaveFooter, SectionCard as SC, T, TH, TH_HOD, TD, TDC, TDS, TDS_HOD, TDV, MyAppraisalSection, CreativeSchoolAuthorityReviewPanel, isCreativeSchool, isDesignArtsSchool, isMediaCommSchool } from "../../features/faculty-appraisal";
+import { getActiveAcademicYear, getSessionItem, normalizeAcademicYearLabel, setActiveAcademicYear } from "../../auth/session";
+import { PreviousYearReportViewer } from "../../features/previousYearReport";
+import { isLegacyTwoPartAcademicYear } from "../../features/faculty-appraisal/forms/standard/legacyPreviousYearReportUtils";
+import { legacyDashboardMetrics } from "../../utils/legacyDashboardMetrics";
+import { canReviewerRejectProfile, getDeanTrack, getReviewChain, rejectedStatusFor, reviewedStatusFor, profileFromsessionStorage, workflowValidationError, roleLabel, isAppraisalFinalisedByVc, isRejectedStatus, isPendingReviewStatusFor, hasActiveRejection, reviewListFrom, getSchoolKey } from "../../utils/hierarchy";
+import { normalizeHierarchyText } from "../../constants/universityHierarchy.js";
+import { n, pct, grade, reportValue, reportTextValue, reportQualification, reportExperience, RO, TI } from "../../features/faculty-appraisal/shared";
+import { FacultyRecordHeader, ScoreTable, VCFinalRemarks, FinalSubmitButton, FACULTY_RECORD_THEME } from "../../components/dashboard/FacultyAppraisalRecord";
+import { enrichQueueItem } from "../../services/reviewWorkflow";
+import { useSchools } from "../../services/schoolsService";
+import LazyVisible from "../../components/dashboard/LazyVisible";
+import { isStandardAppraisalSchool } from "../../constants/formRouting";
 
 // - Helpers - (n, pct, grade, reportValue, reportTextValue, reportQualification, reportExperience, RO, TI → imported from shared)
 
@@ -87,9 +89,7 @@ const getHodSectionMax = (key, faculty) => {
   const baseMax = REVIEW_SECTION_MAX[key] || 0;
   if (key === "proposals" || key === "awards" || key === "products") {
     const school = faculty?.info?.school || faculty?.school || "";
-    const schoolKey = getSchoolKey(school);
-    const isApplicable = ["SoCSEA", "SoBB", "SoCE", "SoEMR", "SoCM"].includes(schoolKey);
-    return isApplicable ? 20 : 10;
+    return isStandardAppraisalSchool(school) ? 20 : 10;
   }
   return baseMax;
 };
@@ -505,6 +505,11 @@ export default function HODDashboard({
  const [availableCycles, setAvailableCycles] = useState(() => storedAcademicYearCycles());
  const [loadingYearData, setLoadingYearData] = useState(false);
 
+ // Live schools data must be loaded for getSchoolKey(...) to resolve an admin-created ("dynamic")
+ // school - without it the queue's client-side school match drops every item for such a school.
+ const { schools: liveSchools } = useSchools();
+ const schoolsSignature = liveSchools.map((s) => s.code).join(",");
+
  const hodSchool = sessionStorage.getItem("school");
  const hodDept = sessionStorage.getItem("department");
  const hodDepartmentsList = profileFromsessionStorage().departments;
@@ -557,7 +562,7 @@ export default function HODDashboard({
  };
 
  loadReviewQueue();
- }, [hodDept, hodSchool, reviewerLabel, reviewerRole, selectedAcademicYear]);
+ }, [hodDept, hodSchool, reviewerLabel, reviewerRole, selectedAcademicYear, schoolsSignature]);
 
  const [filterStatus, setFilterStatus] = useState("All");
  const [selectedDepartment, setSelectedDepartment] = useState("All");
@@ -612,9 +617,18 @@ export default function HODDashboard({
  });
 
  const status = decision === "rejected" ? rejectedStatusFor(reviewerRole) : reviewedStatusFor(reviewerRole);
- setFacultyList(prev =>prev.map(f =>f.id === id ? { ...f, ...sectionScores, innovHod: sectionScores?.innovativeTeaching?.hod ?? f.innovHod, status, workflowStatus: status, hodPartA: scores.partA, hodPartB: scores.partB, hodPartC: scores.partC, hodPartD: scores.partD, hodTotal: scores.total, hodRemarks: remarks } : f));
+ const reviewChain = getReviewChain(item);
+ const reviewerIndex = reviewChain.indexOf(reviewerRole);
+ const nextReviewer = reviewerIndex >= 0 ? reviewChain[reviewerIndex + 1] : "";
+ const nextReviewerLabel = nextReviewer ? roleLabel(nextReviewer) : forwardedToLabel;
+ setFacultyList(prev =>prev.map(f => {
+ if (f.id !== id) return f;
+ const rejectionUpdate = { status, workflowStatus: status, hodRemarks: remarks };
+ const approvalUpdate = { ...sectionScores, innovHod: sectionScores?.innovativeTeaching?.hod ?? f.innovHod, status, workflowStatus: status, hodPartA: scores.partA, hodPartB: scores.partB, hodPartC: scores.partC, hodPartD: scores.partD, hodTotal: scores.total, hodRemarks: remarks };
+ return { ...f, ...(decision === "rejected" ? rejectionUpdate : approvalUpdate) };
+ }));
  setReviewingFaculty(null);
- alert(decision === "rejected" ? "Appraisal rejected and sent back for editing." : `${reviewerLabel} review approved and forwarded to ${forwardedToLabel}.`);
+ alert(decision === "rejected" ? "Appraisal rejected and sent back for editing." : `${reviewerLabel} review approved and forwarded to ${nextReviewerLabel}.`);
  } catch (err) {
  console.error(`Could not submit ${reviewerLabel} review:`, err);
  alert(`Unable to submit ${reviewerLabel} review.\n\n${err.message}`);

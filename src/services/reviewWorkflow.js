@@ -4,7 +4,6 @@ import { getActiveAcademicYear } from "../auth/session";
 import { APP_INFO } from "../constants/formConfig";
 import {
   canAuthorityReviewProfile,
-  departmentHasHod,
   getSchoolKey,
   getReviewChain,
   isRejectedStatus,
@@ -453,6 +452,15 @@ const getNested = (item, key) =>
   firstValue(
     item?.[key],
     item?.profile?.[key],
+    item?.facultyProfile?.[key],
+    item?.faculty_profile?.[key],
+    item?.submitterProfile?.[key],
+    item?.submitter_profile?.[key],
+    item?.payload?.profile?.[key],
+    item?.payload?.facultyProfile?.[key],
+    item?.payload?.faculty_profile?.[key],
+    item?.payload?.submitterProfile?.[key],
+    item?.payload?.submitter_profile?.[key],
     item?.payload?.info?.[key],
     item?.form?.info?.[key],
     item?.info?.[key],
@@ -465,6 +473,24 @@ const subjectProfileFromItem = (item = {}) => {
     item.role,
     item.profile?.appraisal_role,
     item.profile?.role,
+    item.facultyProfile?.appraisal_role,
+    item.facultyProfile?.role,
+    item.faculty_profile?.appraisal_role,
+    item.faculty_profile?.role,
+    item.submitterProfile?.appraisal_role,
+    item.submitterProfile?.role,
+    item.submitter_profile?.appraisal_role,
+    item.submitter_profile?.role,
+    item.payload?.profile?.appraisal_role,
+    item.payload?.profile?.role,
+    item.payload?.facultyProfile?.appraisal_role,
+    item.payload?.facultyProfile?.role,
+    item.payload?.faculty_profile?.appraisal_role,
+    item.payload?.faculty_profile?.role,
+    item.payload?.submitterProfile?.appraisal_role,
+    item.payload?.submitterProfile?.role,
+    item.payload?.submitter_profile?.appraisal_role,
+    item.payload?.submitter_profile?.role,
     item.payload?.submittedByRole,
     item.form?.submittedByRole,
     item.info?.appraisalRole,
@@ -474,8 +500,8 @@ const subjectProfileFromItem = (item = {}) => {
 
   return {
     ...item,
-    email: firstValue(item.email, item.faculty_email, item.facultyEmail, item.username),
-    full_name: firstValue(item.name, item.full_name, item.fullName, item.profile?.full_name),
+    email: firstValue(item.email, item.faculty_email, item.facultyEmail, item.username, getNested(item, "email"), getNested(item, "faculty_email"), getNested(item, "username")),
+    full_name: firstValue(item.name, item.full_name, item.fullName, item.profile?.full_name, getNested(item, "full_name"), getNested(item, "fullName"), getNested(item, "name")),
     profile_picture_url: profileImageFrom(item),
     profilePictureUrl: profileImageFrom(item),
     appraisal_role: role,
@@ -679,6 +705,13 @@ const statusStageIndex = (item = {}, chain = []) => {
     return rejectedIndex >= 0 ? rejectedIndex : -1;
   }
   if (status === "submitted" || status === "pending review") return 0;
+  if (
+    !chain.includes("director") &&
+    chain.includes("dean") &&
+    (status === normalizeStatusText(pendingStatusFor("director")) || status.includes("pending director"))
+  ) {
+    return chain.indexOf("dean");
+  }
   if (status === "reviewed" || status === "completed") {
     const scoreStages = chain
       .map((role, index) => hasReviewScore(item, role) ? index + 1 : -1)
@@ -914,18 +947,38 @@ export const fetchReviewQueueForRole = async ({
     const params = {
       academic_year: academicYear || getActiveAcademicYear() || APP_INFO.DEFAULT_AY || "2026-2027",
       reviewer_role: role,
-      pending_status: pendingStatusFor(role),
     };
+    // Director/Dean queues can be reached through dynamic chains where a previous authority is
+    // skipped. If an older backend status still says "Pending HOD/Director Review", an exact
+    // pending_status filter would hide the row before the frontend can apply getReviewChain().
+    if (!["director", "dean"].includes(role)) params.pending_status = pendingStatusFor(role);
     if (schoolValues?.length) params.schools = schoolValues.join(",");
-    if (reviewerProfile?.school) params.reviewer_school = reviewerProfile.school;
-    // HOD can be assigned multiple departments/programs at once (see New_backend.md), so a single
-    // reviewer_department would wrongly narrow the server-side query to just their first one -
-    // fetch school-wide instead and let isReviewableForRole's array-aware check (below) filter.
-    if (role !== "hod" && reviewerProfile?.department) params.reviewer_department = reviewerProfile.department;
+    // Dean is a division-level reviewer. Sending one `reviewer_school` from the session can make
+    // a dynamic backend narrow the queue to a single school instead of the whole Dean track.
+    const hasMultiSchoolDirectorScope = role === "director" && schoolValues?.length > 1;
+    if (role !== "dean" && reviewerProfile?.school && !hasMultiSchoolDirectorScope) params.reviewer_school = reviewerProfile.school;
+    // HOD can be assigned multiple departments/programs at once, and Dean is a division-level
+    // reviewer, so a single reviewer_department would wrongly narrow both queues. Directors are
+    // the only teaching authority here where a department value may still be a useful backend hint.
+    if (role === "director" && reviewerProfile?.department) params.reviewer_department = reviewerProfile.department;
 
     const items = await api.get("/dashboard/subordinates", { params });
+    const skippedDirectorItems = role === "dean"
+      ? await api.get("/dashboard/subordinates", {
+          params: {
+            ...params,
+            reviewer_role: "director",
+            pending_status: pendingStatusFor("director"),
+          },
+        }).catch(() => [])
+      : [];
     const normalizedItems = (items || [])
+      .concat(skippedDirectorItems || [])
       .map(normalizeQueueItem)
+      .filter((item, index, list) => {
+        const key = `${item.email || item.id}:${item.academicYear || ""}`;
+        return list.findIndex((other) => `${other.email || other.id}:${other.academicYear || ""}` === key) === index;
+      })
       .filter((item) => isReviewableForRole(item, role, reviewerProfile));
 
     // lazy: don't enrich anything up front - the caller enriches one card at a time via
@@ -1148,7 +1201,9 @@ const workflowHierarchyHintsFor = (role, subjectProfile = {}) => {
   const previousReviewer = reviewerIndex > 0 ? chain[reviewerIndex - 1] : "";
   const firstReviewer = chain[0] || "";
   const schoolKey = getSchoolKey(subjectProfile.school);
-  const hasHod = departmentHasHod(subjectProfile.school, subjectProfile.department);
+  const hasHod = chain.includes("hod");
+  const hasDirector = chain.includes("director");
+  const isDirectDeanReview = role === "dean" && !previousReviewer;
 
   return {
     review_chain: chain,
@@ -1182,16 +1237,32 @@ const workflowHierarchyHintsFor = (role, subjectProfile = {}) => {
     subjectSchoolCode: schoolKey,
     has_hod: hasHod,
     hasHod,
+    has_director: hasDirector,
+    hasDirector,
     hod_required: hasHod,
     hodRequired: hasHod,
+    director_required: hasDirector,
+    directorRequired: hasDirector,
     requires_hod: hasHod,
     requiresHod: hasHod,
+    requires_director: hasDirector,
+    requiresDirector: hasDirector,
     skip_hod: !hasHod,
     skipHod: !hasHod,
     skip_hod_review: !hasHod,
     skipHodReview: !hasHod,
+    skip_director: !hasDirector,
+    skipDirector: !hasDirector,
+    skip_director_review: !hasDirector,
+    skipDirectorReview: !hasDirector,
     no_hod: !hasHod,
     noHod: !hasHod,
+    no_director: !hasDirector,
+    noDirector: !hasDirector,
+    direct_to_dean: isDirectDeanReview,
+    directToDean: isDirectDeanReview,
+    allow_missing_director_review: !hasDirector && role === "dean",
+    allowMissingDirectorReview: !hasDirector && role === "dean",
     direct_to_director: !hasHod && role === "director",
     directToDirector: !hasHod && role === "director",
     allow_missing_hod_review: !hasHod && role === "director",
@@ -1205,12 +1276,20 @@ const workflowHierarchyHintsFor = (role, subjectProfile = {}) => {
       department: subjectProfile.department,
       has_hod: hasHod,
       hasHod,
+      has_director: hasDirector,
+      hasDirector,
       hod_required: hasHod,
       hodRequired: hasHod,
+      director_required: hasDirector,
+      directorRequired: hasDirector,
       skip_hod: !hasHod,
       skipHod: !hasHod,
+      skip_director: !hasDirector,
+      skipDirector: !hasDirector,
       no_hod: !hasHod,
       noHod: !hasHod,
+      no_director: !hasDirector,
+      noDirector: !hasDirector,
       review_chain: chain,
       reviewChain: chain,
     },
@@ -1246,15 +1325,17 @@ export const submitWorkflowReview = async ({
     throw new Error(`Unknown reviewer role: ${role}`);
   }
 
-  const basePayload = {
-    academic_year: academicYear,
-    remarks,
+  const scorePayload = {
     part_a_score: n(partAScore),
     part_b_score: n(partBScore),
     part_c_score: n(partCScore),
     part_d_score: n(partDScore),
     total_score: n(totalScore),
     section_scores: sectionScores || {},
+  };
+  const basePayload = {
+    academic_year: academicYear,
+    remarks,
   };
   const endpointUrl = `/appraisal-remarks/${endpoint}/${encodeURIComponent(subjectEmail)}`;
   const rejected = decision === "rejected";
@@ -1268,6 +1349,14 @@ export const submitWorkflowReview = async ({
       ...roleHints,
       ...forwarding,
       ...hierarchyHints,
+      preserve_existing_scores: true,
+      preserveExistingScores: true,
+      preserve_existing_section_scores: true,
+      preserveExistingSectionScores: true,
+      update_scores: false,
+      updateScores: false,
+      update_section_scores: false,
+      updateSectionScores: false,
       rejected_by: role,
       rejectedBy: role,
       rejection_reason: remarks,
@@ -1276,16 +1365,16 @@ export const submitWorkflowReview = async ({
   }
 
   if (role === "vc") {
-    return await api.put(endpointUrl, basePayload) || {};
+    return await api.put(endpointUrl, { ...basePayload, ...scorePayload }) || {};
   }
 
   let result;
   try {
-    result = await api.put(endpointUrl, { ...basePayload, ...forwarding, ...hierarchyHints });
+    result = await api.put(endpointUrl, { ...basePayload, ...scorePayload, ...forwarding, ...hierarchyHints });
   } catch (err) {
     if (rejected) throw err;
     if (![400, 422].includes(err?.response?.status)) throw err;
-    result = await api.put(endpointUrl, { ...basePayload, ...hierarchyHints });
+    result = await api.put(endpointUrl, { ...basePayload, ...scorePayload, ...hierarchyHints });
   }
 
   return result || {};

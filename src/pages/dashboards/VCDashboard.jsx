@@ -1,22 +1,24 @@
 /* eslint-disable no-unused-vars, react-hooks/set-state-in-effect */
  import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Avatar, LogoutConfirmModal, ScoreCard, ReviewMetricsStrip } from "../components/dashboard/dashboardPrimitives";
-import { fetchNonTeachingQueueForRole, isNonTeachingReviewComplete } from "../services/nonTeachingWorkflow";
-import { fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, fetchSavedAppraisal, mergeFacultyInfo, ACR_DETAIL_POINTS, MAX_SCORES, APP_INFO, createAcrRows, buildReviewRemarks, openFullFormReport, renderCombinedPartsSummary, safeHtml, displayValue, SummaryOtherInfoField, summaryOtherInfoValueFrom, SCORE_LIMITS, clampScore, clampReviewScore, effectiveMaxScore, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewRowMaxForSection, reviewSectionScore, rowHasReviewableData, isSectionEmpty, selfEffectivePartAMax, societyRowLocked, societyRowScore, standardReviewSummary, standardSubmittedScoreSummary, qualificationRowDescription, AppraisalHeaderImage, ViewDocsCell, SectionCard as SC, EmptySectionRow, CreativeSchoolAuthorityReviewPanel, normalizeSubmittedCreativeFormForReview, isCreativeSchool, isDesignArtsSchool, isMediaCommSchool } from "../features/faculty-appraisal";
-import { clearUserSession, getActiveAcademicYear, getSessionItem, normalizeAcademicYearLabel, setActiveAcademicYear } from "../auth/session";
-import { PreviousYearReportViewer } from "../features/previousYearReport";
-import { isLegacyTwoPartAcademicYear } from "../features/faculty-appraisal/forms/standard/legacyPreviousYearReportUtils";
+import { Avatar, LogoutConfirmModal, ScoreCard, ReviewMetricsStrip } from "../../components/dashboard/dashboardPrimitives";
+import { fetchNonTeachingQueueForRole, isNonTeachingReviewComplete, nonTeachingReviewFlow } from "../../services/nonTeachingWorkflow";
+import { useSchools } from "../../services/schoolsService";
+import { fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, fetchSavedAppraisal, mergeFacultyInfo, ACR_DETAIL_POINTS, MAX_SCORES, APP_INFO, createAcrRows, buildReviewRemarks, openFullFormReport, renderCombinedPartsSummary, safeHtml, displayValue, SummaryOtherInfoField, summaryOtherInfoValueFrom, SCORE_LIMITS, clampScore, clampReviewScore, effectiveMaxScore, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewRowMaxForSection, reviewSectionScore, rowHasReviewableData, isSectionEmpty, selfEffectivePartAMax, societyRowLocked, societyRowScore, standardReviewSummary, standardSubmittedScoreSummary, qualificationRowDescription, AppraisalHeaderImage, ViewDocsCell, SectionCard as SC, EmptySectionRow, CreativeSchoolAuthorityReviewPanel, normalizeSubmittedCreativeFormForReview, isCreativeSchool, isDesignArtsSchool, isMediaCommSchool } from "../../features/faculty-appraisal";
+import { clearUserSession, getActiveAcademicYear, getSessionItem, normalizeAcademicYearLabel, setActiveAcademicYear } from "../../auth/session";
+import { PreviousYearReportViewer } from "../../features/previousYearReport";
+import { isLegacyTwoPartAcademicYear } from "../../features/faculty-appraisal/forms/standard/legacyPreviousYearReportUtils";
 
-import { DEAN_TRACKS, UNIVERSITY_SCHOOLS, normalizeHierarchyText } from "../constants/universityHierarchy";
-import { canReviewerRejectProfile, departmentHasHod, getDeanTrack, getSchoolKey, profileFromsessionStorage, rejectedStatusFor, visiblePreviousReviewRoles, isAppraisalFinalisedByVc, isPendingReviewStatusFor, reviewListFrom } from "../utils/hierarchy";
-import { NonTeachingAuthorityReviewPanel } from "./NonTeachingStaffDashboard";
-import { n, pct, grade, RO } from "../features/faculty-appraisal/shared";
-import FacultyInfoSection from "../components/appraisal/common/FacultyInfoSection";
-import { FacultyRecordHeader, ScoreTable, VCFinalRemarks, FinalSubmitButton, FACULTY_RECORD_THEME } from "../components/dashboard/FacultyAppraisalRecord";
-import LeaveManagementReadOnly from "../components/appraisal/PartD/LeaveManagementReadOnly";
-import { ReportBugButton } from "../components/dashboard/ReportBugModal";
-import NoticesBell from "../components/dashboard/NoticesBell";
+import { DEAN_TRACKS, UNIVERSITY_SCHOOLS, normalizeHierarchyText, schoolVisualMeta } from "../../constants/universityHierarchy";
+import { canReviewerRejectProfile, getDeanTrack, getSchoolKey, profileFromsessionStorage, rejectedStatusFor, visiblePreviousReviewRoles, isAppraisalFinalisedByVc, isPendingReviewStatusFor, reviewListFrom } from "../../utils/hierarchy";
+import { NonTeachingAuthorityReviewPanel } from "./nonTeaching/NonTeachingStaffDashboard";
+import { n, pct, grade, RO } from "../../features/faculty-appraisal/shared";
+import FacultyInfoSection from "../../components/appraisal/common/FacultyInfoSection";
+import { FacultyRecordHeader, ScoreTable, VCFinalRemarks, FinalSubmitButton, FACULTY_RECORD_THEME } from "../../components/dashboard/FacultyAppraisalRecord";
+import LeaveManagementReadOnly from "../../components/appraisal/PartD/LeaveManagementReadOnly";
+import { isStandardAppraisalSchool } from "../../constants/formRouting";
+import { ReportBugButton } from "../../components/dashboard/ReportBugModal";
+import NoticesBell from "../../components/dashboard/NoticesBell";
 
 // --- Helpers ------------------------------------------------------------------
 const oneDecimal = (value) =>(Math.trunc(n(value) * 10) / 10).toFixed(1);
@@ -495,9 +497,7 @@ const getVcSectionMax = (key, person) => {
   const baseMax = VC_SECTION_MAX[key] || 0;
   if (key === "proposals" || key === "awards" || key === "products") {
     const school = person?.info?.school || person?.school || "";
-    const schoolKey = getSchoolKey(school);
-    const isApplicable = ["SoCSEA", "SoBB", "SoCE", "SoEMR", "SoCM"].includes(schoolKey);
-    return isApplicable ? 20 : 10;
+    return isStandardAppraisalSchool(school) ? 20 : 10;
   }
   return baseMax;
 };
@@ -876,7 +876,7 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
  columns: [["Title", (r) =>r.title], ["Platform / Type", (r) =>r.type || r.desc], ["Reach / Views", (r) =>r.quad || r.reach]] },
  { title: "B12. Exhibitions - Photography, Design & Applied Arts, Documentaries, Films & Audio-Visual Productions (Max 30)", key: "exhibitions", docPfx: "exh",
  columns: [["Title of Work / Exhibition", (r) =>r.title], ["Type", (r) =>r.type], ["Venue & Level", (r) =>r.venueLevel || r.venue_level || r.level], ["Date", (r) =>r.date]] },
- ].filter(({ key }) => !(key === "exhibitions" && ["SoCSEA", "SoBB", "SoCE", "SoEMR", "SoCM"].includes(getSchoolKey(person?.school || person?.schoolName || person?.info?.school || "")))).map(({ title, key, docPfx, columns }) =>(
+ ].filter(({ key }) => !(key === "exhibitions" && isStandardAppraisalSchool(person?.school || person?.schoolName || person?.info?.school || ""))).map(({ title, key, docPfx, columns }) =>(
 <SC key={key} title={title} accent="#7c3aed">
 <div style={{ overflowX: "auto" }}><table style={T}><thead>
 <tr>
@@ -1058,7 +1058,7 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  };
  };
  const personSchoolKey = getSchoolKey(person.school || person.schoolName || person.info?.school || "");
- const facultyHasHodReview = personMode === "faculty" && departmentHasHod(person.school || person.schoolName || person.info?.school || "", person.department || person.info?.department || "");
+ const facultyHasHodReview = personMode === "faculty" && previousRoles.includes("hod");
  const vcSummaryRoles = (() =>{
  const roles = [];
  if (personMode === "faculty") {
@@ -1232,7 +1232,7 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  form: reportForm,
  docs: reportForm.docs,
  partASections: VC_REPORT_PART_A_SECTIONS,
-  partBSections: ["SoCSEA", "SoBB", "SoCE", "SoEMR", "SoCM"].includes(getSchoolKey(person?.school || person?.schoolName || person?.info?.school || "")) ? VC_REPORT_PART_B_SECTIONS.filter(s => s.key !== "exhibitions") : VC_REPORT_PART_B_SECTIONS,
+  partBSections: isStandardAppraisalSchool(person?.school || person?.schoolName || person?.info?.school || "") ? VC_REPORT_PART_B_SECTIONS.filter(s => s.key !== "exhibitions") : VC_REPORT_PART_B_SECTIONS,
  partCSections: VC_REPORT_PART_C_SECTIONS,
  partDSections: VC_REPORT_PART_D_SECTIONS,
  partDLabel: "E",
@@ -1782,12 +1782,21 @@ function SchoolPanel({ school, deanList, dirList, hodList, centerHeadList = [], 
 function NonTeachingCard({ item, onReview }) {
  const reviewed = isNonTeachingReviewComplete(item);
  const cardColor = "#1d4ed8";
+ const flow = nonTeachingReviewFlow(item);
+ const hasRo = flow.includes("ro");
+ const hasRegistrar = flow.includes("registrar");
  // Same percentage-to-letter grade bands used on the Faculty review cards - based on the
  // VC score once reviewed, otherwise the staff member's own self-claimed score out of 130.
  const gradeBasisLabel = reviewed ? "VC" : "Self";
  const gradeBasisValue = reviewed ? n(item.vcTotal) : n(item.selfTotal);
  const gradeBasisPercent = (gradeBasisValue / 130) * 100;
  const gradeInfo = gradeForPercent(gradeBasisPercent);
+ const scoreColumns = [
+ ["Self", item.selfTotal, "#1d4ed8"],
+ ...(hasRo ? [["RO", item.roTotal, "#0891b2"]] : []),
+ ...(hasRegistrar ? [["Registrar", item.registrarTotal, "#155e75"]] : []),
+ ["VC", item.vcTotal, "#6d28d9"],
+ ];
  return (
 <div className="vc-review-card fa-fade-up" style={{ background: "#fff", borderRadius: 10, boxShadow: "0 2px 10px rgba(15,23,42,0.07)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
 <div style={{ height: 4, background: `linear-gradient(90deg,${cardColor},#0ea5e9)`, flexShrink: 0 }} />
@@ -1812,13 +1821,8 @@ function NonTeachingCard({ item, onReview }) {
 </div>
 </div>
 
-<div className="vc-score-strip" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 6, background: "#f8fafc", borderRadius: 8, padding: "10px 12px" }}>
- {[
- ["Self", item.selfTotal, "#1d4ed8"],
- ["RO", item.roTotal, "#0891b2"],
- ["Registrar", item.registrarTotal, "#155e75"],
- ["VC", item.vcTotal, "#6d28d9"],
- ].map(([label, value, color]) =>(
+<div className="vc-score-strip" style={{ display: "grid", gridTemplateColumns: `repeat(${scoreColumns.length}, minmax(0, 1fr))`, gap: 6, background: "#f8fafc", borderRadius: 8, padding: "10px 12px" }}>
+ {scoreColumns.map(([label, value, color]) =>(
 <div key={label} style={{ minWidth: 0 }}>
 <div style={{ fontSize: 8, fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 3 }}>{label}</div>
 <div style={{ fontSize: 14, fontWeight: 900, color, lineHeight: 1 }}>{n(value).toFixed(1)}<span style={{ fontSize: 8, color: "#cbd5e1", fontWeight: 600 }}>/ 130</span></div>
@@ -1827,14 +1831,14 @@ function NonTeachingCard({ item, onReview }) {
  ))}
 </div>
 
- {(item.form?.roRemarks || item.form?.registrarRemarks) && (
+ {((hasRo && item.form?.roRemarks) || (hasRegistrar && item.form?.registrarRemarks)) && (
 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
- {item.form?.roRemarks && (
+ {hasRo && item.form?.roRemarks && (
 <div style={{ background: "#eff6ff", borderLeft: "3px solid #1d4ed8", borderRadius: 8, padding: "6px 10px", color: "#1e40af", fontSize: 10 }}>
 <span style={{ fontWeight: 800 }}>RO:</span>{" "}{item.form.roRemarks.slice(0, 70)}{item.form.roRemarks.length >70 ? "..." : ""}
 </div>
  )}
- {item.form?.registrarRemarks && (
+ {hasRegistrar && item.form?.registrarRemarks && (
 <div style={{ background: "#ecfeff", borderLeft: "3px solid #155e75", borderRadius: 8, padding: "6px 10px", color: "#155e75", fontSize: 10 }}>
 <span style={{ fontWeight: 800 }}>Registrar:</span>{" "}{item.form.registrarRemarks.slice(0, 70)}{item.form.registrarRemarks.length >70 ? "..." : ""}
 </div>
@@ -1911,22 +1915,8 @@ function NonTeachingPanel({ pendingItems = [], reviewedItems = [], onReview }) {
  );
 }
 
-const SCHOOL_META = {
- SoCSEA: { color: "#6366f1", icon: "CS" },
- SoBB: { color: "#10b981", icon: "BB" },
- SoCE: { color: "#0ea5e9", icon: "CE" },
- SoEMR: { color: "#f59e0b", icon: "EM" },
- SoCM: { color: "#14b8a6", icon: "CM" },
- SoMCS: { color: "#8b5cf6", icon: "MC" },
- SoHSS: { color: "#8b5cf6", icon: "HS" },
- SoD: { color: "#ec4899", icon: "DS" },
- CioD: { color: "#ec4899", icon: "DS" },
- SoAA: { color: "#f97316", icon: "AA" },
- CISR: { color: "#0f766e", icon: "CI" },
-};
-
-const toVcSchool = (school) =>{
- const meta = SCHOOL_META[school.code] || {};
+const toVcSchool = (school, index = 0) =>{
+ const meta = schoolVisualMeta(school, index);
  return {
  id: school.code.toLowerCase(),
  code: school.code,
@@ -1934,7 +1924,7 @@ const toVcSchool = (school) =>{
  label: school.label,
  color: meta.color || "#64748b",
  icon: meta.icon || school.code,
- hasHods: school.code === "SoEMR",
+ hasHods: Boolean(school.hasHod),
  };
 };
 
@@ -1959,19 +1949,21 @@ const DIVISION_SCHOOLS = {
  },
 };
 
-const HIERARCHY_SCHOOLS = {
+// Computed fresh on every call (not a module-level snapshot) so it always reflects the current
+// UNIVERSITY_SCHOOLS - live data once GET /schools has landed, the fallback table until then.
+const getHierarchySchools = () => ({
  engg: UNIVERSITY_SCHOOLS
  .filter((school) =>school.deanTrack === DEAN_TRACKS.ENGINEERING)
- .map(toVcSchool)
+ .map((school, index) => toVcSchool(school, index))
  .concat(DIVISION_SCHOOLS.engineering),
  "non-engg": UNIVERSITY_SCHOOLS
  .filter((school) =>school.deanTrack === DEAN_TRACKS.NON_ENGINEERING)
- .map(toVcSchool)
+ .map((school, index) => toVcSchool(school, index))
  .concat(DIVISION_SCHOOLS.non_engineering),
  cisr: UNIVERSITY_SCHOOLS
  .filter((school) =>school.deanTrack === DEAN_TRACKS.DIRECT_VC)
- .map(toVcSchool),
-};
+ .map((school, index) => toVcSchool(school, index)),
+});
 
 const schoolIdForPerson = (person = {}) =>{
  const schoolValue = person.school || person.info?.school || "";
@@ -2043,9 +2035,10 @@ function PreviousYearAuthorityResult({ item, onBack }) {
 }
 
 export default function VCDashboard() {
+ useSchools(); // subscribes to live schools data so getHierarchySchools() re-renders fresh
  const navigate = useNavigate();
  const [deanTypeFilter, setDeanTypeFilter] = useState("engg");
- const [activeSchoolId, setActiveSchoolId] = useState("socsea");
+ const [activeSchoolId, setActiveSchoolId] = useState("");
  const [reviewing, setReviewing] = useState(null);
  const [reviewLoading, setReviewLoading] = useState(null);
  const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -2065,6 +2058,9 @@ export default function VCDashboard() {
  const pollingActiveRef = useRef(true);
  const prevDataRef = useRef(null);
  const yearLoadRequestRef = useRef(0);
+ const dashboardMainRef = useRef(null);
+ const userScrollingRef = useRef(false);
+ const scrollIdleTimerRef = useRef(null);
 
  const handleReviewAcademicYearChange = (academicYear) =>{
  const nextAcademicYear = setActiveAcademicYear(academicYear);
@@ -2165,12 +2161,34 @@ export default function VCDashboard() {
  useEffect(() =>{
  pollingActiveRef.current = true;
  loadReviewQueue(false);
- const intervalId = setInterval(() =>{ loadReviewQueue(true); }, 3000);
+ const intervalId = setInterval(() =>{
+ if (userScrollingRef.current) return;
+ loadReviewQueue(true);
+ }, 3000);
  return () =>{
  pollingActiveRef.current = false;
  clearInterval(intervalId);
  };
  }, [loadReviewQueue]);
+
+ const markUserScrolling = useCallback(() =>{
+ userScrollingRef.current = true;
+ if (scrollIdleTimerRef.current) clearTimeout(scrollIdleTimerRef.current);
+ scrollIdleTimerRef.current = setTimeout(() =>{
+ userScrollingRef.current = false;
+ }, 700);
+ }, []);
+
+ useEffect(() =>{
+ const mainNode = dashboardMainRef.current;
+ window.addEventListener("scroll", markUserScrolling, { passive: true });
+ mainNode?.addEventListener("scroll", markUserScrolling, { passive: true });
+ return () =>{
+ window.removeEventListener("scroll", markUserScrolling);
+ mainNode?.removeEventListener("scroll", markUserScrolling);
+ if (scrollIdleTimerRef.current) clearTimeout(scrollIdleTimerRef.current);
+ };
+ }, [markUserScrolling]);
 
  const handleSubmit = async (id, scores, remarks, personMode, sectionScores, reviewConfirmed = false, decision = "approved") =>{
  if (!reviewConfirmed) {
@@ -2202,7 +2220,9 @@ export default function VCDashboard() {
  });
  const status = decision === "rejected" ? rejectedStatusFor("vc") : "Reviewed";
  const upd = (list) =>list.map(p =>p.id === id
- ? { ...p, ...sectionScores, innovVc: sectionScores?.innovativeTeaching?.vc ?? p.innovVc, status, workflowStatus: status, declaration: { ...(p.declaration || {}), status }, vcPartA: scores.partA, vcPartB: scores.partB, vcPartC: scores.partC, vcPartD: scores.partD, vcTotal: scores.total, vcRemarks: remarks }
+ ? { ...p, ...(decision === "rejected"
+   ? { status, workflowStatus: status, declaration: { ...(p.declaration || {}), status }, vcRemarks: remarks }
+   : { ...sectionScores, innovVc: sectionScores?.innovativeTeaching?.vc ?? p.innovVc, status, workflowStatus: status, declaration: { ...(p.declaration || {}), status }, vcPartA: scores.partA, vcPartB: scores.partB, vcPartC: scores.partC, vcPartD: scores.partD, vcTotal: scores.total, vcRemarks: remarks })}
  : p);
  if (personMode === "dean") setDeanList(upd);
  else if (personMode === "director") setDirList(upd);
@@ -2217,12 +2237,12 @@ export default function VCDashboard() {
  }
  };
 
- const currentSchools = HIERARCHY_SCHOOLS[deanTypeFilter] || [];
+ const currentSchools = getHierarchySchools()[deanTypeFilter] || [];
  const activeSchool = currentSchools.find(s =>s.id === activeSchoolId) || currentSchools[0] || null;
 
  const switchDeanType = (type) =>{
  setDeanTypeFilter(type);
- setActiveSchoolId(HIERARCHY_SCHOOLS[type]?.[0]?.id || "");
+ setActiveSchoolId(getHierarchySchools()[type]?.[0]?.id || "");
  setReviewing(null);
  };
  const switchSchool = (schoolId) =>{ setActiveSchoolId(schoolId); setReviewing(null); };
@@ -2353,12 +2373,12 @@ University Overview
 </div>
 
 <div style={{ height: 1, background: "rgba(148,163,184,0.16)" }} />
-<div style={{ padding: 10, borderRadius: 26, background: "linear-gradient(180deg,rgba(30,41,59,0.86),rgba(15,23,42,0.92))", border: "1px solid rgba(148,163,184,0.18)", boxShadow: "0 18px 34px rgba(2,6,23,0.28), inset 0 1px 0 rgba(255,255,255,0.05)", display: "grid", gap: 9 }}>
+<div style={{ padding: 10, borderRadius: 14, background: "linear-gradient(180deg,rgba(15,23,42,0.88),rgba(7,12,24,0.96))", border: "1px solid rgba(148,163,184,0.30)", boxShadow: "0 16px 32px rgba(2,6,23,0.24), 0 0 0 1px rgba(255,255,255,0.04), inset 0 1px 0 rgba(255,255,255,0.05)", display: "grid", gap: 9 }}>
 <button
  type="button"
  onClick={() =>navigate("/edit-profile")}
  title="Edit profile"
- style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 17, padding: "7px 8px", width: "100%", boxSizing: "border-box", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
+ style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(255,255,255,0.025)", border: "1px solid rgba(148,163,184,0.14)", borderRadius: 10, padding: "7px 8px", width: "100%", boxSizing: "border-box", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
  >
 <Avatar
   initials={(sessionStorage.getItem("name") || "U").split(" ").map(w =>w[0]).join("").toUpperCase()}
@@ -2375,11 +2395,11 @@ University Overview
 </span>
 </button>
 <div style={{ display: "flex", gap: 8 }}>
-<NoticesBell style={{ flex: 1, height: 42, borderRadius: 16, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }} />
-<ReportBugButton iconOnly style={{ flex: 1, height: 42, borderRadius: 16, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "inherit" }} />
+<NoticesBell style={{ flex: 1, height: 42, borderRadius: 10, background: "rgba(99,102,241,0.13)", border: "1px solid rgba(165,180,252,0.18)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }} />
+<ReportBugButton iconOnly style={{ flex: 1, height: 42, borderRadius: 10, background: "rgba(99,102,241,0.13)", border: "1px solid rgba(165,180,252,0.18)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "inherit" }} />
 </div>
 <button type="button" onClick={() =>setShowLogoutModal(true)}
- style={{ width: "100%", minHeight: 40, display: "flex", alignItems: "center", justifyContent: "center", gap: 9, background: "rgba(248,113,113,0.10)", border: "1px solid rgba(248,113,113,0.32)", borderRadius: 16, padding: "9px 12px", cursor: "pointer", fontFamily: "inherit", transition: "background 0.15s ease, border-color 0.15s ease" }}
+ style={{ width: "100%", minHeight: 40, display: "flex", alignItems: "center", justifyContent: "center", gap: 9, background: "rgba(248,113,113,0.10)", border: "1px solid rgba(248,113,113,0.32)", borderRadius: 10, padding: "9px 12px", cursor: "pointer", fontFamily: "inherit", transition: "background 0.15s ease, border-color 0.15s ease" }}
  onMouseEnter={(e) =>{ e.currentTarget.style.background = "rgba(248,113,113,0.17)"; e.currentTarget.style.borderColor = "rgba(248,113,113,0.52)"; }}
  onMouseLeave={(e) =>{ e.currentTarget.style.background = "rgba(248,113,113,0.10)"; e.currentTarget.style.borderColor = "rgba(248,113,113,0.32)"; }}>
 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
@@ -2393,7 +2413,7 @@ University Overview
 </aside>
 
  {/* ===== MAIN CONTENT ===== */}
-<main className="vc-dashboard-main" style={{ flex: 1, padding: "28px 30px", display: "flex", flexDirection: "column", gap: 16, overflowX: "auto", position: "relative" }}>
+<main ref={dashboardMainRef} className="vc-dashboard-main" style={{ flex: 1, padding: "28px 30px", display: "flex", flexDirection: "column", gap: 16, overflowX: "auto", position: "relative" }}>
 
 {loadingYearData && (
  <div className="appraisal-year-loading-overlay" role="status" aria-live="polite">
@@ -2457,7 +2477,7 @@ University Overview
  ].map(({ key, label, color, bg, icon }) =>{
  const schoolPending = key === "non-teaching"
  ? nonTeachingList.length
- : (HIERARCHY_SCHOOLS[key] || []).reduce((a, s) =>a + getSchoolPending(s), 0);
+ : (getHierarchySchools()[key] || []).reduce((a, s) =>a + getSchoolPending(s), 0);
  const isActive = deanTypeFilter === key;
  return (
 <button className={`vc-segmented-tab${isActive ? " is-active" : ""}`} key={key} onClick={() =>switchDeanType(key)}

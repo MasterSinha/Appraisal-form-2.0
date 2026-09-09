@@ -6,25 +6,11 @@ import {
   isCisrSchool,
   normalizeHierarchyText,
 } from "../constants/universityHierarchy.js";
-import { isNonTeachingRole, normalizeNonTeachingRole, roReportsToRegistrar } from "../constants/nonTeachingHierarchy.js";
+import { isNonTeachingRole, normalizeNonTeachingRole, readReportsToRegistrarFlag, roReportsToRegistrar } from "../constants/nonTeachingHierarchy.js";
 
 const ENGINEERING = DEAN_TRACKS.ENGINEERING;
 const NON_ENGINEERING = DEAN_TRACKS.NON_ENGINEERING;
 const DIRECT_VC = DEAN_TRACKS.DIRECT_VC;
-
-export const SCHOOL_HIERARCHY = Object.fromEntries(
-  UNIVERSITY_SCHOOLS.map((school) => [
-    school.code,
-    {
-      name: school.name,
-      label: school.label,
-      deanTrack: school.deanTrack,
-      directorLayer: true,
-      hodDepartments: school.hodDepartments,
-      aliases: school.aliases,
-    },
-  ])
-);
 
 const normalizeText = normalizeHierarchyText;
 
@@ -43,7 +29,26 @@ export const normalizeRoleForWorkflow = (role) => {
 
 export const getSchoolKey = getConfiguredSchoolKey;
 
-export const getSchoolHierarchy = (school) => SCHOOL_HIERARCHY[getSchoolKey(school)] || null;
+// Live lookup against the current UNIVERSITY_SCHOOLS (fallback table, or live data once a
+// GET /schools fetch has landed - see services/schoolsService.js). Recomputed on every call
+// rather than cached, so it can never go stale after a live update.
+export const getSchoolHierarchy = (school) => {
+  const match = UNIVERSITY_SCHOOLS.find((entry) => entry.code === getSchoolKey(school));
+  if (!match) return null;
+  return {
+    name: match.name,
+    label: match.label,
+    deanTrack: match.deanTrack,
+    directorLayer: match.hasDirector !== false,
+    hodDepartments: match.hodDepartments,
+    departments: match.departments,
+    aliases: match.aliases,
+    hasHod: match.hasHod,
+    hasDirector: match.hasDirector,
+    approvalChain: match.approvalChain,
+    active: match.active,
+  };
+};
 
 export const getDeanTrack = (profile = {}) => {
   const rawSchool = normalizeText(profile.school);
@@ -54,15 +59,13 @@ export const getDeanTrack = (profile = {}) => {
     return ENGINEERING;
   }
 
-  const combined = normalizeText(`${profile.school || ""} ${profile.department || ""} ${profile.designation || ""} ${profile.email || ""}`);
-
-  if (combined.includes("non engineering") || combined.includes("nonengineering") || combined.includes("commerce") || combined.includes("media") || combined.includes("humanities") || combined.includes("social sciences") || combined.includes("design") || combined.includes("applied arts") || combined.includes("socm") || combined.includes("somcs") || combined.includes("sohss") || combined.includes("sod") || combined.includes("soaa") || combined.includes("soa")) {
-    return NON_ENGINEERING;
-  }
-
+  // getSchoolHierarchy already resolves aliases/partial names robustly (see
+  // getSchoolByValue in universityHierarchy.js) - trust it instead of re-deriving the track
+  // from a second, hand-maintained list of school-name substrings here.
   const schoolConfig = getSchoolHierarchy(profile.school);
   if (schoolConfig?.deanTrack) return schoolConfig.deanTrack;
 
+  const combined = normalizeText(`${profile.school || ""} ${profile.department || ""} ${profile.designation || ""} ${profile.email || ""}`);
   if (combined.includes("cisr") || combined.includes("interdisciplinary studies and research") || combined.includes("center head") || combined.includes("centre head")) {
     return DIRECT_VC;
   }
@@ -76,6 +79,35 @@ export const getDeanTrack = (profile = {}) => {
 export const departmentHasHod = (school, department) =>
   !isCisrSchool(school) && Boolean(canonicalDepartmentValue(department));
 
+const configuredReviewChainForSchool = (school) => {
+  const configuredChain = getSchoolHierarchy(school)?.approvalChain;
+  return Array.isArray(configuredChain) && configuredChain.length
+    ? configuredChain
+    : null;
+};
+
+const teachingReviewChainFor = (profile = {}) => {
+  if (getSchoolKey(profile.school) === "CISR") {
+    return ["center_head", "vc"];
+  }
+
+  const configuredChain = configuredReviewChainForSchool(profile.school);
+  if (configuredChain) return configuredChain;
+
+  return departmentHasHod(profile.school, profile.department)
+    ? ["hod", "director", "dean", "vc"]
+    : ["director", "dean", "vc"];
+};
+
+const ownRoleReviewChainFor = (role, profile = {}, fallbackChain = []) => {
+  const configuredChain = configuredReviewChainForSchool(profile.school);
+  if (configuredChain) {
+    const roleIndex = configuredChain.indexOf(role);
+    if (roleIndex >= 0) return configuredChain.slice(roleIndex + 1);
+  }
+  return fallbackChain;
+};
+
 export const getReviewChain = (profile = {}) => {
   const role = normalizeRoleForWorkflow(profile.appraisal_role || profile.appraisalRole || profile.role);
   const reportsToRegistrar = profile.reports_to_registrar === true ||
@@ -87,20 +119,18 @@ export const getReviewChain = (profile = {}) => {
   // A Reporting Officer's own appraisal: honour reports_to_registrar (unknown => keep Registrar).
   if (role === "reporting_officer")
     return roReportsToRegistrar(profile) ? ["registrar", "vc"] : ["vc"];
-  if (role === "non_teaching_staff")
-    return reportsToRegistrar ? ["registrar", "vc"] : ["reporting_officer", "registrar", "vc"];
-  if (role === "center_head") return ["vc"];
-  if (role === "dean") return ["vc"];
-  if (role === "director") return ["dean", "vc"];
-  if (role === "hod") return ["director", "dean", "vc"];
-
-  if (getSchoolKey(profile.school) === "CISR") {
-    return ["center_head", "vc"];
+  if (role === "non_teaching_staff") {
+    if (reportsToRegistrar) return ["registrar", "vc"];
+    const explicitRegistrarFlag = readReportsToRegistrarFlag(profile);
+    if (explicitRegistrarFlag === false) return ["reporting_officer", "vc"];
+    return ["reporting_officer", "registrar", "vc"];
   }
+  if (role === "center_head") return ["vc"];
+  if (role === "dean") return ownRoleReviewChainFor("dean", profile, ["vc"]);
+  if (role === "director") return ownRoleReviewChainFor("director", profile, ["dean", "vc"]);
+  if (role === "hod") return ownRoleReviewChainFor("hod", profile, ["director", "dean", "vc"]);
 
-  return departmentHasHod(profile.school, profile.department)
-    ? ["hod", "director", "dean", "vc"]
-    : ["director", "dean", "vc"];
+  return teachingReviewChainFor(profile);
 };
 
 // Part D (Leave & Attendance) always goes to the Registrar, bypassing the review chain above -
@@ -253,17 +283,13 @@ export const canAuthorityReviewProfile = (reviewerProfile = {}, subjectProfile =
   if (reviewerRole === "vc") return subjectRole !== "vc";
 
   if (reviewerRole === "registrar") {
-    if (subjectRole === "non_teaching_staff") return true;
-    // A Reporting Officer's own appraisal only reaches the Registrar when it routes that way.
-    if (subjectRole === "reporting_officer") return roReportsToRegistrar(subjectProfile);
-    return false;
+    const chain = getReviewChain(subjectProfile);
+    return chain.includes("registrar");
   }
 
   if (reviewerRole === "reporting_officer") {
-    const reportsToRegistrar = subjectProfile.reports_to_registrar === true ||
-      subjectProfile.reportsToRegistrar === true ||
-      String(subjectProfile.reports_to_registrar || subjectProfile.reportsToRegistrar || "").trim().toLowerCase() === "true";
-    return subjectRole === "non_teaching_staff" && !reportsToRegistrar;
+    const chain = getReviewChain(subjectProfile);
+    return chain.includes("reporting_officer") && subjectRole !== "reporting_officer";
   }
 
   if (isNonTeachingRole(reviewerRole) || isNonTeachingRole(subjectRole)) {
@@ -273,12 +299,21 @@ export const canAuthorityReviewProfile = (reviewerProfile = {}, subjectProfile =
   if (reviewerRole === "dean") {
     const track = getDeanTrack(subjectProfile);
     return subjectRole !== "dean" &&
+      getReviewChain(subjectProfile).includes("dean") &&
       track !== DIRECT_VC &&
       getDeanTrack(reviewerProfile) === track;
   }
 
   if (reviewerRole === "director") {
-    return getSchoolKey(reviewerProfile.school) === getSchoolKey(subjectProfile.school) &&
+    const assignedSchools = (Array.isArray(reviewerProfile.schools) && reviewerProfile.schools.length
+      ? reviewerProfile.schools
+      : Array.isArray(reviewerProfile.assignedSchools) && reviewerProfile.assignedSchools.length
+        ? reviewerProfile.assignedSchools
+        : [reviewerProfile.school]
+    ).map(getSchoolKey).filter(Boolean);
+    const subjectSchool = getSchoolKey(subjectProfile.school);
+    return assignedSchools.includes(subjectSchool) &&
+      getReviewChain(subjectProfile).includes("director") &&
       (subjectRole === "faculty" || subjectRole === "hod");
   }
 
@@ -288,13 +323,23 @@ export const canAuthorityReviewProfile = (reviewerProfile = {}, subjectProfile =
     // populated; reviewerProfile.department (single) is the fallback for an HOD who's only ever
     // had one assignment. Same-school-only is still enforced by the getSchoolKey check below,
     // independent of how many entries reviewerDepartments has.
-    const reviewerDepartments = Array.isArray(reviewerProfile.departments) && reviewerProfile.departments.length
+    const reviewerDepartments = (Array.isArray(reviewerProfile.departments) && reviewerProfile.departments.length
       ? reviewerProfile.departments
-      : [reviewerProfile.department];
-    return subjectRole === "faculty" &&
-      departmentHasHod(subjectProfile.school, subjectProfile.department) &&
-      getSchoolKey(reviewerProfile.school) === getSchoolKey(subjectProfile.school) &&
-      reviewerDepartments.some((department) => normalizeText(department) === normalizeText(subjectProfile.department));
+      : [reviewerProfile.department]
+    ).filter((department) => normalizeText(department));
+    if (
+      subjectRole !== "faculty" ||
+      !getReviewChain(subjectProfile).includes("hod") ||
+      getSchoolKey(reviewerProfile.school) !== getSchoolKey(subjectProfile.school)
+    ) {
+      return false;
+    }
+    // When the HOD's own department list hasn't reached this session (can happen for an
+    // admin-created school whose /auth/me omits `department`), fall back to same-school scoping -
+    // the server-side queue is already department-aware, so this only widens what the client
+    // shows, and only within the HOD's own school.
+    if (!reviewerDepartments.length) return true;
+    return reviewerDepartments.some((department) => normalizeText(department) === normalizeText(subjectProfile.department));
   }
 
   if (reviewerRole === "center_head") {
@@ -307,6 +352,14 @@ export const canAuthorityReviewProfile = (reviewerProfile = {}, subjectProfile =
 };
 
 const getItem = (k) => (typeof window !== "undefined" ? sessionStorage.getItem(k) || localStorage.getItem(k) || "" : "");
+const getJsonList = (key) => {
+  try {
+    const parsed = JSON.parse(getItem(key) || "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
 
 export const profileFromsessionStorage = () => ({
   email: getItem("username") || getItem("email") || getItem("userEmail") || "",
@@ -315,13 +368,10 @@ export const profileFromsessionStorage = () => ({
   school: getItem("school") || "",
   department: getItem("department") || "",
   departments: (() => {
-    try {
-      const parsed = JSON.parse(getItem("departments") || "[]");
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
+    return getJsonList("departments");
   })(),
+  schools: getJsonList("schools").length ? getJsonList("schools") : getJsonList("assignedSchools"),
+  assignedSchools: getJsonList("assignedSchools").length ? getJsonList("assignedSchools") : getJsonList("schools"),
   designation: getItem("designation") || "",
   qualification: getItem("qualification") || "",
   teaching_experience: getItem("experience") || "",

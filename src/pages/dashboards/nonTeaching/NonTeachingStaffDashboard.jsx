@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { clearUserSession, storeUserSession, getActiveAcademicYear, setActiveAcademicYear, getSessionItem, normalizeAcademicYearLabel } from "../auth/session";
-import { APP_INFO } from "../constants/formConfig";
-import { normalizeNonTeachingRole } from "../constants/nonTeachingHierarchy";
-import { api } from "../services/api";
-import { getMe } from "../services/authService";
-import { loadReviewerDraft, saveReviewerDraft, fetchPartDRegistrarQueue } from "../services/reviewWorkflow";
-import { isAllowedAttachmentFile, isFilled } from "../utils/appraisalFormUtils";
+import { clearUserSession, storeUserSession, getActiveAcademicYear, setActiveAcademicYear, getSessionItem, normalizeAcademicYearLabel } from "../../../auth/session";
+import { APP_INFO } from "../../../constants/formConfig";
+import { normalizeNonTeachingRole } from "../../../constants/nonTeachingHierarchy";
+import { api } from "../../../services/api";
+import { getMe } from "../../../services/authService";
+import { loadReviewerDraft, saveReviewerDraft, fetchPartDRegistrarQueue } from "../../../services/reviewWorkflow";
+import { isAllowedAttachmentFile, isFilled } from "../../../utils/appraisalFormUtils";
 import {
   NON_TEACHING_MAX,
   NON_TEACHING_STATUS,
@@ -14,8 +14,10 @@ import {
   RATING_SECTIONS,
   SELF_ITEMS,
   calculateNonTeachingTotals,
+  canReviewNonTeachingItem,
   emptyNonTeachingForm,
   fetchNonTeachingQueueForRole,
+  isPendingForNonTeachingReviewer,
   isNonTeachingRejectedStatus,
   loadNonTeachingAppraisal,
   loadNonTeachingWorkflow,
@@ -31,21 +33,21 @@ import {
   validateNonTeachingForm,
   visibleNonTeachingReviewRoles,
   workflowDesignationForNonTeachingRole,
-} from "../services/nonTeachingWorkflow";
-import { clampScore } from "../utils/appraisalFormUtils";
-import { profileFromsessionStorage } from "../utils/hierarchy";
-import { n } from "../features/faculty-appraisal/shared";
-import AppraisalHeaderImage from "../components/AppraisalHeaderImage";
-import RejectionNotice from "../components/RejectionNotice";
-import SummaryOtherInfoField from "../components/SummaryOtherInfoField";
-import { SectionCard } from "../features/faculty-appraisal/components/formPrimitives";
-import { WORKFLOW_STATUSES, currentWorkflowStep, isWorkflowComplete } from "../utils/workflow";
-import { T, TH, TD, TDC } from "../features/faculty-appraisal/components/formPrimitiveStyles";
-import { Avatar, ScoreBar, ReviewMetricsStrip, LogoutConfirmModal } from "../components/dashboard/dashboardPrimitives";
-import { FacultyRecordHeader, ScoreTable, VCFinalRemarks, FinalSubmitButton, FACULTY_RECORD_THEME } from "../components/dashboard/FacultyAppraisalRecord";
+} from "../../../services/nonTeachingWorkflow";
+import { clampScore } from "../../../utils/appraisalFormUtils";
+import { profileFromsessionStorage } from "../../../utils/hierarchy";
+import { n } from "../../../features/faculty-appraisal/shared";
+import AppraisalHeaderImage from "../../../components/AppraisalHeaderImage";
+import RejectionNotice from "../../../components/RejectionNotice";
+import SummaryOtherInfoField from "../../../components/SummaryOtherInfoField";
+import { SectionCard } from "../../../features/faculty-appraisal/components/formPrimitives";
+import { WORKFLOW_STATUSES, currentWorkflowStep, isWorkflowComplete } from "../../../utils/workflow";
+import { T, TH, TD, TDC } from "../../../features/faculty-appraisal/components/formPrimitiveStyles";
+import { Avatar, ScoreBar, ReviewMetricsStrip, LogoutConfirmModal } from "../../../components/dashboard/dashboardPrimitives";
+import { FacultyRecordHeader, ScoreTable, VCFinalRemarks, FinalSubmitButton, FACULTY_RECORD_THEME } from "../../../components/dashboard/FacultyAppraisalRecord";
 import TeachingPartDReviewDashboard, { isPartDReviewed } from "./TeachingPartDReviewDashboard";
-import { ReportBugButton } from "../components/dashboard/ReportBugModal";
-import NoticesBell from "../components/dashboard/NoticesBell";
+import { ReportBugButton } from "../../../components/dashboard/ReportBugModal";
+import NoticesBell from "../../../components/dashboard/NoticesBell";
 
 const ACCENT = "#1d4ed8";
 const REG_ACCENT = "#155e75";
@@ -164,6 +166,9 @@ const hasText = (value) => String(value ?? "").trim() !== "";
 
 const isCurrentNonTeachingReviewApproved = (item = {}, role) => {
   const normalizedRole = normalizeNonTeachingRole(role, role);
+  if (!canReviewNonTeachingItem(item, normalizedRole)) {
+    return false;
+  }
   const status = normalizeNonTeachingStatus(item.status || item.form?.status);
 
   if (normalizedRole === "reporting_officer") {
@@ -1363,7 +1368,8 @@ export function NonTeachingAuthorityReviewPanel({ item, reviewerRole, onBack, on
   const [draftStatus, setDraftStatus] = useState("");
   const [workflow, setWorkflow] = useState(item.workflow || null);
   const reviewApproved = isCurrentNonTeachingReviewApproved(item, role);
-  const locked = readOnly || reviewApproved;
+  const isAuthorizedReviewer = canReviewNonTeachingItem(item, role);
+  const locked = readOnly || reviewApproved || !isAuthorizedReviewer;
   const accent = roleAccent(role);
   const subjectEmail = item.email || item.staff_email || form.info?.email;
   const academicYear = item.academicYear || item.academic_year || form.info?.ay || APP_INFO.DEFAULT_AY;
@@ -1391,6 +1397,7 @@ export function NonTeachingAuthorityReviewPanel({ item, reviewerRole, onBack, on
   // button (its remarks are being typed live below, not yet recorded) and is bolded, matching
   // the academic dashboards' Faculty Appraisal Record table (src/components/dashboard/FacultyAppraisalRecord.jsx).
   const currentRoleKey = role === "reporting_officer" ? "ro" : role;
+  const canReviewAtThisStage = isAuthorizedReviewer && visibleRoles.includes(currentRoleKey);
   const NON_TEACHING_ROLE_KEY_META = {
     ro: { icon: "briefcase", designationRole: "reporting_officer", totals: calculateNonTeachingTotals(form, "reporting_officer"), remarks: form.roRemarks },
     registrar: { icon: "shield", designationRole: "registrar", totals: calculateNonTeachingTotals(form, "registrar"), remarks: form.registrarRemarks },
@@ -1478,6 +1485,10 @@ export function NonTeachingAuthorityReviewPanel({ item, reviewerRole, onBack, on
   };
 
   const handleReject = async () => {
+    if (!canReviewAtThisStage) {
+      alert("You are not an authorized reviewer for this appraisal workflow.");
+      return;
+    }
     if (!confirmed) {
       alert("Please verify and confirm the declaration before rejecting.");
       return;
@@ -1508,6 +1519,10 @@ export function NonTeachingAuthorityReviewPanel({ item, reviewerRole, onBack, on
   };
 
   const handleSubmit = async () => {
+    if (!canReviewAtThisStage) {
+      alert("You are not an authorized reviewer for this appraisal workflow.");
+      return;
+    }
     if (!confirmed) {
       alert("Please verify and confirm the accuracy declaration before submitting the review.");
       return;
@@ -1557,6 +1572,12 @@ export function NonTeachingAuthorityReviewPanel({ item, reviewerRole, onBack, on
 
   return (
     <div>
+      {!isAuthorizedReviewer && (
+        <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 10, padding: "12px 16px", color: "#991b1b", fontSize: 13, fontWeight: 700, marginBottom: 14 }}>
+          This appraisal routes through a workflow that does not include {reviewerDesignation}. You are viewing this record in read-only mode.
+        </div>
+      )}
+
       <div className="appraisal-page-header" style={{ background: "#fff", borderRadius: 14, padding: "16px 20px", marginBottom: 14, display: "flex", alignItems: "center", gap: 12, boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb", flexWrap: "wrap" }}>
         <button type="button" onClick={onBack} style={{ background: "#f8fafc", color: "#475569", border: "1px solid #dbe3ef", borderRadius: 8, padding: "8px 12px", cursor: "pointer", fontFamily: "inherit", fontWeight: 800 }}>Back</button>
         <Avatar initials={initials(item.name)} src={item.avatarUrl} color={item.avatarColor || accent} size={50} />
@@ -1591,7 +1612,7 @@ export function NonTeachingAuthorityReviewPanel({ item, reviewerRole, onBack, on
         {tab === "partA" && <AuthorityPartA form={form} setForm={setForm} reviewerRole={role} readOnly={locked} visibleRoles={visibleRoles} />}
         {tab === "partB" && <AuthorityPartB form={form} setForm={setForm} reviewerRole={role} readOnly={locked} visibleRoles={visibleRoles} />}
       </fieldset>
-      {(tab === "partA" || tab === "partB") && !locked && (
+      {(tab === "partA" || tab === "partB") && !locked && canReviewAtThisStage && (
         <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, margin: "12px 0 14px", flexWrap: "wrap" }}>
           <span style={{ color: "#64748b", fontSize: 11, fontWeight: 800 }}>{draftStatus}</span>
           <button type="button" onClick={handleSaveDraft} disabled={savingDraft} style={{ padding: "10px 24px", border: "1.5px solid #2563eb", borderRadius: 10, background: "#fff", color: savingDraft ? "#94a3b8" : "#2563eb", cursor: savingDraft ? "not-allowed" : "pointer", fontWeight: 800, fontFamily: "inherit" }}>
@@ -1619,21 +1640,23 @@ export function NonTeachingAuthorityReviewPanel({ item, reviewerRole, onBack, on
               ]}
               rows={recordScoreRows}
             />
-            <VCFinalRemarks
-              title={`${reviewerDesignation} final remarks`}
-              icon={role === "vc" ? "crown" : role === "registrar" ? "shield" : "briefcase"}
-              value={remarks}
-              onChange={setRemarks}
-              readOnly={locked}
-              description="This statement is entered against the official appraisal record before final submission."
-            />
-            {!locked && (
+            {canReviewAtThisStage && (
+              <VCFinalRemarks
+                title={`${reviewerDesignation} final remarks`}
+                icon={role === "vc" ? "crown" : role === "registrar" ? "shield" : "briefcase"}
+                value={remarks}
+                onChange={setRemarks}
+                readOnly={locked}
+                description="This statement is entered against the official appraisal record before final submission."
+              />
+            )}
+            {!locked && canReviewAtThisStage && (
               <label style={{ display: "flex", alignItems: "flex-start", gap: 9, color: FACULTY_RECORD_THEME.textMuted, fontSize: 11, lineHeight: 1.5, cursor: "pointer" }}>
                 <input type="checkbox" checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} style={{ marginTop: 2, accentColor: FACULTY_RECORD_THEME.accent, flexShrink: 0 }} />
                 <span>I have verified all details and confirm that this review is accurate.</span>
               </label>
             )}
-            {!locked && (
+            {!locked && canReviewAtThisStage && (
               <FinalSubmitButton disabled={!confirmed || !remarks?.trim() || submitting} onClick={handleSubmit}>
                 {submitting ? "Submitting..." : "Confirm and submit review"}
               </FinalSubmitButton>
@@ -1645,7 +1668,7 @@ export function NonTeachingAuthorityReviewPanel({ item, reviewerRole, onBack, on
                 {role === "vc" && locked && (
                   <button type="button" className="appraisal-report-button" onClick={handleReport} style={{ padding: "8px 14px", background: "transparent", color: FACULTY_RECORD_THEME.accentSoft, border: "1px solid rgba(124,58,237,0.35)", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: 11.5, fontFamily: "inherit" }}>Generate Report</button>
                 )}
-                {!locked && (
+                {!locked && canReviewAtThisStage && (
                   <>
                     <button type="button" onClick={handleSaveDraft} disabled={savingDraft} style={{ padding: "8px 14px", background: "transparent", color: savingDraft ? FACULTY_RECORD_THEME.textFaint : "#2563eb", border: `1px solid ${savingDraft ? FACULTY_RECORD_THEME.border : "#bfdbfe"}`, borderRadius: 8, cursor: savingDraft ? "not-allowed" : "pointer", fontWeight: 700, fontSize: 11.5, fontFamily: "inherit" }}>
                       {savingDraft ? "Saving..." : "Save Draft"}
@@ -1687,6 +1710,7 @@ function NonTeachingStatusBadge({ status }) {
 function NonTeachingReviewCard({ item, reviewerRole, accent = ACCENT, onOpen }) {
   const role = normalizeNonTeachingRole(reviewerRole, reviewerRole);
   const reviewed = isCurrentNonTeachingReviewApproved(item, role);
+  const isPending = isPendingForNonTeachingReviewer(item, role);
   const selfTotals = calculateNonTeachingTotals(item.form, "self");
   const authorityTotals = calculateNonTeachingTotals(item.form, role === "vc" ? "vc" : role);
   const showAuthorityScores = reviewed && (authorityTotals.partA > 0 || authorityTotals.partB > 0 || authorityTotals.total > 0);
@@ -1721,7 +1745,7 @@ function NonTeachingReviewCard({ item, reviewerRole, accent = ACCENT, onOpen }) 
           onClick={onOpen}
           style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11.5, padding: "8px 18px", background: reviewed ? "#ecfdf5" : "#0f172a", color: reviewed ? "#047857" : "#fff", border: reviewed ? "1px solid #a7f3d0" : "none", borderRadius: 9, cursor: "pointer", fontWeight: 800, fontFamily: "inherit", letterSpacing: 0.2, boxShadow: reviewed ? "0 2px 8px rgba(5,150,105,0.12)" : "0 6px 14px rgba(15,23,42,0.22)", transition: "filter .15s, transform .15s" }}
         >
-          {reviewed ? "View Review" : "Review Form"}
+          {reviewed ? "View Review" : isPending ? "Review Form" : "View Details"}
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
         </button>
       </div>
@@ -1804,10 +1828,11 @@ export function NonTeachingReviewDashboard({ reviewerRole, title, subtitle, acce
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showPartD, selectedAcademicYear, tab]);
 
-  const selected = items.find((item) => item.id === selectedId);
   const normalizedReviewerRole = normalizeNonTeachingRole(reviewerRole, reviewerRole);
-  const reviewedCount = items.filter((item) => isCurrentNonTeachingReviewApproved(item, normalizedReviewerRole)).length;
-  const pendingCount = items.length - reviewedCount;
+  const reviewableItems = items.filter((item) => canReviewNonTeachingItem(item, normalizedReviewerRole));
+  const selected = reviewableItems.find((item) => item.id === selectedId);
+  const reviewedCount = reviewableItems.filter((item) => isCurrentNonTeachingReviewApproved(item, normalizedReviewerRole)).length;
+  const pendingCount = reviewableItems.filter((item) => isPendingForNonTeachingReviewer(item, normalizedReviewerRole)).length;
   const partDPendingCount = partDItems.filter((item) => !isPartDReviewed(item)).length;
   const navItems = [
     { id: "self", label: "My Staff Appraisal", sub: "View your self-appraisal form", icon: <SelfNavIcon /> },
@@ -1958,7 +1983,7 @@ export function NonTeachingReviewDashboard({ reviewerRole, title, subtitle, acce
               )}
             />
 
-            {items.length === 0 ? (
+            {reviewableItems.length === 0 ? (
               <div style={{ textAlign: "center", padding: "70px 20px", background: "#fff", borderRadius: 16, border: "1px dashed #e2e8f0" }}>
                 <div style={{ width: 52, height: 52, borderRadius: 16, background: "#f0fdf4", color: "#16a34a", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: 14 }}>
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
@@ -1968,7 +1993,7 @@ export function NonTeachingReviewDashboard({ reviewerRole, title, subtitle, acce
               </div>
             ) : (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 16 }}>
-                {items.map((item) => (
+                {reviewableItems.map((item) => (
                   <NonTeachingReviewCard key={item.id} item={item} reviewerRole={reviewerRole} accent={accent} onOpen={() => setSelectedId(item.id)} />
                 ))}
               </div>

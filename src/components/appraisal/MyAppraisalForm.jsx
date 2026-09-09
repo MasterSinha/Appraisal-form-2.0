@@ -17,7 +17,7 @@ import DirectorPartB from "./PartB/DirectorPartB";
 import PartC from "./PartC/PartC";
 import PartD from "./PartD/PartD";
 import LeaveManagementReadOnly from "./PartD/LeaveManagementReadOnly";
-import { getSchoolKey } from "../../constants/universityHierarchy";
+import { isStandardAppraisalSchool } from "../../constants/formRouting";
 
 
 const REVIEW_SECTION_MAX = {
@@ -72,8 +72,7 @@ const STANDARD_INNOVATIVE_SECTION_MAX = 20;
 
 const isApplicableSchool = (faculty) => {
   const school = faculty?.info?.school || faculty?.school || "";
-  const schoolKey = getSchoolKey(school);
-  return ["SoCSEA", "SoBB", "SoCE", "SoEMR", "SoCM"].includes(schoolKey);
+  return isStandardAppraisalSchool(school);
 };
 
 const getReviewSectionMax = (section, faculty, isDirector = false) => {

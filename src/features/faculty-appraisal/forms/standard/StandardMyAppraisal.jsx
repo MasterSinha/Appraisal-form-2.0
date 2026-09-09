@@ -50,12 +50,18 @@ import {
 } from "../../utils";
 import {
   AppraisalHeaderImage,
+  AppraisalSummaryActionButton,
+  AppraisalSummaryTable,
   DocCell,
+  InlineSvgIcon,
   RejectionNotice,
   RowButtons as RowBtns,
   SectionCard as SC,
   SectionInfoButton,
   SectionSaveFooter,
+  SUMMARY_ATTACHMENTS_DECLARATION,
+  SUMMARY_DECLARATION_TEXT,
+  SUMMARY_ICONS,
   SummaryOtherInfoField,
   T,
   TD,
@@ -411,51 +417,6 @@ function SubsectionTitle({ icon, children }) {
       <span>{displayTitle}</span>
       <SectionInfoButton titleText={children} />
     </div>
-  );
-}
-
-function InlineSvgIcon({ paths, size = 16, strokeWidth = 2.2 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      {paths.map((path) => <path key={path} d={path} />)}
-    </svg>
-  );
-}
-
-const SUMMARY_ICONS = {
-  book: ["M4 19.5V5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-1.5Z", "M8 7h6M8 11h8M8 15h5"],
-  flask: ["M9 3h6", "M10 3v6l-4 8a3 3 0 0 0 2.7 4.3h6.6A3 3 0 0 0 18 17l-4-8V3", "M8 16h8"],
-  building: ["M4 21V7a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v14", "M20 21v-9a2 2 0 0 0-2-2h-2", "M8 9h4M8 13h4M8 17h4"],
-  document: ["M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z", "M14 2v6h6", "M8 13h8M8 17h6"],
-  sigma: ["M18 4H7l6 8-6 8h11"],
-  report: ["M6 2h9l5 5v15H6z", "M14 2v6h6", "M9 13h6M9 17h6"],
-  send: ["M22 2 11 13", "M22 2 15 22l-4-9-9-4 20-7Z"],
-  user: ["M20 21a8 8 0 0 0-16 0", "M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"],
-};
-
-function ScoreBadge({ score, max, color, tone = "#eef2ff" }) {
-  return (
-    <span style={{ display: "inline-flex", justifyContent: "center", minWidth: 92, borderRadius: 999, padding: "6px 12px", background: tone, color, fontSize: 13, fontWeight: 900, lineHeight: 1, whiteSpace: "nowrap" }}>
-      {score.toFixed(1)}/{max}
-    </span>
-  );
-}
-
-function SummaryRow({ label, score, max, color, tone, iconTone, icon }) {
-  return (
-    <tr className="appraisal-summary-row">
-      <td style={{ padding: 0, border: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 14, minHeight: 52, padding: "10px 12px" }}>
-          <span style={{ width: 32, height: 32, borderRadius: 9, background: iconTone, color, border: `1px solid ${color}20`, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <InlineSvgIcon paths={SUMMARY_ICONS[icon]} size={17} />
-          </span>
-          <span style={{ color: "#1f2937", fontSize: 13, fontWeight: 800, lineHeight: 1.35 }}>{label}</span>
-        </div>
-      </td>
-      <td style={{ width: 150, padding: "10px 12px", border: 0, textAlign: "right", verticalAlign: "middle" }}>
-        <ScoreBadge score={score} max={max} color={color} tone={tone} />
-      </td>
-    </tr>
   );
 }
 
@@ -3470,15 +3431,13 @@ export default function StandardMyAppraisal({
                 {/* Summary Tab */}
                 {!isLegacyTwoPartYear && hodAppraisalTab === "summary" && (
                   <SC title="Appraisal Summary & Submission" accent="#10b981">
-                    <table className="appraisal-summary-table" style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, marginBottom: 0, border: "1px solid #e5e7eb", borderRadius: 12, overflow: "hidden", boxShadow: "0 12px 26px rgba(15,23,42,0.04)" }}>
-                      <tbody>
-                        <SummaryRow label="Part A - Teaching & Learning" score={partATotal} max={effectivePartAMax} color="#4f46e5" tone="#eef2ff" iconTone="#eef2ff" icon="book" />
-                        <SummaryRow label="Part B - Research & Innovation" score={partBTotal} max={effectivePartBMax} color="#7c3aed" tone="#f3e8ff" iconTone="#f5f3ff" icon="flask" />
-                        <SummaryRow label="Part C - Administrative Contribution" score={partCTotal} max={PART_C_MAX} color="#0f766e" tone="#ccfbf1" iconTone="#ccfbf1" icon="building" />
-                        <SummaryRow label="Part D - Leave & Attendance Management" score={partDTotal} max={PART_D_MAX} color="#0891b2" tone="#cffafe" iconTone="#cffafe" icon="report" />
-                        <SummaryRow label="Grand Total" score={grandTotal} max={effectiveGrandMax} color={g.color} tone="#ffe4e6" iconTone="#f1f5f9" icon="sigma" />
-                      </tbody>
-                    </table>
+                    <AppraisalSummaryTable rows={[
+                      { label: "Part A - Teaching & Learning", score: partATotal, max: effectivePartAMax, color: "#4f46e5", tone: "#eef2ff", iconTone: "#eef2ff", icon: "book" },
+                      { label: "Part B - Research & Innovation", score: partBTotal, max: effectivePartBMax, color: "#7c3aed", tone: "#f3e8ff", iconTone: "#f5f3ff", icon: "flask" },
+                      { label: "Part C - Administrative Contribution", score: partCTotal, max: PART_C_MAX, color: "#0f766e", tone: "#ccfbf1", iconTone: "#ccfbf1", icon: "building" },
+                      { label: "Part D - Leave & Attendance Management", score: partDTotal, max: PART_D_MAX, color: "#0891b2", tone: "#cffafe", iconTone: "#cffafe", icon: "calendar" },
+                      { label: "Grand Total", score: grandTotal, max: effectiveGrandMax, color: g.color, tone: "#ffe4e6", iconTone: "#f1f5f9", icon: "sigma" },
+                    ]} />
 
                     <SummaryOtherInfoField
                       value={summaryOtherInfo}
@@ -3495,7 +3454,7 @@ export default function StandardMyAppraisal({
                         disabled={submitting || formLocked}
                         style={{ marginTop: 2, width: 18, height: 18, accentColor: "#2563eb", flexShrink: 0 }}
                       />
-                      <span>I hereby declare that the information furnished above is true and correct to the best of my knowledge and belief, and is supported by documentary evidence enclosed with this form. I understand that any false claim, if detected at any stage, may render this appraisal liable to cancellation and may attract disciplinary action as per university policy.</span>
+                      <span>{SUMMARY_DECLARATION_TEXT}</span>
                     </label>
 
                     <label className={attachmentsConfirmed ? "appraisal-declaration-card is-checked" : "appraisal-declaration-card"} style={{ display: "flex", alignItems: "flex-start", gap: 14, padding: "14px 18px", background: attachmentsConfirmed ? "#dcfce7" : "#ecfdf5", border: `1px solid ${attachmentsConfirmed ? "#86efac" : "#bbf7d0"}`, borderRadius: 12, marginBottom: 0, color: "#334155", fontSize: 13, lineHeight: 1.5, cursor: formLocked ? "not-allowed" : "pointer", transition: "background 180ms ease, border-color 180ms ease, box-shadow 180ms ease", boxShadow: attachmentsConfirmed ? "0 10px 24px rgba(16,185,129,0.10)" : "none" }}>
@@ -3506,29 +3465,21 @@ export default function StandardMyAppraisal({
                         disabled={submitting || formLocked}
                         style={{ marginTop: 2, width: 18, height: 18, accentColor: "#10b981", flexShrink: 0 }}
                       />
-                      <span>I confirm that <strong>all required supporting documents and attachments have been uploaded</strong> against the respective entries. I understand that any <strong>missing or false attachment is my sole responsibility</strong> and may result in the rejection or revision of my appraisal.</span>
+                      <span>{SUMMARY_ATTACHMENTS_DECLARATION}</span>
                     </label>
 
                     <div className="appraisal-summary-actions" style={{ display: "flex", justifyContent: "center", gap: 14, flexWrap: "wrap" }}>
-                      <button
-                        type="button"
-                        onClick={generateReport}
-                        className="appraisal-report-button"
-                        style={{ minWidth: 172, minHeight: 42, padding: "10px 24px", background: "linear-gradient(180deg,#6d28d9 0%,#4c1d95 100%)", color: "#fff", border: "none", borderRadius: 9, cursor: "pointer", fontWeight: 800, fontSize: 13, fontFamily: "inherit", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 9, boxShadow: "0 10px 20px rgba(76,29,149,0.22)" }}
-                      >
-                        <InlineSvgIcon paths={SUMMARY_ICONS.report} size={16} />
+                      <AppraisalSummaryActionButton onClick={generateReport}>
                         Generate Report
-                      </button>
-                      <button
-                        type="button"
+                      </AppraisalSummaryActionButton>
+                      <AppraisalSummaryActionButton
+                        variant="submit"
                         onClick={handleSubmitAppraisal}
                         disabled={submitting || formLocked || !declarationConfirmed || !attachmentsConfirmed}
-                        className="appraisal-submit-button"
-                        style={{ minWidth: 172, minHeight: 42, padding: "10px 24px", background: (formLocked || !declarationConfirmed || !attachmentsConfirmed) ? "#64748b" : "linear-gradient(180deg,#334155 0%,#1e293b 100%)", color: "#fff", border: "none", borderRadius: 9, cursor: (formLocked || !declarationConfirmed || !attachmentsConfirmed) ? "not-allowed" : "pointer", fontWeight: 800, fontSize: 13, fontFamily: "inherit", opacity: submitting ? 0.76 : 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 9, boxShadow: (formLocked || !declarationConfirmed || !attachmentsConfirmed) ? "none" : "0 10px 20px rgba(30,41,59,0.18)" }}
+                        loading={submitting}
                       >
-                        {submitting ? <span className="appraisal-button-spinner" aria-hidden="true" /> : <InlineSvgIcon paths={SUMMARY_ICONS.send} size={16} />}
                         {formLocked ? "Submitted & Locked" : submitting ? "Submitting..." : "Submit Appraisal"}
-                      </button>
+                      </AppraisalSummaryActionButton>
                     </div>
                   </SC>
                 )}

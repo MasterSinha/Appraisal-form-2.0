@@ -3,14 +3,17 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Avatar, LogoutConfirmModal, ScoreBar, ScoreCard, StatusBadge } from "../../../../components/dashboard/dashboardPrimitives";
-import { getSchoolByValue, getSchoolKey } from "../../../../constants/universityHierarchy";
+import { getSchoolByValue, getSchoolKey, UNIVERSITY_SCHOOLS } from "../../../../constants/universityHierarchy";
 import { api } from "../../../../services/api";
 import {
   ACR_DETAIL_POINTS,
   APP_INFO,
   createAcrRows,
-  FORM_SCHOOL_CODES,
+  CREATIVE_FORM_VARIANTS,
   FORM_TYPES,
+  creativeFormVariantForSchool,
+  isCreativeAppraisalSchool,
+  normalizeCreativeVariant,
   fetchSavedAppraisal,
   loadAppraisalDocuments,
   loadSavedAppraisal,
@@ -66,8 +69,9 @@ import {
   SectionSaveFooter,
   RowButtons as RowBtns,
   SectionCard as SC,
+  SUMMARY_DECLARATION_TEXT,
 } from "../../index";
-import { canReviewerRejectProfile, departmentHasHod, getDeanTrack, getReviewChain, pendingStatusFor, profileFromsessionStorage, reviewedStatusFor, roleLabel, visiblePreviousReviewRoles, workflowValidationError, isAppraisalFinalisedByVc, isRejectedStatus, isPendingReviewStatusFor, hasActiveRejection, reviewListFrom } from "../../../../utils/hierarchy";
+import { canReviewerRejectProfile, getDeanTrack, getReviewChain, pendingStatusFor, profileFromsessionStorage, reviewedStatusFor, roleLabel, visiblePreviousReviewRoles, workflowValidationError, isAppraisalFinalisedByVc, isRejectedStatus, isPendingReviewStatusFor, hasActiveRejection, reviewListFrom } from "../../../../utils/hierarchy";
 import { n, pct, RO, TI } from "../../shared";
 import SectionShell from "./common/SectionShell";
 import { tableStyle, thStyle, tdStyle, tdCenter } from "./common/TableStyles";
@@ -77,7 +81,7 @@ import { FacultyRecordHeader, ScoreTable, VCFinalRemarks, FinalSubmitButton, FAC
 
 export const ACCENT = "#4f46e5";
 export const ACCENT2 = "#4338ca";
-const VERIFY_TEXT = "I have verified all the details and confirm that the information provided is correct. I am responsible for the accuracy of this data.";
+const VERIFY_TEXT = SUMMARY_DECLARATION_TEXT;
 const smallButton = (background) => ({ padding: "8px 14px", background, color: "#fff", border: "none", borderRadius: 7, cursor: background === "#94a3b8" ? "not-allowed" : "pointer", fontWeight: 800, fontSize: 12, fontFamily: "inherit" });
 const clampDirectorReviewScore = (sectionKey, row, value, maxScore) => {
   if (String(value ?? "").trim() === "") return "";
@@ -133,23 +137,34 @@ export const creativeSchoolName = (...sources) => {
 
 export const designArtsSchoolName = creativeSchoolName;
 
+const defaultCreativeSchoolLabel = (variant) => {
+  const normalizedVariant = normalizeCreativeVariant(variant);
+  const matchedByVariant = UNIVERSITY_SCHOOLS.find((school) =>
+    school.defaultForm === "creative" && normalizeCreativeVariant(school.formVariant) === normalizedVariant
+  );
+  if (matchedByVariant?.label) return matchedByVariant.label;
+  return UNIVERSITY_SCHOOLS.find((school) => school.defaultForm === "creative")?.label || "Creative School";
+};
+
+const schoolValueFromSource = (source) => {
+  if (!source) return "";
+  if (typeof source === "string") return source;
+  if (typeof source !== "object") return "";
+  return source.school || source.schoolName || source.school_name || source.info?.school || source.profile?.school || source.schoolCode || "";
+};
+
+const creativeVariantFromSource = (source) => {
+  if (!source) return "";
+  const explicitVariant = typeof source === "object"
+    ? source.formVariant || source.form_variant || source.creativeFormVariant || source.creative_form_variant
+    : "";
+  return normalizeCreativeVariant(explicitVariant) || creativeFormVariantForSchool(schoolValueFromSource(source));
+};
+
 export const isMediaCommSchool = (...sources) => {
   for (const source of sources) {
     if (!source) continue;
-    const str = typeof source === "string" ? source : (source.school || source.info?.school || source.profile?.school || "");
-    const schoolObj = getSchoolByValue(str);
-    if (schoolObj?.code === "SoMCS" || schoolObj?.code === "SoMC" || schoolObj?.code === "SoHSS") return true;
-    const lower = String(str).toLowerCase();
-    if (
-      lower.includes("somcs") ||
-      lower.includes("somc") ||
-      lower.includes("media") ||
-      lower.includes("sohss") ||
-      lower.includes("hss") ||
-      lower.includes("humanities") ||
-      lower.includes("social sciences")
-    )
-      return true;
+    if (creativeVariantFromSource(source) === CREATIVE_FORM_VARIANTS.MEDIA_COMMUNICATION) return true;
   }
   return false;
 };
@@ -157,11 +172,7 @@ export const isMediaCommSchool = (...sources) => {
 export const isDesignArtsSchool = (...sources) => {
   for (const source of sources) {
     if (!source) continue;
-    const str = typeof source === "string" ? source : (source.school || source.info?.school || source.profile?.school || "");
-    const schoolObj = getSchoolByValue(str);
-    if (schoolObj?.code === "SoD" || schoolObj?.code === "SoAA" || schoolObj?.code === "SoA") return true;
-    const lower = String(str).toLowerCase();
-    if (lower.includes("sod") || lower.includes("soaa") || lower.includes("soa") || lower.includes("design") || lower.includes("arts")) return true;
+    if (creativeVariantFromSource(source) === CREATIVE_FORM_VARIANTS.DESIGN_ARTS) return true;
   }
   return false;
 };
@@ -170,11 +181,10 @@ export const isCreativeSchool = (...sources) => {
   for (const source of sources) {
     if (!source) continue;
     if (isMediaCommSchool(source) || isDesignArtsSchool(source)) return true;
-    const str = typeof source === "string" ? source : (source.school || source.info?.school || source.profile?.school || source.schoolCode || "");
+    const str = schoolValueFromSource(source);
     const formType = typeof source === "object" ? (source.formType || source.form_type || "") : "";
     if (formType === FORM_TYPES.MEDIA_COMM || formType === FORM_TYPES.DESIGN_ARTS) return true;
-    const code = getSchoolKey(str);
-    if (code === "SoMCS" || code === "SoHSS" || code === "SoD" || code === "SoAA") return true;
+    if (isCreativeAppraisalSchool(str)) return true;
   }
   return false;
 };
@@ -237,7 +247,7 @@ export const defaultMentoringRows = () => [
   { activity: "3. Documented academic/career counselling outcomes", evidence: "", score: "", max: 3 },
 ];
 
-export const emptyCreativeSchoolForm = (defaultSchool = "SoD - School of Design") => ({
+export const emptyCreativeSchoolForm = (defaultSchool = defaultCreativeSchoolLabel()) => ({
   info: {
     name: sessionStorage.getItem("name") || "",
     qual: sessionStorage.getItem("qualification") || "",
@@ -283,11 +293,11 @@ export const emptyCreativeSchoolForm = (defaultSchool = "SoD - School of Design"
   summaryOtherInfo: "",
 });
 
-export const emptyDesignArtsForm = () => emptyCreativeSchoolForm("SoD - School of Design");
+export const emptyDesignArtsForm = () => emptyCreativeSchoolForm(defaultCreativeSchoolLabel(CREATIVE_FORM_VARIANTS.DESIGN_ARTS));
 export const emptyMediaForm = (defaultSchool) => {
-  const schoolVal = defaultSchool || (typeof sessionStorage !== "undefined" ? (sessionStorage.getItem("school") || sessionStorage.getItem("schoolName")) : null) || "SoMCS - School of Media & Communication Studies";
+  const schoolVal = defaultSchool || (typeof sessionStorage !== "undefined" ? (sessionStorage.getItem("school") || sessionStorage.getItem("schoolName")) : null) || defaultCreativeSchoolLabel(CREATIVE_FORM_VARIANTS.MEDIA_COMMUNICATION);
   const schoolObj = getSchoolByValue(schoolVal);
-  return emptyCreativeSchoolForm(schoolObj?.label || schoolVal || "SoMCS - School of Media & Communication Studies");
+  return emptyCreativeSchoolForm(schoolObj?.label || schoolVal || defaultCreativeSchoolLabel(CREATIVE_FORM_VARIANTS.MEDIA_COMMUNICATION));
 };
 
 export const SECTION_OPTIONS = [
@@ -2420,10 +2430,7 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
   const subjectRole = person?.appraisalRole || person?.appraisal_role || person?.role || "faculty";
   const normalizedSubjectRole = String(subjectRole || "").trim().toLowerCase();
   const subjectSchoolKey = getSchoolKey(person?.school || form.info?.school || person?.info?.school || "");
-  const facultyHasHodInChain = normalizedSubjectRole === "faculty" && departmentHasHod(
-    person?.school || form.info?.school || person?.info?.school || "",
-    person?.department || form.info?.department || person?.info?.department || ""
-  );
+  const facultyHasHodInChain = normalizedSubjectRole === "faculty" && workflowChain.includes("hod");
   const visibleSummaryRoles = reviewerRole === "vc" ? (() => {
     if (normalizedSubjectRole === "faculty") {
       const roles = [];
@@ -2643,8 +2650,7 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
   const useAuthorityRecordCard = reviewerRole === "hod" || reviewerRole === "dean" || reviewerRole === "director" || reviewerRole === "vc";
   const authorityRecordSchoolTrack = useAuthorityRecordCard ? getDeanTrack({ school: person?.school || form.info?.school, department: person?.department, designation: person?.designation }) : "";
   const authorityRecordSchoolGroupLabel = { engineering: "Engineering", non_engineering: "Non-Engineering", direct_vc: "CISR" }[authorityRecordSchoolTrack] || person?.school || form.info?.school || APP_INFO.UNIVERSITY_NAME;
-  // The "Faculty appraisal record" summary table (below) mirrors the standard/engineering
-  // dashboards (HODDashboard, DirectorDashboard, DeanDashboard, NonEngineeringDeanDashboard):
+  // The "Faculty appraisal record" summary table (below) mirrors the reviewer dashboards:
   // every non-VC reviewer's record shows only Self + their own score - never intermediate
   // reviewers' scores (e.g. the Dean's record must not surface HOD/Director scores). Only the
   // VC, who reviews last, sees the full prior-reviewer chain.

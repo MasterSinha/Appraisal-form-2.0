@@ -7,8 +7,8 @@ import {
   canonicalDepartmentValue,
   canonicalSchoolValue,
   isCisrSchool,
-  isSoemrSchool,
   isValidSchool,
+  schoolUnitLabel,
 } from "../constants/universityHierarchy";
 import { isNonTeachingRole } from "../constants/nonTeachingHierarchy";
 import { buildProfilePayload, normalizeRole, storeUserSession } from "../auth/session";
@@ -375,13 +375,8 @@ export default function EditProfile() {
   const isNonTeaching = formData.staffType === "non_teaching";
   const requiresSchool = !isNonTeaching && selectedRole !== "vc";
   const isCisr = isCisrSchool(selectedSchool);
-  // Every teaching school can have Director-managed departments/programs now, not just SoEMR -
-  // SoEMR is the only one that calls them "departments", everyone else calls them "programs",
-  // but the underlying mechanism (a director-managed list, one HOD assignable per faculty,
-  // multiple assignable per HOD) is the same for all of them. See New_backend.md.
   const schoolHasDepartments = schoolDepartments.length > 0;
-  const isDepartmentSchool = isSoemrSchool(selectedSchool);
-  const unitLabel = isDepartmentSchool ? "Department" : "Program";
+  const unitLabel = schoolUnitLabel(selectedSchool);
   const needsDepartment = !isNonTeaching && !isCisr && schoolHasDepartments;
 
   useEffect(() => {

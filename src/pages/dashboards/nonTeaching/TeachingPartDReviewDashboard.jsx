@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { APP_INFO } from "../constants/formConfig";
-import { Avatar } from "../components/dashboard/dashboardPrimitives";
-import RegistrarLeaveManagement from "../components/appraisal/PartD/RegistrarLeaveManagement";
-import { fetchPartDRegistrarQueue, submitPartDRegistrarReview } from "../services/reviewWorkflow";
-import { getActiveAcademicYear } from "../auth/session";
-import { roleLabel } from "../utils/hierarchy";
-import AppraisalHeaderImage from "../components/AppraisalHeaderImage";
-import { DEAN_TRACKS, UNIVERSITY_SCHOOLS, getSchoolByValue, normalizeHierarchyText } from "../constants/universityHierarchy";
+import { APP_INFO } from "../../../constants/formConfig";
+import { Avatar } from "../../../components/dashboard/dashboardPrimitives";
+import RegistrarLeaveManagement from "../../../components/appraisal/PartD/RegistrarLeaveManagement";
+import { fetchPartDRegistrarQueue, submitPartDRegistrarReview } from "../../../services/reviewWorkflow";
+import { getActiveAcademicYear } from "../../../auth/session";
+import { roleLabel } from "../../../utils/hierarchy";
+import AppraisalHeaderImage from "../../../components/AppraisalHeaderImage";
+import { DEAN_TRACKS, UNIVERSITY_SCHOOLS, getSchoolByValue, normalizeHierarchyText, schoolVisualMeta } from "../../../constants/universityHierarchy";
+import { useSchools } from "../../../services/schoolsService";
 
 // Registrar-only queue for Part D (Leave & Attendance) of teaching-staff forms (Faculty/HOD/
 // Director/Dean/Center Head, any school) - a track independent of the A/B/C/E chain that never
@@ -15,19 +16,6 @@ import { DEAN_TRACKS, UNIVERSITY_SCHOOLS, getSchoolByValue, normalizeHierarchyTe
 // Pure content, no sidebar/layout of its own - the caller (NonTeachingReviewDashboard) renders
 // this inline as one of its own tabs so switching to/from it stays on the same page instead of
 // swapping to a differently-chromed dashboard.
-const PART_D_SCHOOL_META = {
-  SoCSEA: { color: "#6366f1", icon: "CS" },
-  SoBB: { color: "#10b981", icon: "BB" },
-  SoCE: { color: "#0ea5e9", icon: "CE" },
-  SoEMR: { color: "#f59e0b", icon: "EM" },
-  SoCM: { color: "#14b8a6", icon: "CM" },
-  SoMCS: { color: "#8b5cf6", icon: "MC" },
-  SoHSS: { color: "#8b5cf6", icon: "HS" },
-  SoD: { color: "#ec4899", icon: "DS" },
-  SoAA: { color: "#f97316", icon: "AA" },
-  CISR: { color: "#0f766e", icon: "CI" },
-};
-
 const PART_D_DIVISION_META = {
   engineering: { label: "Engineering Schools", color: "#1e40af", bg: "linear-gradient(135deg,#dbeafe,#bfdbfe)" },
   non_engineering: { label: "Non-Engineering Schools", color: "#6b21a8", bg: "linear-gradient(135deg,#f3e8ff,#e9d5ff)" },
@@ -53,8 +41,8 @@ const PART_D_DIVISION_SCHOOLS = {
   },
 };
 
-const toPartDSchool = (school) => {
-  const meta = PART_D_SCHOOL_META[school.code] || {};
+const toPartDSchool = (school, index = 0) => {
+  const meta = schoolVisualMeta(school, index);
   return {
     id: school.code.toLowerCase(),
     code: school.code,
@@ -65,19 +53,21 @@ const toPartDSchool = (school) => {
   };
 };
 
-const PART_D_SCHOOLS_BY_DIVISION = {
+// Computed fresh on every call (not a module-level snapshot) so it always reflects the current
+// UNIVERSITY_SCHOOLS - live data once GET /schools has landed, the fallback table until then.
+const getPartDSchoolsByDivision = () => ({
   engineering: UNIVERSITY_SCHOOLS
     .filter((school) => school.deanTrack === DEAN_TRACKS.ENGINEERING)
-    .map(toPartDSchool)
+    .map((school, index) => toPartDSchool(school, index))
     .concat(PART_D_DIVISION_SCHOOLS.engineering),
   non_engineering: UNIVERSITY_SCHOOLS
     .filter((school) => school.deanTrack === DEAN_TRACKS.NON_ENGINEERING)
-    .map(toPartDSchool)
+    .map((school, index) => toPartDSchool(school, index))
     .concat(PART_D_DIVISION_SCHOOLS.non_engineering),
   direct_vc: UNIVERSITY_SCHOOLS
     .filter((school) => school.deanTrack === DEAN_TRACKS.DIRECT_VC)
-    .map(toPartDSchool),
-};
+    .map((school, index) => toPartDSchool(school, index)),
+});
 
 const schoolIdForPartDItem = (item = {}) => {
   const schoolValue = item.school || item.schoolName || item.school_code || item.schoolCode || item.info?.school || item.form?.info?.school || "";
@@ -101,16 +91,17 @@ const partDSchoolCountsFor = (queue = []) => {
 
 const partDDivisionCountsFor = (schoolCounts = {}) => {
   const counts = {};
-  Object.entries(PART_D_SCHOOLS_BY_DIVISION).forEach(([division, schools]) => {
+  Object.entries(getPartDSchoolsByDivision()).forEach(([division, schools]) => {
     counts[division] = schools.reduce((total, school) => total + (schoolCounts[school.id] || 0), 0);
   });
   return counts;
 };
 
 const defaultPartDSchoolSelection = (queue = [], preferredDivision = "engineering", preferredSchoolId = "") => {
+  const schoolsByDivision = getPartDSchoolsByDivision();
   const schoolCounts = partDSchoolCountsFor(queue);
   const divisionCounts = partDDivisionCountsFor(schoolCounts);
-  const preferredSchools = PART_D_SCHOOLS_BY_DIVISION[preferredDivision] || [];
+  const preferredSchools = schoolsByDivision[preferredDivision] || [];
   const preferredSchoolHasItems = preferredSchoolId && (schoolCounts[preferredSchoolId] || 0) > 0;
 
   if (preferredSchoolHasItems) {
@@ -120,7 +111,7 @@ const defaultPartDSchoolSelection = (queue = [], preferredDivision = "engineerin
   const division = (divisionCounts[preferredDivision] || 0) > 0
     ? preferredDivision
     : Object.keys(PART_D_DIVISION_META).find((key) => (divisionCounts[key] || 0) > 0) || preferredDivision;
-  const schools = PART_D_SCHOOLS_BY_DIVISION[division] || preferredSchools;
+  const schools = schoolsByDivision[division] || preferredSchools;
   const school = schools.find((item) => (schoolCounts[item.id] || 0) > 0) || schools[0] || preferredSchools[0];
 
   return { division, schoolId: school?.id || "" };
@@ -155,6 +146,7 @@ const partDScoreForInput = (item = {}) => (
 );
 
 export default function TeachingPartDReviewDashboard({ accent = "#155e75", academicYear: academicYearProp, academicYearOptions = [], onAcademicYearChange }) {
+  useSchools(); // subscribes to live schools data so getPartDSchoolsByDivision() re-renders fresh
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -198,7 +190,7 @@ export default function TeachingPartDReviewDashboard({ accent = "#155e75", acade
 
   const selected = items.find((item) => item.id === selectedId);
   const selectedReviewed = selected ? isPartDReviewed(selected) : false;
-  const currentSchools = PART_D_SCHOOLS_BY_DIVISION[activeDivision] || [];
+  const currentSchools = getPartDSchoolsByDivision()[activeDivision] || [];
   const schoolCounts = useMemo(() => partDSchoolCountsFor(items), [items]);
   const divisionCounts = useMemo(() => partDDivisionCountsFor(schoolCounts), [schoolCounts]);
   const activeSchool = currentSchools.find((school) => school.id === activeSchoolId)
@@ -210,7 +202,7 @@ export default function TeachingPartDReviewDashboard({ accent = "#155e75", acade
     : items;
 
   const switchDivision = (division) => {
-    const schools = PART_D_SCHOOLS_BY_DIVISION[division] || [];
+    const schools = getPartDSchoolsByDivision()[division] || [];
     const firstSchoolWithItems = schools.find((school) => schoolCounts[school.id] > 0);
     setActiveDivision(division);
     setActiveSchoolId((firstSchoolWithItems || schools[0])?.id || "");

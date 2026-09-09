@@ -1,7 +1,6 @@
 import { APP_INFO } from "../constants/formConfig";
 import {
   NON_TEACHING_ROLE_LABELS,
-  isNonTeachingRole,
   normalizeNonTeachingRole,
   readReportsToRegistrarFlag,
   roReportsToRegistrar,
@@ -158,6 +157,11 @@ const isTruthyFlag = (value) => {
   const normalized = clean(value).toLowerCase();
   return ["true", "1", "yes", "y"].includes(normalized);
 };
+const isFalsyFlag = (value) => {
+  if (value === false || value === 0) return true;
+  const normalized = clean(value).toLowerCase();
+  return ["false", "0", "no", "n"].includes(normalized);
+};
 const academicYear = (value) =>
   clean(value) || APP_INFO.DEFAULT_AY || "2026-2027";
 const initialsFor = (name = "", fallback = "U") =>
@@ -221,9 +225,12 @@ const workflowDesignationForRole = (role) =>{
   return nonTeachingRoleLabel(normalizedRole);
 };
 
-const workflowStepStatusForRole = (status, role) =>{
+const workflowStepStatusForRole = (status, role, flow = []) =>{
   const normalizedStatus = normalizeNonTeachingStatus(status);
   if (normalizedStatus === NON_TEACHING_STATUS.VC_APPROVED) return WORKFLOW_STATUSES.APPROVED;
+  const hasRegistrar = flow.includes("registrar");
+  const hasRo = flow.includes("ro");
+
   if (role === "ro") {
     return [
       NON_TEACHING_STATUS.RO_REVIEWED,
@@ -231,7 +238,7 @@ const workflowStepStatusForRole = (status, role) =>{
       NON_TEACHING_STATUS.REGISTRAR_REVIEWED,
     ].includes(normalizedStatus)
       ? WORKFLOW_STATUSES.APPROVED
-      : normalizedStatus === NON_TEACHING_STATUS.PENDING_RO_REVIEW
+      : [NON_TEACHING_STATUS.PENDING_RO_REVIEW, NON_TEACHING_STATUS.SUBMITTED].includes(normalizedStatus)
         ? WORKFLOW_STATUSES.PENDING
         : WORKFLOW_STATUSES.WAITING;
   }
@@ -240,16 +247,19 @@ const workflowStepStatusForRole = (status, role) =>{
       ? WORKFLOW_STATUSES.APPROVED
       : [
           NON_TEACHING_STATUS.PENDING_REGISTRAR_REVIEW,
-          NON_TEACHING_STATUS.RO_REVIEWED,
+          ...(hasRo ? [NON_TEACHING_STATUS.RO_REVIEWED] : [NON_TEACHING_STATUS.PENDING_RO_REVIEW, NON_TEACHING_STATUS.SUBMITTED]),
         ].includes(normalizedStatus)
         ? WORKFLOW_STATUSES.PENDING
         : WORKFLOW_STATUSES.WAITING;
   }
   if (role === "vc") {
-    return [
-      NON_TEACHING_STATUS.REGISTRAR_REVIEWED,
+    const vcPendingStatuses = [
       NON_TEACHING_STATUS.PENDING_VC_REVIEW,
-    ].includes(normalizedStatus)
+      NON_TEACHING_STATUS.REGISTRAR_REVIEWED,
+      ...(!hasRegistrar && hasRo ? [NON_TEACHING_STATUS.RO_REVIEWED] : []),
+      ...(!hasRegistrar && !hasRo ? [NON_TEACHING_STATUS.PENDING_RO_REVIEW, NON_TEACHING_STATUS.SUBMITTED] : []),
+    ];
+    return vcPendingStatuses.includes(normalizedStatus)
       ? WORKFLOW_STATUSES.PENDING
       : WORKFLOW_STATUSES.WAITING;
   }
@@ -325,13 +335,15 @@ const statusSkippedReportingOfficer = (source = {}) =>
   ));
 
 export const nonTeachingReportsToRegistrar = (source = {}) => {
-  const explicitDirectToRegistrar = isTruthyFlag(firstNonEmpty(
+  const explicitFlag = firstNonEmpty(
     source.reports_to_registrar,
     source.reportsToRegistrar,
     source.direct_to_registrar,
     source.directToRegistrar,
     source.profile?.reports_to_registrar,
     source.profile?.reportsToRegistrar,
+    source.profile?.direct_to_registrar,
+    source.profile?.directToRegistrar,
     source.form?.reports_to_registrar,
     source.form?.reportsToRegistrar,
     source.form?.direct_to_registrar,
@@ -342,12 +354,19 @@ export const nonTeachingReportsToRegistrar = (source = {}) => {
     source.payload?.directToRegistrar,
     source.info?.reports_to_registrar,
     source.info?.reportsToRegistrar,
+    source.info?.direct_to_registrar,
+    source.info?.directToRegistrar,
     source.form?.info?.reports_to_registrar,
     source.form?.info?.reportsToRegistrar,
+    source.form?.info?.direct_to_registrar,
+    source.form?.info?.directToRegistrar,
     source.payload?.info?.reports_to_registrar,
     source.payload?.info?.reportsToRegistrar,
-  ));
-  if (explicitDirectToRegistrar) return true;
+    source.payload?.info?.direct_to_registrar,
+    source.payload?.info?.directToRegistrar,
+  );
+  if (isFalsyFlag(explicitFlag)) return false;
+  if (isTruthyFlag(explicitFlag)) return true;
 
   const subjectRole = subjectRoleFor(source);
   return (
@@ -606,6 +625,10 @@ export const statusAfterSelfSubmit = (role, source = {}) => {
     return roReportsToRegistrar(source)
       ? NON_TEACHING_STATUS.PENDING_REGISTRAR_REVIEW
       : NON_TEACHING_STATUS.PENDING_VC_REVIEW;
+  const flow = nonTeachingReviewFlow(source);
+  if (flow.length === 2 && flow[1] === "vc") {
+    return NON_TEACHING_STATUS.PENDING_VC_REVIEW;
+  }
   if (
     normalizedRole === "non_teaching_staff" &&
     nonTeachingReportsToRegistrar(source)
@@ -635,28 +658,40 @@ export const expectedPendingStatus = (role) => {
   return NON_TEACHING_STATUS.DRAFT;
 };
 
-export const expectedPendingStatuses = (role) => {
+export const expectedPendingStatuses = (role, itemOrForm = {}) => {
   const normalizedRole = normalizeNonTeachingRole(role, role);
+  const flow = nonTeachingReviewFlow(itemOrForm);
+  const hasRegistrar = flow.includes("registrar");
+  const hasRo = flow.includes("ro");
+
   if (normalizedRole === "registrar") {
+    if (!hasRegistrar) return [];
     return [
       NON_TEACHING_STATUS.PENDING_REGISTRAR_REVIEW,
-      NON_TEACHING_STATUS.RO_REVIEWED,
+      ...(hasRo ? [NON_TEACHING_STATUS.RO_REVIEWED] : [NON_TEACHING_STATUS.PENDING_RO_REVIEW, NON_TEACHING_STATUS.SUBMITTED]),
     ];
   }
   if (normalizedRole === "vc") {
     return [
       NON_TEACHING_STATUS.PENDING_VC_REVIEW,
       NON_TEACHING_STATUS.REGISTRAR_REVIEWED,
+      ...(!hasRegistrar && hasRo ? [NON_TEACHING_STATUS.RO_REVIEWED] : []),
+      ...(!hasRegistrar && !hasRo ? [NON_TEACHING_STATUS.PENDING_RO_REVIEW, NON_TEACHING_STATUS.SUBMITTED] : []),
     ];
+  }
+  if (normalizedRole === "reporting_officer") {
+    if (!hasRo) return [];
+    return [NON_TEACHING_STATUS.PENDING_RO_REVIEW, NON_TEACHING_STATUS.SUBMITTED];
   }
   return [expectedPendingStatus(normalizedRole)];
 };
 
 export const isPendingForNonTeachingReviewer = (statusOrItem = {}, role) => {
+  const item = typeof statusOrItem === "object" && statusOrItem !== null ? statusOrItem : {};
   const status = typeof statusOrItem === "string"
     ? statusOrItem
     : statusOrItem.status || statusOrItem.form?.status;
-  return expectedPendingStatuses(role).includes(normalizeNonTeachingStatus(status));
+  return expectedPendingStatuses(role, item).includes(normalizeNonTeachingStatus(status));
 };
 
 const roleKeyForWorkflowStep = (step = {}, index = 0, steps = []) =>{
@@ -693,7 +728,7 @@ export const nonTeachingWorkflowFor = (itemOrForm = {}, { includeInitial = true 
     .map((role, index) =>({
       stepNo: index + 1,
       designation: workflowDesignationForRole(role),
-      status: workflowStepStatusForRole(status, role),
+      status: workflowStepStatusForRole(status, role, flow),
       roleKey: role,
     }));
 
@@ -713,7 +748,42 @@ export const nonTeachingReviewFlow = (itemOrForm = {}) => {
   const workflowSource = workflowSourceFrom(itemOrForm);
   if (workflowSource) {
     const workflow = normalizeApprovalWorkflow(workflowSource, { includeInitial: false });
-    return ["self", ...workflow.approvalSteps.map((step, index) =>roleKeyForWorkflowStep(step, index, workflow.approvalSteps))];
+    if (workflow.approvalSteps && workflow.approvalSteps.length > 0) {
+      return ["self", ...workflow.approvalSteps.map((step, index) =>roleKeyForWorkflowStep(step, index, workflow.approvalSteps))];
+    }
+  }
+
+  const explicitFlow = firstNonEmpty(
+    itemOrForm.workflowType,
+    itemOrForm.workflow_type,
+    itemOrForm.workflowName,
+    itemOrForm.workflow_name,
+    itemOrForm.flow,
+    itemOrForm.workflow?.workflowName,
+    itemOrForm.workflow?.workflow_name,
+    itemOrForm.profile?.workflowType,
+    itemOrForm.profile?.workflow_type,
+    itemOrForm.profile?.workflowName,
+    itemOrForm.form?.info?.workflowType,
+    itemOrForm.payload?.workflowType,
+  );
+  if (explicitFlow) {
+    const text = String(explicitFlow).toLowerCase().replace(/[-\s_>]+/g, " ");
+    if (text.includes("reviewer") && text.includes("vc") && !text.includes("registrar")) {
+      return ["self", "ro", "vc"];
+    }
+    if ((text.includes("ro") || text.includes("reporting")) && text.includes("vc") && !text.includes("registrar") && !text.includes("reg")) {
+      return ["self", "ro", "vc"];
+    }
+    if (text.includes("straight") && text.includes("vc")) {
+      return ["self", "vc"];
+    }
+    if (text.includes("registrar") && text.includes("vc") && !text.includes("reviewer") && !text.includes("ro")) {
+      return ["self", "registrar", "vc"];
+    }
+    if (text.includes("reviewer") && text.includes("registrar") && text.includes("vc")) {
+      return ["self", "ro", "registrar", "vc"];
+    }
   }
 
   const rawRole = firstNonEmpty(
@@ -755,7 +825,8 @@ export const visibleNonTeachingReviewRoles = (role, itemOrForm = {}) => {
   const flow = nonTeachingReviewFlow(itemOrForm);
   if (normalizedRole === "vc") return flow;
   if (normalizedRole === "registrar") {
-    return flow.includes("registrar") ? ["self", "registrar"] : ["self"];
+    const index = flow.indexOf("registrar");
+    return index >= 0 ? flow.slice(0, index + 1) : ["self"];
   }
   if (normalizedRole === "reporting_officer") {
     const index = flow.indexOf("ro");
@@ -766,26 +837,27 @@ export const visibleNonTeachingReviewRoles = (role, itemOrForm = {}) => {
 
 export const canReviewNonTeachingItem = (item = {}, reviewerRole) => {
   const role = normalizeNonTeachingRole(reviewerRole, reviewerRole);
-  const subjectRole = normalizeNonTeachingRole(
-    item.appraisalRole || item.appraisal_role || item.form?.submittedByRole || item.payload?.submittedByRole,
-    item.appraisalRole || item.appraisal_role || item.form?.submittedByRole || item.payload?.submittedByRole,
-  );
+  if (!role || role === "non_teaching_staff") return false;
 
-  if (role === "vc")
-    return subjectRole !== "vc" && isNonTeachingRole(subjectRole);
-  if (role === "registrar") {
-    if (subjectRole === "non_teaching_staff") return true;
-    // A Reporting Officer's own appraisal is only the Registrar's to review when it routes
-    // through the Registrar; "straight to VC" ROs must not appear in the Registrar queue.
-    if (subjectRole === "reporting_officer") return roReportsToRegistrar(item);
-    return false;
-  }
-  if (role === "reporting_officer")
-    return (
-      subjectRole === "non_teaching_staff" &&
-      !nonTeachingReportsToRegistrar(item)
-    );
-  return false;
+  const rawRole = firstNonEmpty(
+    item.appraisalRole,
+    item.appraisal_role,
+    item.form?.submittedByRole,
+    item.payload?.submittedByRole,
+  );
+  const subjectRole = normalizeNonTeachingRole(rawRole, rawRole || "non_teaching_staff");
+  if (subjectRole === "vc") return false;
+
+  const flow = nonTeachingReviewFlow(item);
+  const roleKey = role === "reporting_officer" ? "ro" : role;
+
+  if (!flow.includes(roleKey)) return false;
+
+  const subjectEmail = emailKey(item.email || item.staff_email || item.form?.info?.email);
+  const currentEmail = emailKey(sessionStorage.getItem("username") || sessionStorage.getItem("email"));
+  if (subjectEmail && currentEmail && subjectEmail === currentEmail) return false;
+
+  return true;
 };
 
 export const isNonTeachingReviewComplete = (item = {}) =>
@@ -1109,8 +1181,33 @@ export const fetchNonTeachingQueueForRole = async ({
   try {
     const params = { academic_year: academicYear(ay) };
 
-    const items = await api.get("/non-teaching/subordinates", { params });
-    return (items || []).map(normalizeNonTeachingQueueItem);
+    const rawItems = await api.get("/non-teaching/subordinates", { params });
+    const normalizedItems = (rawItems || []).map(normalizeNonTeachingQueueItem);
+
+    const enrichedItems = await Promise.all(
+      normalizedItems.map(async (item) => {
+        if (item.workflow?.approvalSteps?.length) return item;
+        const staffEmail = item.email || item.staff_email;
+        if (!staffEmail) return item;
+        try {
+          const liveWorkflow = await loadNonTeachingWorkflow({
+            email: staffEmail,
+            academicYear: item.academicYear || ay,
+          });
+          if (liveWorkflow?.approvalSteps?.length) {
+            return {
+              ...item,
+              workflow: liveWorkflow,
+            };
+          }
+        } catch {
+          // Keep existing item.
+        }
+        return item;
+      })
+    );
+
+    return enrichedItems.filter((item) => canReviewNonTeachingItem(item, role));
   } catch (err) {
     throw new Error(err?.message || "Could not load non-teaching review queue.", { cause: err });
   }

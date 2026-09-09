@@ -1,7 +1,7 @@
 import { useState } from "react";
-import DashboardLayout from "../components/dashboard/DashboardLayout";
-import DashboardSidebar from "../components/dashboard/DashboardSidebar";
-import { APP_INFO, MyAppraisalSection } from "../features/faculty-appraisal";
+import DashboardLayout from "../../components/dashboard/DashboardLayout";
+import DashboardSidebar from "../../components/dashboard/DashboardSidebar";
+import { APP_INFO, MyAppraisalSection } from "../../features/faculty-appraisal";
 
 export default function Dashboard() {
   const [activeMainTab, setActiveMainTab] = useState("myAppraisal");
