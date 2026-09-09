@@ -2050,7 +2050,7 @@ export function PartDRubricInfoCard() {
   return null;
 }
 
-export function CreativeSchoolForm({ form, setForm, docs, setDocs, mode = "self", locked = false, reviewerRole = "", reviewData = {}, setReviewData = () => {}, previousRoles = [], sectionView = "partA" }) {
+export function CreativeSchoolForm({ form, setForm, docs, setDocs, mode = "self", locked = false, partDLocked = false, reviewerRole = "", reviewData = {}, setReviewData = () => {}, previousRoles = [], sectionView = "partA" }) {
   const sectionTableProps = { form, setForm, docs, setDocs, mode, locked, reviewerRole, reviewData, setReviewData, previousRoles };
   const partBSections = getPartBSectionsForSchool(form?.info?.school || form);
   return (
@@ -2065,7 +2065,7 @@ export function CreativeSchoolForm({ form, setForm, docs, setDocs, mode = "self"
         <PartC sections={PART_C_SECTIONS} SectionTable={SectionTable} sectionTableProps={sectionTableProps} />
       )}
       {(sectionView === "partD" || sectionView === "all") && (
-        <PartD sectionTableProps={sectionTableProps} />
+        <PartD sectionTableProps={{ ...sectionTableProps, locked: locked || partDLocked }} />
       )}
       {(sectionView === "partE" || sectionView === "all") && (
         <PartE sectionTableProps={sectionTableProps} />

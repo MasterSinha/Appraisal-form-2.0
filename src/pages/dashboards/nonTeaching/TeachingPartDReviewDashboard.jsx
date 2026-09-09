@@ -155,6 +155,8 @@ export default function TeachingPartDReviewDashboard({ accent = "#155e75", acade
   const [activeSchoolId, setActiveSchoolId] = useState("");
   const [score, setScore] = useState("");
   const [remarks, setRemarks] = useState("");
+  const [editing, setEditing] = useState(false);
+  const [leaveRows, setLeaveRows] = useState([]);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const academicYear = academicYearProp || getActiveAcademicYear() || APP_INFO.DEFAULT_AY;
@@ -166,7 +168,7 @@ export default function TeachingPartDReviewDashboard({ accent = "#155e75", acade
     setLoading(true);
     setLoadError("");
     try {
-      const queue = await fetchPartDRegistrarQueue({ academicYear });
+      const queue = await fetchPartDRegistrarQueue({ academicYear, includeReviewed: true });
       setItems(queue);
       const nextSelection = defaultPartDSchoolSelection(queue, activeDivision, activeSchoolId);
       setActiveDivision(nextSelection.division);
@@ -190,6 +192,7 @@ export default function TeachingPartDReviewDashboard({ accent = "#155e75", acade
 
   const selected = items.find((item) => item.id === selectedId);
   const selectedReviewed = selected ? isPartDReviewed(selected) : false;
+  const canEdit = selected?.can_edit_part_d === true;
   const currentSchools = getPartDSchoolsByDivision()[activeDivision] || [];
   const schoolCounts = useMemo(() => partDSchoolCountsFor(items), [items]);
   const divisionCounts = useMemo(() => partDDivisionCountsFor(schoolCounts), [schoolCounts]);
@@ -224,6 +227,8 @@ export default function TeachingPartDReviewDashboard({ accent = "#155e75", acade
         setRemarks("");
       }
       setSaveError("");
+      setEditing(false);
+      setLeaveRows(selected?.leaveManagement || selected?.leave_management || []);
     }, 0);
     return () => clearTimeout(timer);
   }, [
@@ -240,9 +245,9 @@ export default function TeachingPartDReviewDashboard({ accent = "#155e75", acade
   ]);
 
   const handleSubmit = async () => {
-    if (!selected || selectedReviewed) return;
-    if (score === "" || Number.isNaN(Number(score))) {
-      setSaveError("Please enter a valid score.");
+    if (!selected || (selectedReviewed && !editing) || (editing && !canEdit)) return;
+    if (score === "" || !Number.isFinite(Number(score)) || Number(score) < 0 || Number(score) > 25) {
+      setSaveError("Please enter a score between 0 and 25.");
       return;
     }
     setSaving(true);
@@ -253,6 +258,7 @@ export default function TeachingPartDReviewDashboard({ accent = "#155e75", acade
         academicYear,
         score,
         remarks,
+        ...(editing ? { leaveManagement: leaveRows } : {}),
         subjectProfile: selected,
       });
       const reviewedItem = {
@@ -262,6 +268,7 @@ export default function TeachingPartDReviewDashboard({ accent = "#155e75", acade
         registrarPartDScore: Number(score),
         registrarPartDRemarks: remarks,
         registrarPartDReviewedAt: new Date().toISOString(),
+        ...(editing ? { leaveManagement: leaveRows, leave_management: leaveRows } : {}),
       };
       setItems((currentItems) => currentItems.map((item) => (
         item.id === selected.id ? reviewedItem : item
@@ -379,7 +386,7 @@ export default function TeachingPartDReviewDashboard({ accent = "#155e75", acade
           )}
         </div>
       ) : (
-        <div style={{ marginTop: 16, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 14, padding: 18, boxShadow: "0 10px 28px rgba(17,24,39,0.06)" }}>
+        <div style={{ width: "100%", maxWidth: 1100, boxSizing: "border-box", margin: "16px auto 0", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 14, padding: 18, boxShadow: "0 10px 28px rgba(17,24,39,0.06)" }}>
           <div style={{ marginBottom: 16, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
             <button type="button" onClick={() => setSelectedId("")} style={{ background: "#f8fafc", color: "#475569", border: "1px solid #dbe3ef", borderRadius: 8, padding: "8px 12px", cursor: "pointer", fontFamily: "inherit", fontWeight: 800 }}>Back</button>
             <Avatar initials={selected.avatar} src={selected.avatarUrl} color={accent} size={46} />
@@ -391,16 +398,30 @@ export default function TeachingPartDReviewDashboard({ accent = "#155e75", acade
             </div>
           </div>
 
+          {canEdit && (
+            <button type="button" disabled={saving} onClick={() => {
+              setEditing(!editing);
+              setLeaveRows(selected.leaveManagement || selected.leave_management || []);
+              if (editing) {
+                setScore(partDScoreForInput(selected));
+                setRemarks(selected.registrarPartDRemarks || selected.registrar_part_d_remarks || "");
+              }
+            }} style={{ marginBottom: 12, padding: "8px 12px", border: "1px solid #dbe3ef", borderRadius: 6, background: "#f8fafc", cursor: "pointer" }}>
+              {editing ? "Cancel Edit" : "Edit Part D"}
+            </button>
+          )}
           <RegistrarLeaveManagement
-            ctx={{ leaveManagement: selected.leaveManagement || selected.leave_management }}
+            ctx={{ leaveManagement: editing ? leaveRows : selected.leaveManagement || selected.leave_management }}
+            editing={editing}
+            onRowsChange={setLeaveRows}
             score={score}
             remarks={remarks}
             onScoreChange={setScore}
             onRemarksChange={setRemarks}
-            disabled={saving || selectedReviewed}
+            disabled={saving || (selectedReviewed && !editing)}
           />
 
-          {selectedReviewed && (
+          {selectedReviewed && !editing && (
             <div style={{ marginTop: 12, background: "#ecfdf5", border: "1px solid #bbf7d0", color: "#047857", padding: "10px 14px", borderRadius: 8, fontSize: 12, fontWeight: 800 }}>
               Registrar review completed. This Part D record is open for viewing only.
             </div>
@@ -412,7 +433,7 @@ export default function TeachingPartDReviewDashboard({ accent = "#155e75", acade
             </div>
           )}
 
-          {!selectedReviewed && (
+          {(!selectedReviewed || editing) && (
             <div style={{ marginTop: 16, display: "flex", justifyContent: "flex-end" }}>
               <button
                 type="button"
@@ -420,7 +441,7 @@ export default function TeachingPartDReviewDashboard({ accent = "#155e75", acade
                 disabled={saving}
                 style={{ padding: "10px 22px", background: accent, color: "#fff", border: "none", borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.6 : 1, fontFamily: "inherit" }}
               >
-                {saving ? "Submitting..." : "Submit Part D Review"}
+                {saving ? "Submitting..." : "Save & Release Part D to VC"}
               </button>
             </div>
           )}

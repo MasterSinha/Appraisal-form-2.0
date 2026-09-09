@@ -152,6 +152,7 @@ export default function CreativeMyAppraisalSection({
   const isSelectedCycleOpen = selectedCycle ? Boolean(selectedCycle.is_open) : false;
   const isLatestCycle = (availableCycles[0]?.academic_year || academicYear) === academicYear;
   const workflowRejected = hasActiveRejection(declaration, reviews);
+  const partDLocked = !isLegacyTwoPartYear && workflowRejected;
   const appraisalWindowLocked = !isSelectedCycleOpen && !canEditSelfAppraisal(appraisalWindowStatus, { declaration });
   const locked = appraisalWindowLocked || isSelectedCycleClosed || (Boolean(declaration) && !workflowRejected);
   const lockMessage = isSelectedCycleOpen || isSelectedCycleClosed ? "" : appraisalWindowError || (appraisalWindowLocked ? appraisalWindowMessage(appraisalWindowStatus, academicYear) : "");
@@ -245,6 +246,7 @@ export default function CreativeMyAppraisalSection({
   };
 
   const handleSaveSelfSection = async (section) => {
+    if (section === "partD" && partDLocked) return;
     if (locked) return;
     if (!userEmail) {
       alert("Please login again before saving. Your session email was not found.");
@@ -462,35 +464,13 @@ export default function CreativeMyAppraisalSection({
         </div>
         <div className="appraisal-status-grid" style={{ display: "grid", gridTemplateColumns: isSelectedCycleClosed || isLegacyTwoPartYear ? "1fr" : "minmax(0, 1fr) 316px", gap: 12, alignItems: "stretch" }}>
           <WorkflowStatusTracker
+            showPartD={!isLegacyTwoPartYear}
             declaration={declaration}
             reviews={reviews}
             profile={{ ...profile, school: schoolName, appraisal_role: role }}
           />
           {!isSelectedCycleClosed && !isLegacyTwoPartYear && (
-            <div className="appraisal-progress-card" style={{ background: "#fff", borderRadius: 14, padding: "18px 22px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb", display: "flex", flexDirection: "column", justifyContent: "center", gap: 10 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
-                <div style={{ fontSize: 14, color: "#374151", fontWeight: 800 }}>Overall Progress</div>
-                <div style={{ fontSize: 22, color: "#111827", fontWeight: 900, lineHeight: 1 }}>{overallProgress}%</div>
-              </div>
-              <div aria-label={`Overall progress ${overallProgress}%`} style={{ height: 8, borderRadius: 999, background: "#e5e7eb", overflow: "hidden" }}>
-                <div style={{ width: `${overallProgress}%`, height: "100%", borderRadius: 999, background: "linear-gradient(90deg,#06b6d4,#10b981)", transition: "width 300ms ease" }} />
-              </div>
-              <div style={{ fontSize: 14, color: "#6b7280", fontWeight: 600 }}>{Number(totals.total || 0).toFixed(1)} / {effectiveGrandMax} Marks</div>
-              <div aria-label="Part-wise progress" style={{ display: "grid", gridTemplateColumns: `repeat(${partWiseProgressRows.length}, minmax(0, 1fr))`, gap: 5, borderTop: "1px solid #e5e7eb", paddingTop: 8 }}>
-                {partWiseProgressRows.map(([label, score, max], index) => {
-                  const partColor = ["#4f46e5", "#0891b2", "#059669", "#dc2626", "#7c3aed"][index] || "#4f46e5";
-                  const partLetter = label.replace("Part ", "");
-                  return (
-                    <div key={label} title={`${label}: ${Number(score).toFixed(1)} / ${max}`} style={{ minWidth: 0, background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 6, padding: "5px 4px", textAlign: "center" }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 3, marginBottom: 1 }}>
-                        <span style={{ width: 14, height: 14, borderRadius: 999, display: "inline-flex", alignItems: "center", justifyContent: "center", background: `${partColor}14`, border: `1px solid ${partColor}33`, color: partColor, fontSize: 9, fontWeight: 900 }}>{partLetter}</span>
-                      </div>
-                      <div style={{ fontSize: 10, color: "#0f172a", fontWeight: 900, whiteSpace: "nowrap" }}>{Number(score).toFixed(0)}/{max}</div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+<OverallProgress total={totals.total} max={effectiveGrandMax} percentage={overallProgress} parts={partWiseProgressRows} />
           )}
         </div>
       </div>
@@ -573,12 +553,12 @@ export default function CreativeMyAppraisalSection({
         </div>
       ) : (
         <>
-          <CreativeSchoolForm form={form} setForm={setForm} docs={docs} setDocs={setDocs} mode="self" locked={locked} sectionView={sectionTab} />
+          <CreativeSchoolForm form={form} setForm={setForm} docs={docs} setDocs={setDocs} mode="self" locked={locked} partDLocked={partDLocked} sectionView={sectionTab} />
           <SectionSaveFooter
             label={SECTION_OPTIONS.find((option) => option.value === sectionTab)?.label || sectionTab}
             saved={Boolean(sectionSaveStatus[sectionTab])}
             saving={savingSection === sectionTab}
-            locked={locked}
+            locked={locked || (sectionTab === "partD" && partDLocked)}
             onSave={() => handleSaveSelfSection(sectionTab)}
           />
         </>
@@ -586,3 +566,4 @@ export default function CreativeMyAppraisalSection({
     </div>
   );
 }
+import OverallProgress from "../../components/OverallProgress";

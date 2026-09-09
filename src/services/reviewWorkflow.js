@@ -1013,11 +1013,12 @@ export const enrichQueueItem = (item) => enrichQueueItemDocs(item);
 // originator (Faculty/HOD/Director/Dean/Center Head, any school) - independent of the
 // A/B/C/E chain, which never routes Part D to HOD/Director/Dean. See
 // partDReleaseGateApplies / PART_D_STATUSES in utils/hierarchy.js and backend_changes_requied.md.
-export const fetchPartDRegistrarQueue = async ({ academicYear } = {}) => {
+export const fetchPartDRegistrarQueue = async ({ academicYear, includeReviewed = false } = {}) => {
   try {
     const params = {
       academic_year: academicYear || getActiveAcademicYear() || APP_INFO.DEFAULT_AY || "2026-2027",
       part_d_status: PART_D_STATUSES.PENDING_REGISTRAR,
+      ...(includeReviewed ? { include_reviewed: true } : {}),
     };
     const items = await api.get("/dashboard/part-d-queue", { params });
     const normalizedItems = (items || []).map(normalizeQueueItem);
@@ -1031,18 +1032,17 @@ export const submitPartDRegistrarReview = async ({
   subjectEmail,
   academicYear,
   score = 0,
+  remarks = "",
+  leaveManagement,
 }) => {
   if (!subjectEmail) {
     throw new Error("Missing subject email for Part D review.");
   }
 
-  // This used to PUT /appraisal-remarks/registrar-part-d/{email} - a route from an earlier
-  // three-state Part D spec that was never actually built on the backend (404). The endpoint
-  // that actually exists and does this job is POST /dashboard/part-d-release/{email}, which
-  // only accepts registrar_part_d_score + academic_year (no remarks field - the backend never
-  // persists Part D remarks; see backend_changes_requied.md if that's needed later).
   return await api.post(`/dashboard/part-d-release/${encodeURIComponent(subjectEmail)}`, {
     registrar_part_d_score: n(score),
+    remarks,
+    ...(leaveManagement ? { leave_management: leaveManagement } : {}),
     academic_year: academicYear || getActiveAcademicYear() || APP_INFO.DEFAULT_AY || "2026-2027",
   });
 };

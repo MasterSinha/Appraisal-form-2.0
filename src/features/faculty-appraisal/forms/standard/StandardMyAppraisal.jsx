@@ -745,6 +745,7 @@ export default function StandardMyAppraisal({
   const isLegacyTwoPartYear = isLegacyTwoPartAcademicYear(info.ay);
   const appraisalWindowLocked = !isLegacyTwoPartYear && !isSelectedCycleOpen && !canEditSelfAppraisal(appraisalWindowStatus, { declaration: workflowDeclaration });
   const formLocked = appraisalLocked || appraisalWindowLocked;
+  const partDLocked = !isLegacyTwoPartYear && hasActiveRejection(workflowDeclaration, workflowReviews);
   const closedAppraisalCycleMessage = `Appraisal cycle for Academic Year ${info.ay} is closed. The next appraisal cycle form will be available soon. For any queries, please contact appraisal@dypiu.ac.in.`;
   const appraisalWindowLockMessage = isSelectedCycleOpen || isSelectedCycleClosed ? "" : appraisalWindowError || (appraisalWindowLocked ? appraisalWindowMessage(appraisalWindowStatus, info.ay) : "");
   // The latest cycle (newest-first list) stays on the normal form, locked read-only, when
@@ -1276,7 +1277,7 @@ export default function StandardMyAppraisal({
   }, [info, lectures, courseFile, innovRows, projects, obeRows, mentoringRows, quals, feedback, deptActs, uniActs, eventRows, society, industry, alumniRows, placementRows, acr, leaveManagement, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, exhibitions, summaryOtherInfo, docs, sectionSaveStatus, formLocked, submitting, showClosedReportOnly, isLegacyTwoPartYear, isSelectedCycleOpen, appraisalWindowStatus, partATotal, partBTotal, partCTotal, partDTotal, grandTotal, effectivePartAMax, effectivePartBMax, effectiveGrandMax]);
 
   const handleSaveCurrentSection = async (section, navigateNext = true) => {
-    if (formLocked) return;
+    if (formLocked || (section === "partD" && partDLocked)) return;
     const userEmail = sessionStorage.getItem("username") || sessionStorage.getItem("email");
     if (!userEmail) {
       alert("Please login again before saving. Your session email was not found.");
@@ -1910,35 +1911,13 @@ export default function StandardMyAppraisal({
             </div>
             <div className="appraisal-status-grid" style={{ display: "grid", gridTemplateColumns: isSelectedCycleClosed || isLegacyTwoPartYear ? "1fr" : "minmax(0, 1fr) 316px", gap: 12, alignItems: "stretch" }}>
               <WorkflowStatusTracker
+                showPartD={!isLegacyTwoPartYear}
                 declaration={workflowDeclaration}
                 reviews={workflowReviews}
                 profile={profileFromsessionStorage()}
               />
               {!isSelectedCycleClosed && !isLegacyTwoPartYear && (
-                <div className="appraisal-progress-card" style={{ background: "#fff", borderRadius: 14, padding: "18px 22px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb", display: "flex", flexDirection: "column", justifyContent: "center", gap: 10 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
-                    <div style={{ fontSize: 14, color: "#374151", fontWeight: 800 }}>Overall Progress</div>
-                    <div style={{ fontSize: 22, color: "#111827", fontWeight: 900, lineHeight: 1 }}>{overallProgress}%</div>
-                  </div>
-                  <div aria-label={`Overall progress ${overallProgress}%`} style={{ height: 8, borderRadius: 999, background: "#e5e7eb", overflow: "hidden" }}>
-                    <div style={{ width: `${overallProgress}%`, height: "100%", borderRadius: 999, background: "linear-gradient(90deg,#06b6d4,#10b981)", transition: "width 300ms ease" }} />
-                  </div>
-                  <div style={{ fontSize: 14, color: "#6b7280", fontWeight: 600 }}>{grandTotal.toFixed(1)} / {effectiveGrandMax} Marks</div>
-                  <div aria-label="Part-wise progress" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 5, borderTop: "1px solid #e5e7eb", paddingTop: 8 }}>
-                    {partWiseProgressRows.map(([label, score, max], index) => {
-                      const partColor = ["#4f46e5", "#0891b2", "#059669", "#dc2626"][index] || "#4f46e5";
-                      const partLetter = label.replace("Part ", "");
-                      return (
-                      <div key={label} title={`${label}: ${score.toFixed(1)} / ${max}`} style={{ minWidth: 0, background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 6, padding: "5px 4px", textAlign: "center" }}>
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 3, marginBottom: 1 }}>
-                          <span style={{ width: 14, height: 14, borderRadius: 999, display: "inline-flex", alignItems: "center", justifyContent: "center", background: `${partColor}14`, border: `1px solid ${partColor}33`, color: partColor, fontSize: 9, fontWeight: 900 }}>{partLetter}</span>
-                        </div>
-                        <div style={{ fontSize: 10, color: "#0f172a", fontWeight: 900, whiteSpace: "nowrap" }}>{score.toFixed(0)}/{max}</div>
-                      </div>
-                      );
-                    })}
-                  </div>
-                </div>
+<OverallProgress total={grandTotal} max={effectiveGrandMax} percentage={overallProgress} parts={partWiseProgressRows} />
               )}
             </div>
             <RejectionNotice
@@ -2044,7 +2023,7 @@ export default function StandardMyAppraisal({
               />
             ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <fieldset disabled={formLocked && hodAppraisalTab !== "summary"} style={{ flex: 1, minWidth: 0, border: 0, padding: 0, margin: 0, opacity: formLocked && hodAppraisalTab !== "summary" ? 0.86 : 1 }}>
+              <fieldset disabled={(formLocked && hodAppraisalTab !== "summary") || (partDLocked && hodAppraisalTab === "partD")} style={{ flex: 1, minWidth: 0, border: 0, padding: 0, margin: 0, opacity: formLocked && hodAppraisalTab !== "summary" ? 0.86 : 1 }}>
 
                 {/* Part A Tab */}
                 {hodAppraisalTab === "partA" && (
@@ -3417,7 +3396,7 @@ export default function StandardMyAppraisal({
                   </SC>
                 )}
 
-                {["partA", "partB", "partC", "partD", "partE"].includes(hodAppraisalTab) && !formLocked && (
+                {["partA", "partB", "partC", "partD", "partE"].includes(hodAppraisalTab) && !formLocked && !(partDLocked && hodAppraisalTab === "partD") && (
                   <SectionSaveFooter
                     label={{ partA: "Part A", partB: "Part B", partC: "Part C", partD: "Part D", partE: "Part E" }[hodAppraisalTab]}
                     saved={Boolean(sectionSaveStatus[hodAppraisalTab])}
@@ -3491,3 +3470,4 @@ export default function StandardMyAppraisal({
   );
 }
 
+import OverallProgress from "../../components/OverallProgress";
