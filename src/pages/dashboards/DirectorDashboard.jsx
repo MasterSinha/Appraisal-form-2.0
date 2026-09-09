@@ -1173,7 +1173,7 @@ showSectionSelector={visibleMainTab === "myAppraisal"}
 
  {visibleMainTab === "appraisalReviewer" && !reviewingFaculty && !reviewingHod && (
 <>
-<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 18, background: "#fff", borderRadius: 14, padding: "16px 24px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb" }}>
+<div className="reviewer-window__header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 18, background: "#fff", borderRadius: 14, padding: "16px 24px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb" }}>
 <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
 <AppraisalHeaderImage logo="dypiu" />
 <div>

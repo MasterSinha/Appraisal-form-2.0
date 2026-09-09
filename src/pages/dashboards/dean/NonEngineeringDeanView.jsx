@@ -1485,7 +1485,7 @@ export default function NonEngineeringDeanView() {
             </div>
           )}
           {/* Horizontal School Selector Bar */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap", background: "#fff", borderRadius: 14, padding: "16px 24px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb" }}>
+          <div className="school-review-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap", background: "#fff", borderRadius: 14, padding: "16px 24px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 16, minWidth: 0 }}>
             <AppraisalHeaderImage logo="dypiu" />
             <div style={{ minWidth: 0 }}>
@@ -1550,6 +1550,8 @@ export default function NonEngineeringDeanView() {
                 <button
                   key={school.code}
                   onClick={() => setSelectedSchoolCode(school.code)}
+                  className="school-selector-option"
+                  aria-pressed={active}
                   style={{
                     padding: "16px 12px",
                     border: "none",

@@ -1598,9 +1598,9 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
 
 
 // --- Person Card --------------------------------------------------------------
-function PersonCard({ person, role, onReview, schoolColor, loading = false }) {
+function PersonCard({ person, role, onReview, schoolColor, showHodMetric = true, loading = false }) {
  const personMode = role === "Director" ? "director" : role === "HOD" ? "hod" : role === "Dean" ? "dean" : role === "Center Head" ? "center_head" : "faculty";
- const previousRoles = vcPreviousRolesFor(person, personMode);
+ const previousRoles = vcPreviousRolesFor(person, personMode).filter((reviewRole) => reviewRole !== "hod" || showHodMetric);
  const vcTotal = n(person.vcTotal);
  const academicYear = person.academicYear || person.academic_year || person.info?.ay;
  const legacyTwoPartCard = isLegacyTwoPartAcademicYear(academicYear);
@@ -1667,29 +1667,17 @@ function PersonCard({ person, role, onReview, schoolColor, loading = false }) {
 </div>
 </div>
 
- {/* Review chain totals - one neutral color throughout instead of a different hue per
-     column; the label text (not color) is what distinguishes each score. Each tile sits in
-     its own bordered cell instead of floating in one flat box. */}
-<div className="vc-score-strip" style={{ display: "grid", gridTemplateColumns: `repeat(${Math.max(scoreTiles.length, 1)}, minmax(0, 1fr))`, gap: 0, background: "#f8fafc", border: "1px solid #eef1f6", borderRadius: 11, overflow: "hidden" }}>
- {scoreTiles.map((tile, idx) =>{
- const score = n(tile.value);
- return (
-<div key={tile.label} style={{ minWidth: 0, padding: "10px 11px", borderLeft: idx > 0 ? "1px solid #eef1f6" : "none" }}>
-<div style={{ fontSize: 8, fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{tile.label}</div>
- {score >0 || tile.isVc ? (
-<>
-<div style={{ fontSize: 14.5, fontWeight: 900, color: "#1e293b", lineHeight: 1 }}>
- {score >0 ? score.toFixed(1) : "-"}<span style={{ fontSize: 8, color: "#cbd5e1", fontWeight: 600 }}>/{scoreGrandMax}</span>
-</div>
-<div style={{ marginTop: 5 }}><ScoreBar score={score} max={scoreGrandMax} color={cardColor} /></div>
-</>
- ) : (
-<div style={{ fontSize: 14.5, fontWeight: 900, color: "#cbd5e1" }}>-</div>
- )}
-</div>
- );
- })}
-</div>
+<ReviewMetricsStrip
+ includeDocs={false}
+ metrics={scoreTiles.map((tile) => ({
+   label: tile.label,
+   val: n(tile.value),
+   max: n(tile.value) > 0 || tile.isVc ? scoreGrandMax : undefined,
+   displayValue: n(tile.value) > 0 ? n(tile.value).toFixed(1) : "-",
+   showProgress: n(tile.value) > 0 || tile.isVc,
+   helper: " ",
+ }))}
+/>
 
  {remarkTiles.length >0 && (
 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -1727,7 +1715,7 @@ function SchoolPanel({ school, deanList, dirList, hodList, centerHeadList = [], 
  const allPeople = [
  ...schoolDeans.map(p =>({ person: p, role: "Dean" })),
  ...schoolDirs.map(p =>({ person: p, role: "Director" })),
- ...schoolHods.map(p =>({ person: p, role: "HOD" })),
+ ...(school.hasHods ? schoolHods.map(p =>({ person: p, role: "HOD" })) : []),
  ...schoolCenterHeads.map(p =>({ person: p, role: "Center Head" })),
  ...schoolFaculty.map(p =>({ person: p, role: "Faculty" })),
  ];
@@ -1768,7 +1756,7 @@ function SchoolPanel({ school, deanList, dirList, hodList, centerHeadList = [], 
  ) : (
 <div className="vc-card-grid" style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 14 }}>
  {allPeople.map(({ person, role }) =>(
-<PersonCard key={`${role}-${person.id}`} person={person} role={role} onReview={onReview} schoolColor={school.color} loading={reviewLoading === (person.id || person.email)} />
+ <PersonCard key={`${role}-${person.id}`} person={person} role={role} onReview={onReview} schoolColor={school.color} showHodMetric={school.hasHods} loading={reviewLoading === (person.id || person.email)} />
  ))}
 </div>
  )}
@@ -1914,8 +1902,9 @@ function NonTeachingPanel({ pendingItems = [], reviewedItems = [], onReview }) {
  );
 }
 
-const toVcSchool = (school, index = 0) =>{
+const toVcSchool = (school, index = 0, academicYear = "") =>{
  const meta = schoolVisualMeta(school, index);
+ const legacyOnlySoemrHasHod = isLegacyTwoPartAcademicYear(academicYear);
  return {
  id: school.code.toLowerCase(),
  code: school.code,
@@ -1923,8 +1912,10 @@ const toVcSchool = (school, index = 0) =>{
  label: school.label,
  color: meta.color || "#64748b",
  icon: meta.icon || school.code,
- hasHods: Boolean(school.hasHod),
- };
+ hasHods: legacyOnlySoemrHasHod
+ ? String(school.code || "").trim().toUpperCase() === "SOEMR"
+ : Boolean(school.hasHod),
+};
 };
 
 const DIVISION_SCHOOLS = {
@@ -1950,18 +1941,18 @@ const DIVISION_SCHOOLS = {
 
 // Computed fresh on every call (not a module-level snapshot) so it always reflects the current
 // UNIVERSITY_SCHOOLS - live data once GET /schools has landed, the fallback table until then.
-const getHierarchySchools = () => ({
+const getHierarchySchools = (academicYear = "") => ({
  engg: UNIVERSITY_SCHOOLS
  .filter((school) =>school.deanTrack === DEAN_TRACKS.ENGINEERING)
- .map((school, index) => toVcSchool(school, index))
+ .map((school, index) => toVcSchool(school, index, academicYear))
  .concat(DIVISION_SCHOOLS.engineering),
  "non-engg": UNIVERSITY_SCHOOLS
  .filter((school) =>school.deanTrack === DEAN_TRACKS.NON_ENGINEERING)
- .map((school, index) => toVcSchool(school, index))
+ .map((school, index) => toVcSchool(school, index, academicYear))
  .concat(DIVISION_SCHOOLS.non_engineering),
  cisr: UNIVERSITY_SCHOOLS
  .filter((school) =>school.deanTrack === DEAN_TRACKS.DIRECT_VC)
- .map((school, index) => toVcSchool(school, index)),
+ .map((school, index) => toVcSchool(school, index, academicYear)),
 });
 
 const schoolIdForPerson = (person = {}) =>{
@@ -2236,12 +2227,12 @@ export default function VCDashboard() {
  }
  };
 
- const currentSchools = getHierarchySchools()[deanTypeFilter] || [];
+ const currentSchools = getHierarchySchools(selectedAcademicYear)[deanTypeFilter] || [];
  const activeSchool = currentSchools.find(s =>s.id === activeSchoolId) || currentSchools[0] || null;
 
  const switchDeanType = (type) =>{
  setDeanTypeFilter(type);
- setActiveSchoolId(getHierarchySchools()[type]?.[0]?.id || "");
+ setActiveSchoolId(getHierarchySchools(selectedAcademicYear)[type]?.[0]?.id || "");
  setReviewing(null);
  };
  const switchSchool = (schoolId) =>{ setActiveSchoolId(schoolId); setReviewing(null); };
@@ -2277,7 +2268,7 @@ export default function VCDashboard() {
  const all = [
  ...deanList.filter(p =>p.schoolId === school.id),
  ...dirList.filter(p =>p.schoolId === school.id),
- ...hodList.filter(p =>p.schoolId === school.id),
+ ...(school.hasHods ? hodList.filter(p =>p.schoolId === school.id) : []),
  ...centerHeadList.filter(p =>p.schoolId === school.id),
  ...facList.filter(p =>p.schoolId === school.id),
  ];
@@ -2430,7 +2421,7 @@ University Overview
  {!reviewing && (
 <>
  {/* Hero */}
-<div className="vc-dashboard-hero fa-slide-top" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#fff", borderRadius: 14, padding: "16px 24px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb", flexWrap: "wrap" }}>
+<div className="vc-dashboard-hero school-review-header fa-slide-top" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#fff", borderRadius: 14, padding: "16px 24px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb", flexWrap: "wrap" }}>
 <div style={{ display: "flex", alignItems: "center", gap: 16, minWidth: 0 }}>
 <AppraisalHeaderImage logo="dypiu" style={{ alignSelf: "center" }} />
 <div style={{ minWidth: 0 }}>
@@ -2476,10 +2467,10 @@ University Overview
  ].map(({ key, label, color, bg, icon }) =>{
  const schoolPending = key === "non-teaching"
  ? nonTeachingList.length
- : (getHierarchySchools()[key] || []).reduce((a, s) =>a + getSchoolPending(s), 0);
+ : (getHierarchySchools(selectedAcademicYear)[key] || []).reduce((a, s) =>a + getSchoolPending(s), 0);
  const isActive = deanTypeFilter === key;
  return (
-<button className={`vc-segmented-tab${isActive ? " is-active" : ""}`} key={key} onClick={() =>switchDeanType(key)}
+<button className={`vc-segmented-tab division-selector-option${isActive ? " is-active" : ""}`} aria-pressed={isActive} key={key} onClick={() =>switchDeanType(key)}
  style={{ padding: "9px 20px", border: isActive ? `1.5px solid ${color}44` : "1.5px solid transparent", borderRadius: 7, cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 700, background: isActive ? bg : "none", color: isActive ? color : "#64748b", display: "flex", alignItems: "center", gap: 7, boxShadow: isActive ? `0 2px 10px ${color}1f` : "none" }}>
  <VcIcon name={icon} size={14} color={isActive ? color : "#94a3b8"} />
  {label}
@@ -2499,7 +2490,7 @@ University Overview
  const isActive = school.id === activeSchoolId;
  const shortName = school.name.replace(/^School of /i, "").replace(/^Dean of /i, "");
  return (
-<button className={`vc-school-tab${isActive ? " is-active" : ""}`} key={school.id} onClick={() =>switchSchool(school.id)}
+<button className={`vc-school-tab school-selector-option${isActive ? " is-active" : ""}`} aria-pressed={isActive} key={school.id} onClick={() =>switchSchool(school.id)}
  title={school.name}
  onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = "#f8fafc"; }}
  onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = "none"; }}

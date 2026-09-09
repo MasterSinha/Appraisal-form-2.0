@@ -323,6 +323,8 @@ export default function TeachingPartDReviewDashboard({ accent = "#155e75", acade
                   key={division}
                   type="button"
                   onClick={() => switchDivision(division)}
+                  className="division-selector-option"
+                  aria-pressed={isActive}
                   style={{ padding: "9px 18px", border: isActive ? `1.5px solid ${meta.color}44` : "1.5px solid transparent", borderRadius: 7, cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 800, background: isActive ? meta.bg : "transparent", color: isActive ? meta.color : "#64748b", display: "flex", alignItems: "center", gap: 7, boxShadow: isActive ? `0 2px 10px ${meta.color}1f` : "none" }}
                 >
                   {meta.label}
@@ -345,6 +347,8 @@ export default function TeachingPartDReviewDashboard({ accent = "#155e75", acade
                     key={school.id}
                     type="button"
                     onClick={() => switchSchool(school.id)}
+                    className="school-selector-option"
+                    aria-pressed={isActive}
                     title={school.name}
                     style={{ flex: 1, minWidth: 0, padding: "13px 6px 11px", border: "none", cursor: "pointer", fontFamily: "inherit", background: isActive ? `${school.color}12` : "transparent", borderBottom: isActive ? `3px solid ${school.color}` : "3px solid transparent", borderRight: index < currentSchools.length - 1 ? "1px solid #f1f5f9" : "none", display: "flex", flexDirection: "column", alignItems: "center", gap: 5, transition: "background 0.15s ease" }}
                   >

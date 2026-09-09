@@ -1,0 +1,31 @@
+.feedback-dialog { width: min(640px, calc(100vw - 32px)); max-width: none; max-height: calc(100dvh - 32px); padding: 0; margin: auto; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; color: #1e293b; overflow-y: auto; box-shadow: 0 24px 80px rgba(15,23,42,.24); }
+.feedback-dialog::backdrop { background: rgba(15,23,42,.45); }
+.feedback-header { display: flex; align-items: center; gap: 14px; padding: 22px 24px; border-bottom: 1px solid #e2e8f0; }
+.feedback-symbol { display: inline-flex; padding: 11px; background: #fff1f2; color: #e11d48; border-radius: 8px; }
+.feedback-header h2 { margin: 0; font-size: 20px; letter-spacing: 0; }
+.feedback-header p { margin: 4px 0 0; font-size: 12px; color: #64748b; }
+.feedback-close { display: inline-flex; align-items: center; justify-content: center; margin-left: auto; width: 36px; height: 36px; flex-shrink: 0; background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; border-radius: 6px; cursor: pointer; }
+.feedback-form { display: grid; gap: 20px; padding: 24px; }
+.feedback-form fieldset { padding: 0; margin: 0; border: 0; min-width: 0; }
+.feedback-form legend { padding: 0; margin-bottom: 10px; font-size: 12px; font-weight: 700; }
+.feedback-categories { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 8px; }
+.feedback-categories label { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; min-height: 64px; border: 1px solid #dbe3ec; border-radius: 6px; color: #64748b; font-size: 12px; cursor: pointer; position: relative; }
+.feedback-categories label.is-selected { border-color: #818cf8; background: #eef2ff; color: #4338ca; font-weight: 700; }
+.feedback-categories input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.feedback-categories label:focus-within { outline: 2px solid #6366f1; outline-offset: 2px; }
+.feedback-field { display: grid; gap: 8px; font-size: 12px; font-weight: 700; }
+.feedback-field input, .feedback-field textarea { width: 100%; box-sizing: border-box; padding: 11px 12px; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff; color: #1e293b; font: inherit; font-size: 14px; font-weight: 400; line-height: 1.5; }
+.feedback-field textarea { resize: vertical; }
+.feedback-dialog input:focus-visible, .feedback-dialog textarea:focus-visible, .feedback-dialog button:focus-visible { outline: 2px solid #818cf8; outline-offset: 2px; }
+.feedback-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 16px; border-top: 1px solid #e2e8f0; }
+.feedback-footer > span { font-size: 11px; color: #64748b; }
+.feedback-submit { display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: #4f46e5; color: #fff; border: 0; border-radius: 6px; padding: 11px 18px; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.feedback-submit:disabled { opacity: .6; cursor: wait; }
+.feedback-error { padding: 10px 12px; background: #fff1f2; color: #be123c; border: 1px solid #fecdd3; border-radius: 6px; font-size: 13px; }
+.feedback-success { text-align: center; padding: 40px 24px; }
+.feedback-success h3 { font-size: 18px; }
+.feedback-success p { color: #64748b; line-height: 1.6; font-size: 14px; }
+@media (max-width: 480px) {
+  .feedback-header, .feedback-form { padding: 18px; }
+  .feedback-categories { grid-template-columns: repeat(3, minmax(0,1fr)); }
+}

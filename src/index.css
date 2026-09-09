@@ -317,6 +317,186 @@ input[type="number"] {
 }
 
 /* Person / review cards */
+.vc-review-card:has(.review-metrics) {
+  border-radius: 8px !important;
+  border-color: #d5dee8 !important;
+  box-shadow: 0 3px 12px rgba(15, 23, 42, 0.04) !important;
+  transform: none !important;
+}
+
+.vc-review-card .review-metrics {
+  gap: 0 !important;
+  background: transparent;
+  padding: 10px 0;
+  grid-template-columns: repeat(var(--metric-count), minmax(0, 1fr)) !important;
+  min-width: 0;
+}
+
+.vc-review-card .review-metrics > div {
+  background: transparent !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 3px 10px !important;
+}
+
+.vc-review-card .review-metrics > div + div {
+  border-left: 0;
+}
+
+.vc-review-card .review-metrics > div > div:first-child {
+  align-items: center !important;
+  flex-wrap: wrap;
+}
+
+.vc-review-card .review-metrics > div > div:first-child > span:last-child {
+  color: #64748b !important;
+  font-size: 9px !important;
+  letter-spacing: 0 !important;
+}
+
+.vc-review-card .review-metrics > div > div:nth-child(2) {
+  font-size: 16px !important;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25 !important;
+}
+
+.vc-review-card:has(.review-metrics) .vc-action-button {
+  border-radius: 6px !important;
+  box-shadow: none !important;
+  min-height: 36px;
+}
+
+.vc-review-card:has(.review-metrics) .vc-action-button:focus-visible {
+  outline: 2px solid #818cf8;
+  outline-offset: 3px;
+}
+
+@media (max-width: 600px) {
+  .vc-review-card .review-metrics {
+    grid-template-columns: repeat(var(--metric-count), minmax(112px, 1fr)) !important;
+    min-width: max-content;
+  }
+}
+
+/* Review score strips stay on one line in every authority dashboard. */
+.review-metrics {
+  grid-template-columns: repeat(var(--metric-count), minmax(0, 1fr)) !important;
+  align-items: stretch;
+}
+
+.review-metrics > div {
+  min-width: 0 !important;
+  display: flex !important;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.review-metrics > div > div:first-child > span:last-child {
+  white-space: nowrap !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.review-metrics > div > div:first-child {
+  height: 22px;
+  flex: 0 0 22px;
+  align-items: center !important;
+  margin-bottom: 5px !important;
+  overflow: hidden;
+}
+
+.review-metrics > div > div:first-child > span:last-child {
+  display: block;
+  min-width: 0;
+  line-height: 1.2 !important;
+}
+
+.review-metrics > div > div:nth-child(2) {
+  height: 20px;
+  flex: 0 0 20px;
+  display: flex;
+  align-items: baseline;
+}
+
+.review-metrics > div > div:nth-child(3) {
+  flex: 0 0 auto;
+}
+
+/* Shared school and division selectors across authority dashboards. */
+div:has(> .school-selector-option) {
+  display: flex !important;
+  overflow-x: auto !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 8px !important;
+  box-shadow: none !important;
+  background: #fff !important;
+}
+
+.school-selector-option {
+  flex: 1 0 130px !important;
+  min-width: 130px !important;
+  padding: 12px 14px !important;
+  gap: 5px !important;
+  border-right: 0 !important;
+  background: #fff !important;
+  border-bottom: 3px solid transparent !important;
+}
+
+.school-selector-option[aria-pressed="true"] {
+  background: #eef2ff !important;
+  border-bottom-color: #4f46e5 !important;
+}
+
+.school-selector-option > :first-child {
+  box-shadow: none !important;
+  border-radius: 6px !important;
+  background: #f1f5f9 !important;
+  color: #475569 !important;
+}
+
+.school-selector-option[aria-pressed="true"] > :first-child {
+  background: #e0e7ff !important;
+  color: #4338ca !important;
+}
+
+div:has(> .division-selector-option) {
+  display: flex !important;
+  flex-wrap: wrap;
+  max-width: 100% !important;
+  background: #fff !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 8px !important;
+  padding: 4px !important;
+  box-shadow: none !important;
+  gap: 4px !important;
+}
+
+.division-selector-option {
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  box-shadow: none !important;
+  border-radius: 6px !important;
+  padding: 10px 14px !important;
+  color: #475569 !important;
+}
+
+.division-selector-option[aria-pressed="true"] {
+  background: #eef2ff !important;
+  color: #4338ca !important;
+  border-color: #c7d2fe !important;
+}
+
+.school-selector-option:focus-visible,
+.division-selector-option:focus-visible {
+  outline: 2px solid #818cf8;
+  outline-offset: -3px;
+}
+
+.school-selector-option:hover,
+.division-selector-option:hover {
+  background: #f1f5f9 !important;
+}
+
 .vc-review-card {
   position: relative;
   overflow: hidden;
@@ -461,6 +641,58 @@ input[type="number"] {
 /* - Page / Layout Entrance - */
 /* Dashboard content area fades in on component mount */
 main { animation: fa-fade-in 0.30s ease both; }
+
+/* Keep the appraisal header closer to the top of the shared dashboard rail. */
+.appraisal-sidebar + main {
+  padding-top: 12px !important;
+  padding-left: 24px !important;
+  padding-right: 24px !important;
+}
+
+/* Use the compact panel radius from the approval tracker for shared dashboard cards. */
+.vc-review-card,
+.fa-section-card,
+.far-card {
+  border-radius: 6px !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: none !important;
+}
+
+.overall-score {
+  border-radius: 6px !important;
+}
+
+.appraisal-page-header,
+.appraisal-approval-tracker {
+  border-radius: 6px !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: none !important;
+}
+
+.reviewer-window__header {
+  height: 140px;
+  min-height: 140px;
+  box-sizing: border-box;
+  border-radius: 6px !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: none !important;
+}
+
+.hod-reviewer-header {
+  border-radius: 6px !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: none !important;
+}
+
+.school-review-header {
+  border-radius: 6px !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: none !important;
+}
+
+.vc-dashboard-main {
+  padding-top: 12px !important;
+}
 
 /* Sidebar slides in from left - desktop only so it doesn't fight
    the mobile hidden-translate rule */
@@ -1155,47 +1387,35 @@ a[aria-label^="View "]:hover {
   position: fixed;
   inset: 0;
   z-index: 2000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(248, 247, 252, 0.78);
-  backdrop-filter: blur(6px) saturate(1.1);
-  animation: appraisal-year-loading-fade 220ms ease;
-}
-
-@keyframes appraisal-year-loading-fade {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  box-sizing: border-box;
+  background: rgba(241, 245, 249, 0.78);
 }
 
 .appraisal-year-loading-card {
-  position: relative;
   display: flex;
-  flex-direction: column;
   align-items: center;
   gap: 18px;
-  padding: 36px 46px;
+  width: min(400px, 100%);
+  box-sizing: border-box;
+  padding: 24px;
   background: #fff;
-  border: 1px solid #ede9fe;
-  border-radius: 20px;
-  box-shadow: 0 24px 55px rgba(76, 29, 149, 0.16), 0 8px 20px rgba(17, 24, 39, 0.06);
-  animation: appraisal-year-loading-pop 340ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-@keyframes appraisal-year-loading-pop {
-  from { transform: scale(0.92) translateY(8px); opacity: 0; }
-  to { transform: scale(1) translateY(0); opacity: 1; }
+  border: 1px solid #dbe3ec;
+  border-radius: 8px;
+  box-shadow: 0 12px 36px rgba(15, 23, 42, 0.10);
 }
 
 .appraisal-year-loading-spinner {
-  position: relative;
-  z-index: 1;
-  width: 52px;
-  height: 52px;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  border: 3px solid #e0e7ff;
+  border-top-color: #4f46e5;
+  border-right-color: #4f46e5;
   border-radius: 50%;
-  background: conic-gradient(from 0deg, transparent 0deg, #6d28d9 320deg, transparent 360deg);
-  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 5px));
-  mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 5px));
   animation: appraisal-year-loading-spin 900ms linear infinite;
 }
 
@@ -1204,49 +1424,35 @@ a[aria-label^="View "]:hover {
 }
 
 .appraisal-year-loading-textwrap {
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  z-index: 1;
+  gap: 7px;
+  overflow-wrap: anywhere;
 }
 
 .appraisal-year-loading-text {
   font-size: 14px;
-  font-weight: 800;
-  letter-spacing: 0.2px;
-  color: #4c1d95;
+  font-weight: 700;
+  line-height: 1.5;
+  letter-spacing: 0;
+  color: #1e293b;
 }
 
 .appraisal-year-loading-subtext {
-  font-size: 11px;
-  font-weight: 600;
-  color: #9ca3af;
-  letter-spacing: 0.2px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: #64748b;
+  letter-spacing: 0;
 }
 
 .appraisal-year-loading-dots {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  z-index: 1;
+  display: none;
 }
 
-.appraisal-year-loading-dots span {
-  width: 5px;
-  height: 5px;
-  border-radius: 999px;
-  background: #6d28d9;
-  animation: appraisal-year-loading-dot-pulse 1100ms ease-in-out infinite;
-}
-
-.appraisal-year-loading-dots span:nth-child(1) { animation-delay: 0ms; }
-.appraisal-year-loading-dots span:nth-child(2) { animation-delay: 180ms; }
-.appraisal-year-loading-dots span:nth-child(3) { animation-delay: 360ms; }
-
-@keyframes appraisal-year-loading-dot-pulse {
-  0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
-  40% { opacity: 1; transform: scale(1); }
+@media (prefers-reduced-motion: reduce) {
+  .appraisal-year-loading-spinner { animation: none; }
 }
 
 .director-review-summary-grid--direct {

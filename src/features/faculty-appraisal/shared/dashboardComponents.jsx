@@ -345,6 +345,7 @@ export function WorkflowStatusTracker({ declaration, reviews, profile, showPartD
 
   return (
     <div
+      className="appraisal-approval-tracker"
       style={{
         background: "#fff",
         border: "1px solid #e5e7eb",
