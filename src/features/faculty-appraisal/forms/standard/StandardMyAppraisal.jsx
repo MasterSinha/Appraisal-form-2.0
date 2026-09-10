@@ -92,6 +92,7 @@ import {
 import { getSchoolByValue } from "../../../../constants/universityHierarchy";
 import { fetchImageAsDataUrl } from "../../../../utils/fullFormReport";
 import LegacyPreviousYearReport from "./LegacyPreviousYearReport";
+import OverallProgress from "../../components/OverallProgress";
 import {
   isLegacyTwoPartAcademicYear,
   legacySubmittedTotals,
@@ -407,7 +408,6 @@ function SubsectionIcon({ type }) {
     </span>
   );
 }
-
 function SubsectionTitle({ icon, children }) {
   const displayTitle = stripMaxMarksFromTitle(children);
 
@@ -569,6 +569,7 @@ export default function StandardMyAppraisal({
     const next = { ...r, [k]: v };
     return next;
   }));
+
   const [innovScore, setInnovScore] = useState("");
   const [innovDetails, setInnovDetails] = useState("");
   const [innovRows, setInnovRows] = useState([blankInnovativeRow()]);
@@ -3470,5 +3471,3 @@ export default function StandardMyAppraisal({
     </div>
   );
 }
-
-import OverallProgress from "../../components/OverallProgress";

@@ -53,16 +53,14 @@ export default function ReportBugModal({ onClose }) {
   const [attachment, setAttachment] = useState(null);
   const [preview, setPreview] = useState("");
   const fileRef = useRef(null);
+  const previewUrlRef = useRef("");
 
-  useEffect(() => {
-    if (!attachment || !attachment.type.startsWith("image/")) {
-      setPreview("");
-      return;
-    }
-    const url = URL.createObjectURL(attachment);
-    setPreview(url);
-    return () => URL.revokeObjectURL(url);
-  }, [attachment]);
+  const clearAttachment = () => {
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+    previewUrlRef.current = "";
+    setPreview("");
+    setAttachment(null);
+  };
 
   const selectAttachment = (file) => {
     if (!file) return;
@@ -70,6 +68,9 @@ export default function ReportBugModal({ onClose }) {
       setError("Choose a non-empty PNG, JPG, WebP, PDF, TXT or LOG file up to 5 MB.");
       return;
     }
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+    previewUrlRef.current = file.type.startsWith("image/") ? URL.createObjectURL(file) : "";
+    setPreview(previewUrlRef.current);
     setAttachment(file);
     setError("");
   };
@@ -102,7 +103,11 @@ export default function ReportBugModal({ onClose }) {
     dialog.showModal();
     const overflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => { dialog.close(); document.body.style.overflow = overflow; };
+    return () => {
+      dialog.close();
+      document.body.style.overflow = overflow;
+      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+    };
   }, []);
 
   return createPortal(
@@ -152,7 +157,7 @@ export default function ReportBugModal({ onClose }) {
               <div className="feedback-file">
                 {preview ? <img src={preview} alt="Attached screenshot preview" /> : <FileText size={28} aria-hidden="true" />}
                 <div><strong>{attachment.name}</strong><span>{Math.max(1, Math.round(attachment.size / 1024))} KB</span></div>
-                <button type="button" disabled={submitting} onClick={() => setAttachment(null)} title="Remove attachment" aria-label="Remove attachment"><X size={18} /></button>
+                <button type="button" disabled={submitting} onClick={clearAttachment} title="Remove attachment" aria-label="Remove attachment"><X size={18} /></button>
               </div>
             ) : (
               <button type="button" className="feedback-upload" disabled={submitting} onClick={() => fileRef.current?.click()}>

@@ -52,6 +52,7 @@ import {
   validateMediaBeforeSubmit,
 } from "./CreativeSchoolAppraisalForm";
 import { getSchoolByValue, getSchoolKey } from "../../../../constants/universityHierarchy";
+import OverallProgress from "../../components/OverallProgress";
 
 const normalizeAcademicYearLabel = (value) => {
   const label = String(value || "").trim();
@@ -567,4 +568,3 @@ export default function CreativeMyAppraisalSection({
     </div>
   );
 }
-import OverallProgress from "../../components/OverallProgress";
