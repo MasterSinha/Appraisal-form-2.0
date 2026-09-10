@@ -999,6 +999,7 @@ function VCReviewPanel({ person, personMode, onBack, onSubmit, readOnly = false 
 }
 
 function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly = false }) {
+  const confirmRejection = useReviewFeedback();
   const [vcData, setVcData] = useState({});
   const [remarks, setRemarks] = useState(person.vcRemarks || "");
   const [sectionView, setSectionView] = useState("partA");
@@ -1504,7 +1505,7 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  {savingDraft ? "Saving..." : "Save Draft"}
 </button>
 {canReject && (
-<button onClick={() =>{ if (window.confirm("Reject this appraisal and send it back to the user for editing?")) { onSubmit(person.id, { partA, partB, partC, partD, total }, remarks, personMode, buildVcSectionScores(person, vcData), reviewConfirmed, "rejected"); } }}
+<button onClick={async () =>{ if (await confirmRejection("Reject this appraisal and send it back to the user for editing?", "reject")) { onSubmit(person.id, { partA, partB, partC, partD, total }, remarks, personMode, buildVcSectionScores(person, vcData), reviewConfirmed, "rejected"); } }}
  disabled={!reviewConfirmed || !remarks.trim()}
  style={{ padding: "8px 14px", background: "transparent", color: (reviewConfirmed && remarks.trim()) ? "#dc2626" : FACULTY_RECORD_THEME.textFaint, border: `1px solid ${(reviewConfirmed && remarks.trim()) ? "#fecaca" : FACULTY_RECORD_THEME.border}`, borderRadius: 8, cursor: (reviewConfirmed && remarks.trim()) ? "pointer" : "not-allowed", fontWeight: 700, fontSize: 11.5, fontFamily: "inherit" }}>
  Reject Form
@@ -1572,7 +1573,7 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  {savingDraft ? "Saving..." : "Save Draft"}
 </button>
  {canReject && (
-<button onClick={() =>{ if (window.confirm("Reject this appraisal and send it back to the user for editing?")) { onSubmit(person.id, { partA, partB, partC, partD, total }, remarks, personMode, buildVcSectionScores(person, vcData), reviewConfirmed, "rejected"); } }}
+<button onClick={async () =>{ if (await confirmRejection("Reject this appraisal and send it back to the user for editing?", "reject")) { onSubmit(person.id, { partA, partB, partC, partD, total }, remarks, personMode, buildVcSectionScores(person, vcData), reviewConfirmed, "rejected"); } }}
  disabled={!reviewConfirmed || !remarks.trim()}
  style={{ padding: "9px 16px", background: (reviewConfirmed && remarks.trim()) ? "linear-gradient(135deg,#b91c1c,#ef4444)" : "#cbd5e1", color: "#fff", border: "none", borderRadius: 9, cursor: (reviewConfirmed && remarks.trim()) ? "pointer" : "not-allowed", fontWeight: 700, fontSize: 12, fontFamily: "inherit", boxShadow: (reviewConfirmed && remarks.trim()) ? "0 3px 12px rgba(185,28,28,0.4)" : "none" }}>
  Reject Form

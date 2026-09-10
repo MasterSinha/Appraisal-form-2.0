@@ -43,8 +43,11 @@
 .approval-flow__branches::after {
   content: "";
   position: absolute;
-  top: calc(25% - 2.5px);
-  bottom: calc(25% - 2.5px);
+  /* Equal-height lanes with a 10px gap: their centers are 25% - 2.5px
+     from each edge. Offset by half the 2px stroke to align centerlines. */
+  top: calc(25% - 3.5px);
+  bottom: calc(25% - 3.5px);
+  box-sizing: border-box;
   width: 16px;
   border-top: 2px solid var(--flow-line);
   border-bottom: 2px solid var(--flow-line);
@@ -76,17 +79,17 @@
   content: "";
   position: absolute;
   top: 50%;
-  width: 12px;
+  width: 14px;
   border-top: 2px solid var(--flow-line);
   transform: translateY(-50%);
 }
 
 .approval-flow > .approval-flow__node:first-child::after {
-  left: 100%;
+  left: calc(100% - 1px);
 }
 
 .approval-flow > .approval-flow__node:last-child::before {
-  right: 100%;
+  right: calc(100% - 1px);
 }
 
 .approval-flow__lane::before,
@@ -123,7 +126,24 @@
 }
 
 .approval-flow__direct {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  min-height: 48px;
   font-size: 11px;
   color: #64748b;
   text-align: center;
+}
+
+/* The direct route has no intermediate authority card, but still needs a
+   continuous connector between the split and the VC join. */
+.approval-flow__direct::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  border-top: 2px solid var(--flow-line);
+  transform: translateY(-50%);
 }

@@ -481,7 +481,9 @@ export function WorkflowStatusTracker({ declaration, reviews, profile, showPartD
                 {authoritySteps.filter((step) => step.label !== roleLabel("vc")).map((step) => (
                   <FlowNode key={step.label} step={step} colors={stateStyle[step.state] || stateStyle.Waiting} />
                 ))}
-                {authoritySteps.length === 1 && chain[0] === "vc" && <span className="approval-flow__direct">Direct VC review</span>}
+                {authoritySteps.length === 1 && chain[0] === "vc" && (
+                  <div className="approval-flow__direct" aria-label="Direct VC review" />
+                )}
               </div>
               <div className="approval-flow__lane">
                 <FlowNode step={{ label: "Registrar - Part D", icon: "calendar", state: partDLabel, timestamp: registrarReview?.reviewed_at }}

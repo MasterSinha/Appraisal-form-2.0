@@ -12,6 +12,8 @@ export default function SubmissionConfirmDialog({
   academicYear,
   eyebrow = "Faculty appraisal",
   closeLabel,
+  confirmLabel = "Yes, submit",
+  showSubmissionNote = true,
   onConfirm,
   onCancel,
 }) {
@@ -25,7 +27,7 @@ export default function SubmissionConfirmDialog({
   const submitting = state === "submitting";
   const success = state === "success";
   const error = state === "error";
-  const StatusIcon = submitting ? LoaderCircle : success ? CheckCircle2 : error ? AlertCircle : Send;
+  const StatusIcon = submitting ? LoaderCircle : success ? CheckCircle2 : error || state === "reject" ? AlertCircle : Send;
   const heading = title || (submitting ? "Submitting appraisal" : success ? "Appraisal submitted" : error ? "Submission unsuccessful" : "Submit appraisal?");
 
   useEffect(() => {
@@ -100,13 +102,13 @@ export default function SubmissionConfirmDialog({
           </div>
         </div>
         {submitting && <div className="submission-confirm__progress" role="progressbar" aria-label="Submitting appraisal"><span /></div>}
-        {!success && !error && !submitting && <div className="submission-confirm__note"><LockKeyhole size={18} aria-hidden="true" /><div><strong>Submitted forms are locked for review</strong><span>Choose Cancel if you'd like to make any final changes.</span></div></div>}
+        {showSubmissionNote && !success && !error && !submitting && <div className="submission-confirm__note"><LockKeyhole size={18} aria-hidden="true" /><div><strong>Submitted forms are locked for review</strong><span>Choose Cancel if you'd like to make any final changes.</span></div></div>}
         {success && <div className="submission-confirm__receipt"><ShieldCheck size={16} aria-hidden="true" />Submission complete</div>}
       </div>
       <footer className="submission-confirm__actions">
         {success || error ? <button type="button" data-close className="submission-confirm__submit" onClick={close} disabled={closing}>{closeLabel || (success ? "Done" : "Back to appraisal")}<ArrowRight size={16} aria-hidden="true" /></button> : <>
           <button type="button" data-cancel onClick={close} disabled={submitting}>Cancel</button>
-          <button type="button" className="submission-confirm__submit" onClick={onConfirm} disabled={submitting || closing}>{submitting ? <LoaderCircle className="submission-confirm__spinner" size={15} aria-hidden="true" /> : <Send size={15} aria-hidden="true" />}{submitting ? "Submitting..." : "Yes, submit"}</button>
+          <button type="button" className="submission-confirm__submit" onClick={onConfirm} disabled={submitting || closing}>{submitting ? <LoaderCircle className="submission-confirm__spinner" size={15} aria-hidden="true" /> : state === "reject" ? <X size={15} aria-hidden="true" /> : <Send size={15} aria-hidden="true" />}{submitting ? "Submitting..." : confirmLabel}</button>
         </>}
       </footer>
       </div>

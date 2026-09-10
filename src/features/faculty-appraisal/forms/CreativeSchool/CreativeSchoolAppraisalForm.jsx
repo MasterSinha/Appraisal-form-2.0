@@ -1,5 +1,6 @@
 /* @refresh skip */
 /* eslint-disable no-unused-vars, react-refresh/only-export-components */
+import { useReviewFeedback } from "../../../../components/reviewFeedbackContext";
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Avatar, LogoutConfirmModal, ScoreBar, ScoreCard, StatusBadge } from "../../../../components/dashboard/dashboardPrimitives";
@@ -2354,6 +2355,7 @@ function buildCreativeSchoolSectionScores(person, reviewData, reviewerRole) {
 }
 
 export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBack, onSubmit, readOnly = false, showReport = true }) {
+  const confirmRejection = useReviewFeedback();
   const [sectionView, setSectionView] = useState("partA");
   const [reviewData, setReviewData] = useState({});
   const [remarks, setRemarks] = useState(person?.[`${reviewerRole}Remarks`] || "");
@@ -3015,8 +3017,8 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
                     </button>
                     {canReject && (
                       <button
-                        onClick={() => {
-                          if (window.confirm("Reject this appraisal and send it back to the user for editing?")) {
+                        onClick={async () => {
+                          if (await confirmRejection("Reject this appraisal and send it back to the user for editing?", "reject")) {
                             onSubmit(person.id, { partA: totals.partA, partB: totals.partB, partC: totals.partC, partD: totals.partE, total: totals.total }, remarks, buildCreativeSchoolSectionScores(form, reviewData, reviewerRole), confirmed, "rejected");
                           }
                         }}
@@ -3117,8 +3119,8 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
                   </button>
                   {canReject && (
                     <button
-                      onClick={() => {
-                        if (window.confirm("Reject this appraisal and send it back to the user for editing?")) {
+                      onClick={async () => {
+                        if (await confirmRejection("Reject this appraisal and send it back to the user for editing?", "reject")) {
                           onSubmit(person.id, { partA: totals.partA, partB: totals.partB, partC: totals.partC, partD: totals.partE, total: totals.total }, remarks, buildCreativeSchoolSectionScores(form, reviewData, reviewerRole), confirmed, "rejected");
                         }
                       }}

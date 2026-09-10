@@ -1499,7 +1499,7 @@ export function NonTeachingAuthorityReviewPanel({ item, reviewerRole, onBack, on
       void showReviewFeedback("Remarks are mandatory when rejecting. Please enter your remarks before rejecting.");
       return;
     }
-    if (!window.confirm(`Reject this appraisal and send it back to ${item.name} for editing?`)) return;
+    if (!await showReviewFeedback(`Reject this appraisal and send it back to ${item.name} for editing?`, "reject")) return;
 
     setSubmitting(true);
     try {

@@ -151,6 +151,7 @@ function ReviewPanel({ faculty, onBack, onSubmit, readOnly = false, reviewerLabe
 }
 
 function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false, reviewerLabel = "HOD", reviewerRole = "hod" }) {
+  const confirmRejection = useReviewFeedback();
   const [hodData, setHodData] = useState({});
   const [remarks, setRemarks] = useState(faculty.hodRemarks || "");
   const [sectionView, setSectionView] = useState("partA");
@@ -471,7 +472,7 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false, revi
  {savingDraft ? "Saving..." : "Save Draft"}
 </button>
 {canReject && (
-<button onClick={() =>{ if (window.confirm("Reject this appraisal and send it back to the user for editing?")) { onSubmit(faculty.id, { partA, partB, partC, partD, total }, remarks, buildHodSectionScores(faculty, hodData), reviewConfirmed, "rejected"); } }}
+<button onClick={async () =>{ if (await confirmRejection("Reject this appraisal and send it back to the user for editing?", "reject")) { onSubmit(faculty.id, { partA, partB, partC, partD, total }, remarks, buildHodSectionScores(faculty, hodData), reviewConfirmed, "rejected"); } }}
  disabled={!reviewConfirmed || !remarks.trim()}
  style={{ padding: "8px 14px", background: "transparent", color: (reviewConfirmed && remarks.trim()) ? "#dc2626" : FACULTY_RECORD_THEME.textFaint, border: `1px solid ${(reviewConfirmed && remarks.trim()) ? "#fecaca" : FACULTY_RECORD_THEME.border}`, borderRadius: 8, cursor: (reviewConfirmed && remarks.trim()) ? "pointer" : "not-allowed", fontWeight: 700, fontSize: 11.5, fontFamily: "inherit" }}>
  Reject Form

@@ -43,6 +43,9 @@
 .submission-confirm { --dialog-accent: #4f46e5; --dialog-soft: #eef2ff; }
 .submission-confirm--success { --dialog-accent: #059669; --dialog-soft: #ecfdf5; }
 .submission-confirm--error { --dialog-accent: #dc2626; --dialog-soft: #fef2f2; }
+.submission-confirm--reject { --dialog-accent: #dc2626; --dialog-soft: #fef2f2; }
+.submission-confirm--reject .submission-confirm__submit { background: #dc2626; border-color: #dc2626; }
+.submission-confirm--reject .submission-confirm__submit:hover:not(:disabled) { background: #b91c1c; border-color: #b91c1c; }
 .submission-confirm__body { padding: 24px; text-align: left; background: #fff; }
 .submission-confirm__intro { display: flex; align-items: flex-start; gap: 20px; }
 .submission-confirm__copy { min-width: 0; }
