@@ -232,7 +232,28 @@ export default function DashboardSidebar({
                 <div style={{ color: isActive ? "#64748b" : "#6b7686", fontSize: 10.5, marginTop: 3, lineHeight: 1.3 }}>{tab.sub}</div>
               </div>
               {tab.badge > 0 && (
-                <div style={{ position: "relative", background: isActive ? "#1e293b" : "#e2e8f0", color: isActive ? "#0f172a" : "#475569", border: isActive ? "none" : "1px solid #e2e8f0", fontWeight: 900, fontSize: 10, minWidth: 20, height: 20, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 5px", flexShrink: 0 }}>{tab.badge}</div>
+                <div
+                  aria-label={`${tab.badge} pending`}
+                  style={{
+                    position: "relative",
+                    background: isActive ? "#ede9fe" : "#f1f5f9",
+                    color: isActive ? "#5b21b6" : "#64748b",
+                    border: isActive ? "1px solid #c4b5fd" : "1px solid #dbe3ee",
+                    fontWeight: 800,
+                    fontSize: 10,
+                    minWidth: 21,
+                    height: 21,
+                    borderRadius: 999,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    padding: "0 6px",
+                    flexShrink: 0,
+                    boxShadow: isActive ? "0 1px 2px rgba(91, 33, 182, 0.10)" : "none",
+                  }}
+                >
+                  {tab.badge}
+                </div>
               )}
             </button>
           );
@@ -309,54 +330,31 @@ export default function DashboardSidebar({
         document.body
       )}
 
-      <div style={{ height: 1, background: "linear-gradient(90deg,transparent,rgba(148,163,184,0.20) 20%,rgba(148,163,184,0.20) 80%,transparent)" }} />
-      <div style={{ borderRadius: 10, background: "#f8fafc", border: "1px solid rgba(148,163,184,0.28)", boxShadow: "0 2px 8px rgba(15,23,42,0.04)", overflow: "hidden" }}>
+      <section className="sidebar-account" aria-label="Your account">
         <button
           type="button"
+          className="sidebar-account__profile"
           onClick={() => navigate("/edit-profile")}
           title="Edit profile"
-          style={{ position: "relative", display: "flex", alignItems: "center", gap: 12, background: "#ffffff", border: "none", borderBottom: "1px solid rgba(148,163,184,0.10)", padding: "13px 12px", width: "100%", boxSizing: "border-box", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
+          aria-label={`Edit profile for ${profileName}`}
         >
-          <span style={{ flexShrink: 0, display: "inline-flex", padding: 2, borderRadius: 999, background: "linear-gradient(135deg,rgba(129,140,248,0.75),rgba(79,70,229,0.58))", boxShadow: "0 10px 20px rgba(79,70,229,0.24)" }}>
-            <Avatar
-              initials={profileInitials}
-              src={profileImageUrl}
-              color="#4338ca"
-              size={44}
-            />
+          <span className="sidebar-account__avatar">
+            <Avatar initials={profileInitials} src={profileImageUrl} color="#0f766e" size={42} />
           </span>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ color: "#1e293b", fontSize: 14.5, fontWeight: 900, lineHeight: 1.15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{profileDisplayName}</div>
-            <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 7, minWidth: 0 }}>
-              <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: "50%", background: "#22c55e", boxShadow: "0 0 0 3px rgba(34,197,94,0.12)", flexShrink: 0 }} />
-              <span style={{ color: "#64748b", fontSize: 11.5, lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cleanProfileSubtitle || "Dashboard"}</span>
-            </div>
-          </div>
-          <span style={{ width: 34, height: 34, borderRadius: 10, background: "#ffffff", border: "1px solid rgba(148,163,184,0.14)", color: "#64748b", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <Icon name="profile" size={15} />
+          <span className="sidebar-account__identity">
+            <span className="sidebar-account__name" title={profileName}>{profileDisplayName}</span>
+            <span className="sidebar-account__role" title={cleanProfileSubtitle}>{cleanProfileSubtitle || "Dashboard"}</span>
           </span>
+          <UserRound size={17} className="sidebar-account__edit" aria-hidden="true" />
         </button>
-        <div style={{ padding: "9px 10px 10px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, background: "#f8fafc", borderBottom: "1px solid rgba(148,163,184,0.08)" }}>
-          <NoticesBell style={{ height: 40, borderRadius: 9, background: "rgba(99,102,241,0.13)", border: "1px solid rgba(165,180,252,0.18)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 8px 16px rgba(79,70,229,0.10)" }} />
-          <ReportBugButton
-            iconOnly
-            style={{ height: 40, borderRadius: 9, background: "rgba(99,102,241,0.13)", border: "1px solid rgba(165,180,252,0.18)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "inherit", boxShadow: "0 8px 16px rgba(79,70,229,0.10)" }}
-          />
+        <div className="sidebar-account__tools" role="group" aria-label="Account actions">
+          <NoticesBell plainIcon className="sidebar-account__tool sidebar-account__tool--notices" style={{ position: "relative" }} />
+          <ReportBugButton plainIcon className="sidebar-account__tool sidebar-account__tool--feedback" style={{ position: "relative" }} />
+          <button type="button" className="sidebar-account__tool sidebar-account__tool--logout" onClick={onLogout} title="Logout" aria-label="Logout">
+            <LogOut size={19} aria-hidden="true" />
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={onLogout}
-          style={{ width: "100%", minHeight: 44, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, background: "#fff1f2", border: "none", padding: "0 14px", cursor: "pointer", fontFamily: "inherit", transition: "background 0.15s ease" }}
-          onMouseEnter={(event) => { event.currentTarget.style.background = "#ffe4e6"; }}
-          onMouseLeave={(event) => { event.currentTarget.style.background = "#fff1f2"; }}
-        >
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-            <Icon name="logout" size={16} />
-            <span style={{ color: "#b91c1c", fontWeight: 900, fontSize: 13 }}>Logout</span>
-          </span>
-          <span aria-hidden="true" style={{ color: "#dc2626", fontSize: 16, lineHeight: 1 }}>›</span>
-        </button>
-      </div>
+      </section>
     </aside>
   );
 }

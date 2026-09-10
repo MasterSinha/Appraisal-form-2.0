@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Bell, Megaphone, UserRound, Check, X } from "lucide-react";
+import { Bell, Megaphone, UserRound, Check, X, ShieldCheck, Bug, CircleHelp, CheckCircle2, Info, Sparkles } from "lucide-react";
 import { useAnnouncements } from "../../hooks/useAnnouncements";
 import "./NoticesBell.css";
 
@@ -18,8 +18,19 @@ const relativeTime = (iso) => {
   return new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short" });
 };
 
+const noticeVisual = (notice = {}) => {
+  const text = `${notice.title || ""} ${notice.body || ""}`.toLowerCase();
+  if (/security|password|sso|login|access|auth/.test(text)) return { Icon: ShieldCheck, tone: "security" };
+  if (/bug|error|issue|problem|failure/.test(text)) return { Icon: Bug, tone: "bug" };
+  if (/success|approved|complete|completed|done|verified/.test(text)) return { Icon: CheckCircle2, tone: "success" };
+  if (/question|help|query|how/.test(text)) return { Icon: CircleHelp, tone: "question" };
+  if (/update|new|feature|release/.test(text)) return { Icon: Sparkles, tone: "update" };
+  if (/info|information|notice|announcement/.test(text)) return { Icon: Info, tone: "info" };
+  return { Icon: UserRound, tone: "general" };
+};
 
-export default function NoticesBell({ style }) {
+
+export default function NoticesBell({ style, showLabel = false, className, plainIcon = false }) {
   const { all, dismissed, dismiss } = useAnnouncements();
   const [open, setOpen] = useState(false);
   const dialogRef = useRef(null);
@@ -39,10 +50,11 @@ export default function NoticesBell({ style }) {
 
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} title="Important Notices"
+      <button type="button" className={className} onClick={() => setOpen(true)} title="Announcements"
         aria-label={`Important Notices, ${unreadCount} unread`} aria-haspopup="dialog"
         style={{ position: "relative", ...(style || { height: 40, flex: 1, cursor: "pointer" }) }}>
-        <span className="notices-trigger-icon"><Bell size={17} aria-hidden="true" /></span>
+        {plainIcon ? <Bell size={19} aria-hidden="true" /> : <span className="notices-trigger-icon"><Bell size={17} aria-hidden="true" /></span>}
+        {showLabel && <span style={{ fontSize: 11.5, fontWeight: 800, marginLeft: 8 }}>Announcements</span>}
         {unreadCount > 0 && <span className="notices-count">{unreadCount}</span>}
       </button>
       {open && createPortal(
@@ -71,18 +83,32 @@ export default function NoticesBell({ style }) {
                 </div>
               ) : all.map((notice) => {
                 const unread = !dismissed.has(notice.id);
+                const { Icon, tone } = noticeVisual(notice);
                 return (
-                  <article className={`notice-entry${unread ? " notice-entry--unread" : ""}`} key={notice.id}>
-                    <span className="notice-entry__icon" aria-hidden="true"><UserRound size={19} /></span>
+                  <article
+                    className={`notice-entry${unread ? " notice-entry--unread" : ""}`}
+                    key={notice.id}
+                    role={unread ? "button" : undefined}
+                    tabIndex={unread ? 0 : undefined}
+                    aria-label={unread ? `Mark ${notice.title} as read` : undefined}
+                    onClick={() => unread && dismiss(notice.id)}
+                    onKeyDown={(event) => {
+                      if (unread && (event.key === "Enter" || event.key === " ")) {
+                        event.preventDefault();
+                        dismiss(notice.id);
+                      }
+                    }}
+                  >
+                    <span className={`notice-entry__icon notice-entry__icon--${tone}`} aria-hidden="true"><Icon size={20} /></span>
                     <div className="notice-entry__content">
                       <div className="notice-entry__heading">
                         <h3>{notice.title}</h3>
                         <time dateTime={notice.createdAt}>{relativeTime(notice.createdAt)}</time>
                       </div>
+                      <div className="notice-entry__sender">Sent by <strong>{notice.createdBy || "Administration"}</strong></div>
                       <p className="notice-entry__body">{notice.body}</p>
                       <div className="notice-entry__footer">
-                        {notice.createdBy && <span>From: {notice.createdBy}</span>}
-                        {unread ? <button type="button" onClick={() => dismiss(notice.id)}><Check size={15} aria-hidden="true" />Mark as read</button> : <span className="notice-read"><Check size={14} aria-hidden="true" />Read</span>}
+                        {unread ? <button type="button" onClick={(event) => { event.stopPropagation(); dismiss(notice.id); }}><Check size={15} aria-hidden="true" />Mark as read</button> : <span className="notice-read"><Check size={14} aria-hidden="true" />Read</span>}
                       </div>
                     </div>
                   </article>

@@ -1327,29 +1327,79 @@ a[aria-label^="View "]:hover {
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.13), inset 0 1px 2px rgba(15, 23, 42, 0.03) !important;
 }
 
-.appraisal-declaration-card:hover {
-  border-color: #86efac !important;
-}
-
+.appraisal-declaration-card,
 .appraisal-confirmation-card {
-  background: #f0fdf4 !important;
-  border: 1px solid #86efac !important;
-  box-shadow: 0 8px 22px rgba(34, 197, 94, 0.08) !important;
+  background: #fff !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 6px !important;
+  padding: 12px 16px !important;
+  box-shadow: none !important;
+  color: #475569 !important;
+  font-size: 12px !important;
+  line-height: 1.5 !important;
 }
-
-.appraisal-confirmation-card:hover {
-  background: #ecfdf5 !important;
-  border-color: #4ade80 !important;
+.declaration-heading {
+  display: block;
+  color: #1f2937;
+  font-size: 12px;
+  font-weight: 750;
+  margin-bottom: 3px;
 }
-
+.appraisal-declaration-card:hover:not(:has(input:disabled)),
+.appraisal-confirmation-card:hover:not(:has(input:disabled)) {
+  border-color: #0d9488 !important;
+  background: #f8fdfc !important;
+}
+.appraisal-declaration-card:has(input:checked),
 .appraisal-confirmation-card:has(input:checked) {
-  background: #dcfce7 !important;
-  border-color: #22c55e !important;
-  box-shadow: 0 10px 26px rgba(34, 197, 94, 0.16) !important;
+  background: #f0fdfa !important;
+  border-color: #5eb5a7 !important;
+  box-shadow: inset 3px 0 #0f766e !important;
 }
-
+.appraisal-declaration-card input[type="checkbox"],
 .appraisal-confirmation-card input[type="checkbox"] {
-  accent-color: #16a34a;
+  width: 16px !important;
+  height: 16px !important;
+  margin-top: 2px !important;
+  accent-color: #0f766e !important;
+}
+.appraisal-declaration-card:focus-within,
+.appraisal-confirmation-card:focus-within {
+  outline: 2px solid #0d9488;
+  outline-offset: 3px;
+}
+.appraisal-summary-actions {
+  padding-top: 18px;
+  border-top: 1px solid #e2e8f0;
+  justify-content: flex-end !important;
+  gap: 10px !important;
+}
+.summary-action {
+  min-height: 44px;
+  min-width: 172px;
+  max-width: 100%;
+  padding: 10px 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  border: 1px solid #c7d2fe;
+  border-radius: 6px;
+  background: #eef2ff;
+  color: #3730a3;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.summary-action.appraisal-submit-button { background: #0f766e; border-color: #0f766e; color: #fff; }
+.summary-action:disabled { background: #f1f5f9; border-color: #d5dde5; color: #64748b; cursor: not-allowed; }
+.summary-action.is-locked { background: #f0fdfa; border-color: #a3d7cc; color: #115e59; }
+.summary-action:focus-visible { outline: 2px solid #4f46e5; outline-offset: 3px; }
+.summary-action svg { flex-shrink: 0; }
+@media (max-width: 600px) {
+  .appraisal-declaration-card, .appraisal-confirmation-card { padding: 14px !important; gap: 10px !important; }
+  .appraisal-summary-actions .summary-action { width: 100%; min-width: 0; }
 }
 
 .appraisal-report-button,

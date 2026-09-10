@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { Bug, CircleHelp, Lightbulb, MessageSquare, Ellipsis, X, Send, CheckCircle2 } from "lucide-react";
+import { Bug, CircleHelp, Lightbulb, MessageSquare, Ellipsis, X, Send, CheckCircle2, Paperclip, FileText, LoaderCircle } from "lucide-react";
 import "./ReportBugModal.css";
 import { submitFeedback } from "../../services/feedbackService";
 
@@ -9,17 +9,19 @@ const CATEGORY_OPTIONS = [
   ["feedback", "Feedback", MessageSquare], ["other", "Other", Ellipsis],
 ];
 
-export function ReportBugButton({ style, iconOnly = false }) {
+export function ReportBugButton({ style, iconOnly = false, className, plainIcon = false }) {
   const [open, setOpen] = useState(false);
   return (
     <>
       <button
         type="button"
+        className={className}
+        aria-label="Report a bug or send feedback"
         onClick={() => setOpen(true)}
         title="Report a bug or send feedback"
         style={style || { minHeight: 34, borderRadius: 12, padding: "6px 8px", color: "#c7d2fe", background: "rgba(99,102,241,0.10)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, width: "100%", fontFamily: "inherit" }}
       >
-        {iconOnly ? (
+        {plainIcon ? <Bug size={19} aria-hidden="true" /> : iconOnly ? (
           <span style={{ width: 27, height: 27, borderRadius: 9, background: "linear-gradient(135deg,#a78bfa,#7c3aed)", display: "inline-flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 10px rgba(124,58,237,0.4)" }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="8" y="6" width="8" height="12" rx="4" /><path d="M8 10H4M8 14H4M16 10h4M16 14h4M12 6V3M9.5 5l-1-2M14.5 5l1-2" />
@@ -48,6 +50,29 @@ export default function ReportBugModal({ onClose }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
+  const [attachment, setAttachment] = useState(null);
+  const [preview, setPreview] = useState("");
+  const fileRef = useRef(null);
+
+  useEffect(() => {
+    if (!attachment || !attachment.type.startsWith("image/")) {
+      setPreview("");
+      return;
+    }
+    const url = URL.createObjectURL(attachment);
+    setPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [attachment]);
+
+  const selectAttachment = (file) => {
+    if (!file) return;
+    if (!/\.(png|jpe?g|webp|pdf|txt|log)$/i.test(file.name) || file.size > 5 * 1024 * 1024 || file.size === 0) {
+      setError("Choose a non-empty PNG, JPG, WebP, PDF, TXT or LOG file up to 5 MB.");
+      return;
+    }
+    setAttachment(file);
+    setError("");
+  };
 
   const email = sessionStorage.getItem("email") || sessionStorage.getItem("username") || "";
   const name = sessionStorage.getItem("name") || "";
@@ -60,10 +85,12 @@ export default function ReportBugModal({ onClose }) {
     setSubmitting(true);
     setError("");
     try {
-      await submitFeedback({ name, email, category, subject, message });
+      await submitFeedback({ name, email, category, subject, message, attachment });
       setDone(true);
     } catch (err) {
-      setError(err.message || "Could not submit. Please try again.");
+      setError(attachment
+        ? "The report with its attachment could not be sent. File uploads require backend support. Try again, or remove the file to send a text-only report."
+        : err.message || "Could not submit. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -112,14 +139,30 @@ export default function ReportBugModal({ onClose }) {
             </div>
           </fieldset>
           <label className="feedback-field">Subject
-            <input type="text" value={subject} onChange={(event) => setSubject(event.target.value)} maxLength={120} placeholder="Short summary" disabled={submitting} />
+            <input type="text" required value={subject} onChange={(event) => setSubject(event.target.value)} maxLength={120} placeholder="Short summary" disabled={submitting} />
           </label>
           <label className="feedback-field">Message
-            <textarea value={message} onChange={(event) => setMessage(event.target.value)} maxLength={5000} rows={6} placeholder="What happened? Steps to reproduce, if it's a bug." disabled={submitting} />
+            <textarea required value={message} onChange={(event) => setMessage(event.target.value)} maxLength={5000} rows={4} placeholder="What happened? Steps to reproduce, if it's a bug." disabled={submitting} />
           </label>
+          <section className="feedback-attachment" aria-label="Optional attachment">
+            <div className="feedback-attachment__heading"><span>Attachment <small>Optional</small></span><span>Up to 5 MB</span></div>
+            <input ref={fileRef} type="file" hidden accept=".png,.jpg,.jpeg,.webp,.pdf,.txt,.log" disabled={submitting}
+              onChange={(event) => { selectAttachment(event.target.files?.[0]); event.target.value = ""; }} />
+            {attachment ? (
+              <div className="feedback-file">
+                {preview ? <img src={preview} alt="Attached screenshot preview" /> : <FileText size={28} aria-hidden="true" />}
+                <div><strong>{attachment.name}</strong><span>{Math.max(1, Math.round(attachment.size / 1024))} KB</span></div>
+                <button type="button" disabled={submitting} onClick={() => setAttachment(null)} title="Remove attachment" aria-label="Remove attachment"><X size={18} /></button>
+              </div>
+            ) : (
+              <button type="button" className="feedback-upload" disabled={submitting} onClick={() => fileRef.current?.click()}>
+                <Paperclip size={22} aria-hidden="true" /><span><strong>Attach screenshot or file</strong><small>PNG, JPG, WebP, PDF, TXT, LOG</small></span>
+              </button>
+            )}
+          </section>
           {error && <div role="alert" className="feedback-error">{error}</div>}
           <footer className="feedback-footer"><span>{message.length} / 5000</span>
-            <button type="submit" className="feedback-submit" disabled={submitting}><Send size={16} aria-hidden="true" />{submitting ? "Sending..." : "Send Report"}</button>
+            <button type="submit" className="feedback-submit" disabled={submitting}>{submitting ? <LoaderCircle className="feedback-spinner" size={16} aria-hidden="true" /> : <Send size={16} aria-hidden="true" />}{submitting ? "Sending..." : "Send Report"}</button>
           </footer>
         </form>
       )}

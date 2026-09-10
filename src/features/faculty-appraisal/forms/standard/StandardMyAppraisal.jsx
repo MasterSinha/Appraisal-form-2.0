@@ -3433,7 +3433,7 @@ export default function StandardMyAppraisal({
                         disabled={submitting || formLocked}
                         style={{ marginTop: 2, width: 18, height: 18, accentColor: "#2563eb", flexShrink: 0 }}
                       />
-                      <span>{SUMMARY_DECLARATION_TEXT}</span>
+                      <span><strong className="declaration-heading">Declaration of accuracy</strong>{SUMMARY_DECLARATION_TEXT}</span>
                     </label>
 
                     <label className={attachmentsConfirmed ? "appraisal-declaration-card is-checked" : "appraisal-declaration-card"} style={{ display: "flex", alignItems: "flex-start", gap: 14, padding: "14px 18px", background: attachmentsConfirmed ? "#dcfce7" : "#ecfdf5", border: `1px solid ${attachmentsConfirmed ? "#86efac" : "#bbf7d0"}`, borderRadius: 12, marginBottom: 0, color: "#334155", fontSize: 13, lineHeight: 1.5, cursor: formLocked ? "not-allowed" : "pointer", transition: "background 180ms ease, border-color 180ms ease, box-shadow 180ms ease", boxShadow: attachmentsConfirmed ? "0 10px 24px rgba(16,185,129,0.10)" : "none" }}>
@@ -3444,7 +3444,7 @@ export default function StandardMyAppraisal({
                         disabled={submitting || formLocked}
                         style={{ marginTop: 2, width: 18, height: 18, accentColor: "#10b981", flexShrink: 0 }}
                       />
-                      <span>{SUMMARY_ATTACHMENTS_DECLARATION}</span>
+                      <span><strong className="declaration-heading">Supporting documents</strong>{SUMMARY_ATTACHMENTS_DECLARATION}</span>
                     </label>
 
                     <div className="appraisal-summary-actions" style={{ display: "flex", justifyContent: "center", gap: 14, flexWrap: "wrap" }}>
@@ -3455,6 +3455,7 @@ export default function StandardMyAppraisal({
                         variant="submit"
                         onClick={handleSubmitAppraisal}
                         disabled={submitting || formLocked || !declarationConfirmed || !attachmentsConfirmed}
+                        locked={formLocked}
                         loading={submitting}
                       >
                         {formLocked ? "Submitted & Locked" : submitting ? "Submitting..." : "Submit Appraisal"}

@@ -1,4 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
+import { FileDown, Send, LockKeyhole } from "lucide-react";
 export const SUMMARY_DECLARATION_TEXT =
   "I hereby declare that the information furnished above is true and correct to the best of my knowledge and belief, and is supported by documentary evidence enclosed with this form. I understand that any false claim, if detected at any stage, may render this appraisal liable to cancellation and may attract disciplinary action as per university policy.";
 
@@ -71,26 +72,22 @@ export function AppraisalSummaryActionButton({
   variant = "report",
   disabled = false,
   loading = false,
+  locked = false,
   onClick,
   children,
 }) {
   const isSubmit = variant === "submit";
-  const activeBackground = isSubmit
-    ? "linear-gradient(180deg,#334155 0%,#1e293b 100%)"
-    : "linear-gradient(180deg,#6d28d9 0%,#4c1d95 100%)";
-  const inactiveBackground = isSubmit ? "#64748b" : activeBackground;
-  const shadow = isSubmit ? "0 10px 20px rgba(30,41,59,0.18)" : "0 10px 20px rgba(76,29,149,0.22)";
-  const icon = isSubmit ? "send" : "report";
+  const Glyph = locked ? LockKeyhole : isSubmit ? Send : FileDown;
 
   return (
     <button
       type={type}
       onClick={onClick}
       disabled={disabled}
-      className={isSubmit ? "appraisal-submit-button" : "appraisal-report-button"}
-      style={{ minWidth: 172, minHeight: 42, padding: "10px 24px", background: disabled ? inactiveBackground : activeBackground, color: "#fff", border: "none", borderRadius: 9, cursor: disabled ? "not-allowed" : "pointer", fontWeight: 800, fontSize: 13, fontFamily: "inherit", opacity: loading ? 0.76 : 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 9, boxShadow: disabled ? "none" : shadow }}
+      className={`summary-action ${isSubmit ? "appraisal-submit-button" : "appraisal-report-button"}${locked ? " is-locked" : ""}`}
+      aria-busy={loading || undefined}
     >
-      {loading ? <span className="appraisal-button-spinner" aria-hidden="true" /> : <InlineSvgIcon paths={SUMMARY_ICONS[icon]} size={16} />}
+      {loading ? <span className="appraisal-button-spinner" aria-hidden="true" /> : <Glyph size={17} aria-hidden="true" />}
       {children}
     </button>
   );

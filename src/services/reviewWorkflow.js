@@ -44,7 +44,10 @@ const enrichmentCache = new Map();
 const withEnrichmentCache = async (kind, email, academicYear, fetcher) => {
   const key = `${kind}::${academicYear}::${email}`;
   const cached = enrichmentCache.get(key);
-  if (cached && Date.now() - cached.time < ENRICHMENT_CACHE_TTL_MS) {
+  // Registrar Part D edits must reach the VC quickly; keep full appraisal records
+  // short-lived while retaining the longer document cache for dashboard performance.
+  const cacheTtl = kind === "submitted" ? 3000 : ENRICHMENT_CACHE_TTL_MS;
+  if (cached && Date.now() - cached.time < cacheTtl) {
     return cached.value;
   }
   const value = await fetcher();
@@ -249,7 +252,11 @@ const enrichQueueItemDocs = async (item = {}) => {
   const missingCurrentPartCOrDScore = !isLegacyYear &&
     (n(item.partATotal) > 0 || n(item.partBTotal) > 0) &&
     (n(item.partCTotal) === 0 || n(item.partDTotal) === 0);
-  const missingReviewerScore = missingLegacyScore || missingCurrentHodScore || missingCurrentPartCOrDScore;
+  // The VC needs the Registrar's actual Part D rows as well as the release status.
+  // Queue summaries often omit those rows, so recover the full record when needed.
+  const missingCurrentPartDDetails = !isLegacyYear && item.partDStatus === "released" &&
+    !Array.isArray(item.leaveManagement) && !Array.isArray(item.leave_management);
+  const missingReviewerScore = missingLegacyScore || missingCurrentHodScore || missingCurrentPartCOrDScore || missingCurrentPartDDetails;
   if (currentDocCount > 0 && !missingReviewerScore) {
     return item;
   }
@@ -319,6 +326,20 @@ const enrichQueueItemDocs = async (item = {}) => {
     // reader against the full submitted record recovers it the same way legacyTotals does for
     // the old format.
     const currentReviewSummary = legacyTotals ? null : standardReviewSummary(submitted, submitted?.payload, submitted?.form);
+    const submittedPartDSources = [
+      submitted,
+      submitted?.declaration,
+      submitted?.payload,
+      submitted?.payload?.declaration,
+      submitted?.form,
+      submitted?.payload?.form,
+    ].filter(Boolean);
+    const submittedPartDValue = (...keys) => firstValue(...keys.flatMap((key) => submittedPartDSources.map((source) => source?.[key])));
+    const submittedPartDLeave = submittedPartDSources.find((source) =>
+      Array.isArray(source?.registrar_part_d_leave_management) ||
+      Array.isArray(source?.registrarPartDLeaveManagement) ||
+      Array.isArray(source?.leaveManagement) || Array.isArray(source?.leave_management)
+    );
     const recoveredReviewerFields = legacyTotals
       ? {
           hodTotal: numberValue(legacyTotals.hodTotal, enrichedItem.hodTotal),
@@ -389,6 +410,13 @@ const enrichQueueItemDocs = async (item = {}) => {
       facultyPartCMax: submittedSummary.partCMax,
       facultyPartDMax: submittedSummary.partDMax,
       facultyTotalMax: submittedSummary.grandMax,
+      partDStatus: enrichedItem.partDStatus || submittedPartDValue("part_d_status", "partDStatus"),
+      registrarPartDScore: numberValue(enrichedItem.registrarPartDScore, submittedPartDValue("registrar_part_d_score", "registrarPartDScore")),
+      registrarPartDRemarks: enrichedItem.registrarPartDRemarks || submittedPartDValue("registrar_part_d_remarks", "registrarPartDRemarks"),
+      registrarPartDReviewedAt: enrichedItem.registrarPartDReviewedAt || submittedPartDValue("registrar_part_d_reviewed_at", "registrarPartDReviewedAt"),
+      leaveManagement: enrichedItem.leaveManagement?.length
+        ? enrichedItem.leaveManagement
+        : submittedPartDLeave?.registrar_part_d_leave_management || submittedPartDLeave?.registrarPartDLeaveManagement || submittedPartDLeave?.leaveManagement || submittedPartDLeave?.leave_management || [],
     };
     if (submittedCount > 0 && submittedCount !== currentCount) {
       return { ...nextItem, docs: bestSubmittedDocs, docCount: submittedCount };
@@ -788,6 +816,20 @@ const normalizeQueueItem = (item = {}) => {
   const email = subjectProfile.email;
   const academicYear = firstValue(item.academicYear, item.academic_year, item.info?.ay, getActiveAcademicYear(), APP_INFO.DEFAULT_AY, "2026-2027");
   const school = subjectProfile.school;
+  const partDSources = [
+    item,
+    item.declaration,
+    item.payload,
+    item.payload?.declaration,
+    item.form,
+    item.payload?.form,
+  ].filter(Boolean);
+  const partDValue = (...keys) => firstValue(...keys.flatMap((key) => partDSources.map((source) => source?.[key])));
+  const partDLeaveManagement = partDSources.find((source) =>
+    Array.isArray(source?.registrar_part_d_leave_management) ||
+    Array.isArray(source?.registrarPartDLeaveManagement) ||
+    Array.isArray(source?.leaveManagement) || Array.isArray(source?.leave_management)
+  );
   // The 2025-2026 cycle used a legacy two-part form (Part A + Part B only) whose scores are
   // stored under score_summary.{role} rather than the standard partA/partB/partC/partD +
   // hodTotal/directorTotal/... fields read above - without this, review-queue cards for that
@@ -915,10 +957,12 @@ const normalizeQueueItem = (item = {}) => {
     vcRemarks: firstValue(reviewSummary.vcRemarks),
     // Part D routes to the Registrar independently of the A/B/C/E chain above - see
     // partDReleaseGateApplies in utils/hierarchy.js and backend_changes_requied.md.
-    partDStatus: firstValue(item.part_d_status, item.partDStatus),
-    registrarPartDScore: numberValue(firstValue(item.registrar_part_d_score, item.registrarPartDScore)),
-    registrarPartDRemarks: firstValue(item.registrar_part_d_remarks, item.registrarPartDRemarks),
-    registrarPartDReviewedAt: firstValue(item.registrar_part_d_reviewed_at, item.registrarPartDReviewedAt),
+    partDStatus: partDValue("part_d_status", "partDStatus"),
+    registrarPartDScore: numberValue(partDValue("registrar_part_d_score", "registrarPartDScore")),
+    registrarPartDRemarks: partDValue("registrar_part_d_remarks", "registrarPartDRemarks"),
+    registrarPartDReviewedAt: partDValue("registrar_part_d_reviewed_at", "registrarPartDReviewedAt"),
+    // Registrar corrections are stored outside the faculty's immutable submission.
+    leaveManagement: partDLeaveManagement?.registrar_part_d_leave_management || partDLeaveManagement?.registrarPartDLeaveManagement || partDLeaveManagement?.leaveManagement || partDLeaveManagement?.leave_management || [],
   };
 };
 

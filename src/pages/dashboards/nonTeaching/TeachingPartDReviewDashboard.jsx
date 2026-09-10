@@ -192,7 +192,10 @@ export default function TeachingPartDReviewDashboard({ accent = "#155e75", acade
 
   const selected = items.find((item) => item.id === selectedId);
   const selectedReviewed = selected ? isPartDReviewed(selected) : false;
-  const canEdit = selected?.can_edit_part_d === true;
+  // This screen is mounted only for the Registrar. Older queue responses do not
+  // include can_edit_part_d, so absence of the flag must not hide the Part D editor;
+  // an explicit backend denial still keeps the record read-only.
+  const canEdit = Boolean(selected && selected.can_edit_part_d !== false);
   const currentSchools = getPartDSchoolsByDivision()[activeDivision] || [];
   const schoolCounts = useMemo(() => partDSchoolCountsFor(items), [items]);
   const divisionCounts = useMemo(() => partDDivisionCountsFor(schoolCounts), [schoolCounts]);

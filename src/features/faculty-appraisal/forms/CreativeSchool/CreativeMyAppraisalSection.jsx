@@ -545,6 +545,7 @@ export default function CreativeMyAppraisalSection({
               variant="submit"
               onClick={handleSubmitAppraisal}
               disabled={submitting || locked || !confirmed || !attachmentsConfirmed}
+              locked={locked}
               loading={submitting}
             >
               {locked ? "Submitted & Locked" : submitting ? "Submitting..." : "Submit Appraisal"}
