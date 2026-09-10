@@ -1,4 +1,5 @@
 /* eslint-disable no-unused-vars */
+import { useReviewFeedback } from "../../../components/reviewFeedbackContext";
 import { createContext, useContext, useState, useRef, useEffect } from "react";
 import MyAppraisalForm from "../../../components/appraisal";
 import { api } from "../../../services/api";
@@ -1180,6 +1181,7 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
 
 // --- Main Dean Dashboard -------------------------------------------------------
 export default function NonEngineeringDeanView() {
+  const showReviewFeedback = useReviewFeedback();
   const [activeMainTab, setActiveMainTab] = useState("schoolAppraisal");
   const [activeRoleTab, setActiveRoleTab] = useState("facultyApprovals");
   const [hodAppraisalTab, setHodAppraisalTab] = useState("partA");
@@ -1373,13 +1375,13 @@ export default function NonEngineeringDeanView() {
     { id: "schoolAppraisal", icon: "", label: "School Appraisal", sub: "Review school submissions", badge: totalSchoolPendingCount },
   ];
 
-  const handleSubmitReview = async (id, scores, remarks, sectionScores, reviewConfirmed = false, decision = "approved") => {
+const handleSubmitReview = async (id, scores, remarks, sectionScores, reviewConfirmed = false, decision = "approved") => {
     if (!reviewConfirmed) {
-      alert("Please verify and confirm the accuracy declaration before submitting the review.");
+      void showReviewFeedback("Please verify and confirm the accuracy declaration before submitting the review.");
       return;
     }
     if (!remarks?.trim()) {
-      alert("Remarks are mandatory. Please enter your remarks before submitting the review.");
+      void showReviewFeedback("Remarks are mandatory. Please enter your remarks before submitting the review.");
       return;
     }
     const sourceList = activeRoleTab === "facultyApprovals"
@@ -1423,10 +1425,10 @@ export default function NonEngineeringDeanView() {
         setDirectorList((prev) => prev.map(markReviewed));
       }
       setReviewingApproval(null);
-      alert(decision === "rejected" ? "Appraisal rejected and sent back for editing." : "Dean review approved and forwarded to VC.");
+      void showReviewFeedback(decision === "rejected" ? "Appraisal rejected and sent back for editing." : "Dean review approved and forwarded to VC.", "success");
     } catch (err) {
       console.error("Could not submit Dean review:", err);
-      alert(`Unable to submit Dean review.\n\n${err.message}`);
+      void showReviewFeedback(`Unable to submit Dean review.\n\n${err.message}`);
     }
   };
 

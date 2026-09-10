@@ -1,4 +1,5 @@
 /* eslint-disable no-unused-vars */
+import { useReviewFeedback } from "../../components/reviewFeedbackContext";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { DirectorFacultyReviewForm } from "../../components/appraisal";
 import { api } from "../../services/api";
@@ -861,6 +862,7 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
 
 // - Main Director Dashboard -
 export default function DirectorDashboard() {
+  const showReviewFeedback = useReviewFeedback();
  const [activeMainTab, setActiveMainTab] = useState("myAppraisal");
  const [hodAppraisalTab, setHodAppraisalTab] = useState("partA");
  const [reviewingFaculty, setReviewingFaculty] = useState(null);
@@ -1038,13 +1040,13 @@ export default function DirectorDashboard() {
  ];
 
  const visibleMainTab = activeMainTab === "departments" && !canManagePrograms ? "myAppraisal" : activeMainTab;
- const handleSubmitReview = async (type, id, scores, remarks, sectionScores, reviewConfirmed = false, decision = "approved") =>{
+const handleSubmitReview = async (type, id, scores, remarks, sectionScores, reviewConfirmed = false, decision = "approved") =>{
  if (!reviewConfirmed) {
- alert("Please verify and confirm the accuracy declaration before submitting the review.");
+ void showReviewFeedback("Please verify and confirm the accuracy declaration before submitting the review.");
  return;
  }
  if (!remarks?.trim()) {
- alert("Remarks are mandatory. Please enter your remarks before submitting the review.");
+ void showReviewFeedback("Remarks are mandatory. Please enter your remarks before submitting the review.");
  return;
  }
  const sourceList = type === "hod" ? hodList : facultyList;
@@ -1082,10 +1084,10 @@ export default function DirectorDashboard() {
  setReviewingFaculty(null);
  }
 
- alert(decision === "rejected" ? "Appraisal rejected and sent back for editing." : "Director review approved and forwarded to Dean.");
+ void showReviewFeedback(decision === "rejected" ? "Appraisal rejected and sent back for editing." : "Director review approved and forwarded to Dean.", "success");
  } catch (err) {
  console.error("Could not submit Director review:", err);
- alert(`Unable to submit Director review.\n\n${err.message}`);
+ void showReviewFeedback(`Unable to submit Director review.\n\n${err.message}`);
  }
  };
 

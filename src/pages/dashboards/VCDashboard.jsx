@@ -1,4 +1,5 @@
 /* eslint-disable no-unused-vars, react-hooks/set-state-in-effect */
+import { useReviewFeedback } from "../../components/reviewFeedbackContext";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Avatar, LogoutConfirmModal, ScoreCard, ReviewMetricsStrip } from "../../components/dashboard/dashboardPrimitives";
@@ -2025,6 +2026,7 @@ function PreviousYearAuthorityResult({ item, onBack }) {
 }
 
 export default function VCDashboard() {
+  const showReviewFeedback = useReviewFeedback();
  useSchools(); // subscribes to live schools data so getHierarchySchools() re-renders fresh
  const navigate = useNavigate();
  const [deanTypeFilter, setDeanTypeFilter] = useState("engg");
@@ -2180,13 +2182,13 @@ export default function VCDashboard() {
  };
  }, [markUserScrolling]);
 
- const handleSubmit = async (id, scores, remarks, personMode, sectionScores, reviewConfirmed = false, decision = "approved") =>{
+const handleSubmit = async (id, scores, remarks, personMode, sectionScores, reviewConfirmed = false, decision = "approved") =>{
  if (!reviewConfirmed) {
- alert("Please verify and confirm the accuracy declaration before submitting the review.");
+ void showReviewFeedback("Please verify and confirm the accuracy declaration before submitting the review.");
  return;
  }
  if (!remarks?.trim()) {
- alert("Remarks are mandatory. Please enter your remarks before submitting the review.");
+ void showReviewFeedback("Remarks are mandatory. Please enter your remarks before submitting the review.");
  return;
  }
  const sourceList = personMode === "dean" ? deanList : personMode === "director" ? dirList : personMode === "hod" ? hodList : personMode === "center_head" ? centerHeadList : facList;
@@ -2220,10 +2222,10 @@ export default function VCDashboard() {
  else if (personMode === "center_head") setCenterHeadList(upd);
  else if (personMode === "faculty") setFacList(upd);
  setReviewing(null);
- alert(decision === "rejected" ? "Appraisal rejected and sent back for editing." : (wasFinalised ? "VC review updated." : "VC final approval submitted."));
+ void showReviewFeedback(decision === "rejected" ? "Appraisal rejected and sent back for editing." : (wasFinalised ? "VC review updated." : "VC final approval submitted."), "success");
  } catch (err) {
  console.error("Could not submit VC review:", err);
- alert(`Unable to submit VC review.\n\n${err.message}`);
+ void showReviewFeedback(`Unable to submit VC review.\n\n${err.message}`);
  }
  };
 

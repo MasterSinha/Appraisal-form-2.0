@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useReviewFeedback } from "../../../components/reviewFeedbackContext";
 import { useNavigate } from "react-router-dom";
 import { clearUserSession, storeUserSession, getActiveAcademicYear, setActiveAcademicYear, getSessionItem, normalizeAcademicYearLabel } from "../../../auth/session";
 import { APP_INFO } from "../../../constants/formConfig";
@@ -1358,6 +1359,7 @@ function AuthorityPartB({ form, setForm, reviewerRole, readOnly, visibleRoles = 
 }
 
 export function NonTeachingAuthorityReviewPanel({ item, reviewerRole, onBack, onSubmitted, readOnly = false }) {
+  const showReviewFeedback = useReviewFeedback();
   const role = normalizeNonTeachingRole(reviewerRole, reviewerRole);
   const [form, setForm] = useState(() => primeFormForReviewer(item.form, role));
   const [tab, setTab] = useState("partA");
@@ -1486,15 +1488,15 @@ export function NonTeachingAuthorityReviewPanel({ item, reviewerRole, onBack, on
 
   const handleReject = async () => {
     if (!canReviewAtThisStage) {
-      alert("You are not an authorized reviewer for this appraisal workflow.");
+      void showReviewFeedback("You are not an authorized reviewer for this appraisal workflow.");
       return;
     }
     if (!confirmed) {
-      alert("Please verify and confirm the declaration before rejecting.");
+      void showReviewFeedback("Please verify and confirm the declaration before rejecting.");
       return;
     }
     if (!remarks?.trim()) {
-      alert("Remarks are mandatory when rejecting. Please enter your remarks before rejecting.");
+      void showReviewFeedback("Remarks are mandatory when rejecting. Please enter your remarks before rejecting.");
       return;
     }
     if (!window.confirm(`Reject this appraisal and send it back to ${item.name} for editing?`)) return;
@@ -1508,11 +1510,11 @@ export function NonTeachingAuthorityReviewPanel({ item, reviewerRole, onBack, on
         remarks,
         decision: "rejected",
       });
-      alert(`${reviewerDesignation} review submitted (Rejected).`);
+      await showReviewFeedback(`${reviewerDesignation} review submitted (Rejected).`, "success");
       onSubmitted?.(updated);
     } catch (err) {
       console.error("Could not reject non-teaching review:", err);
-      alert(`Unable to reject review.\n\n${err.message}`);
+      void showReviewFeedback(`Unable to reject review.\n\n${err.message}`);
     } finally {
       setSubmitting(false);
     }
@@ -1520,21 +1522,21 @@ export function NonTeachingAuthorityReviewPanel({ item, reviewerRole, onBack, on
 
   const handleSubmit = async () => {
     if (!canReviewAtThisStage) {
-      alert("You are not an authorized reviewer for this appraisal workflow.");
+      void showReviewFeedback("You are not an authorized reviewer for this appraisal workflow.");
       return;
     }
     if (!confirmed) {
-      alert("Please verify and confirm the accuracy declaration before submitting the review.");
+      void showReviewFeedback("Please verify and confirm the accuracy declaration before submitting the review.");
       return;
     }
     if (!remarks?.trim()) {
-      alert("Remarks are mandatory. Please enter your remarks before submitting the review.");
+      void showReviewFeedback("Remarks are mandatory. Please enter your remarks before submitting the review.");
       return;
     }
     try {
       validateNonTeachingForm(form, role === "vc" ? "vc" : role, true);
     } catch (err) {
-      alert(err.message);
+      void showReviewFeedback(err.message);
       return;
     }
     if (!window.confirm(`Submit ${reviewerDesignation} review?`)) return;
@@ -1547,11 +1549,11 @@ export function NonTeachingAuthorityReviewPanel({ item, reviewerRole, onBack, on
         reviewerRole: role,
         remarks,
       });
-      alert(`${reviewerDesignation} review submitted.`);
+      await showReviewFeedback(`${reviewerDesignation} review submitted.`, "success");
       onSubmitted?.(updated);
     } catch (err) {
       console.error("Could not submit non-teaching review:", err);
-      alert(`Unable to submit review.\n\n${err.message}`);
+      void showReviewFeedback(`Unable to submit review.\n\n${err.message}`);
     } finally {
       setSubmitting(false);
     }

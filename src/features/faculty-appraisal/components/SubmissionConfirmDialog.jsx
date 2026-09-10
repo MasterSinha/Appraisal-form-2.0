@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AlertCircle, ArrowRight, CheckCircle2, FileCheck2, LoaderCircle, LockKeyhole, Send, ShieldCheck, X } from "lucide-react";
 import "./submissionConfirmDialog.css";
@@ -11,10 +11,15 @@ export default function SubmissionConfirmDialog({
   confirmMessage = "Please confirm that your appraisal is complete and ready to be submitted for review.",
   academicYear,
   eyebrow = "Faculty appraisal",
+  closeLabel,
   onConfirm,
   onCancel,
 }) {
   const dialogRef = useRef(null);
+  const contentRef = useRef(null);
+  const closeTimer = useRef(null);
+  const closingRef = useRef(false);
+  const [closing, setClosing] = useState(false);
   const titleId = useId();
   const descriptionId = useId();
   const submitting = state === "submitting";
@@ -29,32 +34,64 @@ export default function SubmissionConfirmDialog({
     if (!dialog?.open) dialog?.showModal();
     return () => {
       if (dialog?.open) dialog.close();
-      if (previousFocus?.isConnected) previousFocus.focus();
+      clearTimeout(closeTimer.current);
+      if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
     };
   }, []);
 
   useEffect(() => {
-    dialogRef.current?.querySelector(submitting ? "[data-status]" : success || error ? "[data-close]" : "[data-cancel]")?.focus();
+    dialogRef.current?.querySelector(submitting ? "[data-status]" : success || error ? "[data-close]" : "[data-cancel]")?.focus({ preventScroll: true });
   }, [success, error, submitting]);
 
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    const content = contentRef.current;
+    if (!dialog || !content || typeof ResizeObserver === "undefined") return;
+    let previousHeight = dialog.getBoundingClientRect().height;
+    let resizeAnimation;
+    const observer = new ResizeObserver(() => {
+      const visibleHeight = dialog.getBoundingClientRect().height;
+      resizeAnimation?.cancel();
+      const nextHeight = dialog.getBoundingClientRect().height;
+      if (Math.abs(nextHeight - previousHeight) > 1 && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        resizeAnimation = dialog.animate(
+          [{ height: `${visibleHeight === nextHeight ? previousHeight : visibleHeight}px` }, { height: `${nextHeight}px` }],
+          { duration: 240, easing: "cubic-bezier(.22, 1, .36, 1)" },
+        );
+      }
+      previousHeight = nextHeight;
+    });
+    observer.observe(content);
+    return () => { observer.disconnect(); resizeAnimation?.cancel(); };
+  }, []);
+
   const close = () => {
-    if (!submitting) onCancel?.();
+    if (submitting || closingRef.current) return;
+    closingRef.current = true;
+    setClosing(true);
+    const delay = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 180;
+    closeTimer.current = setTimeout(() => {
+      closingRef.current = false;
+      setClosing(false);
+      onCancel?.();
+    }, delay);
   };
 
   return createPortal(
     <dialog
       ref={dialogRef}
-      className={`submission-confirm submission-confirm--${state}`}
+      className={`submission-confirm submission-confirm--${state}${closing ? " submission-confirm--closing" : ""}`}
       aria-labelledby={titleId}
       aria-describedby={descriptionId}
       onCancel={(event) => { event.preventDefault(); close(); }}
     >
+      <div ref={contentRef}>
       <header className="submission-confirm__header">
         <span className="submission-confirm__eyebrow"><FileCheck2 size={15} aria-hidden="true" />{eyebrow}</span>
         {academicYear && <span className="submission-confirm__year">AY {academicYear}</span>}
         {!submitting && <button type="button" className="submission-confirm__close" aria-label="Close confirmation" title="Close" onClick={close}><X size={18} /></button>}
       </header>
-      <div className="submission-confirm__body">
+      <div key={state} className="submission-confirm__body">
         <div className="submission-confirm__intro">
           <div className="submission-confirm__icon" aria-hidden="true"><StatusIcon size={30} strokeWidth={1.8} className={submitting ? "submission-confirm__spinner" : undefined} /></div>
           <div className="submission-confirm__copy">
@@ -67,11 +104,12 @@ export default function SubmissionConfirmDialog({
         {success && <div className="submission-confirm__receipt"><ShieldCheck size={16} aria-hidden="true" />Submission complete</div>}
       </div>
       <footer className="submission-confirm__actions">
-        {success || error ? <button type="button" data-close className="submission-confirm__submit" onClick={onCancel}>{success ? "Done" : "Back to appraisal"}<ArrowRight size={16} aria-hidden="true" /></button> : <>
+        {success || error ? <button type="button" data-close className="submission-confirm__submit" onClick={close} disabled={closing}>{closeLabel || (success ? "Done" : "Back to appraisal")}<ArrowRight size={16} aria-hidden="true" /></button> : <>
           <button type="button" data-cancel onClick={close} disabled={submitting}>Cancel</button>
-          <button type="button" className="submission-confirm__submit" onClick={onConfirm} disabled={submitting}>{submitting ? <LoaderCircle className="submission-confirm__spinner" size={15} aria-hidden="true" /> : <Send size={15} aria-hidden="true" />}{submitting ? "Submitting..." : "Yes, submit"}</button>
+          <button type="button" className="submission-confirm__submit" onClick={onConfirm} disabled={submitting || closing}>{submitting ? <LoaderCircle className="submission-confirm__spinner" size={15} aria-hidden="true" /> : <Send size={15} aria-hidden="true" />}{submitting ? "Submitting..." : "Yes, submit"}</button>
         </>}
       </footer>
+      </div>
     </dialog>,
     document.body,
   );

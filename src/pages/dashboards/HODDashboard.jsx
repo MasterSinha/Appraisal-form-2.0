@@ -1,4 +1,5 @@
 /* eslint-disable no-unused-vars */
+import { useReviewFeedback } from "../../components/reviewFeedbackContext";
 import { useState, useRef, useEffect } from "react";
 import MyAppraisalForm from "../../components/appraisal";
 import { Avatar, ScoreCard, ScoreBar, StatusBadge, ReviewMetricsStrip, uploadedDocCount } from "../../components/dashboard/dashboardPrimitives";
@@ -494,6 +495,7 @@ export default function HODDashboard({
  reviewerDesignation = "Professor & Head",
  forwardedToLabel = "Director",
 } = {}) {
+  const showReviewFeedback = useReviewFeedback();
  const [activeMainTab, setActiveMainTab] = useState("myAppraisal");
  const [hodAppraisalTab, setHodAppraisalTab] = useState("partA");
  const [reviewingFaculty, setReviewingFaculty] = useState(null);
@@ -588,13 +590,13 @@ export default function HODDashboard({
  { id: "myAppraisal", icon: "", label: "My Appraisal", sub: "View your self-appraisal form" },
  { id: "approvals", icon: "", label: "Faculty's Appraisal", sub: `${pendingCount} awaiting review`, badge: pendingCount },
  ];
- const handleSubmitReview = async (id, scores, remarks, sectionScores, reviewConfirmed = false, decision = "approved") =>{
+const handleSubmitReview = async (id, scores, remarks, sectionScores, reviewConfirmed = false, decision = "approved") =>{
  if (!reviewConfirmed) {
- alert("Please verify and confirm the accuracy declaration before submitting the review.");
+ void showReviewFeedback("Please verify and confirm the accuracy declaration before submitting the review.");
  return;
  }
  if (!remarks?.trim()) {
- alert("Remarks are mandatory. Please enter your remarks before submitting the review.");
+ void showReviewFeedback("Remarks are mandatory. Please enter your remarks before submitting the review.");
  return;
  }
  const item = facultyList.find((faculty) =>faculty.id === id);
@@ -628,10 +630,10 @@ export default function HODDashboard({
  return { ...f, ...(decision === "rejected" ? rejectionUpdate : approvalUpdate) };
  }));
  setReviewingFaculty(null);
- alert(decision === "rejected" ? "Appraisal rejected and sent back for editing." : `${reviewerLabel} review approved and forwarded to ${nextReviewerLabel}.`);
+ void showReviewFeedback(decision === "rejected" ? "Appraisal rejected and sent back for editing." : `${reviewerLabel} review approved and forwarded to ${nextReviewerLabel}.`, "success");
  } catch (err) {
  console.error(`Could not submit ${reviewerLabel} review:`, err);
- alert(`Unable to submit ${reviewerLabel} review.\n\n${err.message}`);
+ void showReviewFeedback(`Unable to submit ${reviewerLabel} review.\n\n${err.message}`);
  }
  };
 
