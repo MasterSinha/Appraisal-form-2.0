@@ -10,7 +10,7 @@ import { isNonTeachingRole, normalizeNonTeachingRole, readReportsToRegistrarFlag
 
 const ENGINEERING = DEAN_TRACKS.ENGINEERING;
 const NON_ENGINEERING = DEAN_TRACKS.NON_ENGINEERING;
-const DIRECT_VC = DEAN_TRACKS.DIRECT_VC;
+const CISR = DEAN_TRACKS.CISR;
 
 const normalizeText = normalizeHierarchyText;
 
@@ -67,7 +67,7 @@ export const getDeanTrack = (profile = {}) => {
 
   const combined = normalizeText(`${profile.school || ""} ${profile.department || ""} ${profile.designation || ""} ${profile.email || ""}`);
   if (combined.includes("cisr") || combined.includes("interdisciplinary studies and research") || combined.includes("center head") || combined.includes("centre head")) {
-    return DIRECT_VC;
+    return CISR;
   }
 
   return ENGINEERING;
@@ -300,7 +300,7 @@ export const canAuthorityReviewProfile = (reviewerProfile = {}, subjectProfile =
     const track = getDeanTrack(subjectProfile);
     return subjectRole !== "dean" &&
       getReviewChain(subjectProfile).includes("dean") &&
-      track !== DIRECT_VC &&
+      track !== CISR &&
       getDeanTrack(reviewerProfile) === track;
   }
 

@@ -1343,7 +1343,7 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  const splitDeanSummaryRows = personMode === "dean";
  const useFacultyRecordCard = ["faculty", "hod", "dean", "director", "center_head"].includes(personMode);
  const recordSchoolTrack = useFacultyRecordCard ? getDeanTrack({ school: person.school || person.info?.school, department: person.department, designation: person.designation }) : "";
- const recordSchoolGroupLabel = { engineering: "Engineering", non_engineering: "Non-Engineering", direct_vc: "CISR" }[recordSchoolTrack] || person.school || person.info?.school || APP_INFO.UNIVERSITY_NAME;
+ const recordSchoolGroupLabel = { engineering: "Engineering", non_engineering: "Non-Engineering", cisr: "CISR" }[recordSchoolTrack] || person.school || person.info?.school || APP_INFO.UNIVERSITY_NAME;
  const recordScoreRows = useFacultyRecordCard ? [
  { key: "self", label: "Self", icon: "user", values: facultyTotals, note: summaryOtherInfoValueFrom(person) },
  ...previousSummaryCards.map((card) => ({ key: card.role, label: card.meta.shortLabel, icon: "briefcase", values: card.totals, note: card.remarks })),
@@ -1951,7 +1951,7 @@ const getHierarchySchools = (academicYear = "") => ({
  .map((school, index) => toVcSchool(school, index, academicYear))
  .concat(DIVISION_SCHOOLS.non_engineering),
  cisr: UNIVERSITY_SCHOOLS
- .filter((school) =>school.deanTrack === DEAN_TRACKS.DIRECT_VC)
+ .filter((school) =>school.deanTrack === DEAN_TRACKS.CISR)
  .map((school, index) => toVcSchool(school, index, academicYear)),
 });
 

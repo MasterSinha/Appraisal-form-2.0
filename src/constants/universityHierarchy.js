@@ -1,7 +1,7 @@
 export const DEAN_TRACKS = {
   ENGINEERING: "engineering",
   NON_ENGINEERING: "non_engineering",
-  DIRECT_VC: "direct_vc",
+  CISR: "cisr",
 };
 
 // The 4 recognized approval_chain step keys. "dean" resolves to the track's Dean role (one Dean

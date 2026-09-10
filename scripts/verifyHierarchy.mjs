@@ -88,8 +88,8 @@ const schools = {
     code: "CISR",
     name: "Center for Interdisciplinary Studies and Research",
     label: "CISR - Center for Interdisciplinary Studies and Research",
-    track: DEAN_TRACKS.DIRECT_VC,
-    deanTrack: DEAN_TRACKS.DIRECT_VC,
+    track: DEAN_TRACKS.CISR,
+    deanTrack: DEAN_TRACKS.CISR,
     hasHod: false,
     hasDirector: false,
     departments: [],
@@ -187,7 +187,7 @@ assert.deepEqual(visiblePreviousReviewRoles("vc", deanSelf), [], "Dean self-appr
 for (const school of UNIVERSITY_SCHOOLS) {
   const faculty = { appraisal_role: "faculty", school: school.label, department: school.departments?.[0] || "" };
   const engineering = school.deanTrack === DEAN_TRACKS.ENGINEERING;
-  const directVc = school.deanTrack === DEAN_TRACKS.DIRECT_VC;
+  const directVc = school.deanTrack === DEAN_TRACKS.CISR;
   assert.equal(canAuthorityReviewProfile(roles.engineeringDean, faculty), engineering && !directVc, `Engineering dean visibility mismatch for ${school.code}`);
   assert.equal(canAuthorityReviewProfile(roles.nonEngineeringDean, faculty), !engineering && !directVc, `Non-engineering dean visibility mismatch for ${school.code}`);
   assert.equal(canAuthorityReviewProfile(roles.vc, faculty), true, `VC must review ${school.code}`);

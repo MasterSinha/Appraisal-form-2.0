@@ -19,7 +19,7 @@ import { useSchools } from "../../../services/schoolsService";
 const PART_D_DIVISION_META = {
   engineering: { label: "Engineering Schools", color: "#1e40af", bg: "linear-gradient(135deg,#dbeafe,#bfdbfe)" },
   non_engineering: { label: "Non-Engineering Schools", color: "#6b21a8", bg: "linear-gradient(135deg,#f3e8ff,#e9d5ff)" },
-  direct_vc: { label: "CISR", color: "#0f766e", bg: "linear-gradient(135deg,#ccfbf1,#99f6e4)" },
+  cisr: { label: "CISR", color: "#0f766e", bg: "linear-gradient(135deg,#ccfbf1,#99f6e4)" },
 };
 
 const PART_D_DIVISION_SCHOOLS = {
@@ -64,8 +64,8 @@ const getPartDSchoolsByDivision = () => ({
     .filter((school) => school.deanTrack === DEAN_TRACKS.NON_ENGINEERING)
     .map((school, index) => toPartDSchool(school, index))
     .concat(PART_D_DIVISION_SCHOOLS.non_engineering),
-  direct_vc: UNIVERSITY_SCHOOLS
-    .filter((school) => school.deanTrack === DEAN_TRACKS.DIRECT_VC)
+  cisr: UNIVERSITY_SCHOOLS
+    .filter((school) => school.deanTrack === DEAN_TRACKS.CISR)
     .map((school, index) => toPartDSchool(school, index)),
 });
 

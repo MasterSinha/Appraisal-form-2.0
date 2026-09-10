@@ -53,6 +53,7 @@ import {
 } from "./CreativeSchoolAppraisalForm";
 import { getSchoolByValue, getSchoolKey } from "../../../../constants/universityHierarchy";
 import OverallProgress from "../../components/OverallProgress";
+import SubmissionConfirmDialog from "../../components/SubmissionConfirmDialog";
 
 const normalizeAcademicYearLabel = (value) => {
   const label = String(value || "").trim();
@@ -120,6 +121,8 @@ export default function CreativeMyAppraisalSection({
   const [sectionSaveStatus, setSectionSaveStatus] = useState({ partA: false, partB: false, partC: false, partD: false, partE: false });
   const [savingSection, setSavingSection] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [submitDialogState, setSubmitDialogState] = useState(null);
+  const [submissionError, setSubmissionError] = useState("");
   const [confirmed, setConfirmed] = useState(false);
   const [attachmentsConfirmed, setAttachmentsConfirmed] = useState(false);
   const [declaration, setDeclaration] = useState(null);
@@ -303,7 +306,7 @@ export default function CreativeMyAppraisalSection({
     }
   };
 
-  const handleSubmitAppraisal = async () => {
+  const handleSubmitAppraisal = async (confirmedByUser = false) => {
     if (locked) {
       alert("This appraisal has already been submitted and is locked for review.");
       return;
@@ -346,7 +349,11 @@ export default function CreativeMyAppraisalSection({
       alert(validationErrors.join("\n"));
       return;
     }
-    if (!window.confirm("Are you sure you want to submit your appraisal? This will save your data to the database.")) return;
+    if (confirmedByUser !== true) {
+      setSubmissionError("");
+      setSubmitDialogState("confirm");
+      return;
+    }
 
     const finalSectionSaveStatus = { ...sectionSaveStatus, partA: true, partB: true, partC: true, partD: true };
     setSubmitting(true);
@@ -376,9 +383,10 @@ export default function CreativeMyAppraisalSection({
       const nextReviewer = getReviewChain(submitterProfile)[0];
       setDeclaration({ status: nextReviewer ? pendingStatusFor(nextReviewer) : "Submitted", submitted_at: submittedAt, updated_at: submittedAt });
       setReviews([]);
-      alert(`${schoolCode} appraisal submitted successfully.`);
+      setSubmitDialogState("success");
     } catch (err) {
-      alert(`Unable to submit appraisal.\n\n${err.message}`);
+      setSubmissionError(err.message || "Your appraisal could not be submitted. Please try again.");
+      setSubmitDialogState("error");
     } finally {
       setSubmitting(false);
     }
@@ -433,6 +441,7 @@ export default function CreativeMyAppraisalSection({
 
   return (
     <div className="appraisal-form-shell" style={{ position: "relative", display: "flex", flexDirection: "column", gap: 24 }}>
+      {submitDialogState && <SubmissionConfirmDialog state={submitDialogState} academicYear={academicYear} successMessage={`${schoolCode} appraisal submitted successfully and is now locked for review.`} errorMessage={`Unable to submit appraisal.\n\n${submissionError}`} onCancel={() => setSubmitDialogState(null)} onConfirm={() => { setSubmitDialogState("submitting"); void handleSubmitAppraisal(true); }} />}
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <div className="appraisal-page-header" style={{ background: "#fff", borderRadius: 14, padding: "16px 24px", boxShadow: "0 10px 28px rgba(17,24,39,0.06)", border: "1px solid #e5e7eb", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 18, flexWrap: "wrap" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 16, minWidth: 260 }}>

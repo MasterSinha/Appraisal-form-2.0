@@ -2649,7 +2649,7 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
     : [];
   const useAuthorityRecordCard = reviewerRole === "hod" || reviewerRole === "dean" || reviewerRole === "director" || reviewerRole === "vc";
   const authorityRecordSchoolTrack = useAuthorityRecordCard ? getDeanTrack({ school: person?.school || form.info?.school, department: person?.department, designation: person?.designation }) : "";
-  const authorityRecordSchoolGroupLabel = { engineering: "Engineering", non_engineering: "Non-Engineering", direct_vc: "CISR" }[authorityRecordSchoolTrack] || person?.school || form.info?.school || APP_INFO.UNIVERSITY_NAME;
+  const authorityRecordSchoolGroupLabel = { engineering: "Engineering", non_engineering: "Non-Engineering", cisr: "CISR" }[authorityRecordSchoolTrack] || person?.school || form.info?.school || APP_INFO.UNIVERSITY_NAME;
   // The "Faculty appraisal record" summary table (below) mirrors the reviewer dashboards:
   // every non-VC reviewer's record shows only Self + their own score - never intermediate
   // reviewers' scores (e.g. the Dean's record must not surface HOD/Director scores). Only the

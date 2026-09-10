@@ -12,7 +12,7 @@ import { DEAN_TRACKS, UNIVERSITY_SCHOOLS, onUniversitySchoolsChanged, replaceUni
 // deployed yet, empty/malformed response) this silently keeps whatever UNIVERSITY_SCHOOLS already
 // holds. With no frontend fallback registry, that means school lists remain empty until /schools
 // succeeds.
-const ALLOWED_TRACKS = new Set([DEAN_TRACKS.ENGINEERING, DEAN_TRACKS.NON_ENGINEERING, DEAN_TRACKS.DIRECT_VC]);
+const ALLOWED_TRACKS = new Set([DEAN_TRACKS.ENGINEERING, DEAN_TRACKS.NON_ENGINEERING, DEAN_TRACKS.CISR]);
 
 const normalizeTrack = (raw) => {
   const value = String(raw || "").trim().toLowerCase().replace(/[\s-]+/g, "_");

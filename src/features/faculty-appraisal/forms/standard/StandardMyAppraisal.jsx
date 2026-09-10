@@ -93,6 +93,7 @@ import { getSchoolByValue } from "../../../../constants/universityHierarchy";
 import { fetchImageAsDataUrl } from "../../../../utils/fullFormReport";
 import LegacyPreviousYearReport from "./LegacyPreviousYearReport";
 import OverallProgress from "../../components/OverallProgress";
+import SubmissionConfirmDialog from "../../components/SubmissionConfirmDialog";
 import {
   isLegacyTwoPartAcademicYear,
   legacySubmittedTotals,
@@ -1034,6 +1035,8 @@ export default function StandardMyAppraisal({
     ["Part D", partDTotal, PART_D_MAX],
   ];
   const [submitting, setSubmitting] = useState(false);
+  const [submitDialogState, setSubmitDialogState] = useState(null);
+  const [submissionError, setSubmissionError] = useState("");
   const [declarationConfirmed, setDeclarationConfirmed] = useState(false);
   const [attachmentsConfirmed, setAttachmentsConfirmed] = useState(false);
   const [attachmentDownloading, setAttachmentDownloading] = useState(false);
@@ -1335,7 +1338,7 @@ export default function StandardMyAppraisal({
       setSavingSection(null);
     }
   };
-  const handleSubmitAppraisal = async () => {
+  const handleSubmitAppraisal = async (confirmed = false) => {
     if (formLocked) {
       alert("This appraisal has already been submitted and is locked for review.");
       return;
@@ -1387,8 +1390,11 @@ export default function StandardMyAppraisal({
       return;
     }
 
-    const confirmSubmit = window.confirm("Are you sure you want to submit your appraisal? This will save your data to the database.");
-    if (!confirmSubmit) return;
+    if (confirmed !== true) {
+      setSubmissionError("");
+      setSubmitDialogState("confirm");
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -1409,7 +1415,7 @@ export default function StandardMyAppraisal({
         submitterProfile,
         activeProfile: submitterProfile,
       });
-      alert("Appraisal submitted successfully!");
+      setSubmitDialogState("success");
       setAppraisalLocked(true);
       setWorkflowDeclaration({
         status: workflowStatus,
@@ -1419,7 +1425,8 @@ export default function StandardMyAppraisal({
       setWorkflowReviews([]);
     } catch (err) {
       console.error("Submission error:", err);
-      alert(`Unable to submit appraisal.\n\n${err.message}`);
+      setSubmissionError(err.message || "Your appraisal could not be submitted. Please try again.");
+      setSubmitDialogState("error");
     } finally {
       setSubmitting(false);
     }
@@ -1847,6 +1854,7 @@ export default function StandardMyAppraisal({
 
   return (
     <div className="appraisal-form-shell" style={{ position: "relative", display: "flex", flexDirection: "column", gap: 24 }}>
+      {submitDialogState && <SubmissionConfirmDialog state={submitDialogState} academicYear={info.ay} successMessage="Your appraisal has been submitted successfully and is now locked for review." errorMessage={`Unable to submit appraisal.\n\n${submissionError}`} onCancel={() => setSubmitDialogState(null)} onConfirm={() => { setSubmitDialogState("submitting"); void handleSubmitAppraisal(true); }} />}
       {loadingYearData && (
         <div className="appraisal-year-loading-overlay" role="status" aria-live="polite">
           <div className="appraisal-year-loading-card">

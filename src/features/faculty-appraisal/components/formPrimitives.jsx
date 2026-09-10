@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "../../../services/api";
 import { filesForDocValue, stripMaxMarksFromTitle } from "../../../utils/appraisalFormUtils";
 
@@ -747,6 +747,51 @@ export function DocCell({ id, docs, setDocs, readOnly = false }) {
 
 export function ViewCell({ id, docs }) {
   return <ViewDocsCell docKey={id} docs={docs} emptyText="" compact />;
+}
+
+// Compact, in-page replacement for the browser's blocking confirm()/alert()
+// dialogs used during appraisal submission.
+export function AppraisalSubmitDialog({ type = "confirm", message, onConfirm, onClose }) {
+  const isConfirm = type === "confirm";
+  const isSuccess = type === "success";
+  const isError = type === "error";
+  const accent = isSuccess ? "#16a34a" : isError ? "#dc2626" : "#4f46e5";
+  const accentSoft = isSuccess ? "#dcfce7" : isError ? "#fee2e2" : "#eef2ff";
+  const title = isSuccess ? "Appraisal submitted" : isError ? "Submission failed" : "Submit appraisal?";
+  const actionLabel = isConfirm ? "Yes, submit" : "Close";
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") onClose?.();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  return (
+    <div className="appraisal-submit-dialog" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose?.(); }} style={{ position: "fixed", inset: 0, zIndex: 10000, display: "grid", placeItems: "center", padding: "24px 16px", background: "rgba(15, 23, 42, 0.56)", backdropFilter: "blur(5px)", animation: "appraisal-dialog-fade-in 160ms ease-out" }}>
+      <section className="appraisal-submit-dialog__card" role="dialog" aria-modal="true" aria-labelledby="appraisal-submit-dialog-title" aria-describedby="appraisal-submit-dialog-message" onMouseDown={(event) => event.stopPropagation()} style={{ position: "relative", width: "min(480px, 100%)", overflow: "hidden", border: "1px solid rgba(226, 232, 240, 0.95)", borderRadius: 22, background: "#fff", boxShadow: "0 30px 90px rgba(15, 23, 42, 0.34)", animation: "appraisal-dialog-rise-in 220ms cubic-bezier(.2,.8,.2,1)" }}>
+        <div style={{ height: 5, background: `linear-gradient(90deg, ${accent}, ${isConfirm ? "#818cf8" : accent})` }} />
+        <button type="button" onClick={onClose} aria-label="Close dialog" style={{ position: "absolute", top: 18, right: 18, display: "grid", placeItems: "center", width: 34, height: 34, border: "1px solid #e2e8f0", borderRadius: "50%", background: "#fff", color: "#64748b", fontSize: 21, lineHeight: 1, cursor: "pointer" }}>{"\u00d7"}</button>
+        <div style={{ padding: "30px 32px 28px" }}>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 16, paddingRight: 34 }}>
+            <div aria-hidden="true" style={{ flex: "0 0 auto", display: "grid", placeItems: "center", width: 48, height: 48, borderRadius: 15, background: accentSoft, color: accent }}>
+              {isSuccess ? <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m5 12 4 4L19 6" /></svg> : isError ? <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="9" /><path d="M12 8v5M12 16h.01" /></svg> : <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3 2.8 20h18.4L12 3Z" /><path d="M12 9v4M12 17h.01" /></svg>}
+            </div>
+            <div>
+              <h2 id="appraisal-submit-dialog-title" style={{ margin: "1px 0 7px", color: "#0f172a", fontSize: 21, lineHeight: 1.25, letterSpacing: "-0.02em", fontWeight: 800 }}>{title}</h2>
+              <p id="appraisal-submit-dialog-message" style={{ margin: 0, color: "#64748b", fontSize: 14, lineHeight: 1.6, whiteSpace: "pre-line" }}>{message}</p>
+            </div>
+          </div>
+          {isConfirm && <div style={{ display: "flex", alignItems: "center", gap: 9, marginTop: 22, padding: "11px 13px", border: "1px solid #e0e7ff", borderRadius: 11, background: "#f8faff", color: "#596780", fontSize: 12, lineHeight: 1.45 }}><span aria-hidden="true" style={{ display: "grid", placeItems: "center", width: 20, height: 20, borderRadius: "50%", background: "#e0e7ff", color: "#4f46e5", fontWeight: 800 }}>i</span><span>Your information will be sent for review and the form will be locked after submission.</span></div>}
+        </div>
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, padding: "16px 32px 22px", borderTop: "1px solid #f1f5f9", background: "#fcfdff" }}>
+          {isConfirm && <button type="button" onClick={onClose} style={{ minWidth: 92, border: "1px solid #d8e0eb", borderRadius: 10, padding: "10px 16px", background: "#fff", color: "#475569", cursor: "pointer", fontSize: 13, fontWeight: 750 }}>Cancel</button>}
+          <button type="button" autoFocus onClick={isConfirm ? onConfirm : onClose} style={{ minWidth: isConfirm ? 126 : 92, border: `1px solid ${accent}`, borderRadius: 10, padding: "10px 16px", background: accent, color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 750, boxShadow: `0 7px 16px ${accent}35` }}>{actionLabel}</button>
+        </div>
+      </section>
+    </div>
+  );
 }
 
 export function ViewDocsCell({ docKey, docs, emptyText = "No docs", compact = false }) {
