@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { FilePenLine, X, Send } from "lucide-react";
+import "./partDReviewActions.css";
 import { APP_INFO } from "../../../constants/formConfig";
 import { Avatar } from "../../../components/dashboard/dashboardPrimitives";
 import RegistrarLeaveManagement from "../../../components/appraisal/PartD/RegistrarLeaveManagement";
@@ -406,16 +408,23 @@ export default function TeachingPartDReviewDashboard({ accent = "#155e75", acade
           </div>
 
           {canEdit && (
-            <button type="button" disabled={saving} onClick={() => {
+            <div className="part-d-review-actions">
+              <div>
+                <strong>{editing ? "Editing Part D" : "Part D record"}</strong>
+                <p>{editing ? "Update leave and attendance details below. Cancel to discard these edits." : "Use Edit Part D to update the leave and attendance details."}</p>
+              </div>
+            <button className="part-d-review-actions__button" type="button" disabled={saving} onClick={() => {
               setEditing(!editing);
               setLeaveRows(selected.leaveManagement || selected.leave_management || []);
               if (editing) {
                 setScore(partDScoreForInput(selected));
                 setRemarks(selected.registrarPartDRemarks || selected.registrar_part_d_remarks || "");
               }
-            }} style={{ marginBottom: 12, padding: "8px 12px", border: "1px solid #dbe3ef", borderRadius: 6, background: "#f8fafc", cursor: "pointer" }}>
+            }}>
+              {editing ? <X size={16} aria-hidden="true" /> : <FilePenLine size={16} aria-hidden="true" />}
               {editing ? "Cancel Edit" : "Edit Part D"}
             </button>
+            </div>
           )}
           <RegistrarLeaveManagement
             ctx={{ leaveManagement: editing ? leaveRows : selected.leaveManagement || selected.leave_management }}
@@ -446,8 +455,9 @@ export default function TeachingPartDReviewDashboard({ accent = "#155e75", acade
                 type="button"
                 onClick={handleSubmit}
                 disabled={saving}
-                style={{ padding: "10px 22px", background: accent, color: "#fff", border: "none", borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.6 : 1, fontFamily: "inherit" }}
+                className="part-d-review-actions__button"
               >
+                <Send size={16} aria-hidden="true" />
                 {saving ? "Submitting..." : "Save & Release Part D to VC"}
               </button>
             </div>

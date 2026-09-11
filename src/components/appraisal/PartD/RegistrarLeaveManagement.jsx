@@ -85,7 +85,7 @@ export default function RegistrarLeaveManagement({ ctx, score, remarks, onScoreC
         <div className="registrar-part-d__assessment">
           <label style={{ display: "grid", gap: 6 }}>
             <span style={{ fontSize: 11, fontWeight: 700, color: "#0f172a", textTransform: "uppercase", letterSpacing: "0.4px" }}>
-              Registrar Score (out of {PART_D_MAX}) *
+              Registrar Score <span style={{ color: "#dc2626" }}>*</span>
             </span>
             <input
               type="number"
@@ -95,8 +95,11 @@ export default function RegistrarLeaveManagement({ ctx, score, remarks, onScoreC
               value={score ?? ""}
               disabled={disabled}
               onChange={(e) => onScoreChange?.(e.target.value)}
-              style={{ width: 140, padding: "8px 10px", border: "1.5px solid #e2e8f0", borderRadius: 8, fontSize: 13, fontFamily: "inherit" }}
+              aria-label={`Registrar score out of ${PART_D_MAX}`}
+              placeholder={`0 – ${PART_D_MAX}`}
+              className="registrar-assessment-input"
             />
+            <small className="registrar-assessment-hint">Out of {PART_D_MAX} marks · increments of 0.5</small>
           </label>
           <label style={{ display: "grid", gap: 6 }}>
             <span style={{ fontSize: 11, fontWeight: 700, color: "#0f172a", textTransform: "uppercase", letterSpacing: "0.4px" }}>
@@ -106,8 +109,9 @@ export default function RegistrarLeaveManagement({ ctx, score, remarks, onScoreC
               value={remarks ?? ""}
               disabled={disabled}
               onChange={(e) => onRemarksChange?.(e.target.value)}
-              rows={2}
-              style={{ width: "100%", padding: "8px 10px", border: "1.5px solid #e2e8f0", borderRadius: 8, fontSize: 13, fontFamily: "inherit", resize: "vertical" }}
+              rows={3}
+              placeholder="Add your observations on leave and attendance…"
+              className="registrar-assessment-input"
             />
           </label>
         </div>

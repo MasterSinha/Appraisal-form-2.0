@@ -16,6 +16,7 @@ import { isNonTeachingRole } from "../constants/nonTeachingHierarchy";
 import { buildProfilePayload, normalizeRole, storeUserSession } from "../auth/session";
 import { getMe, updateProfile } from "../services/authService";
 import { listSchoolDepartments } from "../services/departmentsService";
+import { useSchools } from "../services/schoolsService";
 import {
   isValidPhone, isValidName, isValidEmployeeId, isValidExperience,
   sanitizeText, filterNumeric, filterPhone,
@@ -359,11 +360,13 @@ const INP = {
 
 // - Main Component -
 export default function EditProfile() {
+  useSchools(); // Re-render when the asynchronously loaded school registry changes.
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
   const editableCardRef = useRef(null);
   const initialRole = normalizeRole(sessionStorage.getItem("role"), "faculty");
-  const initialSchool = canonicalSchoolValue(sessionStorage.getItem("school"));
+  const storedSchool = sessionStorage.getItem("school") || "";
+  const initialSchool = canonicalSchoolValue(storedSchool) || storedSchool;
   const initialDepartment = isNonTeachingRole(initialRole)
     ? sessionStorage.getItem("department") || ""
     : canonicalDepartmentValue(sessionStorage.getItem("department"));
@@ -401,7 +404,7 @@ export default function EditProfile() {
   const [schoolDepartments, setSchoolDepartments] = useState([]);
   const [departmentsLoading, setDepartmentsLoading] = useState(false);
 
-  const selectedSchool = useMemo(() => canonicalSchoolValue(formData.school), [formData.school]);
+  const selectedSchool = canonicalSchoolValue(formData.school);
   const selectedRole = normalizeRole(formData.role, "");
   const isNonTeaching = formData.staffType === "non_teaching";
   const requiresSchool = !isNonTeaching && selectedRole !== "vc";
@@ -439,13 +442,13 @@ export default function EditProfile() {
     getMe()
       .then((freshProfile) => {
         if (!active || !freshProfile) return;
-        storeUserSession({ profile: freshProfile, fallbackEmail: formData.email });
+        const freshSession = storeUserSession({ profile: freshProfile, fallbackEmail: formData.email });
         const freshRole = normalizeRole(freshProfile.appraisal_role || freshProfile.role, initialRole);
         const freshDepartment = isNonTeachingRole(freshRole)
           ? String(freshProfile.department || "")
           : canonicalDepartmentValue(freshProfile.department);
         const freshDepartments = Array.isArray(freshProfile.departments) ? freshProfile.departments : [];
-        setFormData((prev) => ({ ...prev, department: freshDepartment, departments: freshDepartments }));
+        setFormData((prev) => ({ ...prev, school: freshSession.school, department: freshDepartment, departments: freshDepartments }));
       })
       .catch(() => {
         // Keep whatever sessionStorage already had - a failed refresh shouldn't block editing

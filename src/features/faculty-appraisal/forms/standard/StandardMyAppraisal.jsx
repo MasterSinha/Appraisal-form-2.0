@@ -885,6 +885,15 @@ export default function StandardMyAppraisal({
         if (savedDeclaration && !declaration) setWorkflowDeclaration(savedDeclaration);
         const savedReviews = reviewListFrom(savedAppraisal?.reviews || savedAppraisal?.payload?.reviews);
         if (savedReviews.length && !loadedReviews.length) setWorkflowReviews(savedReviews);
+        // Submission requires both confirmations. Restore them from this year's
+        // submitted record, not merely from a closed/locked appraisal window.
+        // Rejected records must be confirmed again before resubmission.
+        const submittedDeclaration = declaration || savedDeclaration;
+        const submittedReviews = loadedReviews.length ? loadedReviews : savedReviews;
+        const confirmationsSubmitted = Boolean(submittedDeclaration)
+          && !hasActiveRejection(submittedDeclaration, submittedReviews);
+        setDeclarationConfirmed(confirmationsSubmitted);
+        setAttachmentsConfirmed(confirmationsSubmitted);
 
         await Promise.all([
           loadAppraisalDocuments({
@@ -1426,6 +1435,7 @@ export default function StandardMyAppraisal({
       .remarks { white-space: pre-wrap; border: 1px solid #6b7280 !important; padding: 8px; min-height: 34px; margin-bottom: 10px; background: #fff; }
       .declaration-table { border: none !important; margin-bottom: 14px !important; }
       .declaration-table td { border: none !important; background: #fff !important; }
+      ${isLatestCycle && !isLegacyTwoPartYear ? currentAppraisalReportStyles : ""}
     </style>
   </head>
 
@@ -1658,11 +1668,34 @@ export default function StandardMyAppraisal({
     <h3 style="background:#d9d9d9;padding:4px;text-align:center;font-size:13px">PART D - Leave &amp; Attendance Management</h3>
 
     <h3>D1. Leave &amp; Attendance Management &nbsp;(Max ${PART_D_MAX})</h3>
+    ${isLatestCycle && !isLegacyTwoPartYear ? `
+      ${leaveManagement.map((r) => `
+        <table>
+          <colgroup><col style="width:32%"><col style="width:17%"><col style="width:17%"><col style="width:17%"><col style="width:17%"></colgroup>
+          <thead><tr><th style="text-align:left">1. No. of leaves taken in the Year</th><th>CL</th><th>ML</th><th>OD</th><th>C/Off</th></tr></thead>
+          <tbody>
+            <tr><td></td><td class="c">${reportTextValue(r.clTaken)}</td><td class="c">${reportTextValue(r.mlTaken)}</td><td class="c">${reportTextValue(r.odTaken)}</td><td class="c">${reportTextValue(r.coffTaken)}</td></tr>
+            <tr><td class="b">Out of</td><td class="c">${reportTextValue(r.clOutOf)}</td><td class="c">${reportTextValue(r.mlOutOf)}</td><td class="c">${reportTextValue(r.odOutOf)}</td><td class="c">${reportTextValue(r.coffOutOf)}</td></tr>
+          </tbody>
+        </table>
+        <table>
+          <colgroup><col style="width:58%"><col style="width:42%"></colgroup>
+          <tbody>
+            <tr><td class="b">2. No. of Late Remarks in the Year</td><td class="c">${reportTextValue(r.lateRemarks)}</td></tr>
+            <tr><td class="b">3. Total Actual Working Days for the current academic year</td><td class="c">${reportTextValue(r.workingDays)}</td></tr>
+            <tr><td class="b">4. Management of leaves</td><td>${reportTextValue(PART_D_RATING_OPTIONS.find((option) => option.value === r.managementRating)?.label || r.managementRating)}</td></tr>
+            <tr class="tr"><td class="b">Total Score out of (${PART_D_MAX}) =</td><td class="c">${reportTextValue(r.score || 0)}</td></tr>
+          </tbody>
+        </table>
+      `).join('')}
+      <table><tr class="tr"><td class="b">Total Score (Max ${PART_D_MAX})</td><td class="c">${partDTotal > 0 ? partDTotal.toFixed(1) : "&nbsp;"}</td></tr></table>
+    ` : `
     <table>
       <tr><th>SN</th><th>CL Taken</th><th>ML Taken</th><th>OD Taken</th><th>C/Off Taken</th><th>Late Remarks</th><th>Working Days</th><th>Management of Leaves</th><th>Self Score</th></tr>
       ${leaveManagement.map((r, i) => `<tr><td class="c">${i + 1}</td><td class="c">${reportTextValue(r.clTaken)}</td><td class="c">${reportTextValue(r.mlTaken)}</td><td class="c">${reportTextValue(r.odTaken)}</td><td class="c">${reportTextValue(r.coffTaken)}</td><td class="c">${reportTextValue(r.lateRemarks)}</td><td class="c">${reportTextValue(r.workingDays)}</td><td>${reportTextValue(r.managementRating)}</td><td class="c">${reportTextValue(r.score)}</td></tr>`).join('')}
       <tr class="tr"><td colspan="8" class="c b">Total Score (Max ${PART_D_MAX})</td><td class="c">${partDTotal > 0 ? partDTotal.toFixed(1) : "&nbsp;"}</td></tr>
     </table>
+    `}
 
     <div class="pb"></div>
     <h3 style="text-align:center;font-size:13px">SUMMARY OF SELF SCORES - AY ${reportTextValue(info.ay)}</h3>
@@ -1841,23 +1874,24 @@ export default function StandardMyAppraisal({
               <div style={{ display: "flex", alignItems: "center", gap: 16, minWidth: 260 }}>
               <AppraisalHeaderImage logo="dypiu" height={78} />
               <div>
-                <h2 style={{ margin: 0, fontSize: 26, fontWeight: 900, color: "#111827", letterSpacing: 0, lineHeight: 1.05 }}>My Appraisal Form</h2>
+                <h2 className="appraisal-header-title" style={{ margin: 0, fontSize: 26, fontWeight: 900, color: "#111827", letterSpacing: 0, lineHeight: 1.05 }}>My Appraisal Form</h2>
                 {headerSchoolName && (
                   <div style={{ marginTop: 6, color: "#4b5563", fontSize: 13, fontWeight: 800, lineHeight: 1.25 }}>{headerSchoolName}</div>
                 )}
                 <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 10, fontSize: 13, color: "#6b7280", fontWeight: 700, flexWrap: "wrap" }}>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 8, color: "#111827", fontWeight: 800 }}>
-                    <span style={{ width: 24, height: 24, borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#ede9fe", color: "#6d28d9", border: "1px solid #ddd6fe" }}>
-                      <InlineSvgIcon paths={SUMMARY_ICONS.user} size={14} />
+                    <span className="appraisal-header-person-icon" style={{ width: 24, height: 24, borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#ede9fe", color: "#6d28d9", border: "1px solid #ddd6fe" }}>
+                      <UserRound size={15} strokeWidth={1.8} aria-hidden="true" />
                     </span>
                     <span>{info.name || titleNameFallback}</span>
                   </span>
                   <span aria-hidden="true" style={{ width: 1, height: 20, background: "#cbd5e1", display: "inline-block" }} />
-                  <span>Academic Year:</span>
+                  <span className="appraisal-header-year-label"><CalendarDays size={15} strokeWidth={1.8} aria-hidden="true" />Academic Year:</span>
                   <select
                     value={info.ay}
                     onChange={(event) => handleAcademicYearChange(event.target.value)}
                     className="appraisal-year-select"
+                    aria-label="Academic year"
                     style={{ height: 36, minWidth: 176, border: "1px solid #d1d5db", borderRadius: 9, padding: "0 12px", fontSize: 13, fontFamily: "inherit", color: "#111827", background: "#fff", outline: "none", fontWeight: 800, boxShadow: "0 1px 2px rgba(15,23,42,0.04)" }}
                   >
                     {academicYearOptions.map((cycle) => (
@@ -1891,8 +1925,8 @@ export default function StandardMyAppraisal({
               alertOnceKey={`${sessionStorage.getItem("username") || ""}:${info.ay || ""}:${workflowDeclaration?.status || ""}`}
             />
             {formLocked && (
-              <div style={{ background: appraisalWindowLockMessage || isSelectedCycleClosed ? "#fffbeb" : workflowRejected ? "#fef2f2" : "#ecfdf5", border: `1px solid ${appraisalWindowLockMessage || isSelectedCycleClosed ? "#fde68a" : workflowRejected ? "#fecaca" : "#bbf7d0"}`, color: appraisalWindowLockMessage || isSelectedCycleClosed ? "#92400e" : workflowRejected ? "#991b1b" : "#166534", borderRadius: 9, padding: "11px 14px", fontSize: 12, fontWeight: 750, display: "flex", alignItems: "center", gap: 10 }}>
-                <span aria-hidden="true" style={{ width: 24, height: 24, borderRadius: "50%", background: appraisalWindowLockMessage || isSelectedCycleClosed ? "#fef3c7" : workflowRejected ? "#fee2e2" : "#dcfce7", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 14, fontWeight: 900 }}>{appraisalWindowLockMessage || isSelectedCycleClosed ? "!" : "i"}</span>
+              <div role="status" className={`appraisal-lock-notice appraisal-lock-notice--${appraisalWindowLockMessage || isSelectedCycleClosed ? "closed" : workflowRejected ? "rejected" : "submitted"}`}>
+                <span className="appraisal-lock-notice__icon" aria-hidden="true">{appraisalWindowLockMessage || isSelectedCycleClosed || workflowRejected ? <Info size={18} strokeWidth={1.8} /> : <LockKeyhole size={18} strokeWidth={1.8} />}</span>
                 <span>
                   {appraisalWindowLockMessage
                     ? appraisalWindowLockMessage
@@ -1913,9 +1947,9 @@ export default function StandardMyAppraisal({
                     ["Submitted Score", `${grandTotal.toFixed(1)} / ${effectiveGrandMax}`],
                     ["Documents", `${documentCount} file${documentCount === 1 ? "" : "s"}`],
                   ].map(([label, value]) => (
-                    <div key={label} style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: "12px 14px", background: "#f8fafc" }}>
+                    <div key={label} style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: "13px 14px", background: "linear-gradient(180deg,#ffffff 0%,#f8fafc 100%)", boxShadow: "0 10px 22px rgba(15,23,42,0.04)" }}>
                       <div style={{ fontSize: 11, color: "#64748b", fontWeight: 900, textTransform: "uppercase", letterSpacing: 0.5 }}>{label}</div>
-                      <div style={{ marginTop: 5, fontSize: 16, color: "#111827", fontWeight: 900 }}>{value}</div>
+                      <div style={{ marginTop: 6, fontSize: 18, color: "#111827", fontWeight: 900, lineHeight: 1 }}>{value}</div>
                     </div>
                   ))}
                 </div>
@@ -3434,3 +3468,6 @@ export default function StandardMyAppraisal({
     </div>
   );
 }
+import { UserRound, CalendarDays, Info, LockKeyhole } from "lucide-react";
+import { currentAppraisalReportStyles } from "./currentAppraisalReportStyles";
+import "./appraisalHeaderDetails.css";
