@@ -1,6 +1,10 @@
+import ReviewerReportHeader from "../../components/dashboard/ReviewerReportHeader";
 /* eslint-disable no-unused-vars, react-hooks/set-state-in-effect */
 import { useReviewFeedback } from "../../components/reviewFeedbackContext";
 import { useState, useEffect, useRef, useCallback } from "react";
+import { ArrowLeft, ClipboardCheck } from "lucide-react";
+import "./vcReviewHeader.css";
+import DashboardSidebar from "../../components/dashboard/DashboardSidebar";
 import { useNavigate } from "react-router-dom";
 import { Avatar, LogoutConfirmModal, ScoreCard, ReviewMetricsStrip } from "../../components/dashboard/dashboardPrimitives";
 import { fetchNonTeachingQueueForRole, isNonTeachingReviewComplete, nonTeachingReviewFlow } from "../../services/nonTeachingWorkflow";
@@ -535,7 +539,6 @@ const buildVcSectionScores = (person, vcData) =>{
 // personMode: "dean" | "director" | "hod" | "faculty"
 function VCReviewForm({ person, vcData, setVcData, personMode = "director", sectionView = "partA" }) {
  const info = mergeFacultyInfo(person.info, person);
- const hiddenInfoRows = new Set(["expDyp", "expPrev", "expTotal"]);
  const reviewRoles = vcPreviousRolesFor(person, personMode);
  const selfScoreLabel = personMode === "faculty" ? "Faculty Score" : "Self Score";
 
@@ -647,8 +650,7 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
 </div>
 </div>
 
- {/* Faculty Info */}
-{sectionView === "partA" && <FacultyInfoSection info={info} />}
+ {sectionView === "partA" && <FacultyInfoSection info={info} />}
 
  {sectionView === "partA" && (<div className="review-part-stack">
 <div className="review-part-stack__title">PART A - Teaching &amp; Academic Activities</div>
@@ -1366,54 +1368,47 @@ function StandardVCReviewPanel({ person, personMode, onBack, onSubmit, readOnly 
  return (
 <div style={{ display: "flex", flexDirection: "column" }}>
 
- {/* Header */}
-<div style={{ background: "#0f172a", padding: "14px 20px", display: "flex", alignItems: "center", gap: 14, marginBottom: 16, borderRadius: 10 }}>
-<button onClick={onBack} style={{ background: "#1e293b", border: "none", color: "#94a3b8", cursor: "pointer", borderRadius: 6, padding: "6px 12px", fontSize: 12, fontFamily: "inherit" }}>Back</button>
-<Avatar initials={person.avatar} src={person.avatarUrl} color={person.avatarColor || "#7c3aed"} size={50} />
-<div style={{ flex: 1 }}>
-<div style={{ color: "#f1f5f9", fontWeight: 700, fontSize: 15 }}>{person.name}</div>
-<div style={{ color: "#64748b", fontSize: 11 }}>{person.designation} - {person.employeeId}</div>
-</div>
-<div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
- {scoreCards.map(({ label, val, color }) =>(
-<div key={label} style={{ background: "#1e293b", borderRadius: 8, padding: "8px 12px", textAlign: "center" }}>
-<div style={{ color: "#94a3b8", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.6 }}>{label}</div>
-<div style={{ color, fontWeight: 800, fontSize: 14 }}>{oneDecimal(val)}</div>
-</div>
- ))}
-<div style={{ background: "#1e293b", borderRadius: 8, padding: "8px 12px", textAlign: "center" }}>
-<div style={{ color: "#94a3b8", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.6 }}>VC Part A</div>
-<div style={{ color: "#c4b5fd", fontWeight: 800, fontSize: 14 }}>{partA.toFixed(1)}</div>
-</div>
-<div style={{ background: "#1e293b", borderRadius: 8, padding: "8px 12px", textAlign: "center" }}>
-<div style={{ color: "#94a3b8", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.6 }}>VC Part B</div>
-<div style={{ color: "#a78bfa", fontWeight: 800, fontSize: 14 }}>{partB.toFixed(1)}</div>
-</div>
-<div style={{ background: "#1e293b", borderRadius: 8, padding: "8px 12px", textAlign: "center" }}>
-<div style={{ color: "#94a3b8", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.6 }}>VC Part C</div>
-<div style={{ color: "#2dd4bf", fontWeight: 800, fontSize: 14 }}>{partC.toFixed(1)}</div>
-</div>
-<div style={{ background: "#1e293b", borderRadius: 8, padding: "8px 12px", textAlign: "center" }}>
-<div style={{ color: "#94a3b8", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.6 }}>VC Part E</div>
-<div style={{ color: "#f59e0b", fontWeight: 800, fontSize: 14 }}>{partD.toFixed(1)}</div>
-</div>
-<div style={{ background: g.bg, border: `2px solid ${g.color}40`, borderRadius: 8, padding: "8px 12px", textAlign: "center" }}>
-<div style={{ color: g.color, fontSize: 9, textTransform: "uppercase", letterSpacing: 0.6, fontWeight: 700 }}>VC Total</div>
-<div style={{ color: g.color, fontWeight: 800, fontSize: 14 }}>{total.toFixed(1)}<span style={{ fontSize: 10, color: "#94a3b8" }}>/{reviewerMaxScores.grand}</span></div>
-</div>
-</div>
-</div>
+ <ReviewerReportHeader reviewerLabel="Vice Chancellor" readOnly={reviewLocked} onBack={onBack}>
+  <div className="vc-review-header__scores" aria-label="Appraisal review scores">
+    {scoreCards.map(({ label, val, color }) => (
+      <div key={label} className="vc-review-header__metric" style={{ "--metric-accent": color === "#e2e8f0" ? "#64748b" : color }}>
+        <span className="vc-review-header__label">{label}</span>
+        <strong>{oneDecimal(val)}</strong>
+      </div>
+    ))}
+    <section className="vc-review-header__assessment" aria-label="VC assessment breakdown">
+      <h3><ClipboardCheck size={13} aria-hidden="true" />VC Assessment</h3>
+      <dl className="vc-review-header__breakdown">
+        {[
+          ["Part A", partA],
+          ["Part B", partB],
+          ["Part C", partC],
+          ["Part E", partD],
+        ].map(([label, value]) => (
+          <div key={label}>
+            <dt>{label}</dt>
+            <dd>{value.toFixed(1)}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+    <div className="vc-review-header__metric vc-review-header__metric--total" style={{ "--metric-accent": g.color, background: g.bg, borderColor: `${g.color}40` }}>
+      <span className="vc-review-header__label">VC Total</span>
+      <strong>{total.toFixed(1)}<small>/{reviewerMaxScores.grand}</small></strong>
+    </div>
+  </div>
+ </ReviewerReportHeader>
 
  {/* Section switcher */}
-<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 14 }}>
-<div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+<div className="vc-review-navigation">
+<nav className="vc-review-navigation__sections reviewer-report-tabs" aria-label="Appraisal review sections">
  {[["partA", "Part A"], ["partB", "Part B"], ["partC", "Part C"], ["partD", "Part D"], ["partE", "Part E"], ["summary", "Summary"]].map(([id, label]) =>(
-<button key={id} onClick={() =>{ setSectionView(id); requestAnimationFrame(() =>{ window.scrollTo({ top: 0, left: 0, behavior: "auto" }); }); }}
- style={{ padding: "7px 18px", border: "none", borderRadius: 6, cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 700, background: sectionView === id ? "#4c1d95" : "#e2e8f0", color: sectionView === id ? "#ddd6fe" : "#475569" }}>
+<button type="button" key={id} onClick={() =>{ setSectionView(id); requestAnimationFrame(() =>{ window.scrollTo({ top: 0, left: 0, behavior: "auto" }); }); }}
+ className={`vc-review-navigation__section${sectionView === id ? " is-active" : ""}`} aria-current={sectionView === id ? "step" : undefined}>
  {label}
 </button>
  ))}
-</div>
+</nav>
  {finalisedReadOnly && (
 <button onClick={() =>{ setEditingFinalised(true); setReviewConfirmed(false); }}
  style={{ padding: "10px 28px", background: "#4c1d95", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 700, fontSize: 13, fontFamily: "inherit", marginLeft: "auto", whiteSpace: "nowrap" }}>
@@ -2288,122 +2283,38 @@ const handleSubmit = async (id, scores, remarks, personMode, sectionScores, revi
 <div className="vc-app-shell" style={{ display: "flex", minHeight: "100vh", fontFamily: "inherit", background: "#f0f4ff", color: "#1e293b" }}>
 
  {/* -- Sidebar -- */}
-<aside className="vc-sidebar" style={{ width: 264, height: "100vh", minHeight: "100vh", boxSizing: "border-box", overflow: "hidden", background: "linear-gradient(180deg,#111827 0%,#111827 54%,#0f172a 100%)", display: "flex", flexDirection: "column", padding: "18px 13px", gap: 11, position: "sticky", top: 0, alignSelf: "flex-start", flexShrink: 0, borderRight: "1px solid rgba(148,163,184,0.14)", boxShadow: "10px 0 28px rgba(15,23,42,0.20)" }}>
-<div className="vc-sidebar-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden", display: "flex", flexDirection: "column", gap: 11, scrollbarWidth: "thin", scrollbarColor: "rgba(148,163,184,0.35) transparent" }}>
-<div className="vc-sidebar-brand" style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 2, padding: "0 1px" }}>
-<div className="vc-brand-mark" style={{ width: 42, height: 42, borderRadius: 13, background: "linear-gradient(135deg,#0ea5e9 0%,#7c3aed 100%)", border: "1px solid rgba(224,242,254,0.35)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 900, fontSize: 13, boxShadow: "0 10px 22px rgba(124,58,237,0.38), 0 0 0 3px rgba(124,58,237,0.10)" }}>FA</div>
-<div style={{ minWidth: 0 }}>
-<div style={{ color: "#f8fafc", fontWeight: 900, fontSize: 13, lineHeight: 1.15 }}>{APP_INFO.PORTAL_NAME}</div>
-<div style={{ color: "#94a3b8", fontSize: 10, lineHeight: 1.3, marginTop: 3 }}>{APP_INFO.UNIVERSITY_NAME}</div>
-</div>
-</div>
-
-<div className="vc-sidebar-role-card" style={{ background: "linear-gradient(150deg,#581c87 0%,#3b0764 100%)", border: "1px solid rgba(196,181,253,0.28)", borderRadius: 14, padding: "13px 14px", fontSize: 11, color: "#c4b5fd", boxShadow: "0 10px 24px rgba(88,28,135,0.30)" }}>
-<div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#e9d5ff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
-<path d="m3 8 4 3 5-6 5 6 4-3-1.5 9h-15L3 8Z" />
-<path d="M6 20h12" />
-</svg>
-<div style={{ fontWeight: 900, color: "#fff", fontSize: 12.5 }}>Vice Chancellor</div>
-</div>
-<div style={{ color: "#d8b4fe", fontSize: 10, marginTop: 3 }}>Full university oversight</div>
-<select
- value={selectedAcademicYear}
- onChange={(event) =>handleReviewAcademicYearChange(event.target.value)}
- style={{ width: "100%", height: 30, marginTop: 9, border: "1px solid rgba(255,255,255,0.20)", borderRadius: 8, background: "rgba(255,255,255,0.09)", color: "#f3e8ff", fontSize: 10.5, fontWeight: 800, padding: "3px 8px", fontFamily: "inherit", outline: "none", cursor: "pointer" }}
->
- {academicYearOptions.map((cycle) =>(
- <option key={cycle.academic_year} value={cycle.academic_year} style={{ color: "#1e293b" }}>
- AY {cycle.academic_year} {cycle.is_open ? "(Active)" : "(Closed)"}
- </option>
- ))}
-</select>
-</div>
-
-<div style={{ height: 1, background: "rgba(148,163,184,0.16)" }} />
-
-<button className="vc-sidebar-nav is-active" onClick={() =>{ setReviewing(null); }}
- style={{ position: "relative", background: "rgba(99,102,241,0.14)", border: "1px solid rgba(129,140,248,0.48)", borderRadius: 15, padding: "10px 11px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, width: "100%", fontFamily: "inherit", boxShadow: "inset 3px 0 0 rgba(165,180,252,0.95), 0 10px 22px rgba(0,0,0,0.18)" }}>
-<span style={{ width: 31, height: 31, borderRadius: 10, background: "rgba(255,255,255,0.11)", border: "1px solid rgba(255,255,255,0.10)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-<VcIcon name="school" size={17} color="#f8fafc" />
-</span>
-<div style={{ flex: 1, textAlign: "left", minWidth: 0 }}>
-<div style={{ color: "#f8fafc", fontWeight: 900, fontSize: 12.5 }}>School Reviews</div>
-<div style={{ color: "#c7d2fe", fontSize: 10, marginTop: 1 }}>{totalPending} awaiting</div>
-</div>
- {totalPending >0 && (
-<div style={{ background: "rgba(165,180,252,0.22)", color: "#f8fafc", fontWeight: 900, fontSize: 10, minWidth: 20, height: 20, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 5px", flexShrink: 0 }}>{totalPending}</div>
- )}
-</button>
-
- {/* University summary */}
-<div className="vc-sidebar-card" style={{ background: "rgba(30,41,59,0.62)", border: "1px solid rgba(148,163,184,0.16)", borderRadius: 14, padding: "12px 13px" }}>
-<div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 9.5, fontWeight: 900, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 8 }}>
-<VcIcon name="globe" size={13} color="#94a3b8" />
-University Overview
-</div>
-<div style={{ fontSize: 10.5, color: "#cbd5e1", fontWeight: 600, marginBottom: 3 }}>4 Engineering Schools</div>
-<div style={{ fontSize: 10.5, color: "#cbd5e1", fontWeight: 600, marginBottom: 3 }}>5 Non-Engineering Schools</div>
-<div style={{ fontSize: 10.5, color: "#cbd5e1", fontWeight: 600, marginBottom: 3 }}>CISR Center</div>
-<div style={{ fontSize: 10.5, color: "#cbd5e1", fontWeight: 600, marginBottom: 8 }}>Non-Teaching Branch</div>
-<div style={{ display: "flex", gap: 7 }}>
-<div style={{ flex: 1, background: "rgba(251,191,36,0.12)", border: "1px solid rgba(251,191,36,0.22)", borderRadius: 9, padding: "6px 6px", textAlign: "center" }}>
-<div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
-<VcIcon name="clock" size={12} color="#fbbf24" />
-<span style={{ fontSize: 15, fontWeight: 900, color: "#fde68a" }}>{totalPending}</span>
-</div>
-<div style={{ fontSize: 8.5, color: "#fbbf24", fontWeight: 800, marginTop: 2 }}>Pending</div>
-</div>
-<div style={{ flex: 1, background: "rgba(167,139,250,0.14)", border: "1px solid rgba(167,139,250,0.26)", borderRadius: 9, padding: "6px 6px", textAlign: "center" }}>
-<div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
-<VcIcon name="check-circle" size={12} color="#c4b5fd" />
-<span style={{ fontSize: 15, fontWeight: 900, color: "#e9d5ff" }}>{totalReviewed}</span>
-</div>
-<div style={{ fontSize: 8.5, color: "#c4b5fd", fontWeight: 800, marginTop: 2 }}>VC Reviewed</div>
-</div>
-</div>
-</div>
-</div>
-
-<div style={{ height: 1, background: "rgba(148,163,184,0.16)" }} />
-<div style={{ padding: 10, borderRadius: 14, background: "linear-gradient(180deg,rgba(15,23,42,0.88),rgba(7,12,24,0.96))", border: "1px solid rgba(148,163,184,0.30)", boxShadow: "0 16px 32px rgba(2,6,23,0.24), 0 0 0 1px rgba(255,255,255,0.04), inset 0 1px 0 rgba(255,255,255,0.05)", display: "grid", gap: 9 }}>
-<button
- type="button"
- onClick={() =>navigate("/edit-profile")}
- title="Edit profile"
- style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(255,255,255,0.025)", border: "1px solid rgba(148,163,184,0.14)", borderRadius: 10, padding: "7px 8px", width: "100%", boxSizing: "border-box", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
- >
-<Avatar
-  initials={(sessionStorage.getItem("name") || "U").split(" ").map(w =>w[0]).join("").toUpperCase()}
-  src={sessionStorage.getItem("profilePictureUrl") || sessionStorage.getItem("profile_picture_url") || sessionStorage.getItem("avatarUrl") || ""}
-  color="#7c3aed"
-  size={42}
+<DashboardSidebar
+ appInfo={APP_INFO}
+ navItems={[{ id: "schoolReviews", label: "School Reviews", sub: `${totalPending} awaiting`, badge: totalPending }]}
+ activeTab="schoolReviews"
+ onTabSelect={() => setReviewing(null)}
+ profileSubtitle={`Vice Chancellor - ${APP_INFO.SHORT_NAME}`}
+ onLogout={() => setShowLogoutModal(true)}
+ beforeNav={
+   <section className="vc-shared-sidebar__role">
+     <strong>Vice Chancellor</strong>
+     <p>Full university oversight</p>
+     <label htmlFor="vc-review-year">Academic year</label>
+     <select id="vc-review-year" value={selectedAcademicYear} onChange={(event) => handleReviewAcademicYearChange(event.target.value)}>
+       {academicYearOptions.map((cycle) => (
+         <option key={cycle.academic_year} value={cycle.academic_year}>
+           AY {cycle.academic_year} {cycle.is_open ? "(Active)" : "(Closed)"}
+         </option>
+       ))}
+     </select>
+   </section>
+ }
+ afterNav={
+   <section className="vc-shared-sidebar__overview" aria-label="University overview">
+     <h3><VcIcon name="globe" size={14} color="currentColor" />University Overview</h3>
+     <ul><li>4 Engineering Schools</li><li>5 Non-Engineering Schools</li><li>CISR Center</li><li>Non-Teaching Branch</li></ul>
+     <div className="vc-shared-sidebar__counts">
+       <div><strong>{totalPending}</strong><span>Pending</span></div>
+       <div><strong>{totalReviewed}</strong><span>VC Reviewed</span></div>
+     </div>
+   </section>
+ }
 />
-<div style={{ flex: 1, minWidth: 0 }}>
-<div style={{ color: "#f9fafb", fontSize: 13, fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sessionStorage.getItem("name") || "Vice Chancellor"}</div>
-<div style={{ color: "#a8b3c7", fontSize: 10.5, marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Vice Chancellor - {APP_INFO.SHORT_NAME}</div>
-</div>
-<span style={{ width: 30, height: 30, borderRadius: 13, background: "rgba(129,140,248,0.18)", border: "1px solid rgba(199,210,254,0.18)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-<VcIcon name="profile" size={15} color="#c4b5fd" />
-</span>
-</button>
-<div style={{ display: "flex", gap: 8 }}>
-<NoticesBell style={{ flex: 1, height: 42, borderRadius: 10, background: "rgba(99,102,241,0.13)", border: "1px solid rgba(165,180,252,0.18)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }} />
-<ReportBugButton iconOnly style={{ flex: 1, height: 42, borderRadius: 10, background: "rgba(99,102,241,0.13)", border: "1px solid rgba(165,180,252,0.18)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "inherit" }} />
-</div>
-<button type="button" onClick={() =>setShowLogoutModal(true)}
- style={{ width: "100%", minHeight: 40, display: "flex", alignItems: "center", justifyContent: "center", gap: 9, background: "rgba(248,113,113,0.10)", border: "1px solid rgba(248,113,113,0.32)", borderRadius: 10, padding: "9px 12px", cursor: "pointer", fontFamily: "inherit", transition: "background 0.15s ease, border-color 0.15s ease" }}
- onMouseEnter={(e) =>{ e.currentTarget.style.background = "rgba(248,113,113,0.17)"; e.currentTarget.style.borderColor = "rgba(248,113,113,0.52)"; }}
- onMouseLeave={(e) =>{ e.currentTarget.style.background = "rgba(248,113,113,0.10)"; e.currentTarget.style.borderColor = "rgba(248,113,113,0.32)"; }}>
-<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
-<path d="M10 17 15 12 10 7" />
-<path d="M15 12H3" />
-<path d="M21 19V5a2 2 0 0 0-2-2h-6" />
-</svg>
-<span style={{ color: "#fecaca", fontWeight: 900, fontSize: 12 }}>Logout</span>
-</button>
-</div>
-</aside>
 
  {/* ===== MAIN CONTENT ===== */}
 <main ref={dashboardMainRef} className="vc-dashboard-main" style={{ flex: 1, padding: "28px 30px", display: "flex", flexDirection: "column", gap: 16, overflowX: "auto", position: "relative" }}>

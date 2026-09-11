@@ -1005,7 +1005,7 @@ a[aria-label^="View "]:hover {
 .review-part-stack {
   overflow: hidden;
   border: 1px solid #e7eaf3;
-  border-radius: 16px;
+  border-radius: 8px;
   background: #ffffff;
   box-shadow: 0 18px 42px rgba(15, 23, 42, 0.06);
   margin-bottom: 18px;

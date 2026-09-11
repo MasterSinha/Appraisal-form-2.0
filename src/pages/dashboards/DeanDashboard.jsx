@@ -1,5 +1,7 @@
+import FacultyInfoSection from "../../components/appraisal/common/FacultyInfoSection";
 /* eslint-disable no-unused-vars */
 import { useReviewFeedback } from "../../components/reviewFeedbackContext";
+import ReviewerReportHeader from "../../components/dashboard/ReviewerReportHeader";
 import { createContext, useContext, useState, useRef, useEffect } from "react";
 import MyAppraisalForm from "../../components/appraisal";
 import { api } from "../../services/api";
@@ -454,22 +456,7 @@ function DeanFacultyInfoTable({ approval, info }) {
     ["Experience", info.experience || info.teachingExperience || approval.experience || approval.teachingExperience],
   ];
 
-  return (
-    <SC title="Faculty Information" accent="#4338ca">
-      <div style={{ border: "1px solid #dbe3ef", borderRadius: 8, background: "#fff", overflow: "hidden" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", fontSize: 13 }}>
-          <tbody>
-            {rows.map(([label, value]) => (
-              <tr key={label}>
-                <td style={{ width: "32%", border: "1px solid #e5e7eb", background: "#f8fafc", padding: "11px 16px", color: "#334155", fontWeight: 900, textTransform: "uppercase" }}>{label}</td>
-                <td style={{ border: "1px solid #e5e7eb", padding: "11px 16px", color: "#1e293b", fontWeight: 700, overflowWrap: "anywhere" }}>{value || "-"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </SC>
-  );
+ return <FacultyInfoSection rows={rows} />;
 }
 
 function DeanReviewScoreForm({ approval, deanData, setDeanData, sectionView = "partA" }) {
@@ -488,7 +475,7 @@ function DeanReviewScoreForm({ approval, deanData, setDeanData, sectionView = "p
           <strong>Dean Review Mode</strong> - Faculty self-scores are read-only. Only the Dean score column is editable.
         </div>
 
-        <DeanFacultyInfoTable approval={approval} info={info} />
+        {sectionView === "partA" && <DeanFacultyInfoTable approval={approval} info={info} />}
 
         {sectionView === "partA" && (
           <div className="review-part-stack">
@@ -1040,15 +1027,8 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
 
  return (
 <div style={{ background: "#fff", borderRadius: 14, padding: "24px", boxShadow: "0 18px 45px rgba(15,23,42,0.18)", minHeight: "100%" }}>
-<div style={{ background: "linear-gradient(135deg,#0f172a 0%,#312e81 58%,#4c1d95 100%)", borderRadius: 14, padding: "16px 18px", marginBottom: 16, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", boxShadow: "0 18px 42px rgba(15,23,42,0.20)", border: "1px solid rgba(255,255,255,0.08)" }}>
-<button onClick={onBack} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.08)", color: "#cbd5e1", cursor: "pointer", borderRadius: 8, padding: "8px 14px", fontSize: 12, fontFamily: "inherit", fontWeight: 700 }}>Back</button>
-<Avatar initials={approval.avatar} src={approval.avatarUrl} color={approval.avatarColor} size={50} />
-<div style={{ flex: 1, minWidth: 220 }}>
-<div style={{ color: "#c4b5fd", fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.7, marginBottom: 2 }}>{titleMap[approvalType]}</div>
-<div style={{ color: "#f8fafc", fontWeight: 800, fontSize: 15 }}>{approval.name}</div>
-<div style={{ color: "#c4b5fd", fontSize: 11 }}>{approval.designation || "-"} - {approval.employeeId || "No ID"}</div>
-</div>
-<div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
+<ReviewerReportHeader reviewerLabel="Dean" readOnly={reviewLocked} onBack={onBack}>
+<div className="reviewer-report-header__legacy-metrics">
 <div style={{ background: "rgba(30,27,75,0.78)", border: "1px solid rgba(196,181,253,0.16)", borderRadius: 10, padding: "8px 14px", textAlign: "center", minWidth: 92 }}>
 <div style={{ color: "#c4b5fd", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.6 }}>Dean Part A</div>
 <div style={{ color: "#a78bfa", fontWeight: 900, fontSize: 16 }}>{displayedDeanScores.partA.toFixed(1)}</div>
@@ -1070,11 +1050,11 @@ function StandardApprovalReviewPanel({ approval, approvalType, onBack, onSubmit,
 <div style={{ color: "#e11d48", fontWeight: 900, fontSize: 16 }}>{displayedDeanScores.total.toFixed(1)}</div>
 </div>
 </div>
-</div>
+</ReviewerReportHeader>
 
-<div style={{ display: "inline-flex", gap: 6, marginBottom: 16, padding: 4, background: "#f5f3ff", border: "1px solid #ddd6fe", borderRadius: 12, width: "fit-content", flexWrap: "wrap" }}>
+<div className="reviewer-report-tabs" style={{ display: "inline-flex", gap: 6, marginBottom: 16, padding: 4, background: "#f5f3ff", border: "1px solid #ddd6fe", borderRadius: 12, width: "fit-content", flexWrap: "wrap" }}>
  {[["partA", "Part A"], ["partB", "Part B"], ["partC", "Part C"], ["partD", "Part D"], ["partE", "Part E"], ["summary", "Summary"]].map(([id, label]) =>(
-<button key={id} onClick={() =>{
+<button aria-current={sectionView === id ? "page" : undefined} key={id} onClick={() =>{
  setSectionView(id);
  requestAnimationFrame(() =>{
  window.scrollTo({ top: 0, left: 0, behavior: "auto" });

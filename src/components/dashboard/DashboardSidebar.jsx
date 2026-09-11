@@ -83,6 +83,7 @@ export default function DashboardSidebar({
   onSectionChange,
   isSectionOpen = () => true,
   afterNavItem,
+  beforeNav,
   afterNav,
   profileSubtitle,
   onLogout,
@@ -175,6 +176,7 @@ export default function DashboardSidebar({
       <div style={{ height: 1, background: "linear-gradient(90deg,transparent,rgba(148,163,184,0.22) 20%,rgba(148,163,184,0.22) 80%,transparent)" }} />
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10, minHeight: 0 }}>
+        {beforeNav}
         <div style={{ padding: "0 4px", fontSize: 9.5, fontWeight: 800, color: "#5b667a", textTransform: "uppercase", letterSpacing: 1.1 }}>Menu</div>
         <nav style={{ display: "grid", gap: 5 }} aria-label="Dashboard sections">
           {navItems.filter((tab) => tab.id !== "guidelines").map((tab) => {

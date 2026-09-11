@@ -1,5 +1,6 @@
 /* eslint-disable no-unused-vars */
 import { useReviewFeedback } from "../../components/reviewFeedbackContext";
+import ReviewerReportHeader from "../../components/dashboard/ReviewerReportHeader";
 import { useState, useRef, useEffect } from "react";
 import MyAppraisalForm from "../../components/appraisal";
 import { Avatar, ScoreCard, ScoreBar, StatusBadge, ReviewMetricsStrip, uploadedDocCount } from "../../components/dashboard/dashboardPrimitives";
@@ -336,14 +337,8 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false, revi
  return (
 <div style={{ display: "flex", flexDirection: "column", gap: 0, minHeight: "100%" }}>
  {/* Header */}
-<div style={{ background: "linear-gradient(135deg,#0f172a 0%,#111827 58%,#1e1b4b 100%)", padding: "16px 18px", display: "flex", alignItems: "center", gap: 14, marginBottom: 16, borderRadius: 14, boxShadow: "0 18px 42px rgba(15,23,42,0.20)", border: "1px solid rgba(255,255,255,0.08)", flexWrap: "wrap" }}>
-<button onClick={onBack} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.08)", color: "#cbd5e1", cursor: "pointer", borderRadius: 8, padding: "8px 14px", fontSize: 12, fontFamily: "inherit", fontWeight: 700 }}>Back</button>
-<Avatar initials={faculty.avatar} src={faculty.avatarUrl} color={faculty.avatarColor} size={50} />
-<div style={{ flex: 1 }}>
-<div style={{ color: "#f1f5f9", fontWeight: 700, fontSize: 15 }}>{faculty.name}</div>
-<div style={{ color: "#64748b", fontSize: 11 }}>{faculty.designation} - {faculty.employeeId}</div>
-</div>
-<div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
+<ReviewerReportHeader reviewerLabel={reviewerLabel} readOnly={reviewLocked} onBack={onBack}>
+<div className="reviewer-report-header__legacy-metrics">
 <div style={{ background: "rgba(30,41,59,0.92)", border: "1px solid rgba(148,163,184,0.13)", borderRadius: 10, padding: "8px 14px", textAlign: "center", minWidth: 92 }}>
 <div style={{ color: "#94a3b8", fontSize: 9, textTransform: "uppercase", letterSpacing: 0.6 }}>{reviewerLabel} Part A</div>
 <div style={{ color: "#818cf8", fontWeight: 800, fontSize: 16 }}>{partA.toFixed(1)}</div>
@@ -365,11 +360,11 @@ function StandardReviewPanel({ faculty, onBack, onSubmit, readOnly = false, revi
 <div style={{ color: g.color, fontWeight: 800, fontSize: 16 }}>{total.toFixed(1)}<span style={{ fontSize: 10, color: "#94a3b8" }}>/{reviewerMaxScores.grand}</span></div>
 </div>
 </div>
-</div>
- {/* Section switcher */}
-<div style={{ display: "inline-flex", gap: 6, marginBottom: 16, padding: 4, background: "#eef2ff", border: "1px solid #dbe3ff", borderRadius: 12, width: "fit-content", flexWrap: "wrap" }}>
+</ReviewerReportHeader>
+{/* Section switcher */}
+<div className="reviewer-report-tabs" style={{ display: "inline-flex", gap: 6, marginBottom: 16, padding: 4, background: "#eef2ff", border: "1px solid #dbe3ff", borderRadius: 12, width: "fit-content", flexWrap: "wrap" }}>
  {[["partA", "Part A"], ["partB", "Part B"], ["partC", "Part C"], ["partD", "Part D"], ["partE", "Part E"], ["summary", "Summary"]].map(([id, label]) =>(
-<button key={id} onClick={() =>{
+<button aria-current={sectionView === id ? "page" : undefined} key={id} onClick={() =>{
  setSectionView(id);
  requestAnimationFrame(() =>{
  window.scrollTo({ top: 0, left: 0, behavior: "auto" });

@@ -1,3 +1,4 @@
+import ReviewerReportHeader from "../../../../components/dashboard/ReviewerReportHeader";
 /* @refresh skip */
 /* eslint-disable no-unused-vars, react-refresh/only-export-components */
 import { useReviewFeedback } from "../../../../components/reviewFeedbackContext";
@@ -2905,14 +2906,9 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
 
   return (
     <div style={{ display: "grid", gap: 14 }}>
-      <div style={{ background: "#0f172a", color: "#f8fafc", borderRadius: 10, padding: "14px 18px", display: "flex", alignItems: "center", gap: 12 }}>
-        <button onClick={onBack} style={smallButton("#1e293b")}>Back</button>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 900 }}>{person?.name || person?.email}</div>
-          <div style={{ color: "#94a3b8", fontSize: 12 }}>{person?.designation || titleCase(person?.appraisalRole)} - {schoolDisplayName}</div>
-        </div>
+      <ReviewerReportHeader reviewerLabel={titleCase(reviewerRole)} readOnly={panelReadOnly} onBack={onBack}>
         <StatusBadge status={person?.status} />
-      </div>
+      </ReviewerReportHeader>
       <div style={{ display: "flex", justifyContent: "flex-start" }}>
         <SectionSelector value={sectionView} onChange={setSectionView} label="Review Section" />
       </div>
