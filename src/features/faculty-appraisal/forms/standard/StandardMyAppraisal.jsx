@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../../../services/api";
+import { scopedAppraisalSetters as scopeYearSetters } from "../../../../utils/scopedAppraisalSetters";
 import { getActiveAcademicYear, getSessionItem, setActiveAcademicYear } from "../../../../auth/session";
 import {
   appraisalWindowMessage,
@@ -20,6 +21,7 @@ import {
   loadClosedAppraisal,
   loadAppraisalDocuments,
   loadSavedAppraisal,
+  resetSnapshotSetters,
   saveAppraisalDraftSection,
   submitAppraisal,
 } from "../../services";
@@ -513,8 +515,6 @@ export default function StandardMyAppraisal({
   const hodAppraisalTab = sectionTab || localAppraisalTab;
   const setHodAppraisalTab = onSectionTabChange || setLocalAppraisalTab;
   const resolvedAcademicYear = defaultAcademicYear || getActiveAcademicYear();
-  const snapshotCacheRef = useRef({});
-  const loadedTabsRef = useRef(new Set([hodAppraisalTab || "partA"]));
 
   // -- HOD's own appraisal form state --
   const [info, setInfo] = useState({
@@ -739,6 +739,10 @@ export default function StandardMyAppraisal({
   const [workflowReviews, setWorkflowReviews] = useState([]);
   const [legacyReportTotals, setLegacyReportTotals] = useState(null);
   const [loadingYearData, setLoadingYearData] = useState(false);
+  const [loadedAcademicYear, setLoadedAcademicYear] = useState(null);
+  const [yearLoadError, setYearLoadError] = useState("");
+  const [declarationConfirmed, setDeclarationConfirmed] = useState(false);
+  const [attachmentsConfirmed, setAttachmentsConfirmed] = useState(false);
   const [appraisalWindowStatus, setAppraisalWindowStatus] = useState(null);
   const [appraisalWindowError, setAppraisalWindowError] = useState("");
   const selectedCycle = availableCyclesState.find((cycle) => cycle.academic_year === info.ay);
@@ -746,7 +750,7 @@ export default function StandardMyAppraisal({
   const isSelectedCycleOpen = selectedCycle ? Boolean(selectedCycle.is_open) : false;
   const isLegacyTwoPartYear = isLegacyTwoPartAcademicYear(info.ay);
   const appraisalWindowLocked = !isLegacyTwoPartYear && !isSelectedCycleOpen && !canEditSelfAppraisal(appraisalWindowStatus, { declaration: workflowDeclaration });
-  const formLocked = appraisalLocked || appraisalWindowLocked;
+  const formLocked = appraisalLocked || appraisalWindowLocked || loadingYearData || loadedAcademicYear !== info.ay;
   const partDLocked = !isLegacyTwoPartYear && hasActiveRejection(workflowDeclaration, workflowReviews);
   const closedAppraisalCycleMessage = `Appraisal cycle for Academic Year ${info.ay} is closed. The next appraisal cycle form will be available soon. For any queries, please contact appraisal@dypiu.ac.in.`;
   const appraisalWindowLockMessage = isSelectedCycleOpen || isSelectedCycleClosed ? "" : appraisalWindowError || (appraisalWindowLocked ? appraisalWindowMessage(appraisalWindowStatus, info.ay) : "");
@@ -828,48 +832,23 @@ export default function StandardMyAppraisal({
     let cancelled = false;
     const requestedAcademicYear = info.ay;
     const isCurrentLoad = () => !cancelled && loadRequestRef.current === requestId;
-    snapshotCacheRef.current = {};
-    loadedTabsRef.current = new Set([hodAppraisalTab || "partA"]);
-
-    const SETTER_TO_TAB = {
-      setLectures: "partA", setCourseFile: "partA", setInnovRows: "partA", setInnovDetails: "partA", setInnovScore: "partA",
-      setProjects: "partA", setQuals: "partA", setFeedback: "partA", setObeRows: "partA", setMentoringRows: "partA", setAcr: "partA",
-      setJournals: "partB", setBooks: "partB", setIct: "partB", setResearch: "partB", setProjects2: "partB",
-      setExternalProjects: "partB", setPatents: "partB", setAwards: "partB", setConfs: "partB", setProposals: "partB",
-      setProducts: "partB", setFdps: "partB", setTraining: "partB", setExhibitions: "partB",
-      setUniActs: "partC", setDeptActs: "partC", setEventRows: "partC", setSociety: "partC", setIndustry: "partC",
-      setAlumniRows: "partC", setPlacementRows: "partC",
-      setLeaveManagement: "partD"
-    };
-
-    const scopedAppraisalSetters = Object.fromEntries(
-      Object.entries(appraisalSetters).map(([key, setter]) => [
-        key,
-        (...args) => {
-          if (!isCurrentLoad()) return undefined;
-          const targetTab = SETTER_TO_TAB[key];
-          // Legacy two-part years render every section (Part A + Part B) in one report with
-          // no tab selector to switch to (hidden at showSectionSelector && !isLegacyTwoPartYear),
-          // so the lazy per-tab hydration below would never fire and Part B would stay empty.
-          if (!targetTab || targetTab === (hodAppraisalTab || "partA") || isLegacyTwoPartYear) {
-            return setter?.(...args);
-          }
-          if (!snapshotCacheRef.current) snapshotCacheRef.current = {};
-          snapshotCacheRef.current[key] = args[0];
-          return undefined;
-        },
-      ])
-    );
+    // Totals depend on every section, not only the currently visible tab.
+    const scopedAppraisalSetters = scopeYearSetters(appraisalSetters, isCurrentLoad);
+    resetSnapshotSetters(requestedAcademicYear, scopedAppraisalSetters);
+    setLeaveManagement([blankLeaveManagementRow()]);
+    setDeclarationConfirmed(false);
+    setAttachmentsConfirmed(false);
+    setLoadedAcademicYear(null);
+    setYearLoadError("");
+    setWorkflowDeclaration(null);
+    setWorkflowReviews([]);
     setDocs({});
     setLegacyReportTotals(null);
     setLoadingYearData(true);
 
     const loadOwnAppraisal = async () => {
       try {
-        const data = await api.get("/appraisal/status", { params: { academic_year: requestedAcademicYear } }).catch((err) => {
-          console.error("Could not load workflow status:", err);
-          return null;
-        });
+        const data = await api.get("/appraisal/status", { params: { academic_year: requestedAcademicYear } });
         if (!isCurrentLoad()) return;
         const declaration = data?.declaration || null;
         setWorkflowDeclaration(declaration);
@@ -916,8 +895,10 @@ export default function StandardMyAppraisal({
             },
           }),
         ]);
+        if (isCurrentLoad()) setLoadedAcademicYear(requestedAcademicYear);
       } catch (err) {
         console.error("Could not load saved appraisal:", err);
+        if (isCurrentLoad()) setYearLoadError("Unable to load this academic year's appraisal. Please reload before editing.");
       } finally {
         if (isCurrentLoad()) setLoadingYearData(false);
       }
@@ -935,31 +916,6 @@ export default function StandardMyAppraisal({
     }
   }, [isLegacyTwoPartYear, hodAppraisalTab]);
 
-  useEffect(() => {
-    if (!hodAppraisalTab) return;
-    if (loadedTabsRef.current.has(hodAppraisalTab)) return;
-
-    loadedTabsRef.current.add(hodAppraisalTab);
-    const cached = snapshotCacheRef.current;
-    if (cached) {
-      const SETTER_TO_TAB = {
-        setLectures: "partA", setCourseFile: "partA", setInnovRows: "partA", setInnovDetails: "partA", setInnovScore: "partA",
-        setProjects: "partA", setQuals: "partA", setFeedback: "partA", setObeRows: "partA", setMentoringRows: "partA", setAcr: "partA",
-        setJournals: "partB", setBooks: "partB", setIct: "partB", setResearch: "partB", setProjects2: "partB",
-        setExternalProjects: "partB", setPatents: "partB", setAwards: "partB", setConfs: "partB", setProposals: "partB",
-        setProducts: "partB", setFdps: "partB", setTraining: "partB", setExhibitions: "partB",
-        setUniActs: "partC", setDeptActs: "partC", setEventRows: "partC", setSociety: "partC", setIndustry: "partC",
-        setAlumniRows: "partC", setPlacementRows: "partC",
-        setLeaveManagement: "partD"
-      };
-
-      Object.entries(SETTER_TO_TAB).forEach(([setterName, tab]) => {
-        if (tab === hodAppraisalTab && cached[setterName] !== undefined) {
-          appraisalSetters[setterName]?.(cached[setterName]);
-        }
-      });
-    }
-  }, [hodAppraisalTab]);
 
   // -- Computed scores for HOD appraisal --
   const totalLecScore = sumSectionScore(lectures, A1_COURSE_DELIVERY_MAX, "score", 10);
@@ -1037,8 +993,6 @@ export default function StandardMyAppraisal({
   const [submitting, setSubmitting] = useState(false);
   const [submitDialogState, setSubmitDialogState] = useState(null);
   const [submissionError, setSubmissionError] = useState("");
-  const [declarationConfirmed, setDeclarationConfirmed] = useState(false);
-  const [attachmentsConfirmed, setAttachmentsConfirmed] = useState(false);
   const [attachmentDownloading, setAttachmentDownloading] = useState(false);
 
   const validateSelfAppraisalRows = () => {
@@ -1154,13 +1108,7 @@ export default function StandardMyAppraisal({
     });
   };
 
-  const getValue = (localVal, setterName, tab) => {
-    if (loadedTabsRef.current?.has(tab)) {
-      return localVal;
-    }
-    const cached = snapshotCacheRef.current?.[setterName];
-    return cached !== undefined ? cached : localVal;
-  };
+  const getValue = (localVal) => localVal;
 
   const buildSelfDraftForm = (saveStatus = sectionSaveStatus) => {
     const resolvedInnovRows = getValue(innovRows, "setInnovRows", "partA");
@@ -1246,7 +1194,9 @@ export default function StandardMyAppraisal({
       };
     };
 
+    const autoSaveRequestId = loadRequestRef.current;
     const runAutoSave = async (snapshot) => {
+      if (loadRequestRef.current !== autoSaveRequestId) return;
       if (autoSaveInFlightRef.current) {
         queuedAutoSaveRef.current = snapshot;
         return;
@@ -1254,8 +1204,9 @@ export default function StandardMyAppraisal({
       autoSaveInFlightRef.current = true;
       try {
         await saveAppraisalDraftSection(snapshot);
-        lastAutoSavedFingerprintRef.current = snapshot.fingerprint;
+        if (loadRequestRef.current === autoSaveRequestId) lastAutoSavedFingerprintRef.current = snapshot.fingerprint;
       } catch (err) {
+        if (loadRequestRef.current !== autoSaveRequestId) return;
         if (err?.statusCode === 403 || err?.response?.status === 403) {
           markSnapshotLocked();
         } else {
@@ -1272,6 +1223,7 @@ export default function StandardMyAppraisal({
     };
 
     const timer = window.setTimeout(() => {
+      if (loadRequestRef.current !== autoSaveRequestId) return;
       const payload = buildAutoSavePayload();
       if (payload.fingerprint === lastAutoSavedFingerprintRef.current) return;
       runAutoSave(payload);
@@ -1843,6 +1795,9 @@ export default function StandardMyAppraisal({
     }
   };
   const handleAcademicYearChange = (newAcademicYear) => {
+    if (newAcademicYear === info.ay) return;
+    loadRequestRef.current += 1;
+    setLoadingYearData(true);
     setInfo((previousInfo) => profileSafeInfoForYear(previousInfo, newAcademicYear, defaultDesignation));
     setDocs({});
     setLegacyReportTotals(null);
@@ -1926,7 +1881,7 @@ export default function StandardMyAppraisal({
                 profile={profileFromsessionStorage()}
               />
               {!isSelectedCycleClosed && !isLegacyTwoPartYear && (
-<OverallProgress total={grandTotal} max={effectiveGrandMax} percentage={overallProgress} parts={partWiseProgressRows} />
+<OverallProgress total={grandTotal} max={effectiveGrandMax} percentage={overallProgress} parts={partWiseProgressRows} loading={loadingYearData || loadedAcademicYear !== info.ay} error={yearLoadError} />
               )}
             </div>
             <RejectionNotice

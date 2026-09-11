@@ -1,8 +1,16 @@
 import "./overallProgress.css";
 
-export default function OverallProgress({ total, max, percentage, parts = [] }) {
+export default function OverallProgress({ total, max, percentage, parts = [], loading = false, error = "" }) {
   const colors = ["#6366f1", "#0891b2", "#059669", "#e05263", "#7c3aed"];
   const safePercentage = Math.max(0, Math.min(100, Number(percentage) || 0));
+  if (loading || error) return (
+    <section className="overall-score" aria-label="Overall Progress" aria-busy={loading && !error}>
+      <header className="overall-score__heading"><h3>Overall Progress</h3></header>
+      <p role={error ? "alert" : "status"} style={{ color: error ? "#b91c1c" : "#64748b", fontSize: 12, lineHeight: 1.5 }}>
+        {error || "Loading scores for the selected academic year…"}
+      </p>
+    </section>
+  );
   return (
     <section className="overall-score" aria-label="Overall Progress">
       <header className="overall-score__heading">
@@ -20,6 +28,7 @@ export default function OverallProgress({ total, max, percentage, parts = [] }) 
           <div className="overall-score__part" key={label} tabIndex={0} aria-label={`${label}: ${Number(score || 0).toFixed(1)} out of ${limit} marks, ${Math.round(progress)} percent`} title={`${label}: ${Math.round(progress)}% of available marks`} style={{ "--part-color": colors[index % colors.length] }}>
             <span className="overall-score__label"><i style={{ background: colors[index % colors.length] }} aria-hidden="true" />{label}</span>
             <span className="overall-score__value"><strong>{Number(score || 0).toFixed(1)}</strong><span> / {limit}</span></span>
+            <span className="overall-score__mini-bar" aria-hidden="true"><span style={{ width: `${progress}%` }} /></span>
           </div>
           );
         })}

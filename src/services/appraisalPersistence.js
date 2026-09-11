@@ -317,7 +317,7 @@ const defaultAcrRows = () =>[
  { label: "Obedience" },
 ];
 
-const resetSnapshotSetters = (academicYear, setters) =>{
+export const resetSnapshotSetters = (academicYear, setters) =>{
  setters.setInfo?.({
   name: sessionStorage.getItem("name") || "",
   qual: sessionStorage.getItem("qualification") || "",
@@ -393,8 +393,9 @@ export const loadAppraisalSnapshot = async ({ facultyEmail, academicYear }) =>{
  params: { academic_year: academicYear },
  });
  return data?.payload ?? data ?? null;
- } catch {
- return null;
+ } catch (err) {
+ if ((err?.statusCode || err?.response?.status || err?.status) === 404) return null;
+ throw err;
  }
 };
 

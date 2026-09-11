@@ -1,5 +1,6 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useEffect, useMemo, useRef, useState } from "react";
+import { scopedAppraisalSetters } from "../../../../utils/scopedAppraisalSetters";
 import { useNavigate } from "react-router-dom";
 import { getActiveAcademicYear, getSessionItem, setActiveAcademicYear } from "../../../../auth/session";
 import { api } from "../../../../services/api";
@@ -132,6 +133,8 @@ export default function CreativeMyAppraisalSection({
   const [appraisalWindowStatus, setAppraisalWindowStatus] = useState(null);
   const [appraisalWindowError, setAppraisalWindowError] = useState("");
   const [loadingYearData, setLoadingYearData] = useState(false);
+  const [loadedAcademicYear, setLoadedAcademicYear] = useState(null);
+  const [yearLoadError, setYearLoadError] = useState("");
   const yearLoadRequestRef = useRef(0);
 
   const academicYear = form.info?.ay || defaultAcademicYear || getActiveAcademicYear();
@@ -158,11 +161,11 @@ export default function CreativeMyAppraisalSection({
   const workflowRejected = hasActiveRejection(declaration, reviews);
   const partDLocked = !isLegacyTwoPartYear && workflowRejected;
   const appraisalWindowLocked = !isSelectedCycleOpen && !canEditSelfAppraisal(appraisalWindowStatus, { declaration });
-  const locked = appraisalWindowLocked || isSelectedCycleClosed || (Boolean(declaration) && !workflowRejected);
+  const locked = loadingYearData || loadedAcademicYear !== academicYear || appraisalWindowLocked || isSelectedCycleClosed || (Boolean(declaration) && !workflowRejected);
   const lockMessage = isSelectedCycleOpen || isSelectedCycleClosed ? "" : appraisalWindowError || (appraisalWindowLocked ? appraisalWindowMessage(appraisalWindowStatus, academicYear) : "");
 
   const setters = useMemo(() => Object.fromEntries([
-    ["setInfo", (value) => setForm((prev) => ({ ...prev, info: { ...prev.info, ...value } }))],
+    ["setInfo", (value) => setForm((prev) => ({ ...prev, info: { ...prev.info, ...(typeof value === "function" ? value(prev.info) : value), ay: prev.info.ay } }))],
     ...ALL_ARRAY_KEYS.map((key) => [`set${titleCase(key)}`, (value) => setForm((prev) => ({
       ...prev,
       [key]: key === "events"
@@ -205,13 +208,23 @@ export default function CreativeMyAppraisalSection({
   useEffect(() => {
     if (!userEmail || !academicYear) return;
     const requestId = ++yearLoadRequestRef.current;
-    const isCurrentLoad = () => yearLoadRequestRef.current === requestId;
+    let cancelled = false;
+    const isCurrentLoad = () => !cancelled && yearLoadRequestRef.current === requestId;
+    const scopedSetters = scopedAppraisalSetters(setters, isCurrentLoad);
+    setLoadedAcademicYear(null);
+    setYearLoadError("");
+    setForm((prev) => ({ ...emptyMediaForm(schoolValue), info: { ...prev.info, ay: academicYear } }));
+    setDeclaration(null);
+    setReviews([]);
+    setSectionSaveStatus({ partA: false, partB: false, partC: false, partD: false, partE: false });
+    setConfirmed(false);
+    setAttachmentsConfirmed(false);
     setDocs({});
     setPreviousYearResponse(null);
     setLoadingYearData(true);
     const loadAll = async () => {
       try {
-        const statusData = await api.get("/appraisal/status", { params: { academic_year: academicYear } }).catch(() => null);
+        const statusData = await api.get("/appraisal/status", { params: { academic_year: academicYear } });
         if (!isCurrentLoad()) return;
         const declarationRow = statusData?.declaration || null;
         const loadedReviews = reviewListFrom(statusData?.reviews);
@@ -222,23 +235,34 @@ export default function CreativeMyAppraisalSection({
           ? loadClosedAppraisal
           : (isSelectedCycleClosed ? loadClosedAppraisal : loadSavedAppraisal);
         const [loadedAppraisal] = await Promise.all([
-          loader({ facultyEmail: userEmail, academicYear, setters, preferSubmitted }),
-          loadAppraisalDocuments({ facultyEmail: userEmail, academicYear, setDocs }),
+          loader({ facultyEmail: userEmail, academicYear, setters: scopedSetters, preferSubmitted }),
+          loadAppraisalDocuments({ facultyEmail: userEmail, academicYear, setDocs: scopedSetters.setDocs }),
         ]);
         if (!isCurrentLoad()) return;
         if (loadedAppraisal?.form || loadedAppraisal) {
-          const loadedForm = loadedAppraisal?.form || loadedAppraisal;
-          setForm(mergeForm(emptyMediaForm(loadedForm?.info?.school || schoolValue), loadedForm));
+          const loadedForm = loadedAppraisal?.payload?.form || loadedAppraisal?.form;
+          if (loadedForm) {
+            const merged = mergeForm(emptyMediaForm(loadedForm?.info?.school || schoolValue), loadedForm);
+            setForm({ ...merged, info: { ...merged.info, ay: academicYear } });
+          }
         }
         setPreviousYearResponse(loadedAppraisal || null);
+        setLoadedAcademicYear(academicYear);
+      } catch (err) {
+        if (isCurrentLoad()) setYearLoadError("Unable to load this academic year's appraisal. Please reload before editing.");
+        console.error(`Could not load ${schoolCode} appraisal:`, err);
       } finally {
         if (isCurrentLoad()) setLoadingYearData(false);
       }
     };
     loadAll().catch((err) => console.error(`Could not load ${schoolCode} appraisal:`, err));
+    return () => { cancelled = true; };
   }, [academicYear, isLegacyTwoPartYear, isSelectedCycleClosed, schoolCode, schoolValue, setters, userEmail]);
 
   const handleAcademicYearChange = (newAy) => {
+    if (newAy === academicYear) return;
+    yearLoadRequestRef.current += 1;
+    setLoadingYearData(true);
     setForm((prev) => ({ ...prev, info: { ...prev.info, ay: newAy } }));
     setActiveAcademicYear(newAy);
     window.dispatchEvent(new CustomEvent("academicYearChanged", { detail: { academicYear: newAy } }));
@@ -480,7 +504,7 @@ export default function CreativeMyAppraisalSection({
             profile={{ ...profile, school: schoolName, appraisal_role: role }}
           />
           {!isSelectedCycleClosed && !isLegacyTwoPartYear && (
-<OverallProgress total={totals.total} max={effectiveGrandMax} percentage={overallProgress} parts={partWiseProgressRows} />
+<OverallProgress total={totals.total} max={effectiveGrandMax} percentage={overallProgress} parts={partWiseProgressRows} loading={loadingYearData || loadedAcademicYear !== academicYear} error={yearLoadError} />
           )}
         </div>
       </div>
