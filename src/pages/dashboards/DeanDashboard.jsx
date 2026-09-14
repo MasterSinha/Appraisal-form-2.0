@@ -1,4 +1,6 @@
 import FacultyInfoSection from "../../components/appraisal/common/FacultyInfoSection";
+import { DynamicAuthorityReviewPanel } from "../../features/dynamic-appraisal";
+import { dynamicReviewForm } from "../../utils/dynamicAppraisalData";
 /* eslint-disable no-unused-vars */
 import { useReviewFeedback } from "../../components/reviewFeedbackContext";
 import ReviewerReportHeader from "../../components/dashboard/ReviewerReportHeader";
@@ -849,6 +851,7 @@ function DeanReviewScoreForm({ approval, deanData, setDeanData, sectionView = "p
 }
 
 function ApprovalReviewPanel({ approval, approvalType, onBack, onSubmit, readOnly = false }) {
+  if (dynamicReviewForm(approval)) return <DynamicAuthorityReviewPanel subject={approval} reviewerRole="dean" reviewerLabel="Dean" onBack={onBack} onSubmit={onSubmit} readOnly={readOnly} />;
   if (isCreativeSchool(approval)) {
     return (
       <CreativeSchoolAuthorityReviewPanel

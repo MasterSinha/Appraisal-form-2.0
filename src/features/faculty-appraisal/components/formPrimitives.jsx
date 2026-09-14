@@ -1,5 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import { useEffect, useRef, useState } from "react";
+import GuidelinePopover from "./GuidelinePopover";
 import { api } from "../../../services/api";
 import { filesForDocValue, stripMaxMarksFromTitle } from "../../../utils/appraisalFormUtils";
 
@@ -448,8 +449,13 @@ export function getGuidelineForTitle(titleText) {
   return null;
 }
 
-export function SectionInfoButton({ titleText, customGuideline, popoverPlacement = "right" }) {
+export function SectionInfoButton({ titleText, customGuideline, popoverPlacement = "right", popoverWidth = 380, popoverClassName }) {
   const [isOpen, setIsOpen] = useState(false);
+  const anchorRef = useRef(null);
+  const closeTimer = useRef(null);
+  const keepOpen = () => { clearTimeout(closeTimer.current); setIsOpen(true); };
+  const scheduleClose = () => { clearTimeout(closeTimer.current); closeTimer.current = setTimeout(() => setIsOpen(false), 200); };
+  useEffect(() => () => clearTimeout(closeTimer.current), []);
   const data = customGuideline || getGuidelineForTitle(titleText);
   const opensLeft = popoverPlacement === "left";
   if (!data) return null;
@@ -457,17 +463,19 @@ export function SectionInfoButton({ titleText, customGuideline, popoverPlacement
   return (
     <div
       style={{ display: "inline-flex", position: "relative", marginLeft: 8, verticalAlign: "middle" }}
-      onMouseEnter={() => setIsOpen(true)}
-      onMouseLeave={() => setIsOpen(false)}
+      onMouseEnter={keepOpen}
+      onMouseLeave={scheduleClose}
+      onKeyDown={(event) => { if (event.key === 'Escape') { anchorRef.current?.focus(); setIsOpen(false); } }}
       onFocus={() => setIsOpen(true)}
       onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) setIsOpen(false);
+        if (!event.currentTarget.contains(event.relatedTarget) && !event.relatedTarget?.closest('[data-guideline-popover]')) setIsOpen(false);
       }}
     >
       <button
+        ref={anchorRef}
         type="button"
         className="appraisal-info-btn"
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e) => { e.stopPropagation(); keepOpen(); }}
         aria-label="Guidelines info"
         style={{
           width: 22,
@@ -492,14 +500,19 @@ export function SectionInfoButton({ titleText, customGuideline, popoverPlacement
       </button>
 
       {isOpen && (
-        <div
+        <GuidelinePopover
+          data-guideline-popover="true"
+          anchorRef={anchorRef}
+          onMouseEnter={keepOpen}
+          onMouseLeave={scheduleClose}
+          className={popoverClassName}
           style={{
             position: "absolute",
             top: 28,
             ...(opensLeft ? { right: 0 } : { left: 0 }),
             zIndex: 9999,
-            width: 380,
-            maxWidth: "min(380px, calc(100vw - 32px))",
+            width: popoverWidth,
+            maxWidth: `min(${popoverWidth}px, calc(100vw - 32px))`,
             background: "#ffffff",
             border: "1px solid #cbd5e1",
             borderRadius: 12,
@@ -556,13 +569,13 @@ export function SectionInfoButton({ titleText, customGuideline, popoverPlacement
               </div>
             )}
           </div>
-        </div>
+        </GuidelinePopover>
       )}
     </div>
   );
 }
 
-export function SectionCard({ title, subtitle, accent = "#4f46e5", scoreBadge, children }) {
+export function SectionCard({ title, subtitle, accent = "#4f46e5", scoreBadge, guideline, children }) {
   const displayTitle = stripMaxMarksFromTitle(title);
 
   return (
@@ -579,7 +592,12 @@ export function SectionCard({ title, subtitle, accent = "#4f46e5", scoreBadge, c
           <div>
             <div className="appraisal-part-title" style={{ fontWeight: 800, fontSize: 18, color: "#4f46e5", letterSpacing: 0, display: "flex", alignItems: "center" }}>
               <span>{displayTitle}</span>
-              <SectionInfoButton titleText={title} />
+              {/* `guideline` is only ever passed by the dynamic-form part card
+                  (AssignedSchemaPreview.jsx) — every Standard/Creative caller
+                  omits it, so customGuideline stays undefined for them and
+                  SectionInfoButton keeps falling back to its existing
+                  getGuidelineForTitle() title-matching exactly as before. */}
+              <SectionInfoButton titleText={title} customGuideline={guideline ? { title: `${title} Guideline`, rules: guideline.split(/\r?\n/).filter(Boolean) } : undefined} />
             </div>
             {subtitle && <div style={{ color: "#64748b", fontSize: 13, marginTop: 4, lineHeight: 1.45, fontWeight: 500 }}>{subtitle}</div>}
           </div>
@@ -658,7 +676,7 @@ export function SectionSaveFooter({ label = "section", saved, saving, locked, on
   );
 }
 
-export function DocCell({ id, docs, setDocs, readOnly = false }) {
+export function DocCell({ id, docs, setDocs, readOnly = false, compact = false }) {
   const ref = useRef(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
@@ -729,7 +747,7 @@ export function DocCell({ id, docs, setDocs, readOnly = false }) {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, width: "100%", minWidth: 0 }}>
+    <div style={{ display: "flex", flexDirection: compact ? "row" : "column", ...(compact ? { flexWrap: "wrap", justifyContent: "center" } : {}), alignItems: "center", gap: 6, width: "100%", minWidth: 0 }}>
       {files.map((file, idx) => (
         <div key={idx} style={{ display: "grid", gridTemplateColumns: readOnly ? "1fr" : "minmax(0, 1fr) 18px", alignItems: "center", gap: 4, width: "100%", maxWidth: 88, background: "#ecfdf5", border: "1px solid #bbf7d0", borderRadius: 999, padding: "4px 6px" }}>
           <span style={{ minWidth: 0, fontSize: 10, color: "#14532d", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 800 }}>{file.name}</span>
@@ -751,7 +769,7 @@ export function ViewCell({ id, docs }) {
 
 // Compact, in-page replacement for the browser's blocking confirm()/alert()
 // dialogs used during appraisal submission.
-export function AppraisalSubmitDialog({ type = "confirm", message, onConfirm, onClose }) {
+export function AppraisalSubmitDialog({ type = "confirm", message, onConfirm, onClose, lightBackdrop = false }) {
   const isConfirm = type === "confirm";
   const isSuccess = type === "success";
   const isError = type === "error";
@@ -769,7 +787,7 @@ export function AppraisalSubmitDialog({ type = "confirm", message, onConfirm, on
   }, [onClose]);
 
   return (
-    <div className="appraisal-submit-dialog" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose?.(); }} style={{ position: "fixed", inset: 0, zIndex: 10000, display: "grid", placeItems: "center", padding: "24px 16px", background: "rgba(15, 23, 42, 0.56)", backdropFilter: "blur(5px)", animation: "appraisal-dialog-fade-in 160ms ease-out" }}>
+    <div className="appraisal-submit-dialog" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose?.(); }} style={{ position: "fixed", inset: 0, zIndex: 10000, display: "grid", placeItems: "center", padding: "24px 16px", background: lightBackdrop ? "rgba(15, 23, 42, 0.36)" : "rgba(15, 23, 42, 0.56)", backdropFilter: lightBackdrop ? "blur(2px)" : "blur(5px)", animation: "appraisal-dialog-fade-in 160ms ease-out" }}>
       <section className="appraisal-submit-dialog__card" role="dialog" aria-modal="true" aria-labelledby="appraisal-submit-dialog-title" aria-describedby="appraisal-submit-dialog-message" onMouseDown={(event) => event.stopPropagation()} style={{ position: "relative", width: "min(480px, 100%)", overflow: "hidden", border: "1px solid rgba(226, 232, 240, 0.95)", borderRadius: 22, background: "#fff", boxShadow: "0 30px 90px rgba(15, 23, 42, 0.34)", animation: "appraisal-dialog-rise-in 220ms cubic-bezier(.2,.8,.2,1)" }}>
         <div style={{ height: 5, background: `linear-gradient(90deg, ${accent}, ${isConfirm ? "#818cf8" : accent})` }} />
         <button type="button" onClick={onClose} aria-label="Close dialog" style={{ position: "absolute", top: 18, right: 18, display: "grid", placeItems: "center", width: 34, height: 34, border: "1px solid #e2e8f0", borderRadius: "50%", background: "#fff", color: "#64748b", fontSize: 21, lineHeight: 1, cursor: "pointer" }}>{"\u00d7"}</button>

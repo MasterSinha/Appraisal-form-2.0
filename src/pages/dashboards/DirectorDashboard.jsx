@@ -1,4 +1,6 @@
 /* eslint-disable no-unused-vars */
+import { DynamicAuthorityReviewPanel } from "../../features/dynamic-appraisal";
+import { dynamicReviewForm } from "../../utils/dynamicAppraisalData";
 import { useReviewFeedback } from "../../components/reviewFeedbackContext";
 import ReviewerReportHeader from "../../components/dashboard/ReviewerReportHeader";
 import { useState, useRef, useEffect, useMemo } from "react";
@@ -20,6 +22,8 @@ import ManageDepartmentsPanel from "../../components/dashboard/ManageDepartments
 import { listSchoolDepartments } from "../../services/departmentsService";
 import { enrichQueueItem } from "../../services/reviewWorkflow";
 import { refreshSchoolsOnce, useSchools } from "../../services/schoolsService";
+import { useAssignedFormAssignment } from "../../features/faculty-appraisal/hooks/useAssignedFormAssignment";
+import { useCustomFormParts } from "../../features/faculty-appraisal/hooks/useCustomFormParts";
 import LazyVisible from "../../components/dashboard/LazyVisible";
 import { getSchoolByValue, schoolUnitLabel } from "../../constants/universityHierarchy";
 
@@ -337,6 +341,7 @@ const normalizeStandardReviewSubject = (subject = {}) =>{
 
 // - Full Review Panel (opened when HOD clicks Review) -
 function ReviewPanel({ faculty, onBack, onSubmit, readOnly = false }) {
+  if (dynamicReviewForm(faculty)) return <DynamicAuthorityReviewPanel subject={faculty} reviewerRole="director" reviewerLabel="Director" onBack={onBack} onSubmit={onSubmit} readOnly={readOnly} />;
   if (isCreativeSchool(faculty)) {
     return (
       <CreativeSchoolAuthorityReviewPanel
@@ -1107,6 +1112,22 @@ const handleSubmitReview = async (type, id, scores, remarks, sectionScores, revi
  window.scrollTo({ top: 0, left: 0, behavior: "auto" });
  });
  };
+
+ // If the Director's own school is assigned a dynamic (admin-built custom
+ // schema) form, its Parts have arbitrary admin-defined labels, not the
+ // hardcoded Standard-form "Part A/B/C/D/E" — without this, the sidebar's
+ // section selector never matches any of the dynamic form's real part labels,
+ // so AssignedSchemaPreview falls back to rendering every part on one long
+ // page instead of dividing the appraisal Part-wise. Mirrors the same pattern
+ // already used for the plain faculty dashboard (src/pages/dashboards/Dashboard.jsx).
+ const { assignment: myFormAssignment, isCustomForm: myFormIsCustom } = useAssignedFormAssignment();
+ const myCustomParts = useCustomFormParts(myFormIsCustom ? myFormAssignment : null, selectedAcademicYear);
+ const myCustomSectionOptions = myFormIsCustom && myCustomParts
+ ? [...myCustomParts.map((label) => [label, label]), ["Summary", "Summary"]]
+ : null;
+ const myEffectiveSection = myCustomSectionOptions?.length && !myCustomSectionOptions.some(([value]) => value === hodAppraisalTab)
+ ? myCustomSectionOptions[0][0]
+ : hodAppraisalTab;
  return (
 <DashboardLayout
  appInfo={APP_INFO}
@@ -1121,8 +1142,9 @@ navItems={navItems}
 activeTab={visibleMainTab}
 onTabSelect={(tab) =>{ setActiveMainTab(tab); setReviewingFaculty(null); setReviewingHod(null); }}
 showSectionSelector={visibleMainTab === "myAppraisal"}
- sectionTab={hodAppraisalTab}
+ sectionTab={myEffectiveSection}
  onSectionChange={handleMyAppraisalSectionChange}
+ customSectionOptions={myCustomSectionOptions}
  profileSubtitle={`Director - ${sessionStorage.getItem("department")?.split(" ")[0] || ""}`}
  onLogout={() =>setShowLogoutModal(true)}
  showLogoutSpacer
@@ -1143,7 +1165,7 @@ showSectionSelector={visibleMainTab === "myAppraisal"}
  </div>
 )}
 
-{visibleMainTab === "myAppraisal" && <MyAppraisalSection sectionTab={hodAppraisalTab} onSectionTabChange={handleMyAppraisalSectionChange} defaultDesignation={sessionStorage.getItem("role") === "director" ? "Director" : ""} defaultAcademicYear={sessionStorage.getItem("academicYear") || APP_INFO.DEFAULT_AY} titleNameFallback="Director" subtitleSeparator=" - " />}
+{visibleMainTab === "myAppraisal" && <MyAppraisalSection sectionTab={myEffectiveSection} onSectionTabChange={handleMyAppraisalSectionChange} defaultDesignation={sessionStorage.getItem("role") === "director" ? "Director" : ""} defaultAcademicYear={sessionStorage.getItem("academicYear") || APP_INFO.DEFAULT_AY} titleNameFallback="Director" subtitleSeparator=" - " />}
 
 {visibleMainTab === "departments" && canManagePrograms && (
 <ManageDepartmentsPanel

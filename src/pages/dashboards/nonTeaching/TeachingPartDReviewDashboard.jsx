@@ -4,6 +4,8 @@ import "./partDReviewActions.css";
 import { APP_INFO } from "../../../constants/formConfig";
 import { Avatar } from "../../../components/dashboard/dashboardPrimitives";
 import RegistrarLeaveManagement from "../../../components/appraisal/PartD/RegistrarLeaveManagement";
+import DynamicPartDReviewPanel from "../../../features/dynamic-appraisal/components/DynamicPartDReviewPanel";
+import { dynamicReviewForm } from "../../../utils/dynamicAppraisalData";
 import { fetchPartDRegistrarQueue, submitPartDRegistrarReview } from "../../../services/reviewWorkflow";
 import { getActiveAcademicYear } from "../../../auth/session";
 import { roleLabel } from "../../../utils/hierarchy";
@@ -407,60 +409,79 @@ export default function TeachingPartDReviewDashboard({ accent = "#155e75", acade
             </div>
           </div>
 
-          {canEdit && (
-            <div className="part-d-review-actions">
-              <div>
-                <strong>{editing ? "Editing Part D" : "Part D record"}</strong>
-                <p>{editing ? "Update leave and attendance details below. Cancel to discard these edits." : "Use Edit Part D to update the leave and attendance details."}</p>
-              </div>
-            <button className="part-d-review-actions__button" type="button" disabled={saving} onClick={() => {
-              setEditing(!editing);
-              setLeaveRows(selected.leaveManagement || selected.leave_management || []);
-              if (editing) {
-                setScore(partDScoreForInput(selected));
-                setRemarks(selected.registrarPartDRemarks || selected.registrar_part_d_remarks || "");
-              }
-            }}>
-              {editing ? <X size={16} aria-hidden="true" /> : <FilePenLine size={16} aria-hidden="true" />}
-              {editing ? "Cancel Edit" : "Edit Part D"}
-            </button>
-            </div>
-          )}
-          <RegistrarLeaveManagement
-            ctx={{ leaveManagement: editing ? leaveRows : selected.leaveManagement || selected.leave_management }}
-            editing={editing}
-            onRowsChange={setLeaveRows}
-            score={score}
-            remarks={remarks}
-            onScoreChange={setScore}
-            onRemarksChange={setRemarks}
-            disabled={saving || (selectedReviewed && !editing)}
-          />
+          {dynamicReviewForm(selected) ? (
+            // Dynamic (admin-built custom schema) form: its own separate review UI,
+            // reusing the same fetchPartDRegistrarQueue/submitPartDRegistrarReview
+            // endpoints as everything above, but with a schema-driven display
+            // instead of the fixed Leave & Attendance fields. Standard/Creative
+            // subjects always take the branch below, completely unchanged.
+            <DynamicPartDReviewPanel
+              key={selected.id}
+              subject={selected}
+              academicYear={academicYear}
+              onSubmitted={(patch) => {
+                setItems((currentItems) => currentItems.map((item) => (item.id === selected.id ? { ...item, ...patch } : item)));
+                setSelectedId("");
+              }}
+            />
+          ) : (
+            <>
+              {canEdit && (
+                <div className="part-d-review-actions">
+                  <div>
+                    <strong>{editing ? "Editing Part D" : "Part D record"}</strong>
+                    <p>{editing ? "Update leave and attendance details below. Cancel to discard these edits." : "Use Edit Part D to update the leave and attendance details."}</p>
+                  </div>
+                <button className="part-d-review-actions__button" type="button" disabled={saving} onClick={() => {
+                  setEditing(!editing);
+                  setLeaveRows(selected.leaveManagement || selected.leave_management || []);
+                  if (editing) {
+                    setScore(partDScoreForInput(selected));
+                    setRemarks(selected.registrarPartDRemarks || selected.registrar_part_d_remarks || "");
+                  }
+                }}>
+                  {editing ? <X size={16} aria-hidden="true" /> : <FilePenLine size={16} aria-hidden="true" />}
+                  {editing ? "Cancel Edit" : "Edit Part D"}
+                </button>
+                </div>
+              )}
+              <RegistrarLeaveManagement
+                ctx={{ leaveManagement: editing ? leaveRows : selected.leaveManagement || selected.leave_management }}
+                editing={editing}
+                onRowsChange={setLeaveRows}
+                score={score}
+                remarks={remarks}
+                onScoreChange={setScore}
+                onRemarksChange={setRemarks}
+                disabled={saving || (selectedReviewed && !editing)}
+              />
 
-          {selectedReviewed && !editing && (
-            <div style={{ marginTop: 12, background: "#ecfdf5", border: "1px solid #bbf7d0", color: "#047857", padding: "10px 14px", borderRadius: 8, fontSize: 12, fontWeight: 800 }}>
-              Registrar review completed. This Part D record is open for viewing only.
-            </div>
-          )}
+              {selectedReviewed && !editing && (
+                <div style={{ marginTop: 12, background: "#ecfdf5", border: "1px solid #bbf7d0", color: "#047857", padding: "10px 14px", borderRadius: 8, fontSize: 12, fontWeight: 800 }}>
+                  Registrar review completed. This Part D record is open for viewing only.
+                </div>
+              )}
 
-          {saveError && (
-            <div style={{ marginTop: 12, background: "#fef2f2", border: "1px solid #fecaca", color: "#991b1b", padding: "10px 14px", borderRadius: 8, fontSize: 12 }}>
-              {saveError}
-            </div>
-          )}
+              {saveError && (
+                <div style={{ marginTop: 12, background: "#fef2f2", border: "1px solid #fecaca", color: "#991b1b", padding: "10px 14px", borderRadius: 8, fontSize: 12 }}>
+                  {saveError}
+                </div>
+              )}
 
-          {(!selectedReviewed || editing) && (
-            <div style={{ marginTop: 16, display: "flex", justifyContent: "flex-end" }}>
-              <button
-                type="button"
-                onClick={handleSubmit}
-                disabled={saving}
-                className="part-d-review-actions__button"
-              >
-                <Send size={16} aria-hidden="true" />
-                {saving ? "Submitting..." : "Save & Release Part D to VC"}
-              </button>
-            </div>
+              {(!selectedReviewed || editing) && (
+                <div style={{ marginTop: 16, display: "flex", justifyContent: "flex-end" }}>
+                  <button
+                    type="button"
+                    onClick={handleSubmit}
+                    disabled={saving}
+                    className="part-d-review-actions__button"
+                  >
+                    <Send size={16} aria-hidden="true" />
+                    {saving ? "Submitting..." : "Save & Release Part D to VC"}
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}

@@ -806,7 +806,6 @@ tbody tr { transition: background-color 0.12s ease; }
   margin: 0 auto;
 }
 
-.appraisal-page-header,
 .appraisal-progress-card,
 .appraisal-info-banner,
 .appraisal-section-selector,
@@ -814,7 +813,6 @@ tbody tr { transition: background-color 0.12s ease; }
   transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
 }
 
-.appraisal-page-header:hover,
 .appraisal-progress-card:hover,
 .appraisal-section-card:hover {
   transform: translateY(-2px);

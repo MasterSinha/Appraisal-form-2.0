@@ -33,6 +33,7 @@ import { WorkflowStatusTracker } from "../../shared";
 import { clampScore, feedbackSectionScore, generateMediaCommReport, innovativeTeachingScore, migrateLegacyRowFields, scoreSectionRows } from "../../utils";
 import { previousYearFormTypeForSchool } from "../../../../constants/formRouting";
 import { ALL_ARRAY_KEYS } from "./arrayKeys";
+import { creativeReloadData } from './creativeReloadData';
 import {
   ACCENT,
   AccuracyCheckbox,
@@ -242,8 +243,11 @@ export default function CreativeMyAppraisalSection({
         if (loadedAppraisal?.form || loadedAppraisal) {
           const loadedForm = loadedAppraisal?.payload?.form || loadedAppraisal?.form;
           if (loadedForm) {
-            const merged = mergeForm(emptyMediaForm(loadedForm?.info?.school || schoolValue), loadedForm);
-            setForm({ ...merged, info: { ...merged.info, ay: academicYear } });
+            setForm((normalizedState) => {
+              const incoming = creativeReloadData(loadedForm, normalizedState, ALL_ARRAY_KEYS);
+              const merged = mergeForm(emptyMediaForm(incoming.info?.school || schoolValue), incoming);
+              return { ...merged, info: { ...merged.info, ay: academicYear } };
+            });
           }
         }
         setPreviousYearResponse(loadedAppraisal || null);

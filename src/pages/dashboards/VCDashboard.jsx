@@ -1,4 +1,6 @@
 import ReviewerReportHeader from "../../components/dashboard/ReviewerReportHeader";
+import { DynamicAuthorityReviewPanel } from "../../features/dynamic-appraisal";
+import { dynamicReviewForm } from "../../utils/dynamicAppraisalData";
 /* eslint-disable no-unused-vars, react-hooks/set-state-in-effect */
 import { useReviewFeedback } from "../../components/reviewFeedbackContext";
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -975,6 +977,20 @@ function calcVCScore(person, vcData) {
 
 // --- VC Review Panel ----------------------------------------------------------
 function VCReviewPanel({ person, personMode, onBack, onSubmit, readOnly = false }) {
+  if (dynamicReviewForm(person)) {
+    return (
+      <DynamicAuthorityReviewPanel
+        subject={person}
+        reviewerRole="vc"
+        reviewerLabel="Vice Chancellor"
+        onBack={onBack}
+        onSubmit={(id, scores, remarks, sectionScores, reviewConfirmed, decision) =>
+          onSubmit(id, scores, remarks, personMode, sectionScores, reviewConfirmed, decision)
+        }
+        readOnly={readOnly}
+      />
+    );
+  }
   if (isCreativeSchool(person)) {
     return (
       <CreativeSchoolAuthorityReviewPanel

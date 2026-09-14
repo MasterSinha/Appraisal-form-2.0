@@ -1,13 +1,13 @@
 import "./overallProgress.css";
 
-export default function OverallProgress({ total, max, percentage, parts = [], loading = false, error = "" }) {
+export default function OverallProgress({ total, max, percentage, parts = [], loading = false, error = "", unavailable = "" }) {
   const colors = ["#6366f1", "#0891b2", "#059669", "#e05263", "#7c3aed"];
   const safePercentage = Math.max(0, Math.min(100, Number(percentage) || 0));
-  if (loading || error) return (
+  if (loading || error || unavailable) return (
     <section className="overall-score" aria-label="Overall Progress" aria-busy={loading && !error}>
       <header className="overall-score__heading"><h3>Overall Progress</h3></header>
       <p role={error ? "alert" : "status"} style={{ color: error ? "#b91c1c" : "#64748b", fontSize: 12, lineHeight: 1.5 }}>
-        {error || "Loading scores for the selected academic year…"}
+        {error || unavailable || "Loading scores for the selected academic year…"}
       </p>
     </section>
   );

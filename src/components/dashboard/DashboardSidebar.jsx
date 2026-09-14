@@ -49,22 +49,16 @@ function SidebarIcon({ id, active, label }) {
   return <Icon name={getNavIconName({ id, label })} active={active} />;
 }
 
-function SectionIcon({ section }) {
-  const labels = {
-    partA: "A",
-    partB: "B",
-    partC: "C",
-    partD: "D",
-    partE: "E",
-    summary: "S",
-  };
+const SECTION_ICON_CYCLE = [BookOpen, FlaskConical, Building2, CalendarDays, ShieldCheck, ListChecks];
+
+function SectionIcon({ section, index = 0 }) {
+  const KNOWN_ICONS = { partA: BookOpen, partB: FlaskConical, partC: Building2, partD: CalendarDays, partE: ShieldCheck, summary: ListChecks };
+  const isSummary = String(section || "").toLowerCase() === "summary";
+  const Glyph = KNOWN_ICONS[section] || (isSummary ? ListChecks : SECTION_ICON_CYCLE[index % SECTION_ICON_CYCLE.length]);
 
   return (
     <span style={{ width: 24, height: 24, borderRadius: 8, background: "#e2e8f0", border: "1px solid #e2e8f0", color: "#475569", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 10.5, fontWeight: 900 }}>
-      {(() => {
-        const Glyph = ({ partA: BookOpen, partB: FlaskConical, partC: Building2, partD: CalendarDays, partE: ShieldCheck, summary: ListChecks })[section] || BookOpen;
-        return <Glyph size={16} aria-label={labels[section] || "Section"} />;
-      })()}
+      <Glyph size={16} aria-hidden="true" />
     </span>
   );
 }
@@ -81,6 +75,7 @@ export default function DashboardSidebar({
   showSectionSelector = false,
   sectionTab = "partA",
   onSectionChange,
+  customSectionOptions = null,
   isSectionOpen = () => true,
   afterNavItem,
   beforeNav,
@@ -94,8 +89,8 @@ export default function DashboardSidebar({
   const sectionTriggerRef = useRef(null);
   const [currentAcademicYear, setCurrentAcademicYear] = useState(() => sessionStorage.getItem("academicYear") || "");
   const isLegacyTwoPartYear = isLegacyTwoPartAcademicYear(currentAcademicYear);
-  const showCurrentYearSectionSelector = showSectionSelector && !isLegacyTwoPartYear;
-  const sectionOptions = isLegacyTwoPartYear
+  const showCurrentYearSectionSelector = showSectionSelector && (Boolean(customSectionOptions) || !isLegacyTwoPartYear);
+  const sectionOptions = customSectionOptions || (isLegacyTwoPartYear
     ? [
         ["partA", "Part A"],
         ["partB", "Part B"],
@@ -107,7 +102,7 @@ export default function DashboardSidebar({
         ["partD", "Part D"],
         ["partE", "Part E"],
         ["summary", "Summary"],
-      ];
+      ]);
   const selectedSectionLabel = sectionOptions.find(([value]) => value === sectionTab)?.[1] || "Part A";
   const profileName = sessionStorage.getItem("name") || "User";
   const profileDisplayName = profileName.split(" ").slice(0, 2).join(" ");
@@ -291,7 +286,7 @@ export default function DashboardSidebar({
               aria-expanded={sectionMenuOpen}
               style={{ width: "100%", height: 40, border: sectionMenuOpen ? "1px solid #a5b4fc" : "1px solid #e0e7ff", borderRadius: 12, padding: "0 11px 0 9px", color: "#1e293b", background: "#f1f5f9", fontFamily: "inherit", fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", gap: 9, boxShadow: sectionMenuOpen ? "0 0 0 3px rgba(255,255,255,0.06)" : "none" }}
             >
-              <SectionIcon section={sectionTab} />
+              <SectionIcon section={sectionTab} index={sectionOptions.findIndex(([value]) => value === sectionTab)} />
               <span style={{ flex: 1, textAlign: "left", fontSize: 12.5 }}>{selectedSectionLabel}</span>
               <Icon name="chevron" size={15} />
             </button>
@@ -306,7 +301,7 @@ export default function DashboardSidebar({
           role="listbox"
           style={{ position: "fixed", zIndex: 2000, top: menuRect.bottom + 7, left: menuRect.left, width: menuRect.width, padding: 6, background: "#ffffff", border: "1px solid #e0e7ff", borderRadius: 12, boxShadow: "0 12px 28px rgba(15,23,42,0.12)", display: "grid", gap: 3 }}
         >
-          {sectionOptions.map(([value, label]) => {
+          {sectionOptions.map(([value, label], index) => {
             const disabled = !isSectionOpen(value);
             const selected = value === sectionTab;
             return (
@@ -323,7 +318,7 @@ export default function DashboardSidebar({
                 }}
                 style={{ minHeight: 34, border: "1px solid transparent", borderRadius: 9, background: selected ? "#e0e7ff" : "transparent", color: disabled ? "#4b5563" : selected ? "#1e293b" : "#475569", cursor: disabled ? "not-allowed" : "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: selected ? 900 : 750, display: "flex", alignItems: "center", gap: 8, padding: "0 9px", textAlign: "left" }}
               >
-                <SectionIcon section={value} />
+                <SectionIcon section={value} index={index} />
                 <span>{label}</span>
               </button>
             );

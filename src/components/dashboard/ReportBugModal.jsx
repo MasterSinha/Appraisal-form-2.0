@@ -1,12 +1,15 @@
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { Bug, CircleHelp, Lightbulb, MessageSquare, Ellipsis, X, Send, CheckCircle2, Paperclip, FileText, LoaderCircle } from "lucide-react";
+import { Bug, CircleHelp, Lightbulb, MessageSquare, Ellipsis, X, Send, CheckCircle2, Paperclip, FileText, LoaderCircle, Tag, AlignLeft } from "lucide-react";
 import "./ReportBugModal.css";
 import { submitFeedback } from "../../services/feedbackService";
 
+// Each category gets its own accent color, applied to the chip's icon, border
+// and tinted background when selected — makes the category list scannable at
+// a glance instead of every option looking the same until clicked.
 const CATEGORY_OPTIONS = [
-  ["bug", "Bug", Bug], ["query", "Question", CircleHelp], ["suggestion", "Idea", Lightbulb],
-  ["feedback", "Feedback", MessageSquare], ["other", "Other", Ellipsis],
+  ["bug", "Bug", Bug, "#e11d48"], ["query", "Question", CircleHelp, "#2563eb"], ["suggestion", "Idea", Lightbulb, "#d97706"],
+  ["feedback", "Feedback", MessageSquare, "#7c3aed"], ["other", "Other", Ellipsis, "#475569"],
 ];
 
 export function ReportBugButton({ style, iconOnly = false, className, plainIcon = false }) {
@@ -78,6 +81,17 @@ export default function ReportBugModal({ onClose }) {
   const email = sessionStorage.getItem("email") || sessionStorage.getItem("username") || "";
   const name = sessionStorage.getItem("name") || "";
 
+  // Plays a short exit animation before actually unmounting (see .feedback-dialog.is-closing
+  // in the CSS) instead of vanishing instantly — mirrors the smooth entrance animation.
+  const [closing, setClosing] = useState(false);
+  const closeTimerRef = useRef(null);
+  useEffect(() => () => { if (closeTimerRef.current) clearTimeout(closeTimerRef.current); }, []);
+  const requestClose = () => {
+    if (closing) return;
+    setClosing(true);
+    closeTimerRef.current = setTimeout(() => onClose?.(), 140);
+  };
+
   const handleSubmit = async () => {
     if (!subject.trim() || !message.trim()) {
       setError("Please fill in both subject and message.");
@@ -111,46 +125,47 @@ export default function ReportBugModal({ onClose }) {
   }, []);
 
   return createPortal(
-    <dialog ref={dialogRef} className="feedback-dialog" aria-label="Report a Bug"
-      onCancel={() => onClose?.()}
+    <dialog ref={dialogRef} className={`feedback-dialog${closing ? " is-closing" : ""}`} aria-label="Report a Bug"
+      onCancel={(event) => { event.preventDefault(); requestClose(); }}
       onClick={(event) => {
         if (event.target !== event.currentTarget) return;
         const rect = event.currentTarget.getBoundingClientRect();
-        if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) onClose?.();
+        if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) requestClose();
       }}>
       <header className="feedback-header">
         <span className="feedback-symbol"><Bug size={24} aria-hidden="true" /></span>
         <div><h2>Report a Bug</h2><p>Sent directly to the admin team</p></div>
-        <button type="button" className="feedback-close" onClick={onClose} aria-label="Close" title="Close"><X size={20} /></button>
+        <button type="button" className="feedback-close" onClick={requestClose} aria-label="Close" title="Close"><X size={20} /></button>
       </header>
       {done ? (
         <div className="feedback-success">
           <CheckCircle2 size={44} color="#059669" aria-hidden="true" />
           <h3>Report sent</h3>
           <p>Your report has been sent to the admin team. We'll follow up by email if needed.</p>
-          <button type="button" className="feedback-submit" onClick={onClose}>Close</button>
+          <button type="button" className="feedback-submit" onClick={requestClose}>Close</button>
         </div>
       ) : (
         <form className="feedback-form" onSubmit={(event) => { event.preventDefault(); if (!submitting) handleSubmit(); }}>
           <fieldset disabled={submitting}>
             <legend>Category</legend>
             <div className="feedback-categories">
-              {CATEGORY_OPTIONS.map(([value, label, Glyph]) => (
-                <label key={value} className={category === value ? "is-selected" : ""}>
+              {CATEGORY_OPTIONS.map(([value, label, Glyph, accent]) => (
+                <label key={value} className={category === value ? "is-selected" : ""}
+                  style={category === value ? { "--accent": accent, borderColor: accent, background: `${accent}14`, color: accent } : { "--accent": accent }}>
                   <input type="radio" name="feedback-category" value={value} checked={category === value} onChange={() => setCategory(value)} />
                   <Glyph size={18} aria-hidden="true" /><span>{label}</span>
                 </label>
               ))}
             </div>
           </fieldset>
-          <label className="feedback-field">Subject
+          <label className="feedback-field"><span className="feedback-field-label"><Tag size={13} aria-hidden="true" />Subject</span>
             <input type="text" required value={subject} onChange={(event) => setSubject(event.target.value)} maxLength={120} placeholder="Short summary" disabled={submitting} />
           </label>
-          <label className="feedback-field">Message
+          <label className="feedback-field"><span className="feedback-field-label"><AlignLeft size={13} aria-hidden="true" />Message</span>
             <textarea required value={message} onChange={(event) => setMessage(event.target.value)} maxLength={5000} rows={4} placeholder="What happened? Steps to reproduce, if it's a bug." disabled={submitting} />
           </label>
           <section className="feedback-attachment" aria-label="Optional attachment">
-            <div className="feedback-attachment__heading"><span>Attachment <small>Optional</small></span><span>Up to 5 MB</span></div>
+            <div className="feedback-attachment__heading"><span><Paperclip size={13} aria-hidden="true" />Attachment <small>Optional</small></span><span>Up to 5 MB</span></div>
             <input ref={fileRef} type="file" hidden accept=".png,.jpg,.jpeg,.webp,.pdf,.txt,.log" disabled={submitting}
               onChange={(event) => { selectAttachment(event.target.files?.[0]); event.target.value = ""; }} />
             {attachment ? (
@@ -166,7 +181,7 @@ export default function ReportBugModal({ onClose }) {
             )}
           </section>
           {error && <div role="alert" className="feedback-error">{error}</div>}
-          <footer className="feedback-footer"><span>{message.length} / 5000</span>
+          <footer className="feedback-footer"><span className={message.length > 4500 ? "is-near-limit" : ""}>{message.length} / 5000</span>
             <button type="submit" className="feedback-submit" disabled={submitting}>{submitting ? <LoaderCircle className="feedback-spinner" size={16} aria-hidden="true" /> : <Send size={16} aria-hidden="true" />}{submitting ? "Sending..." : "Send Report"}</button>
           </footer>
         </form>

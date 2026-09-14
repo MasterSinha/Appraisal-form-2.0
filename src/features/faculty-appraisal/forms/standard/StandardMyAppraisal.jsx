@@ -1462,9 +1462,9 @@ export default function StandardMyAppraisal({
 
     <h3>A1. Course Delivery &amp; Classroom Engagement &nbsp;(Max 40)</h3>
     <table>
-      <tr><th>SN</th><th>Semester</th><th>Course Code / Name</th><th>Classes as per Course Structure</th><th>Classes Actually Conducted</th><th>Self Score</th></tr>
-      ${lectures.map((l, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(l.sem)}</td><td>${reportTextValue(l.code)}</td><td class="c">${reportTextValue(l.planned)}</td><td class="c">${reportTextValue(l.conducted)}</td><td class="c">${reportTextValue(l.score)}</td></tr>`).join('')}
-      <tr class="tr"><td colspan="5" class="c b">Total Score (Max 40)</td><td class="c">${totalLecScore > 0 ? totalLecScore.toFixed(1) : "&nbsp;"}</td></tr>
+      <tr><th>SN</th><th>Semester</th><th>Course Code / Name</th><th>Classes as per Course Structure</th><th>Classes Actually Conducted</th><th>% Conducted</th><th>Self Score</th></tr>
+      ${lectures.map((l, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(l.sem)}</td><td>${reportTextValue(l.code)}</td><td class="c">${reportTextValue(l.planned)}</td><td class="c">${reportTextValue(l.conducted)}</td><td class="c">${reportTextValue(l.pctConducted)}</td><td class="c">${reportTextValue(l.score)}</td></tr>`).join('')}
+      <tr class="tr"><td colspan="6" class="c b">Total Score (Max 40)</td><td class="c">${totalLecScore > 0 ? totalLecScore.toFixed(1) : "&nbsp;"}</td></tr>
     </table>
 
     <h3>A2. Course File &amp; Curriculum Documentation &nbsp;(Max 20)</h3>
@@ -1477,7 +1477,7 @@ export default function StandardMyAppraisal({
     <h3>A3. Innovative Teaching-Learning Methods &nbsp;(Max 20)</h3>
     <table>
       <tr><th>SN</th><th>Methods Used</th><th>Details</th><th>Self Score</th></tr>
-      ${innovRows.map((r, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(r.method)}</td><td>${reportTextValue(r.details)}</td><td class="c">${reportTextValue(r.score)}</td></tr>`).join('')}
+      ${innovRows.map((r, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(r.method)}${r.method === OTHER_INNOVATIVE_METHOD && r.methodOther ? `: ${reportTextValue(r.methodOther)}` : ""}</td><td>${reportTextValue(r.details)}</td><td class="c">${reportTextValue(r.score)}</td></tr>`).join('')}
       <tr class="tr"><td colspan="3" class="c b">Total Score (Max 20)</td><td class="c">${innovTotal > 0 ? innovTotal.toFixed(1) : "&nbsp;"}</td></tr>
     </table>
 
@@ -1498,9 +1498,9 @@ export default function StandardMyAppraisal({
     ${`
     <h3>A6. Student Project Guidance &nbsp;(Max 20)</h3>
     <table>
-      <tr><th>SN</th><th>Project Type</th><th>Self Score</th></tr>
-      ${projects.map((p, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(p.label)}</td><td class="c">${reportTextValue(clampScore(p.score, projectGuidanceRowMax(p)))}</td></tr>`).join('')}
-      <tr class="tr"><td colspan="2" class="c b">Total Score (Max 20)</td><td class="c">${projectTotal > 0 ? projectTotal.toFixed(1) : "&nbsp;"}</td></tr>
+      <tr><th>SN</th><th>Project Title / Batch</th><th>No. of Students</th><th>Industry Collab (Y/N)</th><th>Award (Y/N)</th><th>Student Pub (Y/N)</th><th>Self Score</th></tr>
+      ${projects.map((p, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(p.label)}</td><td class="c">${reportTextValue(p.studentsCount)}</td><td>${reportTextValue(p.industryCollab)}</td><td>${reportTextValue(p.awardReceived)}</td><td>${reportTextValue(p.studentPub)}</td><td class="c">${reportTextValue(clampScore(p.score, projectGuidanceRowMax(p)))}</td></tr>`).join('')}
+      <tr class="tr"><td colspan="6" class="c b">Total Score (Max 20)</td><td class="c">${projectTotal > 0 ? projectTotal.toFixed(1) : "&nbsp;"}</td></tr>
     </table>`}
 
     <h3>A7. Student Mentoring &amp; Counselling &nbsp;(Max 10)</h3>
@@ -1512,9 +1512,9 @@ export default function StandardMyAppraisal({
 
     <h3>A8. Professional Development &amp; Qualification Enhancement &nbsp;(Max 10)</h3>
     <table>
-      <tr><th>SN</th><th>Qualification / Category</th><th>Self Score</th></tr>
-      ${quals.map((q, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(q.label)}</td><td class="c">${reportTextValue(String(q.score ?? "").trim() ? clampScore(q.score, A8_QUALIFICATION_MAX) : "")}</td></tr>`).join('')}
-      <tr class="tr"><td colspan="2" class="c b">Total Score (Max 10)</td><td class="c">${qualTotal > 0 ? qualTotal.toFixed(1) : "&nbsp;"}</td></tr>
+      <tr><th>SN</th><th>Qualification / Category</th><th>Awarding Body</th><th>Date</th><th>Self Score</th></tr>
+      ${quals.map((q, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(q.label)}</td><td>${reportTextValue(q.awardingBody)}</td><td>${reportTextValue(q.date)}</td><td class="c">${reportTextValue(String(q.score ?? "").trim() ? clampScore(q.score, A8_QUALIFICATION_MAX) : "")}</td></tr>`).join('')}
+      <tr class="tr"><td colspan="4" class="c b">Total Score (Max 10)</td><td class="c">${qualTotal > 0 ? qualTotal.toFixed(1) : "&nbsp;"}</td></tr>
     </table>
 
     <div class="pb"></div>
@@ -1522,23 +1522,23 @@ export default function StandardMyAppraisal({
 
     <h3>B1. Journal Publications &nbsp;(Max 100)</h3>
     <table>
-      <tr><th>SN</th><th>Title with Page Nos.</th><th>Journal Details</th><th>DOI No.</th><th>Journal Indexing</th><th>Self Score</th></tr>
-      ${journals.map((j, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(j.title)}</td><td>${reportTextValue(j.journal)}</td><td class="c">${reportTextValue(j.issn)}</td><td class="c">${reportTextValue(j.index)}</td><td class="c">${reportTextValue(j.score)}</td></tr>`).join('')}
-      <tr class="tr"><td colspan="5" class="c b">Total (Max 100)</td><td class="c">${journalScore > 0 ? journalScore.toFixed(1) : "&nbsp;"}</td></tr>
+      <tr><th>SN</th><th>Title</th><th>Journal</th><th>DOI No.</th><th>Impact Factor</th><th>Author Position</th><th>Self Score</th></tr>
+      ${journals.map((j, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(j.title)}</td><td>${reportTextValue(j.journal)}</td><td class="c">${reportTextValue(j.issn)}</td><td class="c">${reportTextValue(j.impactFactor)}</td><td>${reportTextValue(j.authorPosition)}</td><td class="c">${reportTextValue(j.score)}</td></tr>`).join('')}
+      <tr class="tr"><td colspan="6" class="c b">Total (Max 100)</td><td class="c">${journalScore > 0 ? journalScore.toFixed(1) : "&nbsp;"}</td></tr>
     </table>
 
     <h3>B2. Books, Book Chapters &amp; Edited Volumes &nbsp;(Max 30)</h3>
     <table>
-      <tr><th>SN</th><th>Title with Page Nos.</th><th>Book Title, Editor &amp; Publisher</th><th>ISSN/ISBN</th><th>Type of Publisher</th><th>Co-authors</th><th>First Author</th><th>Self Score</th></tr>
-      ${books.map((b, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(b.title)}</td><td>${reportTextValue(b.book)}</td><td class="c">${reportTextValue(b.issn)}</td><td>${reportTextValue(b.pub)}</td><td>${reportTextValue(b.coauth)}</td><td class="c">${reportTextValue(b.first)}</td><td class="c">${reportTextValue(b.score)}</td></tr>`).join('')}
-      <tr class="tr"><td colspan="7" class="c b">Total (Max 30)</td><td class="c">${bookScore > 0 ? bookScore.toFixed(1) : "&nbsp;"}</td></tr>
+      <tr><th>SN</th><th>Title</th><th>Publisher &amp; ISBN</th><th>Type</th><th>Level</th><th>Co-authors from DYPIU</th><th>Self Score</th></tr>
+      ${books.map((b, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(b.title)}</td><td>${reportTextValue(b.book)}</td><td>${reportTextValue(b.pub)}</td><td>${reportTextValue(b.level)}</td><td>${reportTextValue(b.coauth)}</td><td class="c">${reportTextValue(b.score)}</td></tr>`).join('')}
+      <tr class="tr"><td colspan="6" class="c b">Total (Max 30)</td><td class="c">${bookScore > 0 ? bookScore.toFixed(1) : "&nbsp;"}</td></tr>
     </table>
 
     <h3>B3. Patents, Copyrights &amp; IP and Product Development &nbsp;(Max 40)</h3>
     <table>
-      <tr><th>SN</th><th>Title</th><th>National / International</th><th>Date of Filing</th><th>Status</th><th>Patent File No.</th><th>Self Score</th></tr>
-      ${patents.map((p, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(p.title)}</td><td class="c">${reportTextValue(p.type)}</td><td class="c">${reportTextValue(p.date)}</td><td>${reportTextValue(p.status)}</td><td class="c">${reportTextValue(p.fileNo)}</td><td class="c">${reportTextValue(p.score)}</td></tr>`).join('')}
-      <tr class="tr"><td colspan="6" class="c b">Total (Max 40)</td><td class="c">${patentScore > 0 ? patentScore.toFixed(1) : "&nbsp;"}</td></tr>
+      <tr><th>SN</th><th>Title</th><th>National / International</th><th>Status (Published/Granted)</th><th>Filing / Grant No. &amp; Date</th><th>Self Score</th></tr>
+      ${patents.map((p, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(p.title)}</td><td class="c">${reportTextValue(p.type)}</td><td>${reportTextValue(p.status)}</td><td class="c">${reportTextValue(p.fileNo)}</td><td class="c">${reportTextValue(p.score)}</td></tr>`).join('')}
+      <tr class="tr"><td colspan="5" class="c b">Total (Max 40)</td><td class="c">${patentScore > 0 ? patentScore.toFixed(1) : "&nbsp;"}</td></tr>
     </table>
 
     <h3>B4. External Funded Research Projects &nbsp;(Max 40)</h3>
@@ -1548,12 +1548,13 @@ export default function StandardMyAppraisal({
       <tr class="tr"><td colspan="7" class="c b">Total (Max 40)</td><td class="c">${projectBScore > 0 ? projectBScore.toFixed(1) : "&nbsp;"}</td></tr>
     </table>
 
+    ${isLegacyTwoPartYear ? `
     <h3>Legacy External Research Projects &nbsp;(Not counted in AY 2026-2027 total)</h3>
     <table>
       <tr><th>SN</th><th>Title</th><th>Funding Agency</th><th>Date of Sanction</th><th>Grant Amount</th><th>Role</th><th>Status</th><th>Self Score</th></tr>
       ${externalProjects.map((p, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(p.title)}</td><td>${reportTextValue(p.agency)}</td><td class="c">${reportTextValue(p.date)}</td><td class="c">${reportTextValue(p.amount)}</td><td>${reportTextValue(p.role)}</td><td>${reportTextValue(p.status)}</td><td class="c">${reportTextValue(p.score)}</td></tr>`).join('')}
       <tr class="tr"><td colspan="7" class="c b">Total (Max 0)</td><td class="c">${externalProjectScore > 0 ? externalProjectScore.toFixed(1) : "&nbsp;"}</td></tr>
-    </table>
+    </table>` : ""}
 
     ${`
     <h3>B5. Research Guidance &nbsp;(Max 20)</h3>
@@ -1565,15 +1566,15 @@ export default function StandardMyAppraisal({
 
     <h3>B6. Consultancy, Testing &amp; Training &nbsp;(Max 20)</h3>
     <table>
-      <tr><th>SN</th><th>Title of Proposal</th><th>Duration</th><th>Funding Agency</th><th>Grant Amount Requested</th><th>Self Score</th></tr>
-      ${proposals.map((p, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(p.title)}</td><td class="c">${reportTextValue(p.duration)}</td><td>${reportTextValue(p.agency)}</td><td class="c">${reportTextValue(p.amount)}</td><td class="c">${reportTextValue(p.score)}</td></tr>`).join('')}
-      <tr class="tr"><td colspan="5" class="c b">Total (Max 20)</td><td class="c">${proposalScore > 0 ? proposalScore.toFixed(1) : "&nbsp;"}</td></tr>
+      <tr><th>SN</th><th>Client / Organisation</th><th>Nature of Engagement</th><th>Revenue Generated (INR)</th><th>Self Score</th></tr>
+      ${proposals.map((p, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(p.agency)}</td><td>${reportTextValue(p.duration)}</td><td class="c">${reportTextValue(p.amount)}</td><td class="c">${reportTextValue(p.score)}</td></tr>`).join('')}
+      <tr class="tr"><td colspan="4" class="c b">Total (Max 20)</td><td class="c">${proposalScore > 0 ? proposalScore.toFixed(1) : "&nbsp;"}</td></tr>
     </table>
 
     <h3>B7. Conference / FDP / Training / Workshop Contributions as Resource Person &nbsp;(Max 20)</h3>
     <table>
-      <tr><th>SN</th><th>Title / Session</th><th>Type</th><th>Organization</th><th>Level</th><th>Self Score</th></tr>
-      ${confs.map((c, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(c.title)}</td><td>${reportTextValue(c.type)}</td><td>${reportTextValue(c.org)}</td><td>${reportTextValue(c.level)}</td><td class="c">${reportTextValue(c.score)}</td></tr>`).join('')}
+      <tr><th>SN</th><th>Event / Session Title</th><th>Role</th><th>Date</th><th>Level (Intl./National)</th><th>Self Score</th></tr>
+      ${confs.map((c, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(c.title)}</td><td>${reportTextValue(c.role)}</td><td>${reportTextValue(c.date)}</td><td>${reportTextValue(c.level)}</td><td class="c">${reportTextValue(c.score)}</td></tr>`).join('')}
       <tr class="tr"><td colspan="5" class="c b">Total (Max 20)</td><td class="c">${confScore > 0 ? confScore.toFixed(1) : "&nbsp;"}</td></tr>
     </table>
 
@@ -1582,14 +1583,16 @@ export default function StandardMyAppraisal({
       <tr><th>SN</th><th>Program</th><th>From</th><th>To</th><th>Organized By</th><th>Self Score</th></tr>
       ${fdps.map((f, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(f.program)}</td><td class="c">${reportTextValue(f.fromDate)}</td><td class="c">${reportTextValue(f.toDate)}</td><td>${reportTextValue(f.org)}</td><td class="c">${reportTextValue(clampScore(f.score, SCORE_LIMITS.fdpRow))}</td></tr>`).join('')}
       <tr class="tr"><td colspan="5" class="c b">FDP / Workshops Total</td><td class="c">${fdpScore > 0 ? fdpScore.toFixed(1) : "&nbsp;"}</td></tr>
+      ${!isLegacyTwoPartYear ? `<tr class="tr"><td colspan="5" class="c b">Combined B8 Total (Max 20)</td><td class="c">${b8Score > 0 ? b8Score.toFixed(1) : "&nbsp;"}</td></tr>` : ""}
     </table>
 
+    ${isLegacyTwoPartYear ? `
     <h3>Industrial Training</h3>
     <table>
       <tr><th>SN</th><th>Company / Industry</th><th>Duration</th><th>Nature of Training</th><th>Self Score</th></tr>
       ${training.map((t, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(t.company)}</td><td class="c">${reportTextValue(t.duration)}</td><td>${reportTextValue(t.nature)}</td><td class="c">${reportTextValue(clampScore(t.score, SCORE_LIMITS.fdpRow))}</td></tr>`).join('')}
       <tr class="tr"><td colspan="4" class="c b">Combined B8 Total (Max 20)</td><td class="c">${b8Score > 0 ? b8Score.toFixed(1) : "&nbsp;"}</td></tr>
-    </table>
+    </table>` : ""}
 
     <h3>B9. Research Awards, Fellowships &amp; Citations &nbsp;(Max 20)</h3>
     <table>
@@ -1600,16 +1603,16 @@ export default function StandardMyAppraisal({
 
     <h3>B10. Innovation, Start-ups &amp; Technology Transfer &nbsp;(Max 20)</h3>
     <table>
-      <tr><th>SN</th><th>Details of Product</th><th>Used by Students / Commercialized</th><th>Self Score</th></tr>
-      ${products.map((p, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(p.details)}</td><td>${reportTextValue(p.usage)}</td><td class="c">${reportTextValue(p.score)}</td></tr>`).join('')}
-      <tr class="tr"><td colspan="3" class="c b">Total (Max 20)</td><td class="c">${productScore > 0 ? productScore.toFixed(1) : "&nbsp;"}</td></tr>
+      <tr><th>SN</th><th>Title / Start-up / Product</th><th>Role</th><th>Status</th><th>Self Score</th></tr>
+      ${products.map((p, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(p.details)}</td><td>${reportTextValue(p.role)}</td><td>${reportTextValue(p.status)}</td><td class="c">${reportTextValue(p.score)}</td></tr>`).join('')}
+      <tr class="tr"><td colspan="4" class="c b">Total (Max 20)</td><td class="c">${productScore > 0 ? productScore.toFixed(1) : "&nbsp;"}</td></tr>
     </table>
 
     <h3>B11. ICT Content, MOOCs &amp; E-Learning &nbsp;(Max 20)</h3>
     <table>
-      <tr><th>SN</th><th>Title</th><th>Short Description</th><th>Type / Link</th><th>Quadrants</th><th>Self Score</th></tr>
-      ${ict.map((r, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(r.title)}</td><td>${reportTextValue(r.desc)}</td><td>${reportTextValue(r.type)}</td><td class="c">${reportTextValue(r.quad)}</td><td class="c">${reportTextValue(r.score)}</td></tr>`).join('')}
-      <tr class="tr"><td colspan="5" class="c b">Total (Max 15)</td><td class="c">${ictScore > 0 ? ictScore.toFixed(1) : "&nbsp;"}</td></tr>
+      <tr><th>SN</th><th>Title</th><th>Platform / Type</th><th>Reach / Views (if available)</th><th>Self Score</th></tr>
+      ${ict.map((r, i) => `<tr><td class="c">${i + 1}</td><td>${reportTextValue(r.title)}</td><td>${reportTextValue(r.type)}</td><td class="c">${reportTextValue(r.quad)}</td><td class="c">${reportTextValue(r.score)}</td></tr>`).join('')}
+      <tr class="tr"><td colspan="4" class="c b">Total (Max 20)</td><td class="c">${ictScore > 0 ? ictScore.toFixed(1) : "&nbsp;"}</td></tr>
     </table>
 
     <div class="pb"></div>

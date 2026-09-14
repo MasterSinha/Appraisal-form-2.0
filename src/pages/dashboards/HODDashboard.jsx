@@ -1,4 +1,6 @@
 /* eslint-disable no-unused-vars */
+import { DynamicAuthorityReviewPanel } from "../../features/dynamic-appraisal";
+import { dynamicReviewForm } from "../../utils/dynamicAppraisalData";
 import { useReviewFeedback } from "../../components/reviewFeedbackContext";
 import ReviewerReportHeader from "../../components/dashboard/ReviewerReportHeader";
 import { useState, useRef, useEffect } from "react";
@@ -20,6 +22,8 @@ import { enrichQueueItem } from "../../services/reviewWorkflow";
 import { useSchools } from "../../services/schoolsService";
 import LazyVisible from "../../components/dashboard/LazyVisible";
 import { isStandardAppraisalSchool } from "../../constants/formRouting";
+import { useAssignedFormAssignment } from "../../features/faculty-appraisal/hooks/useAssignedFormAssignment";
+import { useCustomFormParts } from "../../features/faculty-appraisal/hooks/useCustomFormParts";
 
 // - Helpers - (n, pct, grade, reportValue, reportTextValue, reportQualification, reportExperience, RO, TI → imported from shared)
 
@@ -127,6 +131,7 @@ const buildHodSectionScores = (faculty, hodData) =>{
 
 // - Full Review Panel (opened when HOD clicks Review) -
 function ReviewPanel({ faculty, onBack, onSubmit, readOnly = false, reviewerLabel = "HOD", reviewerRole = "hod" }) {
+  if (dynamicReviewForm(faculty)) return <DynamicAuthorityReviewPanel subject={faculty} reviewerRole={reviewerRole} reviewerLabel={reviewerLabel} onBack={onBack} onSubmit={onSubmit} readOnly={readOnly} />;
   if (isCreativeSchool(faculty)) {
     return (
       <CreativeSchoolAuthorityReviewPanel
@@ -653,6 +658,23 @@ const handleSubmitReview = async (id, scores, remarks, sectionScores, reviewConf
  window.scrollTo({ top: 0, left: 0, behavior: "auto" });
  });
  };
+
+ // If the HOD's own school is assigned a dynamic (admin-built custom schema)
+ // form, its Parts have arbitrary admin-defined labels, not the hardcoded
+ // Standard-form "Part A/B/C/D/E" — without this, the sidebar's section
+ // selector never matches any of the dynamic form's real part labels, so
+ // AssignedSchemaPreview falls back to rendering every part on one long page
+ // instead of dividing the appraisal Part-wise. Mirrors the same pattern used
+ // for Director (DirectorDashboard.jsx) and the plain faculty dashboard
+ // (src/pages/dashboards/Dashboard.jsx).
+ const { assignment: myFormAssignment, isCustomForm: myFormIsCustom } = useAssignedFormAssignment();
+ const myCustomParts = useCustomFormParts(myFormIsCustom ? myFormAssignment : null, selectedAcademicYear);
+ const myCustomSectionOptions = myFormIsCustom && myCustomParts
+ ? [...myCustomParts.map((label) => [label, label]), ["Summary", "Summary"]]
+ : null;
+ const myEffectiveSection = myCustomSectionOptions?.length && !myCustomSectionOptions.some(([value]) => value === hodAppraisalTab)
+ ? myCustomSectionOptions[0][0]
+ : hodAppraisalTab;
  return (
 <DashboardLayout
  appInfo={APP_INFO}
@@ -667,8 +689,9 @@ const handleSubmitReview = async (id, scores, remarks, sectionScores, reviewConf
  activeTab={activeMainTab}
  onTabSelect={(tab) =>{ setActiveMainTab(tab); setReviewingFaculty(null); }}
  showSectionSelector={activeMainTab === "myAppraisal"}
- sectionTab={hodAppraisalTab}
+ sectionTab={myEffectiveSection}
  onSectionChange={handleMyAppraisalSectionChange}
+ customSectionOptions={myCustomSectionOptions}
  profileSubtitle={`HOD - ${
    hodDepartmentsList.length > 1
      ? `${hodDepartmentsList.length} Programs`
@@ -693,7 +716,7 @@ const handleSubmitReview = async (id, scores, remarks, sectionScores, reviewConf
  </div>
 )}
 
-{activeMainTab === "myAppraisal" && <MyAppraisalSection sectionTab={hodAppraisalTab} onSectionTabChange={handleMyAppraisalSectionChange} defaultDesignation={sessionStorage.getItem("role") === reviewerRole ? reviewerDesignation : ""} defaultAcademicYear={sessionStorage.getItem("academicYear") || APP_INFO.DEFAULT_AY} titleNameFallback="HOD" subtitleSeparator=" - " />}
+{activeMainTab === "myAppraisal" && <MyAppraisalSection sectionTab={myEffectiveSection} onSectionTabChange={handleMyAppraisalSectionChange} defaultDesignation={sessionStorage.getItem("role") === reviewerRole ? reviewerDesignation : ""} defaultAcademicYear={sessionStorage.getItem("academicYear") || APP_INFO.DEFAULT_AY} titleNameFallback="HOD" subtitleSeparator=" - " />}
 
  {activeMainTab === "approvals" && !reviewingFaculty && (
 <>
