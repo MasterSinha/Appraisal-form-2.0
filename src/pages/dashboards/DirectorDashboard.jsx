@@ -188,7 +188,7 @@ const STANDARD_REPORT_PART_A_SECTIONS = [
  { key: "obeRows", title: "A5. Learning Outcomes Attainment & OBE Practice", max: 20, doc: "obe", fields: [["component", "Component"], ["evidence", "Evidence"]] },
  { key: "projects", title: "A6. Guided Students Project", max: 20, doc: "proj", fields: [["label", "Project Category"]] },
  { key: "mentoringRows", title: "A7. Student Mentoring & Counselling", max: 10, doc: "mentor", fields: [["activity", "Activity"], ["evidence", "Evidence"]] },
- { key: "quals", title: "A8. Professional Development & Qualification Enhancement", max: 10, doc: "qual", fields: [["label", "Qualification / Category"]] },
+ { key: "quals", title: "A8. Professional Development & Qualification Enhancement", max: 10, doc: "qual", fields: [["label", "Qualification / Category"], ["awardingBody", "Awarding Body"], ["date", "Date"]] },
 ];
 const STANDARD_REPORT_PART_B_SECTIONS = [
  { key: "journals", title: "B1. Journal Publications", max: 100, doc: "jour", fields: [["title", "Title"], ["journal", "Journal"], ["issn", "DOI No."], ["impactFactor", "Impact Factor"], ["authorPosition", "Author Position"]] },

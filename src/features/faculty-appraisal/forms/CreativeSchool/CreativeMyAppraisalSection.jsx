@@ -34,6 +34,7 @@ import { clampScore, feedbackSectionScore, generateMediaCommReport, innovativeTe
 import { previousYearFormTypeForSchool } from "../../../../constants/formRouting";
 import { ALL_ARRAY_KEYS } from "./arrayKeys";
 import { creativeReloadData } from './creativeReloadData';
+import { assertDraftOnline, confirmedDraftSave, draftSaveErrorMessage } from '../../../../utils/confirmedDraftSave';
 import {
   ACCENT,
   AccuracyCheckbox,
@@ -277,7 +278,9 @@ export default function CreativeMyAppraisalSection({
     requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0, behavior: "auto" }));
   };
 
-  const handleSaveSelfSection = async (section) => {
+  const handleSaveSelfSection = async (section, navigateNext = true) => {
+    if (savingSection) return;
+    try { assertDraftOnline(); } catch (error) { alert(draftSaveErrorMessage(error)); return; }
     if (section === "partD" && partDLocked) return;
     if (locked) return;
     if (!userEmail) {
@@ -304,7 +307,7 @@ export default function CreativeMyAppraisalSection({
     const nextStatus = { ...sectionSaveStatus, [section]: true };
     setSavingSection(section);
     try {
-      await saveAppraisalDraftSection({
+      await confirmedDraftSave(() => saveAppraisalDraftSection({
         facultyEmail: userEmail,
         academicYear,
         form: { ...form, info: { ...form.info, school: schoolValue }, sectionSaveStatus: nextStatus },
@@ -323,12 +326,12 @@ export default function CreativeMyAppraisalSection({
         },
         submitterProfile: { ...profile, school: schoolValue, appraisal_role: role },
         sectionSaveStatus: nextStatus,
-      });
+      }));
       setSectionSaveStatus(nextStatus);
       const nextSection = { partA: "partB", partB: "partC", partC: "partD", partD: "partE", partE: "summary" }[section];
-      if (nextSection) handleSectionChange(nextSection);
+      if (navigateNext && nextSection) handleSectionChange(nextSection);
     } catch (err) {
-      alert(`Unable to save draft.\n\n${err.message}`);
+      alert(draftSaveErrorMessage(err));
     } finally {
       setSavingSection(null);
     }
@@ -516,7 +519,7 @@ export default function CreativeMyAppraisalSection({
       <RejectionNotice declaration={declaration} reviews={reviews} form={form} status={declaration?.status || form.status} alertOnceKey={`${userEmail}:${academicYear}:${declaration?.status || form.status || ""}`} />
 
       {locked && (
-        <div style={{ background: lockMessage || isSelectedCycleClosed ? "#fffbeb" : workflowRejected ? "#fef2f2" : "#ecfdf5", border: `1px solid ${lockMessage || isSelectedCycleClosed ? "#fde68a" : workflowRejected ? "#fecaca" : "#bbf7d0"}`, color: lockMessage || isSelectedCycleClosed ? "#92400e" : workflowRejected ? "#991b1b" : "#166534", borderRadius: 9, padding: "11px 14px", fontSize: 12, fontWeight: 750 }}>
+        <div role="status" style={{ background: lockMessage || isSelectedCycleClosed ? "#fffbeb" : "#fef2f2", border: lockMessage || isSelectedCycleClosed ? "1px solid #fde68a" : workflowRejected ? "1px solid #fecaca" : "none", color: lockMessage || isSelectedCycleClosed ? "#92400e" : "#991b1b", borderRadius: 9, padding: "11px 14px", fontSize: 12, fontWeight: 750 }}>
           {lockMessage || (workflowRejected ? "This appraisal was rejected. Review the approval status above." : isSelectedCycleClosed ? `Appraisal cycle for Academic Year ${academicYear} is closed.` : "Submitted and locked for review.")}
         </div>
       )}
@@ -598,7 +601,7 @@ export default function CreativeMyAppraisalSection({
             saved={Boolean(sectionSaveStatus[sectionTab])}
             saving={savingSection === sectionTab}
             locked={locked || (sectionTab === "partD" && partDLocked)}
-            onSave={() => handleSaveSelfSection(sectionTab)}
+            onSave={(navigateNext) => handleSaveSelfSection(sectionTab, navigateNext)}
           />
         </>
       )}

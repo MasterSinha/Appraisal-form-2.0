@@ -11,7 +11,7 @@ import { useNavigate } from "react-router-dom";
 import { Avatar, LogoutConfirmModal, ScoreCard, ReviewMetricsStrip } from "../../components/dashboard/dashboardPrimitives";
 import { fetchNonTeachingQueueForRole, isNonTeachingReviewComplete, nonTeachingReviewFlow } from "../../services/nonTeachingWorkflow";
 import { useSchools } from "../../services/schoolsService";
-import { fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, fetchSavedAppraisal, mergeFacultyInfo, ACR_DETAIL_POINTS, MAX_SCORES, APP_INFO, createAcrRows, buildReviewRemarks, openFullFormReport, renderCombinedPartsSummary, safeHtml, displayValue, SummaryOtherInfoField, summaryOtherInfoValueFrom, SCORE_LIMITS, clampScore, clampReviewScore, effectiveMaxScore, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewRowMaxForSection, reviewSectionScore, rowHasReviewableData, isSectionEmpty, selfEffectivePartAMax, societyRowLocked, societyRowScore, standardReviewSummary, standardSubmittedScoreSummary, qualificationRowDescription, AppraisalHeaderImage, ViewDocsCell, SectionCard as SC, EmptySectionRow, CreativeSchoolAuthorityReviewPanel, normalizeSubmittedCreativeFormForReview, isCreativeSchool, isDesignArtsSchool, isMediaCommSchool } from "../../features/faculty-appraisal";
+import { fetchReviewQueueForRole, loadReviewerDraft, saveReviewerDraft, submitWorkflowReview, fetchSavedAppraisal, mergeFacultyInfo, ACR_DETAIL_POINTS, MAX_SCORES, APP_INFO, createAcrRows, buildReviewRemarks, openFullFormReport, renderCombinedPartsSummary, safeHtml, displayValue, SummaryOtherInfoField, summaryOtherInfoValueFrom, SCORE_LIMITS, clampScore, clampReviewScore, effectiveMaxScore, projectGuidanceRowMax, researchGuidanceRowMax, researchGuidanceScore, reviewRowMaxForSection, reviewSectionScore, rowHasReviewableData, isSectionEmpty, selfEffectivePartAMax, societyRowLocked, societyRowScore, standardReviewSummary, standardSubmittedScoreSummary, AppraisalHeaderImage, ViewDocsCell, SectionCard as SC, EmptySectionRow, CreativeSchoolAuthorityReviewPanel, normalizeSubmittedCreativeFormForReview, isCreativeSchool, isDesignArtsSchool, isMediaCommSchool } from "../../features/faculty-appraisal";
 import { clearUserSession, getActiveAcademicYear, getSessionItem, normalizeAcademicYearLabel, setActiveAcademicYear } from "../../auth/session";
 import { PreviousYearReportViewer } from "../../features/previousYearReport";
 import { isLegacyTwoPartAcademicYear } from "../../features/faculty-appraisal/forms/standard/legacyPreviousYearReportUtils";
@@ -470,7 +470,7 @@ const VC_REPORT_PART_A_SECTIONS = [
  { key: "obeRows", title: "A5. Learning Outcomes Attainment & OBE Practice", max: 20, doc: "obe", fields: [["component", "Component"], ["evidence", "Evidence"]] },
  { key: "projects", title: "A6. Guided Students Project", max: 20, doc: "proj", fields: [["label", "Project Category"]] },
  { key: "mentoringRows", title: "A7. Student Mentoring & Counselling", max: 10, doc: "mentor", fields: [["activity", "Activity"], ["evidence", "Evidence"]] },
- { key: "quals", title: "A8. Qualification Enhancement", max: 10, doc: "qual", fields: [["label", "Category"]] },
+ { key: "quals", title: "A8. Qualification Enhancement", max: 10, doc: "qual", fields: [["label", "Qualification / Category"], ["awardingBody", "Awarding Body"], ["date", "Date"]] },
  { key: "feedback", title: "A4. Student Feedback", max: 10, doc: "fb", fields: [["code", "Course Code / Name"], ["fb1", "First Feedback(%)"], ["fb2", "Second Feedback(%)"]] },
 ];
 const VC_REPORT_PART_C_SECTIONS = [
@@ -744,7 +744,7 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
  { title: "A5. Learning Outcomes Attainment & OBE Practice (Max 20)", key: "obeRows", docPfx: "obe", fields: [["component", "Component"], ["evidence", "Evidence Attached (Yes/No)"]] },
  { title: "A6. Student Project Guidance (Max 20)", key: "projects", docPfx: "proj", fields: [["label", "Project Title / Batch"], ["studentsCount", "No. of Students"], ["industryCollab", "Industry Collab (Y/N)"], ["awardReceived", "Award (Y/N)"], ["studentPub", "Student Pub (Y/N)"]] },
  { title: "A7. Student Mentoring & Counselling (Max 10)", key: "mentoringRows", docPfx: "mentor", fields: [["activity", "Activity"], ["evidence", "Evidence Attached (Yes/No)"]] },
- { title: "A8. Professional Development & Qualification Enhancement (Max 10)", key: "quals", docPfx: "qual", fields: [["label", "Description"]] },
+ { title: "A8. Professional Development & Qualification Enhancement (Max 10)", key: "quals", docPfx: "qual", fields: [["label", "Qualification / Category"], ["awardingBody", "Awarding Body"], ["date", "Date"]] },
  ].map(({ title, key, docPfx, fields }) =>(
 <SC key={key} title={title} accent="#7c3aed">
 <table style={T}><thead><tr>
@@ -754,7 +754,7 @@ function VCReviewForm({ person, vcData, setVcData, personMode = "director", sect
 <tbody>{sectionEmpty(key) ? emptyRow(2 + fields.length + scoreColumnCount) : sectionRows(key).map((r, i) =>(
 <tr key={i} style={i % 2 ? { background: "#f8fafc" } : {}}>
 <td style={TDC}>{i + 1}</td>
- {fields.map(([field]) =><td key={field} style={TD}><RO val={key === "quals" && field === "label" ? qualificationRowDescription(r) : key === "eventRows" && (field === "fromDate" || field === "toDate") ? (r[field] || r.date) : r[field]} /></td>)}
+ {fields.map(([field]) =><td key={field} style={TD}><RO val={key === "eventRows" && (field === "fromDate" || field === "toDate") ? (r[field] || r.date) : r[field]} /></td>)}
 <td style={TDV}><ViewDocsCell docKey={`${docPfx}-${i}`} docs={docs} /></td>
  {renderScoreCells(r, key, i)}
 </tr>

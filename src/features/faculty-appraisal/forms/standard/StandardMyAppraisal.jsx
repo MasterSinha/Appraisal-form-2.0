@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../../../services/api";
 import { scopedAppraisalSetters as scopeYearSetters } from "../../../../utils/scopedAppraisalSetters";
+import { standardReadSetters } from "./standardReadCompatibility";
+import { assertDraftOnline, confirmedDraftSave, draftSaveErrorMessage } from "../../../../utils/confirmedDraftSave";
 import { getActiveAcademicYear, getSessionItem, setActiveAcademicYear } from "../../../../auth/session";
 import {
   appraisalWindowMessage,
@@ -27,6 +29,7 @@ import {
 } from "../../services";
 import {
   SCORE_LIMITS,
+  COURSE_FILE_DETAIL_OPTIONS,
   averageSectionScore,
   clampScore,
   consultancyGuidelineScore,
@@ -39,6 +42,7 @@ import {
   lectureGuidelineScore,
   maskDateDDMMYYYY,
   migrateLegacyRowFields,
+  normalizeCourseFileDetails,
   normalizeAutoScores,
   projectGuidanceRowMax,
   researchGuidanceRowMax,
@@ -833,7 +837,7 @@ export default function StandardMyAppraisal({
     const requestedAcademicYear = info.ay;
     const isCurrentLoad = () => !cancelled && loadRequestRef.current === requestId;
     // Totals depend on every section, not only the currently visible tab.
-    const scopedAppraisalSetters = scopeYearSetters(appraisalSetters, isCurrentLoad);
+    const scopedAppraisalSetters = scopeYearSetters(standardReadSetters(appraisalSetters), isCurrentLoad);
     resetSnapshotSetters(requestedAcademicYear, scopedAppraisalSetters);
     setLeaveManagement([blankLeaveManagementRow()]);
     setDeclarationConfirmed(false);
@@ -1242,6 +1246,8 @@ export default function StandardMyAppraisal({
   }, [info, lectures, courseFile, innovRows, projects, obeRows, mentoringRows, quals, feedback, deptActs, uniActs, eventRows, society, industry, alumniRows, placementRows, acr, leaveManagement, journals, books, ict, research, projects2, externalProjects, patents, awards, confs, proposals, products, fdps, training, exhibitions, summaryOtherInfo, docs, sectionSaveStatus, formLocked, submitting, showClosedReportOnly, isLegacyTwoPartYear, isSelectedCycleOpen, appraisalWindowStatus, partATotal, partBTotal, partCTotal, partDTotal, grandTotal, effectivePartAMax, effectivePartBMax, effectiveGrandMax]);
 
   const handleSaveCurrentSection = async (section, navigateNext = true) => {
+    if (savingSection) return;
+    try { assertDraftOnline(); } catch (error) { alert(draftSaveErrorMessage(error)); return; }
     if (formLocked || (section === "partD" && partDLocked)) return;
     const userEmail = sessionStorage.getItem("username") || sessionStorage.getItem("email");
     if (!userEmail) {
@@ -1269,7 +1275,7 @@ export default function StandardMyAppraisal({
     const nextStatus = { ...sectionSaveStatus, [section]: true };
     setSavingSection(section);
     try {
-      await saveAppraisalDraftSection({
+      await confirmedDraftSave(() => saveAppraisalDraftSection({
         facultyEmail: userEmail,
         academicYear: info.ay,
         form: buildSelfDraftForm(nextStatus),
@@ -1277,7 +1283,7 @@ export default function StandardMyAppraisal({
         docs,
         submitterProfile: profileFromsessionStorage(),
         sectionSaveStatus: nextStatus,
-      });
+      }));
       setSectionSaveStatus(nextStatus);
       if (navigateNext) {
         const NEXT_SECTION = { partA: "partB", partB: "partC", partC: "partD", partD: "partE", partE: "summary" };
@@ -1294,7 +1300,7 @@ export default function StandardMyAppraisal({
         markSnapshotLocked();
         return;
       }
-      alert(`Unable to save draft.\n\n${err.message}`);
+      alert(draftSaveErrorMessage(err));
     } finally {
       setSavingSection(null);
     }
@@ -1928,7 +1934,7 @@ export default function StandardMyAppraisal({
               alertOnceKey={`${sessionStorage.getItem("username") || ""}:${info.ay || ""}:${workflowDeclaration?.status || ""}`}
             />
             {formLocked && (
-              <div role="status" className={`appraisal-lock-notice appraisal-lock-notice--${appraisalWindowLockMessage || isSelectedCycleClosed ? "closed" : workflowRejected ? "rejected" : "submitted"}`}>
+              <div role="status" className={`standard-appraisal-lock-notice appraisal-lock-notice appraisal-lock-notice--${appraisalWindowLockMessage || isSelectedCycleClosed ? "closed" : workflowRejected ? "rejected" : "submitted"}`}>
                 <span className="appraisal-lock-notice__icon" aria-hidden="true">{appraisalWindowLockMessage || isSelectedCycleClosed || workflowRejected ? <Info size={18} strokeWidth={1.8} /> : <LockKeyhole size={18} strokeWidth={1.8} />}</span>
                 <span>
                   {appraisalWindowLockMessage
@@ -2098,10 +2104,9 @@ export default function StandardMyAppraisal({
                               <td style={TD}><TI val={r.course} onChange={(v) => setCF(i, "course", v)} placeholder="Course code / paper name" /></td>
                               <td style={TD}><TI val={r.title} onChange={(v) => setCF(i, "title", v)} placeholder="Title / Program & Semester" /></td>
                               <td style={TD}>
-                                <select value={r.details} onChange={(e) => setCF(i, "details", e.target.value)} style={{ width: "100%", height: 30, border: "1px solid #cbd5e1", borderRadius: 4, background: "#fff", fontFamily: "inherit", fontSize: 11 }}>
+                                <select value={normalizeCourseFileDetails(r.details)} onChange={(e) => setCF(i, "details", e.target.value)} style={{ width: "100%", height: 30, border: "1px solid #cbd5e1", borderRadius: 4, background: "#fff", fontFamily: "inherit", fontSize: 11 }}>
                                   <option value="">Select</option>
-                                  <option value="Yes">Yes</option>
-                                  <option value="No">No</option>
+                                  {COURSE_FILE_DETAIL_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
                                 </select>
                               </td>
                               <td style={TD}><DocCell id={`courseFile-${i}`} docs={docs} setDocs={setDocs} /></td>

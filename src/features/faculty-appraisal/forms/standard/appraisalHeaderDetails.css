@@ -11,3 +11,5 @@
 .appraisal-lock-notice--closed .appraisal-lock-notice__icon { background: #fffbeb; border-color: #fde68a; color: #b45309; }
 .appraisal-lock-notice--rejected { background: #fffafa; border-color: #fecaca; color: #991b1b; }
 .appraisal-lock-notice--rejected .appraisal-lock-notice__icon { background: #fef2f2; border-color: #fecaca; color: #dc2626; }
+.standard-appraisal-lock-notice.appraisal-lock-notice--submitted { background: #fef2f2; border: none; color: #991b1b; font-weight: 600; }
+.standard-appraisal-lock-notice.appraisal-lock-notice--submitted .appraisal-lock-notice__icon { background: #fee2e2; border-color: #fca5a5; color: #b91c1c; }

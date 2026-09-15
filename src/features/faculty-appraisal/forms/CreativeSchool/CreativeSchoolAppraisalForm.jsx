@@ -1,4 +1,5 @@
 import ReviewerReportHeader from "../../../../components/dashboard/ReviewerReportHeader";
+import { confirmedDraftSave, draftSaveErrorMessage } from "../../../../utils/confirmedDraftSave";
 /* @refresh skip */
 /* eslint-disable no-unused-vars, react-refresh/only-export-components */
 import { useReviewFeedback } from "../../../../components/reviewFeedbackContext";
@@ -32,6 +33,7 @@ import {
   renderCombinedPartsSummary,
   INNOVATIVE_METHODS,
   SCORE_LIMITS,
+  COURSE_FILE_DETAIL_OPTIONS,
   averageSectionScore,
   clampScore,
   consultancyGuidelineScore,
@@ -46,6 +48,7 @@ import {
   isValidDDMMYYYY,
   lectureGuidelineScore,
   maskDateDDMMYYYY,
+  normalizeCourseFileDetails,
   normalizeAutoScores,
   projectGuidanceRowMax,
   researchGuidanceRowMax,
@@ -554,6 +557,9 @@ const normalizeCreativeRow = (key, row = {}, index = 0) => {
   }
 
   const fieldAliases = {
+    courseFile: {
+      details: ["details", "availability", "iqac_format", "iqacFormat", "availability_iqac", "availabilityIqac"],
+    },
     journals: {
       doi: ["doi", "issn", "eissn", "e_issn"],
       impact: ["impact", "impactFactor", "impact_factor"],
@@ -641,6 +647,7 @@ const normalizeCreativeRow = (key, row = {}, index = 0) => {
   Object.entries(fieldAliases[key] || {}).forEach(([target, aliases]) => {
     next = withFallbackValue(next, row, target, aliases);
   });
+  if (key === "courseFile") return { ...next, details: normalizeCourseFileDetails(next.details) };
   if (key === "society") {
     // `activity` is this engine's real field; drop the `label` ghost that persistence backfills
     // so a stale pre-edit value can never resurface on the next round-trip / submit.
@@ -1158,7 +1165,7 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
                           )
                         ) : key === "first" ? (
                           <select
-                            value={row[key] || ""}
+                            value={normalizeCourseFileDetails(row[key])}
                             disabled={!editableSelf || readOnlyField || selfLocked}
                             onChange={(event) => updateRow(index, key, event.target.value)}
                             style={{ width: "100%", height: 30, border: "1px solid #cbd5e1", borderRadius: 4, background: "#fff", fontFamily: "inherit", fontSize: 11 }}
@@ -1185,9 +1192,7 @@ function SectionTable({ section, form, setForm, docs, setDocs, mode, locked, rev
                             style={{ width: "100%", height: 30, border: "1px solid #cbd5e1", borderRadius: 4, background: "#fff", fontFamily: "inherit", fontSize: 11 }}
                           >
                             <option value="">Select</option>
-                            <option value="1.Available">1.Available</option>
-                            <option value="2.Partially Available">2.Partially Available</option>
-                            <option value="3.Not Available">3.Not Available</option>
+                            {COURSE_FILE_DETAIL_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
                           </select>
                         ) : DROPDOWN_FIELD_OPTIONS[section.key]?.[key] ? (
                           <select
@@ -2697,15 +2702,24 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
     sectionScores: buildCreativeSchoolSectionScores(form, reviewData, reviewerRole),
   });
 
+  const manualDraftSaveRef = useRef(false);
   const handleSaveDraft = async () => {
+    if (manualDraftSaveRef.current || panelReadOnly) return false;
+    manualDraftSaveRef.current = true;
     try {
       setSavingDraft(true);
-      await saveReviewerDraft(buildReviewerDraftPayload());
+      setDraftStatus("Saving draft...");
+      await confirmedDraftSave(() => saveReviewerDraft(buildReviewerDraftPayload()));
       setDraftStatus(`Draft saved: ${new Date().toLocaleString()}`);
+      return true;
     } catch (err) {
       console.error("Could not save reviewer draft:", err);
-      setDraftStatus(err?.message || "Unable to save draft.");
+      const message = draftSaveErrorMessage(err);
+      setDraftStatus(message);
+      alert(message);
+      return false;
     } finally {
+      manualDraftSaveRef.current = false;
       setSavingDraft(false);
     }
   };
@@ -2772,7 +2786,7 @@ export function CreativeSchoolAuthorityReviewPanel({ person, reviewerRole, onBac
   }, [academicYear, form, panelReadOnly, remarks, reviewData, reviewerRole, subjectEmail, totals.partA, totals.partB, totals.partC, totals.partD, totals.total]);
 
   const handleSaveAndNext = async () => {
-    await handleSaveDraft();
+    if (!await handleSaveDraft()) return;
     const NEXT_SECTION_MAP = { partA: "partB", partB: "partC", partC: "partD", partD: "partE", partE: "summary" };
     const nextSection = NEXT_SECTION_MAP[sectionView];
     if (nextSection) {
