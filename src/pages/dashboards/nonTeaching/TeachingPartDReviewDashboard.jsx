@@ -439,6 +439,7 @@ export default function TeachingPartDReviewDashboard({ accent = "#155e75", acade
               key={selected.id}
               subject={selected}
               academicYear={academicYear}
+              canEditRows={canEdit}
               onSubmitted={(patch) => {
                 setItems((currentItems) => currentItems.map((item) => (item.id === selected.id ? { ...item, ...patch } : item)));
                 setSelectedId("");

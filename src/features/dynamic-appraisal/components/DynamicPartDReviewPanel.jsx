@@ -7,34 +7,53 @@
 // the selected subject's form is a dynamic one) — same shared Registrar queue,
 // same submitPartDRegistrarReview endpoint, different (schema-driven) UI.
 //
-// Backend note: whether GET /dashboard/part-d-queue actually returns a dynamic
-// subject's full saved form (with its custom_..._s_... keys) is unverified —
-// this degrades gracefully to an explanatory message if that data isn't present,
-// same posture as the matrix table work (see dynamicMatrixAdapter.js).
+// Backend note: the Part D registrar queue list (GET /dashboard/part-d-queue)
+// does not reliably echo a dynamic subject's full saved form back (no
+// custom_..._s_... keys), confirmed in practice — the Registrar was seeing
+// "No rows were submitted" for tables the subject had actually filled in.
+// Every other reviewer screen (HOD/Director/Dean/VC, DynamicAuthorityReviewPanel)
+// avoids this by fetching the subject's full submitted appraisal directly via
+// GET /dashboard/faculty/{email} (fetchSavedAppraisal) once a specific subject
+// is opened, rather than trusting whatever the queue list item happened to
+// carry — do the same here.
 import { useEffect, useState } from 'react';
-import { Send } from 'lucide-react';
+import { Send, FilePenLine, X } from 'lucide-react';
 import DynamicRegistrarPartView from './DynamicRegistrarPartView';
 import { SectionCard } from '../../faculty-appraisal/components/formPrimitives';
 import { fetchDynamicFormSchema } from '../services/dynamicFormSchemaCache';
 import { buildSchemaPreview } from '../../../utils/schemaPreview';
 import { dynamicReviewForm } from '../../../utils/dynamicAppraisalData';
 import { submitPartDRegistrarReview } from '../../../services/reviewWorkflow';
-import { loadAppraisalDocuments } from '../../../services/appraisalPersistence';
+import { loadAppraisalDocuments, fetchSavedAppraisal } from '../../../services/appraisalPersistence';
 import { getSchoolByValue } from '../../../constants/universityHierarchy';
 
-export default function DynamicPartDReviewPanel({ subject, academicYear, onSubmitted }) {
-  const form = dynamicReviewForm(subject) || {};
+export default function DynamicPartDReviewPanel({ subject, academicYear, onSubmitted, canEditRows = false }) {
   const response = subject.previousYearResponse || subject;
   const subjectEmail = response.faculty_email || subject.email || subject.faculty_email;
-  const subjectSchool = subject.school || response.payload?.submitter_profile?.school
-    || response.payload?.submitterProfile?.school || form.info?.school || '';
-  const assignedFormFamily = getSchoolByValue(subjectSchool)?.defaultForm
-    || getSchoolByValue(subjectSchool)?.formVariant || '';
   const baseDocs = response.payload?.docs || response.docs || subject.docs || {};
 
   const [result, setResult] = useState(null);
   const [activePartIndex, setActivePartIndex] = useState(0);
   const [fetchedDocs, setFetchedDocs] = useState({});
+  // null = not fetched yet, undefined kept out of state so "fetched but came
+  // back with nothing usable" and "haven't fetched yet" stay distinguishable.
+  const [fetchedResponse, setFetchedResponse] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!subjectEmail || !academicYear) return undefined;
+    fetchSavedAppraisal({ facultyEmail: subjectEmail, academicYear })
+      .then((data) => { if (!cancelled) setFetchedResponse(data); })
+      // Degrade to whatever the queue item itself carries (the previous
+      // behavior) rather than breaking the screen if this fetch fails —
+      // matches the existing graceful-degrade posture for this module.
+      .catch(() => { if (!cancelled) setFetchedResponse(false); });
+    return () => { cancelled = true; };
+  }, [subjectEmail, academicYear]);
+  const form = dynamicReviewForm(fetchedResponse || {}) || dynamicReviewForm(subject) || {};
+  const subjectSchool = subject.school || response.payload?.submitter_profile?.school
+    || response.payload?.submitterProfile?.school || form.info?.school || '';
+  const assignedFormFamily = getSchoolByValue(subjectSchool)?.defaultForm
+    || getSchoolByValue(subjectSchool)?.formVariant || '';
   // Lazy initializers (not an effect) so switching to a different subject re-syncs
   // correctly — the caller (TeachingPartDReviewDashboard) mounts this with
   // key={selected.id}, so a new subject means a fresh mount, not a prop update.
@@ -44,12 +63,27 @@ export default function DynamicPartDReviewPanel({ subject, academicYear, onSubmi
   const [remarks, setRemarks] = useState(() => subject.registrarPartDRemarks || subject.registrar_part_d_remarks || '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  // Registrar edits to the Registrar-only table(s)/field(s), keyed by section
+  // code — { [sectionCode]: rows[] | fieldsObject }. Only sections the
+  // Registrar actually touched are present, so "nothing edited" stays
+  // distinguishable from "edited back to the original value" and the submit
+  // payload only ever carries real changes.
+  const [editing, setEditing] = useState(false);
+  const [editedSections, setEditedSections] = useState({});
+  const handleFieldRowsChange = (sectionCode, value) => {
+    setEditedSections((prev) => ({ ...prev, [sectionCode]: value }));
+  };
 
   useEffect(() => {
     if (!subjectEmail || !academicYear) return;
     loadAppraisalDocuments({ facultyEmail: subjectEmail, academicYear, setDocs: setFetchedDocs });
   }, [subjectEmail, academicYear]);
   const docs = { ...baseDocs, ...fetchedDocs };
+  const setDocs = (updater) => setFetchedDocs((prev) => (typeof updater === 'function' ? updater(prev) : { ...prev, ...updater }));
+  // What's actually rendered: the fetched form with any in-progress Registrar
+  // edits layered on top, so a table the Registrar is editing reflects their
+  // changes immediately instead of flashing back to the original value.
+  const effectiveForm = { ...form, ...editedSections };
 
   useEffect(() => {
     let cancelled = false;
@@ -96,7 +130,8 @@ export default function DynamicPartDReviewPanel({ subject, academicYear, onSubmi
     setSaving(true);
     setError('');
     try {
-      await submitPartDRegistrarReview({ subjectEmail, academicYear, score: numericScore, remarks });
+      await submitPartDRegistrarReview({ subjectEmail, academicYear, score: numericScore, remarks, sections: editedSections });
+      setEditing(false);
       onSubmitted?.({
         partDStatus: 'released',
         hasRegistrarPartDScore: true,
@@ -136,9 +171,37 @@ export default function DynamicPartDReviewPanel({ subject, academicYear, onSubmi
         Dean/VC read-only view (DynamicAuthorityReviewPanel.jsx) — the Registrar's
         own screen previously rendered this bare (no card, no header bar), which
         looked inconsistent with the rest of the app next to that screen. */}
+    {canEditRows && (
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <button
+          type="button"
+          onClick={() => {
+            if (editing) setEditedSections({});
+            setEditing((value) => !value);
+          }}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 16px', borderRadius: 8,
+            border: `1px solid ${editing ? '#fecaca' : '#a5f3fc'}`, background: editing ? '#fef2f2' : '#ecfeff',
+            color: editing ? '#991b1b' : '#0e7490', fontWeight: 800, fontFamily: 'inherit', fontSize: 13, cursor: 'pointer',
+          }}
+        >
+          {editing ? <X size={15} aria-hidden="true" /> : <FilePenLine size={15} aria-hidden="true" />}
+          {editing ? 'Cancel Edit' : 'Edit Table'}
+        </button>
+      </div>
+    )}
     {activePart && (
-      <SectionCard title={activePart.label} subtitle="Reviewed only by the Registrar — not part of your review chain" accent="#0e7490">
-        <DynamicRegistrarPartView key={activePart.label} part={activePart} form={form} docs={docs} subject={subject} />
+      <SectionCard title={activePart.label} subtitle={editing ? 'Editing — correcting what the faculty submitted' : 'Reviewed only by the Registrar — not part of your review chain'} accent="#0e7490">
+        <DynamicRegistrarPartView
+          key={activePart.label}
+          part={activePart}
+          form={effectiveForm}
+          docs={docs}
+          setDocs={setDocs}
+          subject={subject}
+          editing={editing}
+          onFieldRowsChange={handleFieldRowsChange}
+        />
       </SectionCard>
     )}
 

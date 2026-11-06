@@ -8,7 +8,7 @@
 // is hardcoded to Standard's fixed Leave & Attendance row shape and must stay
 // untouched. This one is schema-driven, matching whatever an admin configured.
 import { ClipboardList } from 'lucide-react';
-import { SchemaFieldCell } from '../../faculty-appraisal/components/SchemaSectionTable';
+import { SchemaFieldCell, SchemaTableField } from '../../faculty-appraisal/components/SchemaSectionTable';
 import { SectionInfoButton, ViewCell } from '../../faculty-appraisal/components/formPrimitives';
 import { T, TH, TD, TDC } from '../../faculty-appraisal/components/formPrimitiveStyles';
 import { schemaTableGuideline } from '../../../utils/schemaPreview';
@@ -48,15 +48,19 @@ function ReadOnlyTable({ field, rows, docs }) {
           const source = column.source || column;
           const key = source.name || source.key;
           const docId = `${field.key}-${key}-${rowIndex}`;
+          // mode="review" (not "self") — this is a read-only display of already-
+          // submitted data, not a disabled form field, so it should read as
+          // plain text like every other reviewer's read-only cell in the app,
+          // not as a grayed-out input box pretending to still be editable.
           return <td key={index} style={TD}>{column.isView ? <ViewCell id={docId} docs={docs} />
-            : <SchemaFieldCell field={column} value={row?.[key]} readOnly mode="self" center={['number', 'integer'].includes(column.type)} docId={docId} docs={docs} />}</td>;
+            : <SchemaFieldCell field={column} value={row?.[key]} readOnly mode="review" center={['number', 'integer'].includes(column.type)} docId={docId} docs={docs} />}</td>;
         })}
       </tr>) : <tr><td colSpan={count} style={{ ...TDC, color: '#4338ca' }}>No rows were submitted for this table.</td></tr>}
     </tbody>
   </table></div>;
 }
 
-export default function DynamicRegistrarPartView({ part, form, docs, subject }) {
+export default function DynamicRegistrarPartView({ part, form, docs, setDocs, subject, editing = false, onFieldRowsChange }) {
   // minWidth: 0 on the grid/its row items is required here, not decorative —
   // without it a wide table's intrinsic content width forces this whole grid
   // (and every fixed-width ancestor up to the page) to grow to match instead
@@ -71,8 +75,22 @@ export default function DynamicRegistrarPartView({ part, form, docs, subject }) 
         <SectionInfoButton titleText={field.label} customGuideline={schemaTableGuideline(field)} popoverWidth={460} popoverClassName="dynamic-table-guidelines" />
       </div>
       {field.type === 'table'
-        ? <ReadOnlyTable field={field} rows={Array.isArray(form?.[field.sectionCode]) ? form[field.sectionCode] : []} docs={docs} />
-        : <SchemaFieldCell field={field} value={form?.[field.sectionCode]?.[field.key]} readOnly docId={field.key} docs={docs} />}
+        ? (editing
+            // Editing: the same schema-driven, editable table (add/delete row,
+            // per-cell inputs) the faculty's own fill-in screen uses — mode="self"
+            // with locked={false} so the Registrar can correct what the faculty
+            // submitted, same spirit as Standard's Part D "Edit Part D" toggle.
+            ? <SchemaTableField
+                field={field}
+                rows={Array.isArray(form?.[field.sectionCode]) ? form[field.sectionCode] : []}
+                onRowsChange={(rows) => onFieldRowsChange?.(field.sectionCode, rows)}
+                mode="self"
+                locked={false}
+                docs={docs}
+                setDocs={setDocs}
+              />
+            : <ReadOnlyTable field={field} rows={Array.isArray(form?.[field.sectionCode]) ? form[field.sectionCode] : []} docs={docs} />)
+        : <SchemaFieldCell field={field} value={form?.[field.sectionCode]?.[field.key]} readOnly={!editing} mode={editing ? 'self' : 'review'} onChange={(v) => onFieldRowsChange?.(field.sectionCode, { ...form?.[field.sectionCode], [field.key]: v })} docId={field.key} docs={docs} setDocs={setDocs} />}
     </section>)}
   </div>;
 }
