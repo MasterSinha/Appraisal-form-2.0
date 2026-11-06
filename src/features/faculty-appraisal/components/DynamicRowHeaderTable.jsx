@@ -22,7 +22,7 @@ export default function DynamicRowHeaderTable({ field, rows, docs, setDocs, docP
           {!rows.length && <td style={TD}>—</td>}
         </tr>;
       })}
-      {Number(field.maxMarks) > 0 && <tr><th scope="row" style={labelStyle}>Total Score (Max {field.maxMarks})</th><td className="dynamic-total-value" colSpan={Math.max(1, rows.length)} style={{ ...TDC, background: '#f0f2ff', fontWeight: 800 }}>{schemaTableScore(field.columns || [], rows).toFixed(1)}</td></tr>}
+      {Number(field.maxMarks) > 0 && <tr><th scope="row" style={labelStyle}>Total Score (Max {field.maxMarks})</th><td className="dynamic-total-value" colSpan={Math.max(1, rows.length)} style={{ ...TDC, background: '#f0f2ff', fontWeight: 800 }}>{schemaTableScore(field.columns || [], rows, field.maxMarks).toFixed(1)}</td></tr>}
     </tbody>
   </table></div>;
 }

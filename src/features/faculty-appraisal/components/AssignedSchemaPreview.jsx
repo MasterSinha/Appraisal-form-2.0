@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { hasActiveRejection } from '../../../utils/hierarchy';
 import { ClipboardList } from 'lucide-react';
 import { api } from '../../../services/api';
@@ -37,6 +37,12 @@ const blankRow = (columns) => {
   return row;
 };
 
+// A stable reference for "this table has no rows yet" — `tableRows[field.key] || []`
+// would otherwise hand every untouched table a brand-new array every render,
+// defeating EditableTableField's memoization for exactly the tables that
+// most commonly have nothing typed into them yet.
+const EMPTY_ROWS = [];
+
 // Rule: a "file" column always gets an automatic read-only "View Docs" column
 // immediately to its right, matching the built-in appraisal forms' Attachment/View
 // Docs pairing. Applies to every table in the dynamic (custom-schema) form.
@@ -55,7 +61,7 @@ function renderDynamicTableSection(field, rows, docs) {
   const dataColumns = (field.columns || []).filter((column) => column.type !== 'file');
   const fileColumns = (field.columns || []).filter((column) => column.type === 'file');
   const safeRows = rows.length ? rows : [{}];
-  const total = schemaTableScore(field.columns || [], rows);
+  const total = schemaTableScore(field.columns || [], rows, field.maxMarks);
   const colCount = 1 + dataColumns.length + (fileColumns.length ? 1 : 0);
   const docsForRow = (rowIndex) => fileColumns
     .flatMap((column) => filesForDocValue(docs?.[`${field.key}-${column.name}-${rowIndex}`]))
@@ -137,7 +143,14 @@ window.addEventListener('load', function(){
 });
 </script>`;
 
-function EditableTableField({ field, rows, onRowsChange, docs, setDocs, docPrefix, readOnly = false }) {
+// Memoized so editing one table's rows doesn't re-render every other table on
+// the page — tableRows is one object keyed by field.key, so typing in Table 1
+// gives every OTHER table's `rows` prop the same array reference it had
+// before; without this, every table (and every row, every cell) re-rendered
+// on every keystroke anywhere in the form, which is what made a form with
+// several tables feel janky, scrolling included, since the browser had that
+// much more work to do on the main thread after each render.
+const EditableTableField = memo(function EditableTableField({ field, rows, onRowsChange, docs, setDocs, docPrefix, readOnly = false }) {
   const rawColumns = field.columns || [];
   const columns = withAutoViewDocsColumns(rawColumns);
   const safeRows = rows.length ? rows : [blankRow(rawColumns)];
@@ -153,18 +166,22 @@ function EditableTableField({ field, rows, onRowsChange, docs, setDocs, docPrefi
   const flexibleCount = columns.filter((column) => compactWidth(column) === null).length;
   const columnWidth = (column) => compactWidth(column) ?? `calc((100% - ${fixedWidth}px) / ${flexibleCount || 1})`;
 
+  // onRowsChange is (key, rows) => void, keyed by field.key, so the same
+  // stable function reference works for every table — that's what keeps this
+  // memoized component's own props (and the React.memo check on them) stable
+  // across renders where this table's own rows haven't changed.
   const setCell = (rowIndex, colKey, value) => {
     if (readOnly) return;
-    onRowsChange(safeRows.map((row, i) => (i === rowIndex ? { ...row, [colKey]: value } : row)));
+    onRowsChange(field.key, safeRows.map((row, i) => (i === rowIndex ? { ...row, [colKey]: value } : row)));
   };
-  const addRow = () => onRowsChange([...safeRows, blankRow(rawColumns)]);
-  const deleteLastRow = () => onRowsChange(safeRows.length > 1 ? safeRows.slice(0, -1) : safeRows);
+  const addRow = () => onRowsChange(field.key, [...safeRows, blankRow(rawColumns)]);
+  const deleteLastRow = () => onRowsChange(field.key, safeRows.length > 1 ? safeRows.slice(0, -1) : safeRows);
 
   // Rule: whenever the table has a configured max marks, an automatic "Total Score"
   // footer bar appears, summing only Faculty Score / Self Score across rows.
   const showTotal = Number(field.maxMarks) > 0 && columns.length > 0;
   const totalScore = showTotal
-    ? schemaTableScore(rawColumns, safeRows)
+    ? schemaTableScore(rawColumns, safeRows, field.maxMarks)
     : 0;
 
   switch (field.layout || 'columns') {
@@ -178,7 +195,7 @@ function EditableTableField({ field, rows, onRowsChange, docs, setDocs, docPrefi
       const matrixAnswers = matrixAnswersFromRows(field, safeRows);
       const handleMatrixCellChange = (rowId, columnId, value) => {
         if (readOnly) return;
-        onRowsChange(matrixAnswersToRows(field, { ...matrixAnswers, [rowId]: { ...matrixAnswers[rowId], [columnId]: value } }));
+        onRowsChange(field.key, matrixAnswersToRows(field, { ...matrixAnswers, [rowId]: { ...matrixAnswers[rowId], [columnId]: value } }));
       };
       return <DynamicMatrixTable field={field} answers={matrixAnswers} docs={docs} setDocs={setDocs} readOnly={readOnly} onCellChange={handleMatrixCellChange} />;
     }
@@ -248,13 +265,18 @@ function EditableTableField({ field, rows, onRowsChange, docs, setDocs, docPrefi
       {!readOnly && <RowButtons onAdd={addRow} onDel={deleteLastRow} canDel={safeRows.length > 1} />}
     </div>
   );
-}
+});
 
 export default function AssignedSchemaPreview({ assignment, academicYear, school, sectionTab, onSectionTabChange, onProgressChange }) {
   const [attempt, setAttempt] = useState(0);
   const [result, setResult] = useState(null);
   const [values, setValues] = useState({});
   const [tableRows, setTableRows] = useState({});
+  // Stable across every render (empty dep array) so EditableTableField's
+  // memoization can rely on `onRowsChange` never looking like a changed prop.
+  const handleTableRowsChange = useCallback((key, rows) => {
+    setTableRows((prev) => ({ ...prev, [key]: rows }));
+  }, []);
   const [docs, setDocs] = useState({});
   const [snapshotState, setSnapshotState] = useState(null);
   const [saveState, setSaveState] = useState({ saving: false, savedFor: null, error: '' });
@@ -336,7 +358,7 @@ export default function AssignedSchemaPreview({ assignment, academicYear, school
     const parts = current.preview.parts.filter((part) => !part.isReviewerOnlyPart).map((part) => {
       const tables = part.fields.filter((field) => field.type === 'table');
       return [part.label,
-        tables.reduce((sum, field) => sum + schemaTableScore(field.columns || [], tableRows[field.key] || []), 0),
+        tables.reduce((sum, field) => sum + schemaTableScore(field.columns || [], tableRows[field.key] || [], field.maxMarks), 0),
         tables.reduce((sum, field) => sum + (Number(field.maxMarks) || 0), 0)];
     });
     const total = parts.reduce((sum, part) => sum + part[1], 0);
@@ -396,7 +418,7 @@ export default function AssignedSchemaPreview({ assignment, academicYear, school
         const tableSummaries = tables.map((field) => ({
           key: field.key,
           title: field.label || field.recordTitle || field.key,
-          score: schemaTableScore(field.columns || [], tableRows[field.key] || []),
+          score: schemaTableScore(field.columns || [], tableRows[field.key] || [], field.maxMarks),
           max: Number(field.maxMarks) || 0,
         }));
         return {
@@ -639,8 +661,8 @@ ${DYNAMIC_REPORT_PRINT_SCRIPT}
             ? <EditableTableField
                 readOnly={locked}
                 field={field}
-                rows={tableRows[field.key] || []}
-                onRowsChange={(rows) => setTableRows((prev) => ({ ...prev, [field.key]: rows }))}
+                rows={tableRows[field.key] || EMPTY_ROWS}
+                onRowsChange={handleTableRowsChange}
                 docs={docs}
                 setDocs={setDocs}
                 docPrefix={field.key}

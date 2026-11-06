@@ -431,7 +431,7 @@ export function SchemaFieldCell({ field, value, onChange, mode = "self", readOnl
  * <table style={T]}> / <thead><th style={TH}>…</th></thead> / alternating row
  * background / SN column / RowButtons below (delete removes only the last row).
  */
-function SchemaTableField({ field, rows, onRowsChange, mode, reviewerRole, reviewerLabel, reviewMax, rowDisabled, docs, setDocs, locked, previousReviewers = [] }) {
+export function SchemaTableField({ field, rows, onRowsChange, mode, reviewerRole, reviewerLabel, reviewMax, rowDisabled, docs, setDocs, locked, previousReviewers = [] }) {
   const rawColumns = field?.columns || [];
   const isReview = mode === "review";
   // Rule: a "file" column always gets an automatic read-only "View Docs" column
@@ -479,11 +479,11 @@ function SchemaTableField({ field, rows, onRowsChange, mode, reviewerRole, revie
   // footer bar appears, summing every number/integer column across all rows.
   const showTotal = !isReview && Number(field?.maxMarks) > 0 && columns.length > 0;
   const totalScore = showTotal
-    ? safeRows.reduce((rowSum, row) => rowSum + rawColumns.reduce((sum, col) => {
+    ? clampScore(safeRows.reduce((rowSum, row) => rowSum + rawColumns.reduce((sum, col) => {
         if (!["number", "integer"].includes(col.type)) return sum;
         const value = Number(row[col.name]);
         return sum + (Number.isFinite(value) ? value : 0);
-      }, 0), 0)
+      }, 0), 0), field.maxMarks)
     : 0;
 
   return (

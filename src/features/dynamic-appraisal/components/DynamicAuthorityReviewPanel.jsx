@@ -61,7 +61,7 @@ function SubmittedTable({ field, rows, docs }) {
   const flexible = columns.filter((column) => compact(column) === null).length;
   const count = columns.length + (field.autoSerial ? 1 : 0);
   if (!count) return <p>No active columns are configured for this table.</p>;
-  const total = schemaTableScore(field.columns || [], rows);
+  const total = schemaTableScore(field.columns || [], rows, field.maxMarks);
   return <div style={{ overflowX: 'auto' }}><table className="dynamic-appraisal-table" style={{ ...T, ...(!flexible ? { width: fixed, minWidth: fixed } : {}) }}>
     <colgroup>{field.autoSerial && <col style={{ width: 80 }} />}{columns.map((column, index) => <col key={index} style={{ width: compact(column) ?? `calc((100% - ${fixed}px) / ${flexible || 1})` }} />)}</colgroup>
     <thead><tr>{field.autoSerial && <th style={TH}>SN</th>}{columns.map((column, index) => <th key={index} style={TH}>{column.isView ? 'View Docs' : column.label || column.name || column.key}</th>)}</tr></thead>
@@ -339,7 +339,7 @@ export default function DynamicAuthorityReviewPanel({ subject, onBack, onSubmit,
   const summary = scoreableParts.map((part, partIndex) => {
     const tables = part.fields.filter((field) => field.type === 'table').map((field) => ({
       key: field.key || field.sectionCode, title: field.label || field.recordTitle || field.key,
-      score: schemaTableScore(field.columns || [], Array.isArray(form[field.sectionCode]) ? form[field.sectionCode] : []),
+      score: schemaTableScore(field.columns || [], Array.isArray(form[field.sectionCode]) ? form[field.sectionCode] : [], field.maxMarks),
       authorityScore: hasRowDetail(field) ? authorityTableScore(field) : 0,
       hasDetail: hasRowDetail(field),
       previousScores: previousReviews.map((reviewer) => ({ role: reviewer.role, score: previousReviewerTableScore(reviewer, field) })),
@@ -483,7 +483,7 @@ export default function DynamicAuthorityReviewPanel({ subject, onBack, onSubmit,
           <div className="appraisal-subsection-title" style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#4338ca', fontWeight: 800 }}><span className="appraisal-subsection-icon"><ClipboardList size={18} /></span><span>{field.label || field.recordTitle || field.key}</span></div>
           <SchemaFieldCell field={field} value={form[field.sectionCode]?.[field.key]} readOnly docId={field.key} docs={docs} />
         </section>;
-        const facultyScore = schemaTableScore(field.columns || [], Array.isArray(form[field.sectionCode]) ? form[field.sectionCode] : []);
+        const facultyScore = schemaTableScore(field.columns || [], Array.isArray(form[field.sectionCode]) ? form[field.sectionCode] : [], field.maxMarks);
         const showAuthorityStat = hasRowDetail(field);
         return <div key={field.key || index} className="dynamic-review-table-card">
           <div className="dynamic-review-table-card-head">

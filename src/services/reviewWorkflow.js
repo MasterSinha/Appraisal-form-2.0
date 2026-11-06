@@ -1078,6 +1078,15 @@ export const submitPartDRegistrarReview = async ({
   score = 0,
   remarks = "",
   leaveManagement,
+  // Registrar-edited rows for a DYNAMIC (admin-built custom-schema) form's
+  // Registrar-only table(s) — { [sectionCode]: rows[] }, the same shape every
+  // other dynamic-form section is already saved under. There is no confirmed
+  // backend contract for this yet (unlike `leave_management`, which Standard's
+  // Part D already persists through this same endpoint) — sent as `sections`
+  // on a best-effort basis. If the backend doesn't store/return this field,
+  // the Registrar's edits will silently not persist; this needs backend
+  // support added to /dashboard/part-d-release/{email} to actually stick.
+  sections,
 }) => {
   if (!subjectEmail) {
     throw new Error("Missing subject email for Part D review.");
@@ -1087,6 +1096,7 @@ export const submitPartDRegistrarReview = async ({
     registrar_part_d_score: n(score),
     remarks,
     ...(leaveManagement ? { leave_management: leaveManagement } : {}),
+    ...(sections && Object.keys(sections).length ? { sections } : {}),
     academic_year: academicYear || getActiveAcademicYear() || APP_INFO.DEFAULT_AY || "2026-2027",
   });
 };
